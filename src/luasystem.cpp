@@ -219,14 +219,13 @@ void MarkMmcemanLoaded()
 }
 
 // System.getSio2Owner(): which SIO2-bus storage driver is resident this
-// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
-// (the already-conflicted legacy state this guard exists to prevent). mmceman
-// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
-// sustained reads from one hang with the other resident (HW-confirmed 48%
-// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
-// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
-// reset, the pages check this and DECLINE the second driver with a message.
-// Reads the load latches directly so it cannot miss a C-internal load path.
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH".
+// EXP32: DIAGNOSTIC-ONLY. The Lua exclusion guards that read this are gone --
+// mmceman and mx4sio_bd coexist (maintainer call, 2026-07-21: official OPL
+// runs both resident on freesio2, which we carry since EXP31; the contrary
+// R3Z3N /ACK-wiring position is recorded in system.lua as the fallback).
+// Kept because it reads the load latches directly (cannot miss a C-internal
+// load path) -- useful for future diagnostics and the harness contract tests.
 static int lua_get_sio2_owner(lua_State *L)
 {
 	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
@@ -1691,9 +1690,10 @@ static int lua_ata_init_async(lua_State *L)
 }
 
 // System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
-// (EXP32: the old cross-page "cascade guard" reading state==1 is gone -- with
-// every transport loading in the boot window, no page loads modules anymore,
-// so there is nothing to queue behind an in-flight ata load.)
+// ALSO read by the Lua-side cascade bound: the ata worker's module loads go
+// through the same IOP module loader a page-entry initMX4SIO uses, so while
+// state==1 the MX4SIO page waits BOUNDED (screen alive) instead of queueing a
+// synchronous load behind a possibly-wedged loader, then reports not-ready.
 static int lua_ata_init_status(lua_State *L)
 {
 	(void)L;

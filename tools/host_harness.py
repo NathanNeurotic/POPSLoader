@@ -853,6 +853,30 @@ t24 = lua.execute(r'''
 ''')
 check("T24 MMCE<->MX4SIO coexistence: neither driver declines because the other is resident", t24)
 
+t25 = lua.execute(r'''
+  -- (f) cascade bound: while the ata worker holds the IOP module loader
+  -- (state==1), a MX4SIO page entry must wait BOUNDED and report not-ready --
+  -- never queue its synchronous IRX load behind a possibly-wedged loader.
+  local load_attempted = false
+  System.initMX4SIO = function() load_attempted = true; return true end
+  System.initATAStatus = function() return 1 end
+  local root, status = PLDR.GetMX4SIOMassRootNow()
+  if status ~= "notready" then
+    return false, "expected notready while ata load in flight, got "..tostring(status)
+  end
+  if load_attempted then
+    return false, "mx4sio IRX load queued behind an in-flight ata load"
+  end
+  -- loader free again: the load proceeds
+  System.initATAStatus = function() return 2 end
+  PLDR.GetMX4SIOMassRootNow()
+  if not load_attempted then
+    return false, "mx4sio load should proceed once the ata load finished"
+  end
+  return true
+''')
+check("T25 cascade bound: MX4SIO waits bounded while the ata load holds the IOP loader", t25)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

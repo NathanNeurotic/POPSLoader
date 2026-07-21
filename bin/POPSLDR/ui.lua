@@ -5289,7 +5289,7 @@ UI = {
 	              PLDR.GAMEPATH = ""
               -- EXP32: mx4sio_bd loads LAZILY on this first entry (R3Z/OPL
               -- model; coexists with mmceman -- no gate, maintainer call).
-              -- After the load: a bounded opendir+ioctl sweep (3 passes, 1s
+              -- After the load: a bounded opendir+ioctl sweep (settle-retry, 1s
               -- settles). No markers, no bdm_query poke, no unbounded wait.
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()

@@ -4320,9 +4320,12 @@ end
 
 -- EXP32: the MX4SIO auto-enter crash-marker is GONE (no reference launcher
 -- persists failure state -- grep OPL/NHDDL for crash markers: zero). The hang
--- it bounded (a page-time driver load that never returned) no longer exists:
--- mx4sio_bd loads in the boot window (main.cpp), so page entry only
--- enumerates, and every enumeration wait is bounded. One legacy duty remains:
+-- it bounded (a page-entry driver load that never returned) no longer exists:
+-- mx4sio_bd loads lazily via the matched-vintage SDK set (the wedge was the
+-- c1debd1 mismatched core, fixed), the load returns promptly (card detection
+-- runs on the driver's own IOP thread), and every enumeration wait after it
+-- is bounded (settle-retry budget, never an unbounded probe). One legacy duty
+-- remains:
 -- an install upgrading from a marker-era build may have the marker file on
 -- the memory card; clear it opportunistically so it cannot confuse anything.
 local MX4SIO_PENDING_MARKER = PLDR.POPSTARTER_DIR.."/.mx4sio_autoenter_pending"
@@ -5751,11 +5754,31 @@ end
 -- gets false must NOT sweep (NHDDL's rule: never probe a device class whose
 -- driver isn't up; the sweep's fileXio RPCs against a half-registered core
 -- were one of the wedge channels). No branch here loads a module on the UI
--- thread, ever: transports load in the boot window (main.cpp mx4sio_bd /
--- usbmass_bd; do_boot_init kicks the ata worker), so page entry is a latched
--- no-op, a single boot-failure retry, or a bounded status poll.
+-- thread, ever, beyond the LAZY first-engagement load: usbmass_bd is boot-
+-- resident, mx4sio_bd loads on first engagement (quick, detection async on
+-- its own IOP thread), and ata loads only on its worker (do_boot_init kicks
+-- it for exFAT installs; page entry is a bounded status poll, never a load).
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
+    -- CASCADE BOUND: the ata worker loads its modules through the SAME IOP
+    -- module loader a page-entry initMX4SIO uses. If that load is in flight
+    -- (exFAT boot kick still running, or another page kicked it), wait
+    -- screen-alive -- BOUNDED -- instead of queueing a synchronous load
+    -- behind a possibly-wedged loader (the one-wedge-two-pages class). Still
+    -- running after the budget -> report not-ready; the next entry retries.
+    -- (Lazy loading re-opened this window; rev1's boot-time load had closed
+    -- it, so the bound returns with the laziness.)
+    if type(System) == "table" and type(System.initATAStatus) == "function" then
+      local ok_st, st = pcall(System.initATAStatus)
+      if ok_st and st == 1 then
+        for _ = 1, (10 * 60) do
+          PaceScanFrame()
+          local ok2, s2 = pcall(System.initATAStatus)
+          if ok2 and type(s2) == "number" and s2 ~= 1 then st = s2 break end
+        end
+        if st == 1 then return false end
+      end
+    end
     -- LAZY load on first engagement (maintainer directive; OPL loads
     -- transports at first BDM init, R3Z loads stacks when engaged). NO
     -- MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs mmceman
@@ -6041,20 +6064,17 @@ local function BuildUsbIdentityDeferred(progress)
   return identity or BuildMassRootIdentity("usb")
 end
 
--- EXP32: ONE bounded deferred builder for the boot-window transports
--- (mx4sio, ata) -- replaces the old per-device 6/4-attempt ladders (no
--- reference launcher has per-device retry counts; NHDDL sweeps a fixed 2-3
--- passes with fixed settles for every class). The drivers are resident since
--- boot, so a pass is just cheap opendir+ioctl sweeps; a slow SD card or a
--- spinning-up drive gets 3 passes with a 1s settle (mx4sio_bd self-detects on
--- its own IOP thread; ata enumeration follows spin-up). The old ladders'
--- WaitMassProbeRetry re-poke (a bdm_query RPC that could land mid-module-
--- registration -- one of the wedge channels) is gone from these paths.
--- Second return distinguishes "transport not ready" (worker still starting /
--- driver failed to load) from "swept clean, nothing there", so the page can
--- say the truthful thing instead of a generic no-device toast.
--- (USB keeps its own builder unchanged below: its attempt ladder + diag flow
--- is HW-confirmed since the #508 fix, and USB has no freeze channel.)
+-- EXP32: ONE bounded deferred builder for the lazily-loaded transports
+-- (mx4sio, ata) -- one settle-retry MECHANISM replacing the two divergent
+-- ladder implementations, with a per-mode BUDGET where hardware demanded it
+-- (see the budget note inside). A pass is just cheap opendir+ioctl sweeps.
+-- The old ladders' WaitMassProbeRetry re-poke (a bdm_query RPC that could
+-- land mid-module-registration -- one of the wedge channels) is gone from
+-- these paths. Second return distinguishes "transport not ready" (worker
+-- still starting / load declined or failed) from "swept clean, nothing
+-- there", so the page can say the truthful thing instead of a generic
+-- no-device toast. (USB keeps its own builder unchanged above: its attempt
+-- ladder + diag flow is HW-confirmed since the #508 fix, no freeze channel.)
 local function BuildBoundedIdentityDeferred(mode)
   -- ONE mechanism (settle-retry sweep), per-mode BUDGET where hardware
   -- demanded it: mx4sio keeps its 6 passes -- the SD-over-SPI bridge is the
@@ -6135,10 +6155,8 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mx4sio%d*:/") then
-    if type(_G.ensureMx4sioInit) == "function" then
-      local ok = pcall(_G.ensureMx4sioInit)
-      if ok then return true end
-    end
+    -- (EXP32: the dead _G.ensureMx4sioInit fallback is gone -- nothing has
+    -- defined it since the PR #476 era; System.initMX4SIO is the one path.)
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       local ok = pcall(System.initMX4SIO)
       return ok
@@ -6162,10 +6180,6 @@ function PLDR.EnsureBackendForAppDir()
       and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
-      if type(_G.ensureMx4sioInit) == "function" then
-        local ok = pcall(_G.ensureMx4sioInit)
-        if ok then return true end
-      end
       if type(System) == "table" and type(System.initMX4SIO) == "function" then
         local ok = pcall(System.initMX4SIO)
         if ok then return true end
