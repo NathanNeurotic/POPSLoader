@@ -4162,6 +4162,54 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
 end
 
 
+-- Direct single-pass write: delete dest, create, chunked full-count writes.
+-- For SELF-HEALING files only (BDMA driver staging): the variant marker is
+-- written AFTER the files succeed, so a torn write leaves marker ~= target and
+-- IsBdmaModeEquipped forces a clean re-stage on the next launch. The atomic
+-- tmp/.bak dance below is for files where a torn write LOSES data (.pldrs);
+-- on a memory card System.rename is copy+delete, so that dance costs ~3x the
+-- payload in writes -- the "Staging drivers... takes forever" launch stall
+-- (maintainer, EXP24). Do NOT reroute settings/cache saves through this.
+local function WriteBytesDirectBounded(data, dest)
+  if type(data) ~= "string" then
+    return false, "invalid data"
+  end
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok_open, fd = pcall(System.openFile, dest, FCREATE)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
+    return false, "open destination failed"
+  end
+  local expected = string.len(data)
+  local offset = 1
+  local iters = 0
+  local MAX_ITERS = 4096
+  local wrote_all = true
+  while offset <= expected and iters < MAX_ITERS do
+    iters = iters + 1
+    local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, expected))
+    local chunk_len = string.len(chunk)
+    local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+      wrote_all = false
+      break
+    end
+    offset = offset + chunk_len
+  end
+  if offset <= expected then
+    wrote_all = false
+  end
+  pcall(System.closeFile, fd)
+  if not wrote_all then
+    -- A torn dest must not survive: without it, the file "exists" and only the
+    -- marker mismatch protects us. Delete so the equipped check fails cleanly.
+    pcall(System.removeFile, dest)
+    return false, "write failed"
+  end
+  return true
+end
+
 local function WriteBytesAtomicBounded(data, dest)
   if type(data) ~= "string" then
     return false, "invalid data"
@@ -5675,6 +5723,31 @@ end
 
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
+    -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
+    -- IOP module loader. Queueing System.initMX4SIO behind it would block this
+    -- page forever if that load ever wedges (the one-wedge-two-pages "42%"
+    -- cascade). Wait screen-alive up to ~20s for it to finish; if it is STILL
+    -- running after that, decline this scan pass instead of queueing blind --
+    -- the next page entry retries cleanly.
+    if type(System) == "table" and type(System.initATAStatus) == "function" then
+      local ok_st, st = pcall(System.initATAStatus)
+      if ok_st and st == 1 then
+        local can_flip = type(Screen) == "table" and type(Screen.flip) == "function"
+        for _ = 1, (20 * 60) do
+          if can_flip then
+            pcall(Screen.flip)
+          elseif type(System.sleep) == "function" then
+            pcall(System.sleep, 0)
+          end
+          local ok2, s2 = pcall(System.initATAStatus)
+          if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+        end
+        local ok3, s3 = pcall(System.initATAStatus)
+        if ok3 and s3 == 1 then
+          return
+        end
+      end
+    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
@@ -5682,16 +5755,42 @@ local function EnsureMassBackendsReady(mode)
   end
 
   if mode == "ata" then
-    -- DELIBERATELY NO DRIVER LOAD. ata_bd (BDM-atad) runs full drive detection
-    -- inline in its _start, in the loading thread, and one of its DMA waits has
-    -- no timeout backing -- loading it mid-session on a busy IOP can block
-    -- forever and wedge the IOP module loader, which then hangs the NEXT page
-    -- that loads a driver too (the "42%" hang family; EXP18/19 proved even
-    -- byte-exact known-good drivers freeze this way). The stack now comes up at
-    -- BOOT (main.cpp, gated off MMCE/mx4sio: boots; hdd0: boots get it via
-    -- HDD.Initialize). The page only OBSERVES the result via System.ataReady()
-    -- in BuildATAIdentityDeferred; if boot did not bring ata up, the page
-    -- reports no drive instead of wedging the console.
+    -- LAZY ASYNC bring-up (OPL's arrangement -- its "ps2atad" embed is the same
+    -- ata_bd blob loaded mid-session on a worker thread). NO boot-time load
+    -- anymore (the ~5-6s black-screen cost was unacceptable); the page pays for
+    -- the drive it is opening, screen alive. Frame-count the timeout, NOT
+    -- Timer.getTime (MICROSECONDS trap). A working bring-up takes seconds
+    -- (spin-up included); ~90s is a generous ceiling before we give up and the
+    -- page reports no drive. The APA/PFS hdd0: boot path is separate and
+    -- synchronous (luaHDD) and latches the same load-once flag.
+    local S = System
+    local have_async = type(S) == "table"
+      and type(S.initATAAsync) == "function"
+      and type(S.initATAStatus) == "function"
+    if have_async then
+      local started = -1
+      pcall(function() started = S.initATAAsync() end)
+      -- started: -1 spawn-failed, 1 running, 2 done-ok (already loaded)
+      if type(started) == "number" and started >= 0 then
+        local can_flip = type(Screen) == "table" and type(Screen.flip) == "function"
+        local st = started
+        for _ = 1, (90 * 60) do
+          if st == 2 or st == 3 then break end
+          if can_flip then
+            pcall(Screen.flip)
+          elseif type(S.sleep) == "function" then
+            pcall(S.sleep, 0)
+          end
+          local ok2, s2 = pcall(S.initATAStatus)
+          if ok2 and type(s2) == "number" then st = s2 end
+        end
+        return
+      end
+      -- async couldn't start (thread create failed) -- fall through to sync.
+    end
+    if type(S) == "table" and type(S.initATA) == "function" then
+      pcall(S.initATA)
+    end
     return
   end
 
@@ -5966,10 +6065,10 @@ function PLDR.GetMX4SIOMassRootNow()
 end
 
 local function BuildATAIdentityDeferred()
-  -- If boot did NOT bring the ata stack up (MMCE/mx4sio: boots gate it off, or
-  -- the load failed / no drive), there is nothing to enumerate and NOTHING to
-  -- load here -- page-time driver loading is the wedge class this build removes
-  -- (see EnsureMassBackendsReady). One no-retry scan keeps the return shape.
+  -- If the lazy async bring-up did not finish (load failed, no drive, or the
+  -- worker timed out in EnsureMassBackendsReady), there is nothing to
+  -- enumerate: skip the 4x1s retry ladder and do one no-retry scan to keep the
+  -- return shape. The page then reports no drive promptly.
   if type(System) == "table" and type(System.ataReady) == "function" then
     local ok, ready = pcall(System.ataReady)
     if ok and ready == false then
@@ -6080,7 +6179,13 @@ function PLDR.EnsureBackendForAppDir()
   return true
 end
 
-local function WriteBdmaModeMarker(mode_key)
+local function WriteBdmaModeMarker(mode_key, launch_fast)
+  -- launch_fast (adaptive launch staging): direct write. A torn marker cannot
+  -- match any target, so the next launch just re-stages -- self-healing.
+  if launch_fast == true then
+    local ok = WriteBytesDirectBounded(tostring(mode_key or ""), BDMA_MODE_MARKER_PATH)
+    return ok == true
+  end
   return WriteAtomic(BDMA_MODE_MARKER_PATH, tostring(mode_key or ""))
 end
 
@@ -6116,7 +6221,7 @@ function PLDR.NextBdmaApplyToken()
   return "bdma:"..tostring(PLDR._bdma_apply_seq)
 end
 
-function PLDR.ApplyBdmaModeOnce(mode_key, token)
+function PLDR.ApplyBdmaModeOnce(mode_key, token, launch_fast)
   if PLDR._bdma_apply_guard.in_progress then
     return false, "busy"
   end
@@ -6126,7 +6231,7 @@ function PLDR.ApplyBdmaModeOnce(mode_key, token)
 
   PLDR._bdma_apply_guard.in_progress = true
   local ok, res, err = xpcall(function()
-    local aok, aerr = PLDR.ApplyBdmaMode(mode_key)
+    local aok, aerr = PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return aok, aerr
   end, function(e)
     return false, tostring(e)
@@ -6140,7 +6245,14 @@ function PLDR.ApplyBdmaModeOnce(mode_key, token)
   return false, err or res or "apply failed"
 end
 
-function PLDR.ApplyBdmaMode(mode_key)
+-- launch_fast=true is the ADAPTIVE LAUNCH path (maintainer's EXP24 spec: "a
+-- simple paste of 2 files from the embed"): embeds only (no APP_DIR override
+-- probing, so no EnsureBackendForAppDir device init -- with the ATA drive
+-- resident those mass-slot probes can wait on a disk spin-up), and direct
+-- single-pass writes (the atomic tmp/.bak dance costs ~3x the payload on a
+-- memory card). The manual Settings apply keeps the original behavior:
+-- external overrides honored, atomic writes, no launch on the line.
+function PLDR.ApplyBdmaMode(mode_key, launch_fast)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
@@ -6172,6 +6284,38 @@ function PLDR.ApplyBdmaMode(mode_key)
       UI.Notif_queue.add(PLDR.L("Unknown BDMA mode:").." "..tostring(selected))
     end
     return false
+  end
+
+  if launch_fast == true then
+    -- Launch staging: two embed pastes, nothing else. No backend init, no
+    -- external probing, no tmp/.bak. Self-healing: the marker goes last, so
+    -- any failure leaves marker ~= target and the next launch re-stages.
+    for i = 1, #BDMA_COPY_FILES do
+      local name = BDMA_COPY_FILES[i]
+      local rel = name..suffix
+      local bytes = nil
+      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, rel)
+        if ok_embedded and embedded ~= nil then
+          bytes = embedded
+        end
+      end
+      if bytes == nil then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..rel)
+        end
+        return false
+      end
+      local dest = POPSTARTER_PACK_ROOT.."/"..name
+      local ok_write, wrote = pcall(WriteBytesDirectBounded, bytes, dest)
+      if not ok_write or not wrote then
+        return false
+      end
+    end
+    if not WriteBdmaModeMarker(selected, true) then
+      return false
+    end
+    return true
   end
 
   if not PLDR.EnsureBackendForAppDir() then
@@ -6294,7 +6438,9 @@ function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
   if type(PLDR.LaunchProgress) == "function" then
     pcall(PLDR.LaunchProgress, PLDR.L("Staging drivers for this device").." ("..tostring(target)..")", 0.65)
   end
-  local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken())
+  -- launch_fast=true: embeds-only + direct writes (see ApplyBdmaMode) -- the
+  -- launch stall was the atomic dance + the APP_DIR backend init, not the 63KB.
+  local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken(), true)
   if ok and type(PLDR.LaunchProgress) == "function" then
     pcall(PLDR.LaunchProgress, PLDR.L("Starting the game..."), 0.85)
   end
@@ -6755,8 +6901,9 @@ end
 function PLDR.InitATAPopsRoot()
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
   -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). The driver comes
-  -- up at BOOT (never here -- page-time loads wedge, see EnsureMassBackendsReady);
-  -- BuildATAIdentityDeferred only observes System.ataReady() and classifies slots.
+  -- up LAZILY on page entry via the async worker (EnsureMassBackendsReady "ata"
+  -- branch, screen alive); BuildATAIdentityDeferred then observes
+  -- System.ataReady() and classifies slots, skipping retries after a failure.
   local root = PLDR.GetATAMassRootNow()
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"

@@ -84,10 +84,6 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-// Defined in luasystem.cpp; brings up ps2dev9 + bdm + bdmfs_fatfs + ata_bd
-// (idempotent, latched via g_ata_bd_loaded shared with luaHDD.cpp). Boot-time
-// only -- see the call site below for why this must never run at page time.
-extern bool EnsureAtaBdm(void);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -635,38 +631,15 @@ int main(int argc, char * argv[])
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
-    /* Internal exFAT HDD (BDM-atad) bring-up belongs HERE, at boot, or nowhere.
-     * The BDM build of atad runs full drive detection inline in _start, in the
-     * loading thread, and one of its waits (ps2atad.c ata_dma_complete: the
-     * WaitEventFlag re-entered after a spurious interrupt) has no timeout
-     * backing -- on a busy mid-session IOP (usbd polling + ds34 pads + audsrv
-     * all sharing the dev9/SPEED interrupt path) it can block forever, wedging
-     * the IOP module loader so the NEXT page-time driver load (mx4sio_bd)
-     * queues behind it: the "hangs at 42%" family. EXP18/19 proved byte-exact
-     * known-good drivers still freeze when loaded at page time; EXP22 proved
-     * this exact boot-time placement (before ds34/audsrv, right after the usb
-     * mass stack) completes and reads a 4TB GPT/exFAT drive. No reference
-     * implementation loads BDM-atad our old page-time way: NHDDL only loads it
-     * right after an IOP reset, wLaunchELF_R3Z only into a near-empty IOP, and
-     * OPL uses the non-BDM atad (fast _start, detection deferred).
-     *
-     * Gated OFF for MMCE and explicit mx4sio: boots: EXP22 loaded it
-     * unconditionally and MMCE game launches came out poisoned; those flows
-     * never need the internal-drive stack, so they never see it. mass:-boots
-     * classify as "USB" here and DO load it -- harmless without a drive (the
-     * SPD capability gate in _start exits immediately) and wanted with one.
-     * On hdd0:/APA boots this is the same module set boot.lua's
-     * HDD.Initialize needs anyway (dev9 -> bdm -> bdmfs -> ata_bd, then luaHDD
-     * stacks ps2hdd/ps2fs on top); EnsureAtaBdm latches so that call becomes a
-     * no-op. The exFAT device page NEVER loads drivers anymore -- if ata is not
-     * up by the end of boot, the page reports no drive instead of wedging. */
-    if (strcmp(boot_device_hint, "MMCE") != 0 && strcmp(boot_device_hint, "MX4SIO") != 0) {
-        EnsureAtaBdm();
-        BootStamp("ata bdm stack");  // dev9+ata_bd (+1s settles); ~5s with a real drive spinning up
-    } else {
-        DPRINTF("ata bdm stack skipped (boot_device_hint=\"%s\")\n", boot_device_hint);
-        BootStamp("ata bdm skipped");
-    }
+    /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
+     * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page
+     * brings the stack up LAZILY on a background EE worker (System.initATAAsync
+     * in luasystem.cpp) -- the same arrangement OPL uses: OPL's "ps2atad_irx" is
+     * actually the SDK's ata_bd.irx blob loaded mid-session on its IO worker
+     * thread, and that works on the same consoles that froze our old
+     * synchronous page-time load. hdd0:/APA boots still bring atad up via
+     * boot.lua -> HDD.Initialize -> the synchronous EnsureAtaBdm (pfs1: needs
+     * it before settings mount), exactly as they always have. */
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
