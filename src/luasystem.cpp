@@ -6,6 +6,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sifrpc.h>
+#include <kernel.h>    // ee_thread_t / CreateThread / StartThread / ExitDeleteThread for the async ata_bd worker
+#include <iopheap.h>   // SifAllocIopHeap/SifFreeIopHeap for the 128 KiB BDM-cache probe
 #include <string.h>
 #define NEWLIB_PORT_AWARE
 #include <fileXio_rpc.h>
@@ -101,6 +103,21 @@ static bool mass_backend_cache_valid = false;
 static bool bdm_irx_loaded = false;
 static bool bdm_fatfs_irx_loaded = false;
 static bool usbmass_irx_loaded = false;
+
+// USB bring-up diagnostics. Every LoadIrxCheckedBuffer below used to pass
+// NULL,NULL and throw the IRX return codes away, and main.cpp's usbd load goes
+// through LOAD_IRX_NARG whose only consumer is DPRINTF -- which compiles to
+// nothing in a release build. So when a tester reports "No USB backend
+// detected" we have had literally no way to tell a failed module load apart
+// from a drive that never enumerated. Two "root cause found" fixes have now
+// been shipped and refuted on hardware because of that blind spot. Record the
+// codes and let the UI show them.
+// -999 = "never attempted" (distinct from a real negative rc).
+int g_usbd_load_id = -999;   // written by main.cpp at boot
+int g_usbd_load_ret = -999;
+static int g_bdm_id = -999, g_bdm_ret = -999;
+static int g_bdmfs_id = -999, g_bdmfs_ret = -999;
+static int g_usbmass_id = -999, g_usbmass_ret = -999;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
@@ -110,7 +127,7 @@ static bool EnsureBDM()
 	if (bdm_irx_loaded) {
 		return true;
 	}
-	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdm.irx", bdm_irx, size_bdm_irx, &g_bdm_id, &g_bdm_ret)) {
 		return false;
 	}
 	bdm_irx_loaded = true;
@@ -125,14 +142,19 @@ static bool EnsureBDMFatFs()
 	if (!EnsureBDM()) {
 		return false;
 	}
-	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("bdmfs_fatfs.irx", bdmfs_fatfs_irx, size_bdmfs_fatfs_irx, &g_bdmfs_id, &g_bdmfs_ret)) {
 		return false;
 	}
 	bdm_fatfs_irx_loaded = true;
 	return true;
 }
 
-static bool EnsureUsbMass()
+// Non-static so main.cpp can bring the USB mass stack up at BOOT, adjacent to
+// usbd, instead of minutes later on USB-page entry. Idempotent via the latches
+// below, so the later Lua-side call becomes a no-op -- which MATTERS: loading a
+// second copy of a block driver onto a live bus is the exact bug class that
+// caused the old 42% ATA freeze.
+bool EnsureUsbMass()
 {
 	if (usbmass_irx_loaded) {
 		return true;
@@ -150,7 +172,7 @@ static bool EnsureUsbMass()
 	// (waitForUsbMassBdmfsSettle / USB_MASS_BDMFS_SETTLE_MS=1000), and our ATA path
 	// already settles the same way after ata_bd. Mirror it for USB.
 	sleep(1);
-	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, NULL, NULL)) {
+	if (!LoadIrxCheckedBuffer("usbmass_bd.irx", usbmass_bd_irx, size_usbmass_bd_irx, &g_usbmass_id, &g_usbmass_ret)) {
 		return false;
 	}
 	usbmass_irx_loaded = true;
@@ -194,6 +216,29 @@ bool EnsureMmceman()
 void MarkMmcemanLoaded()
 {
 	mmceman_irx_loaded = true;
+}
+
+// System.getSio2Owner(): which SIO2-bus storage driver is resident this
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
+// (the already-conflicted legacy state this guard exists to prevent). mmceman
+// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
+// sustained reads from one hang with the other resident (HW-confirmed 48%
+// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
+// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
+// reset, the pages check this and DECLINE the second driver with a message.
+// Reads the load latches directly so it cannot miss a C-internal load path.
+static int lua_get_sio2_owner(lua_State *L)
+{
+	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
+		lua_pushstring(L, "BOTH");
+	} else if (mmceman_irx_loaded) {
+		lua_pushstring(L, "MMCE");
+	} else if (mx4sio_irx_loaded) {
+		lua_pushstring(L, "MX4SIO");
+	} else {
+		lua_pushstring(L, "");
+	}
+	return 1;
 }
 
 static bool EnsureBdmQueryRpc()
@@ -1007,20 +1052,33 @@ static int lua_loadELF(lua_State *L)
 	int rebootIOP = luaL_checkinteger(L, 2);
 	int extra_args = argc - 2;
 	static char selector_buf[256];
-	static char *argv_static[2];
+	static char launcharg_buf[64];
+	static char *argv_static[3];
 
 	DPRINTF("# Loading ELF '%s' iop_reboot=%d, extra_args=%d\n", elftoload, rebootIOP, extra_args);
 	if (extra_args > 0) {
 		const char *selector = luaL_checkstring(L, 3);
 		snprintf(selector_buf, sizeof(selector_buf), "%s", selector ? selector : "");
 		argv_static[0] = selector_buf;
-		argv_static[1] = NULL;
-		DPRINTF("# Loading ELF argv0='%s' argc=1\n", argv_static[0]);
+		int argn = 1;
+		// Optional 2nd extra arg -> target argv[1]. Added for the SIO2-conflict
+		// self-restart (System.loadELF(self, 1, self, "-page=mmce")): argv[0]
+		// stays the ELF path (the child's device/cwd resolution keys off it),
+		// argv[1] carries one launch flag parseLaunchArgs picks up (it scans
+		// argv[1..]). The 1-arg POPSTARTER call sites are byte-identical.
+		if (extra_args > 1) {
+			const char *launcharg = luaL_checkstring(L, 4);
+			snprintf(launcharg_buf, sizeof(launcharg_buf), "%s", launcharg ? launcharg : "");
+			argv_static[1] = launcharg_buf;
+			argn = 2;
+		}
+		argv_static[argn] = NULL;
+		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], argn);
 		int rc;
 		if (rebootIOP != 0) {
-			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, argn, argv_static);
 		} else {
-			rc = LoadELFFromFileExecPS2(elftoload, 1, argv_static);
+			rc = LoadELFFromFileExecPS2(elftoload, argn, argv_static);
 		}
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
@@ -1295,6 +1353,117 @@ static int lua_ensure_bdm_fatfs(lua_State *L)
 	return 1;
 }
 
+// Staged ATA bring-up (EXP11 diagnostics): expose dev9 alone so the Lua side can
+// paint a distinct progress step before EACH blocking module load. EnsureAtaBdm
+// re-runs EnsureDev9/EnsureBDMFatFs internally, but both are load-once latched,
+// so pre-calling them from Lua reduces System.initATA to settle + ata_bd + settle
+// -- and a frozen on-screen percent then names the exact stalled module start.
+static int lua_ensure_dev9(lua_State *L)
+{
+	lua_pushboolean(L, EnsureDev9());
+	return 1;
+}
+
+// Report the USB bring-up state so the USB page can say WHY it found nothing.
+// Fields are the raw SifExecModuleBuffer id/ret per module, -999 if never
+// attempted. usbd is loaded once at boot (main.cpp) because ds34usb/ds34bt
+// hard-import it for pad input; the rest load lazily on USB-page entry.
+// Boot profile: {stage=..., ms=...} per stage, in boot order. Backed by
+// main.cpp's BootStamp, whose only consumer used to be a DPRINTF that compiles
+// to nothing in a release build. The ENTIRE IRX block runs before initGraphics(),
+// so all of it is black screen -- this is how we find out which module owns it
+// instead of guessing.
+extern "C" int BootProfileCount(void);
+extern "C" const char *BootProfileStage(int i);
+extern "C" unsigned int BootProfileMs(int i);
+
+static int lua_get_boot_profile(lua_State *L)
+{
+	int n = BootProfileCount();
+	lua_newtable(L);
+	for (int i = 0; i < n; i++) {
+		lua_pushinteger(L, i + 1);
+		lua_newtable(L);
+		lua_pushstring(L, "stage");
+		lua_pushstring(L, BootProfileStage(i));
+		lua_settable(L, -3);
+		lua_pushstring(L, "ms");
+		lua_pushinteger(L, (lua_Integer)BootProfileMs(i));
+		lua_settable(L, -3);
+		lua_settable(L, -3);
+	}
+	return 1;
+}
+
+// Probe the IOP for a contiguous 128 KiB block -- the exact size bd_cache_create()
+// demands for EVERY raw USB block device (32 * 8 * 512, libbdm/src/bd_cache.c:8),
+// allocated because usbmass_bd sets parNr = 0 and bdm caches every parNr==0 device.
+// BOTH of those allocations are UNCHECKED and dereferenced unconditionally
+// (bd_cache.c:162-168), so if the IOP cannot supply the block the USB mass worker
+// dies AFTER every IRX has already loaded successfully -- which is exactly the
+// "modules OK, no drive seen" we cannot currently explain.
+// This matters because POPSLoader loads far more IOP modules than OPL or
+// wLaunchELF (ds34usb, ds34bt, audsrv, mcman, mcserv, padman, sio2man, ppctty),
+// so IOP memory pressure is a genuine POPSLoader-vs-them delta -- and unlike every
+// other theory it blames nothing about the tester's drive or console.
+// We allocate and immediately free, so this is a measurement, not a reservation.
+static int lua_iop_heap_probe(lua_State *L)
+{
+	const int want = 128 * 1024;
+	int got_128k = 0;
+	int largest = 0;
+
+	void *p = SifAllocIopHeap(want);
+	if (p != NULL) {
+		got_128k = 1;
+		largest = want;
+		SifFreeIopHeap(p);
+	} else {
+		// Binary-search downward for the largest block the IOP will still give us.
+		// A number well under 128 KiB is the smoking gun.
+		int lo = 0, hi = want;
+		while (lo < hi) {
+			int mid = lo + (hi - lo + 1) / 2;
+			void *q = SifAllocIopHeap(mid);
+			if (q != NULL) {
+				SifFreeIopHeap(q);
+				lo = mid;
+			} else {
+				hi = mid - 1;
+			}
+			if (hi - lo < 1024) break;   // 1 KiB resolution is plenty
+		}
+		largest = lo;
+	}
+	lua_newtable(L);
+	lua_pushstring(L, "can_alloc_128k");
+	lua_pushboolean(L, got_128k);
+	lua_settable(L, -3);
+	lua_pushstring(L, "largest");
+	lua_pushinteger(L, largest);
+	lua_settable(L, -3);
+	return 1;
+}
+
+static int lua_get_usb_diag(lua_State *L)
+{
+	lua_newtable(L);
+#define DIAG_FIELD(k, v) do { lua_pushstring(L, k); lua_pushinteger(L, (v)); lua_settable(L, -3); } while (0)
+	DIAG_FIELD("usbd_id", g_usbd_load_id);
+	DIAG_FIELD("usbd_ret", g_usbd_load_ret);
+	DIAG_FIELD("bdm_id", g_bdm_id);
+	DIAG_FIELD("bdm_ret", g_bdm_ret);
+	DIAG_FIELD("bdmfs_id", g_bdmfs_id);
+	DIAG_FIELD("bdmfs_ret", g_bdmfs_ret);
+	DIAG_FIELD("usbmass_id", g_usbmass_id);
+	DIAG_FIELD("usbmass_ret", g_usbmass_ret);
+#undef DIAG_FIELD
+	lua_pushstring(L, "usbmass_loaded");
+	lua_pushboolean(L, usbmass_irx_loaded ? 1 : 0);
+	lua_settable(L, -3);
+	return 1;
+}
+
 static int lua_ensure_usb_mass(lua_State *L)
 {
 	lua_pushboolean(L, EnsureUsbMass());
@@ -1420,6 +1589,96 @@ static int lua_ata_init(lua_State *L)
 	}
 	lua_pushstring(L, "IRX_LOAD_FAIL");
 	return 2;
+}
+
+// System.ataReady(): TRUE iff the ata stack is up (the lazy async worker below
+// finished, or an hdd0: boot brought it up via luaHDD). Pure read, NO side
+// effects -- BuildATAIdentityDeferred keys off this to skip pointless retries
+// after a failed/absent bring-up.
+static int lua_ata_ready(lua_State *L)
+{
+	lua_pushboolean(L, g_ata_bd_loaded ? 1 : 0);
+	return 1;
+}
+
+// ============================================================================
+// Lazy async ata_bd bring-up (OPL's arrangement). There is NO boot-time ata
+// load (maintainer: the ~5-6s black-screen cost is unacceptable); the exFAT
+// page kicks this worker on entry and polls, screen alive. OPL is the
+// precedent for the whole shape: its "ps2atad_irx" embed is actually the SDK's
+// ata_bd.irx blob (OPL Makefile:622) loaded mid-session on its IO worker
+// thread, on the same consoles where our old SYNCHRONOUS page-time load froze.
+// The earlier async attempt (EXP23) was sunk by two since-fixed bugs riding
+// along -- a bdm core with no GPT support and a mismatched mx4sio_bd -- not by
+// this mechanism. Worker mirrors the proven Graphics.threadLoadImage pattern
+// (ee_thread_t, priority 16, ExitDeleteThread).
+//
+// THE APA/PFS BOOT PATH IS UNCHANGED: luaHDD.cpp Load_HDD_IRX calls the
+// SYNCHRONOUS EnsureAtaBdm at boot on hdd0: boots (must finish before pfs1:
+// mounts) -- do NOT route that through this. Load-once via the SAME
+// g_ata_bd_loaded, so whichever path loads ata_bd first wins.
+// ============================================================================
+extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
+
+// 0=idle 1=running 2=done-ok 3=done-fail. Written by the worker thread, polled
+// from Lua on the main thread; volatile so the poll re-reads it each frame.
+static volatile int g_ata_async_state = 0;
+static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
+
+static int ata_async_thread(void *arg)
+{
+	(void)arg;
+	bool ok = EnsureAtaBdm();
+	g_ata_async_state = ok ? 2 : 3;
+	ExitDeleteThread();
+	return 0;
+}
+
+// System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
+// return immediately with the state int. If ata_bd is already loaded (e.g. an
+// APA-HDD boot brought it up) it reports done-ok (2) without spawning. Returns
+// -1 if the thread could not be created, so the Lua caller falls back to the
+// synchronous System.initATA.
+static int lua_ata_init_async(lua_State *L)
+{
+	if (g_ata_bd_loaded) {
+		g_ata_async_state = 2;
+		lua_pushinteger(L, 2);
+		return 1;
+	}
+	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
+		lua_pushinteger(L, 1);
+		return 1;
+	}
+	g_ata_async_state = 1;
+	ee_thread_t th;
+	th.attr = 0;
+	th.option = 0;
+	th.func = (void *)ata_async_thread;
+	th.stack = (void *)g_ata_async_stack;
+	th.stack_size = sizeof(g_ata_async_stack);
+	th.gp_reg = &_gp;
+	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
+	int tid = CreateThread(&th);
+	if (tid < 0) {
+		g_ata_async_state = 0;   // spawn failed -> caller uses sync fallback
+		lua_pushinteger(L, -1);
+		return 1;
+	}
+	StartThread(tid, NULL);
+	lua_pushinteger(L, 1);
+	return 1;
+}
+
+// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
+// ALSO the cross-page cascade guard: while state==1 an ata load is in flight on
+// the IOP module loader -- other pages must NOT queue their own driver load
+// behind it (System.initMX4SIO would block forever if the ata load ever wedges).
+static int lua_ata_init_status(lua_State *L)
+{
+	(void)L;
+	lua_pushinteger(L, g_ata_async_state);
+	return 1;
 }
 
 // ============================================================================
@@ -1853,12 +2112,20 @@ static const luaL_Reg System_functions[] = {
 	{"resolveAssetType",   lua_resolveAssetType},
 	{"ensureBDM",              lua_ensure_bdm},
 	{"ensureBDMFatFs",         lua_ensure_bdm_fatfs},
+	{"ensureDev9",             lua_ensure_dev9},
 	{"ensureUsbMass",          lua_ensure_usb_mass},
+	{"getUsbDiag",            lua_get_usb_diag},
+	{"iopHeapProbe",          lua_iop_heap_probe},
+	{"getBootProfile",        lua_get_boot_profile},
 	{"ensureCDFS",             lua_ensure_cdfs},
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
+	{"ataReady",               lua_ata_ready},
+	{"initATAAsync",           lua_ata_init_async},
+	{"initATAStatus",          lua_ata_init_status},
+	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},

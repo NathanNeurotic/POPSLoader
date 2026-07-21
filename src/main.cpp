@@ -79,6 +79,11 @@ extern unsigned int size_libsd_irx;
 
 extern unsigned char usbd_irx;
 extern unsigned int size_usbd_irx;
+// USB bring-up diagnostics, defined in luasystem.cpp (surfaced via System.getUsbDiag).
+extern int g_usbd_load_id;
+extern int g_usbd_load_ret;
+// Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
+extern bool EnsureUsbMass(void);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -242,7 +247,12 @@ static unsigned int boot_ms(void)
     if (boot_start == 0) {
         return 0;
     }
-    return (unsigned int)(((clock() - boot_start) * 1000) / CLOCKS_PER_SEC);
+    // clock() counts MICROSECONDS here (_CLOCKS_PER_SEC_ == 1000000), so the old
+    // `(delta * 1000) / CLOCKS_PER_SEC` overflowed 32-bit signed once delta passed
+    // 2,147,483us -- i.e. every stamp after the first ~2.1 SECONDS of boot returned
+    // garbage, which is precisely the range worth measuring. Do it in 64-bit.
+    // Same family as the Timer.getTime()-is-microseconds trap on the Lua side.
+    return (unsigned int)(((unsigned long long)(clock() - boot_start) * 1000ULL) / (unsigned long long)CLOCKS_PER_SEC);
 }
 
 static void InsertChar(char *base, size_t base_size, char *pos, char ch)
@@ -291,9 +301,45 @@ static void NormalizeDirPath(char *path, size_t size)
     }
 }
 
+// Boot profile storage. BootStamp's only consumer was DPRINTF, which is #ifdef
+// DEBUG and compiles to NOTHING in a shipped build -- so this profile has existed
+// all along and has never once reached anyone. Exactly the blind spot that let two
+// wrong USB fixes ship (see the usbd rc capture above). The whole boot is a black
+// screen and we cannot currently say which module owns it. Record the stamps so
+// System.getBootProfile() can show them.
+#define BOOT_STAGE_MAX 24
+typedef struct {
+    const char *stage;   // static string literal; not copied
+    unsigned int ms;
+} boot_stage_t;
+static boot_stage_t g_boot_stages[BOOT_STAGE_MAX];
+static int g_boot_stage_count = 0;
+
 static void BootStamp(const char *stage)
 {
-    DPRINTF("BOOT: %s %u\n", stage, boot_ms());
+    unsigned int ms = boot_ms();
+    if (g_boot_stage_count < BOOT_STAGE_MAX) {
+        g_boot_stages[g_boot_stage_count].stage = stage;
+        g_boot_stages[g_boot_stage_count].ms = ms;
+        g_boot_stage_count++;
+    }
+    DPRINTF("BOOT: %s %u\n", stage, ms);
+}
+
+// Read side for luasystem.cpp's System.getBootProfile().
+extern "C" int BootProfileCount(void)
+{
+    return g_boot_stage_count;
+}
+extern "C" const char *BootProfileStage(int i)
+{
+    if (i < 0 || i >= g_boot_stage_count) return "";
+    return g_boot_stages[i].stage != NULL ? g_boot_stages[i].stage : "";
+}
+extern "C" unsigned int BootProfileMs(int i)
+{
+    if (i < 0 || i >= g_boot_stage_count) return 0;
+    return g_boot_stages[i].ms;
 }
 
 void setLuaBootPath(int argc, char ** argv, int idx)
@@ -488,6 +534,7 @@ int main(int argc, char * argv[])
     BootStamp("fileXio load/init");
 
 	LOAD_IRX_NARG(sio2man_irx);
+    BootStamp("sio2man");
     if (filexio_ok) {
         /* Layer C: mmceman is only needed for MMCE memcards (third-party
          * memory card adapters like MemoryCard Pro that expose mmce0:/,
@@ -542,27 +589,68 @@ int main(int argc, char * argv[])
         DPRINTF("Skipping mmceman init; fileXio not ready.\n");
         mmce_slot0_ready = 0;
         mmce_slot1_ready = 0;
-        BootStamp("mmceman load/init (skipped)");
+        BootStamp("mmceman skipped");
     }
     LOAD_IRX_NARG(mcman_irx);
     LOAD_IRX_NARG(mcserv_irx);
+    BootStamp("mcman+mcserv");
     initMC();
+    BootStamp("initMC");
     LOAD_IRX_NARG(padman_irx);
+    BootStamp("padman");
 
     LOAD_IRX_NARG(libsd_irx);
+    BootStamp("libsd");
 
 
     // load USB modules
-    LOAD_IRX_NARG(usbd_irx);
+    // usbd MUST load here, not lazily with the mass stack: ds34usb/ds34bt below
+    // hard-import it for pad input. (wLaunchELF_R3Z gets to load usbd adjacent to
+    // usbmass_bd only because it ships DS34 ?= 0 and has no pad driver to serve.)
+    // Capture the result -- LOAD_IRX_NARG feeds id/ret to DPRINTF, which is a no-op
+    // in a release build, so a failed usbd load was previously invisible and got
+    // reported to us as "No USB backend detected", i.e. blamed on the drive.
+    // Deliberately no DPRINTF on failure: DPRINTF IS the bug. The codes go to
+    // g_usbd_load_* and reach the tester on the USB page via System.getUsbDiag().
+    LoadIrxChecked("usbd_irx", &usbd_irx, size_usbd_irx, &g_usbd_load_id, &g_usbd_load_ret);
+    BootStamp("usbd");
 
+    // Bring the USB mass stack up HERE, adjacent to usbd -- matching what the two
+    // launchers that read sAGA's drive actually do. wLaunchELF_R3Z's loadUsbModules()
+    // does loadUsbDModule() then bdm/bdmfs_fatfs/settle/usbmass_bd in ONE function;
+    // OPL's bdmsupport.c LoadModules() does bdm/bdmfs_fatfs/usbd/usbmass_bd back to
+    // back. POPSLoader was the ONLY one loading usbd at boot and usbmass_bd minutes
+    // later on page entry, which is the only configuration that depends on usbd's
+    // late re-probe path (doRegisterDriver -> probeDeviceTree) to match a pendrive
+    // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
+    // normal connect callback because usbmass_bd's driver is registered before the
+    // device is ever seen.
+    // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
+    // USB-page entry becomes a no-op rather than a second load.
+    // Costs boot time (this is why the EXP6 boot profile landed first).
+    EnsureUsbMass();
+    BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
+
+    /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
+     * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page
+     * brings the stack up LAZILY on a background EE worker (System.initATAAsync
+     * in luasystem.cpp) -- the same arrangement OPL uses: OPL's "ps2atad_irx" is
+     * actually the SDK's ata_bd.irx blob loaded mid-session on its IO worker
+     * thread, and that works on the same consoles that froze our old
+     * synchronous page-time load. hdd0:/APA boots still bring atad up via
+     * boot.lua -> HDD.Initialize -> the synchronous EnsureAtaBdm (pfs1: needs
+     * it before settings mount), exactly as they always have. */
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
+    BootStamp("ds34usb+ds34bt load");
     ds34usb_init();
     ds34bt_init();
+    BootStamp("ds34 init");
 
     LOAD_IRX_NARG(audsrv_irx);
+    BootStamp("audsrv");
 	
         setLuaBootPath (argc, argv, 0);
         if (argc > 0 && argv[0]) {
@@ -574,7 +662,9 @@ int main(int argc, char * argv[])
 	// init internals library
     
     // graphics (gsKit)
+    BootStamp("IRX block done");  // the screen is still black here; label kept short for the Credits line
     initGraphics();
+    BootStamp("initGraphics");
 
     pad_init();
 

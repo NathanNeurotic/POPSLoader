@@ -518,6 +518,9 @@ t16 = E('''function()
     "Select a share",                                       -- SMB share picker
     "Select", "Cancel",                                     -- share picker hint words
     "Automatic",                                            -- POPSTARTER Path row (empty = ladder)
+    "Device List",                                          -- renamed section (was Carousel Devices)
+    "About", "Credits",                                     -- Credits moved into Settings
+    "How to hide a game", "L3 on the game list",            -- the L3 discoverability hint
   }
   for _, k in ipairs(holdouts) do
     local t = PLDR.L(k)
@@ -599,6 +602,154 @@ t17 = E('''function()
   return true
 end''')()
 check("T17 POPSTARTER_PATH round-trips (custom + Automatic) + legacy PROFILE=N migrates (2->__common, 1/13->Automatic, explicit wins)", t17)
+
+# T18 Internal-HDD page visibility truth table (EXP4: HDD_FS gains "BOTH").
+# No test covered IsDeviceHidden at all before. The load-bearing cases are the
+# back-compat ones: a missing/unknown HDD_FS, and an -page=ata session, must
+# behave EXACTLY as they did when the setting was 2-valued.
+t18 = E('''function()
+  local saved_fs, saved_args = PLDR.HDD_FS, PLDR.LAUNCH_ARGS
+  local function vis(fs, page)
+    PLDR.HDD_FS = fs
+    PLDR.LAUNCH_ARGS = page and {page = page} or {}
+    -- IsDeviceHidden returns HIDDEN; invert to "shown" for readability
+    return (not PLDR.IsDeviceHidden("PFS")), (not PLDR.IsDeviceHidden("EXFAT"))
+  end
+  local cases = {
+    -- fs,        page,   want_pfs, want_exfat, why
+    {"PFS",       nil,    true,  false, "default: PFS only"},
+    {nil,         nil,    true,  false, "MISSING key must resolve to PFS (back-compat)"},
+    {"garbage",   nil,    true,  false, "unknown value must resolve to PFS"},
+    {"EXFAT",     nil,    false, true,  "exFAT only"},
+    {"BOTH",      nil,    true,  true,  "BOTH shows both (the EXP4 point)"},
+    {"both",      nil,    true,  true,  "value is case-insensitive"},
+    {"PFS",       "ATA",  false, true,  "-page=ata forces exFAT even when set to PFS"},
+    {"BOTH",      "ATA",  false, true,  "-page=ata isolation still wins over BOTH"},
+  }
+  for _, c in ipairs(cases) do
+    local p, e = vis(c[1], c[2])
+    if p ~= c[3] or e ~= c[4] then
+      PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+      return false, string.format("%s: fs=%s page=%s -> pfs=%s exfat=%s (want pfs=%s exfat=%s)",
+        c[5], tostring(c[1]), tostring(c[2]), tostring(p), tostring(e), tostring(c[3]), tostring(c[4]))
+    end
+  end
+  -- BOTH must survive a save -> sidecar -> reload round trip
+  PLDR.HDD_FS = "BOTH"
+  if not PLDR.SaveSettingsAtomic() then
+    PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+    return false, "save failed"
+  end
+  local wrote = false
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") and string.find(content, "HDD_FS=BOTH", 1, true) then wrote = true end
+  end
+  PLDR.HDD_FS = "sentinel"
+  PLDR.LoadSettingsNonFatal()
+  local reloaded = PLDR.HDD_FS
+  PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+  if not wrote then return false, "HDD_FS=BOTH not written to the sidecar" end
+  if reloaded ~= "BOTH" then return false, "reload gave "..tostring(reloaded) end
+  return true
+end''')()
+check("T18 Internal-HDD visibility truth table (PFS/EXFAT/BOTH x -page=ata) + BOTH persists", t18)
+
+# ---------------------------------------------------------------------------
+# T19 USB diagnostics (EXP5). PLDR.GetUsbDiagText turns System.getUsbDiag()'s raw
+# IRX codes into the line a tester reads off the screen and relays back to us.
+# This is the ONLY telemetry this bug has, so its branch logic has to be right:
+# it must name the FIRST broken link (everything after is a cascade), and it must
+# distinguish "a module failed" from "modules are up, no drive enumerated" --
+# exactly the split we could not make for four days, which is why two shipped
+# "root cause found" fixes were aimed at the wrong half of the problem.
+OK = 0  # a good load is id >= 0 and ret >= 0
+def usb_diag(**kw):
+    d = dict(usbd_id=OK, usbd_ret=OK, bdm_id=OK, bdm_ret=OK,
+             bdmfs_id=OK, bdmfs_ret=OK, usbmass_id=OK, usbmass_ret=OK)
+    d.update(kw)
+    # Must be a REAL Lua function: GetUsbDiagText gates on
+    # type(System.getUsbDiag) == "function", which is correct for the actual C
+    # binding, but lupa marshals a Python callable as *userdata* and the
+    # permissive mock's __index auto-stub returns 0 rather than a table. Either
+    # one makes the guard (correctly) bail, so build the mock in Lua.
+    fields = ", ".join("%s = %d" % (k, v) for k, v in sorted(d.items()))
+    lua.execute("System.getUsbDiag = function() return { %s } end" % fields)
+    r = lua.globals().PLDR.GetUsbDiagText()
+    return r if isinstance(r, str) else str(r)
+
+t19_cases = [
+    # (kwargs, expected substring, why it matters)
+    ({},                                  "modules OK, no drive seen", "all good -> blame the drive, not a module"),
+    ({"usbd_id": -1},                     "usbd failed",              "usbd rc<0 -> name usbd"),
+    ({"usbd_ret": -1},                    "usbd failed",              "usbd ret<0 counts as failed too"),
+    ({"usbd_id": -999},                   "usbd never loaded",        "-999 = never attempted, not a real rc"),
+    ({"bdm_id": -1},                      "bdm failed",               "bdm rc<0 -> name bdm"),
+    ({"bdmfs_id": -5},                    "bdmfs_fatfs failed",       "bdmfs rc<0 -> name bdmfs_fatfs"),
+    ({"usbmass_id": -1},                  "usbmass_bd failed",        "usbmass rc<0 -> name usbmass_bd"),
+    # first-broken-link ordering: usbd is upstream of everything
+    ({"usbd_id": -1, "usbmass_id": -1},   "usbd failed",              "report the FIRST break, not the cascade"),
+    ({"bdm_id": -1, "usbmass_id": -1},    "bdm failed",               "bdm upstream of usbmass"),
+]
+t19 = True
+for kw, want, why in t19_cases:
+    got = usb_diag(**kw)
+    if want not in got:
+        t19 = False
+        print(f"    T19 FAIL ({why}): expected {want!r} in {got!r}")
+# the rc numbers must actually reach the string, or a photo of the screen is useless
+got = usb_diag(usbd_id=-17, usbd_ret=-23)
+if "-17" not in got or "-23" not in got:
+    t19 = False
+    print(f"    T19 FAIL: rc values not surfaced: {got!r}")
+# a binding that returns a non-table (older ELF, or the permissive stub's 0)
+# must degrade to nil rather than crash the USB page mid-error-toast
+lua.execute("System.getUsbDiag = function() return 0 end")
+if lua.globals().PLDR.GetUsbDiagText() is not None:
+    t19 = False
+    print("    T19 FAIL: non-table getUsbDiag should yield nil, not a string")
+# and a binding that throws must be caught (it is pcall'd)
+lua.execute("System.getUsbDiag = function() error('boom') end")
+if lua.globals().PLDR.GetUsbDiagText() is not None:
+    t19 = False
+    print("    T19 FAIL: throwing getUsbDiag should yield nil, not propagate")
+check("T19 USB diag names the first broken module + splits module-fail from no-drive", t19)
+
+# ---------------------------------------------------------------------------
+# T20 Boot profile (EXP6). BootStamp's stamps are CUMULATIVE ms since EE start,
+# so the cost of a module is the DELTA between consecutive stamps, not the stamp
+# itself. Reporting the largest absolute stamp instead of the largest delta would
+# always just name the LAST stage -- a plausible-looking readout that is wrong
+# every single time. That is the whole value of this feature, so pin it.
+def boot_prof(pairs):
+    entries = ", ".join('{ stage = "%s", ms = %d }' % (n, ms) for n, ms in pairs)
+    lua.execute("System.getBootProfile = function() return { %s } end" % entries)
+    r = lua.globals().PLDR.GetBootProfileText()
+    return r if isinstance(r, str) else str(r)
+
+t20 = True
+# ds34 is the expensive one (2000->5000 = +3000), even though "audsrv" has a bigger stamp
+got = boot_prof([("iomanX", 100), ("usbd", 2000), ("ds34", 5000), ("audsrv", 5100)])
+if "ds34" not in got or "+3000" not in got:
+    t20 = False; print(f"    T20 FAIL: largest DELTA not identified: {got!r}")
+if "5100" not in got:
+    t20 = False; print(f"    T20 FAIL: total should be the LAST stamp: {got!r}")
+# the first stage is a delta from 0, and can legitimately be the worst
+got = boot_prof([("iomanX", 4000), ("usbd", 4100)])
+if "iomanX" not in got or "+4000" not in got:
+    t20 = False; print(f"    T20 FAIL: first stage delta (from 0) missed: {got!r}")
+# a late-but-cheap stage must NOT win just for having the biggest absolute stamp
+got = boot_prof([("a", 3000), ("b", 3010), ("c", 3020)])
+if '"a"' in got or "+10" in got or "a +3000" not in got:
+    t20 = False; print(f"    T20 FAIL: expected 'a +3000' to win on delta: {got!r}")
+# degenerate inputs must not crash the credits screen
+for bad in ["{}", "0", "nil"]:
+    lua.execute("System.getBootProfile = function() return %s end" % bad)
+    if lua.globals().PLDR.GetBootProfileText() is not None:
+        t20 = False; print(f"    T20 FAIL: {bad} should yield nil")
+lua.execute("System.getBootProfile = function() error('boom') end")
+if lua.globals().PLDR.GetBootProfileText() is not None:
+    t20 = False; print("    T20 FAIL: throwing getBootProfile should yield nil")
+check("T20 Boot profile reports slowest stage by DELTA (not biggest cumulative stamp)", t20)
 
 print()
 fails = [r for r in results if not r[1]]

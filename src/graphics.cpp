@@ -5,7 +5,6 @@
 #include <math.h>
 #include <fcntl.h>
 
-#include <jpeglib.h>
 #include <time.h>
 #include <png.h>
 
@@ -827,184 +826,15 @@ GSTEXTURE* loadbmp(FILE* File, bool delayed)
 
 }
 
-struct my_error_mgr {
-  struct jpeg_error_mgr pub;    /* "public" fields */
-
-  jmp_buf setjmp_buffer;        /* for return to caller */
-};
-
-typedef struct my_error_mgr *my_error_ptr;
-
-METHODDEF(void)
-my_error_exit(j_common_ptr cinfo)
-{
-  /* cinfo->err really points to a my_error_mgr struct, so coerce pointer */
-  my_error_ptr myerr = (my_error_ptr)cinfo->err;
-
-  /* Always display the message. */
-  /* We could postpone this until after returning, if we chose. */
-  (*cinfo->err->output_message) (cinfo);
-
-  /* Return control to the setjmp point */
-  longjmp(myerr->setjmp_buffer, 1);
-}
-
-// Following official documentation max width or height of the texture is 1024
-#define MAX_TEXTURE 1024
-static void  _ps2_load_JPEG_generic(GSTEXTURE *Texture, struct jpeg_decompress_struct *cinfo, struct my_error_mgr *jerr, bool scale_down)
-{
-	int textureSize = 0;
-	if (scale_down) {
-		unsigned int longer = cinfo->image_width > cinfo->image_height ? cinfo->image_width : cinfo->image_height;
-		float downScale = (float)longer / (float)MAX_TEXTURE;
-		cinfo->scale_denom = ceil(downScale);
-	}
-
-	jpeg_start_decompress(cinfo);
-
-	int psm = cinfo->out_color_components == 3 ? GS_PSM_CT24 : GS_PSM_CT32;
-
-	Texture->Width =  cinfo->output_width;
-	Texture->Height = cinfo->output_height;
-	Texture->PSM = psm;
-	Texture->Filter = GS_FILTER_NEAREST;
-	Texture->VramClut = 0;
-	Texture->Clut = NULL;
-	Texture->ClutStorageMode = GS_CLUT_STORAGE_CSM1;
-
-	// Reject implausible dimensions before the multiply so a crafted JPEG can't wrap
-	// output_width*output_height*components (32-bit) to a small value -> undersized
-	// alloc -> heap overflow in jpeg_read_scanlines. The cover path passes
-	// scale_down=false so dims are otherwise uncapped; 8192 is far above any real
-	// cover yet keeps the product < INT_MAX (8192*8192*4 = 268M). (Codex F3)
-	if (cinfo->output_width == 0 || cinfo->output_height == 0
-	    || cinfo->output_width > 8192u || cinfo->output_height > 8192u)
-		longjmp(jerr->setjmp_buffer, 1);
-	textureSize = (int)cinfo->output_width * (int)cinfo->output_height * cinfo->out_color_components;
-	#ifdef DEBUG
-	DPRINTF("Texture Size = %i\n",textureSize);
-	#endif
-	Texture->Mem = (u32*)memalign(128, textureSize);
-	if (Texture->Mem == NULL)
-		longjmp(jerr->setjmp_buffer, 1);  // OOM (oversized/corrupt cover) -> setjmp cleanup frees Mem/Clut/tex + fclose
-
-	unsigned int row_stride = textureSize/Texture->Height;
-	unsigned char *row_pointer = (unsigned char *)Texture->Mem;
-	while (cinfo->output_scanline < cinfo->output_height) {
-		jpeg_read_scanlines(cinfo, (JSAMPARRAY)&row_pointer, 1);
-		row_pointer += row_stride;
-	}
-
-	jpeg_finish_decompress(cinfo);
-}
-
-GSTEXTURE* loadjpeg(FILE* fp, bool scale_down, bool delayed)
-{
-
-
-    GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
-
-	struct jpeg_decompress_struct cinfo;
-	struct my_error_mgr jerr;
-
-	if (tex == NULL) {
-		DPRINTF("jpeg: error Texture is NULL\n");
-		if (fp != NULL) fclose(fp);
-		return NULL;
-	}
-	tex->Delayed = delayed;  // set only after the NULL check (don't write through NULL)
-	tex->Mem = NULL;   // NULL-init so the setjmp cleanup's free() is safe even if a
-	tex->Clut = NULL;  // longjmp fires before the decode runs (mirrors the PNG/BMP path)
-
-	if (fp == NULL)
-	{
-		DPRINTF("jpeg: Failed to load file\n");
-		free(tex);
-		return NULL;
-	}
-
-	/* We set up the normal JPEG error routines, then override error_exit. */
-	cinfo.err = jpeg_std_error(&jerr.pub);
-	jerr.pub.error_exit = my_error_exit;
-	/* Establish the setjmp return context for my_error_exit to use. */
-	if (setjmp(jerr.setjmp_buffer)) {
-		/* If we get here, the JPEG code has signaled an error.
-		* We need to clean up the JPEG object, close the input file, and return.
-		*/
-		jpeg_destroy_decompress(&cinfo);
-		fclose(fp);
-		free(tex->Mem);   // NULL-init above -> safe whether or not the decode ran
-		free(tex->Clut);  // ditto; the struct itself used to leak on every JPEG error
-		free(tex);
-		DPRINTF("jpeg: error during processing file\n");
-		return NULL;
-	}
-	jpeg_create_decompress(&cinfo);
-	jpeg_stdio_src(&cinfo, fp);
-	jpeg_read_header(&cinfo, TRUE);
-
-	_ps2_load_JPEG_generic(tex, &cinfo, &jerr, scale_down);
-
-	jpeg_destroy_decompress(&cinfo);
-	fclose(fp);
-
-
-	if(!tex->Delayed)
-	{
-		tex->Vram = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(tex->Width, tex->Height, tex->PSM), GSKIT_ALLOC_USERBUFFER);
-		if(tex->Vram == GSKIT_ALLOC_ERROR)
-		{
-			DPRINTF("VRAM Allocation Failed. Will not upload texture.\n");
-			free(tex->Mem);
-			tex->Mem = NULL;
-			if(tex->Clut != NULL)
-			{
-				free(tex->Clut);
-				tex->Clut = NULL;
-			}
-			free(tex);
-			return NULL;
-		}
-
-		if(tex->Clut != NULL)
-		{
-			if(tex->PSM == GS_PSM_T4)
-				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(8, 2, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-			else
-				tex->VramClut = gsKit_vram_alloc(gsGlobal, gsKit_texture_size(16, 16, GS_PSM_CT32), GSKIT_ALLOC_USERBUFFER);
-
-			if(tex->VramClut == GSKIT_ALLOC_ERROR)
-			{
-				DPRINTF("VRAM CLUT Allocation Failed. Will not upload texture.\n");
-				free(tex->Mem);
-				tex->Mem = NULL;
-				free(tex->Clut);
-				tex->Clut = NULL;
-				free(tex);
-				return NULL;
-			}
-		}
-
-		// Upload texture
-		gsKit_texture_upload(gsGlobal, tex);
-		// Free texture
-		free(tex->Mem);
-		tex->Mem = NULL;
-		// Free texture CLUT
-		if(tex->Clut != NULL)
-		{
-			free(tex->Clut);
-			tex->Clut = NULL;
-		}
-	}
-	else
-	{
-		gsKit_setup_tbw(tex);
-	}
-
-	return tex;
-
-}
+/* JPEG decoding was removed 2026-07-15 (maintainer call). libjpeg cost
+ * 260,912 bytes of .text = 16% of ALL EE code, for the single dispatch arm
+ * below. Nothing ever asked for it: the cover-art seeker in ui.lua builds
+ * only `<name>.png` candidates, so this path was reachable only by a file
+ * NAMED .png whose contents were actually a JPEG (a renamed photo). Such a
+ * file now falls through load_image's magic dispatch to the plain fclose
+ * and renders the standard no-cover placeholder, exactly like any other
+ * unsupported format. PNG and BMP are unaffected.
+ */
 
 GSTEXTURE* load_image(const char* path, bool delayed){
 	if (path != NULL) {
@@ -1028,7 +858,6 @@ GSTEXTURE* load_image(const char* path, bool delayed){
 	fseek(file, 0, SEEK_SET);
 	GSTEXTURE* image = NULL;
 	if (magic == 0x4D42) image =      loadbmp(file, delayed);
-	else if (magic == 0xD8FF) image = loadjpeg(file, false, delayed);
 	else if (magic == 0x5089) image = loadpng(file, delayed);
 	else fclose(file);
 	if (image == NULL) DPRINTF("Failed to load image %s.", path);

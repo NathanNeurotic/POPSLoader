@@ -51,7 +51,7 @@ EE_BIN_PKD = $(BINDIR)POPSLOADER.ELF
 # -lps2ips (NOT -lps2ip): the menu SMB binds the EE to the IOP-side lwip stack via
 # the ps2ips RPC (ps2ip_init in EnsureNet); linking the EE-side lwip (-lps2ip) would
 # resurrect the orphaned-second-stack bug the 2026-07 audit found (U02).
-EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -ljpeg -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
+EE_LIBS = -L$(PS2SDK)/ports/lib -L$(PS2DEV)/gsKit/lib/ -Lmodules/ds34bt/ee/ -Lmodules/ds34usb/ee/ -lpatches -lfileXio -lpad -ldebug -llua -lfreetype -lgskit_toolkit -lgskit -ldmakit -lpng -lz -lmc -laudsrv  -lds34bt -lds34usb -lnetman -lps2ips
 EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
@@ -81,9 +81,11 @@ endif
 #-------------------------- App Content ---------------------------#
 EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
+# ftmin.o overrides FT_Init_FreeType/FT_Done_FreeType so libfreetype's ftinit.c
+# (which names EVERY font driver) never enters the link -- see src/ftmin.c.
 APP_CORE = main.o system.o pad.o graphics.o \
 		   atlas.o fntsys.o embed_assets.o \
-		   sound.o
+		   sound.o ftmin.o
 
 LUA_LIBS =	luaplayer.o luasound.o luacontrols.o \
 			luatimer.o luaScreen.o luagraphics.o \
@@ -293,11 +295,12 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
 
-# PS2SDK MX4SIO IRX (embedded)
-PS2SDK_MX4SIO_DIR = iop/embed/PS2SDK_MX4SIO
-
-$(EE_ASM_DIR)mx4sio_bd.c: $(PS2SDK_MX4SIO_DIR)/mx4sio_bd.irx | $(EE_ASM_DIR)
-	$(BIN2S) $< $@ mx4sio_bd_irx
+# mx4sio_bd.irx now resolves via the generic %.irx rule + vpath, i.e. from the
+# SAME ps2sdk that provides bdm/bdmfs_fatfs/usbmass_bd -- BDM drivers must be one
+# vintage as a matched set. The old pinned copy (iop/embed/PS2SDK_MX4SIO/, left
+# in place, untouched) predates the R3Z-era bdm core and its device registration
+# never completes against it: that pairing was the MX4SIO page hanging at 42%
+# since the EXP7 bdm swap (c1debd1). Do NOT re-pin it here.
 
 #------------------------------------------------------------------#
 elfloader: src/elf_loader/libcustom-elf-loader.a

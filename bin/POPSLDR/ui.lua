@@ -78,9 +78,14 @@ end
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
 -- Faded palette for hidden games shown in the "manage" view (Global Hide off).
--- The existing GREY renders brighter than LIST_UNSELECTED; these read as dimmer.
-local LIST_HIDDEN_COLOR = Color.new(92, 94, 120, 70)
-local LIST_HIDDEN_SELECTED_COLOR = Color.new(150, 152, 182, 110)
+-- sAGA (#536): the old shade still read too clearly next to the white normal
+-- rows. PS2 alpha is 0-128 (GREY above is 128 = fully opaque), so the lever is
+-- alpha: the UNSELECTED hidden row drops to "barely visible" (~1/4 opacity) so a
+-- hidden game barely registers, while the SELECTED hidden row stays dim-but-
+-- findable so you can still navigate to it to un-hide. Tune on hardware if
+-- either reads too faint/strong; the intent is "clearly less visible than before".
+local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 34)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 80)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
@@ -863,6 +868,49 @@ UI = {
       UI.SavingMessage = "Saving..."
       UI.SavingProgress = nil
     end;
+    -- SIO2 conflict dialog (maintainer, 2026-07-20): mmceman and mx4sio_bd
+    -- cannot share the IOP session (same SIO2 port, raw register ownership,
+    -- no timeouts -- the 48% scan hang). Instead of only blocking, offer a
+    -- POPSLoader RESTART: self-exec through the IOP-reset launch route with
+    -- -page=<target>, so the fresh instance boots clean and lands directly on
+    -- the page the user wanted. Safer than an in-place R3Z-style reset: the
+    -- boot sequence rebuilds everything by definition, no latch surgery.
+    -- Returns true when it handled the entry (dialog opened -> caller must
+    -- return without scanning). Falls through (false) when: no conflict, or
+    -- an hdd0:-booted session (its launch route preserves the IOP, so a
+    -- restart would NOT clear the bus -- the system.lua guard toast covers it).
+    MaybeOfferSio2Restart = function (target)
+      if type(System) ~= "table" or type(System.getSio2Owner) ~= "function" then return false end
+      local ok, owner = pcall(System.getSio2Owner)
+      if not ok or type(owner) ~= "string" or owner == "" or owner == target then return false end
+      local argv0 = ""
+      if type(System.GetArgv0) == "function" then
+        local ok0, a0 = pcall(System.GetArgv0)
+        if ok0 and type(a0) == "string" then argv0 = a0 end
+      end
+      local low = string.lower(argv0)
+      if string.find(low, "^hdd") or string.find(low, "^pfs")
+         or string.find(low, "^ata") or string.find(low, "^apa") then
+        return false
+      end
+      local owner_label = (owner == "BOTH") and PLDR.L("Another device") or owner
+      UI.Modal.active = true
+      UI.Modal.title = PLDR.L("Device conflict")
+      UI.Modal.body = owner_label.." "..PLDR.L("is active -- restart POPSLoader to browse").." "..target.."?"
+      UI.Modal.options = {PLDR.L("Restart"), PLDR.L("Cancel")}
+      UI.Modal.confirm_action = function ()
+        local self_path = argv0
+        if self_path == "" then self_path = "POPSLOADER.ELF" end
+        local page_arg = (target == "MMCE") and "-page=mmce" or "-page=mx4sio"
+        pcall(System.loadELF, self_path, 1, self_path, page_arg)
+        -- Reaching here means the exec FAILED (a successful exec never returns).
+        UI.Modal.Close()
+        UI.Notif_queue.add(PLDR.L("Restart failed -- power cycle to switch device"), "error")
+      end
+      UI.Modal.cancel_action = UI.Modal.Close
+      UI.Modal.ignore_until_release = true
+      return true
+    end;
     RunBusyTask = function (initial_message, worker, failure_message)
       UI.ShowSavingOverlay(initial_message or "Working...", 0.05)
       local function report(message, progress)
@@ -877,7 +925,9 @@ UI = {
         -- was captured here and discarded). Truncate so the toast stays readable.
         local err_detail = tostring(a)
         if #err_detail > 160 then err_detail = string.sub(err_detail, 1, 160).."..." end
-        UI.Notif_queue.add(tostring(failure_message or "Operation failed").."\n"..err_detail, "error")
+        -- Pre-translate the title: add-time L runs on the CONCATENATED string, so
+        -- the 8 existing "Failed to load ..." translations never matched (oldman63).
+        UI.Notif_queue.add(PLDR.L(tostring(failure_message or "Operation failed")).."\n"..err_detail, "error")
         return false, a
       end
       return true, a, b, c, d
@@ -1000,18 +1050,29 @@ UI = {
       -- Legend orders use the semantic tokens "confirm"/"back" (resolved to the
       -- region-native cross/circle glyph in ResolveLegend). Confirm always sits
       -- FAR LEFT, back/exit at the right edge -- R3Z3N review.
-      order = {"confirm", "square", "back", "triangle"};
-      order_with_start = {"confirm", "start", "back", "triangle"};
-      order_with_start_r2 = {"confirm", "square", "start", "back", "triangle"};
-      order_settings_save = {"confirm", "start", "select", "back"};
+      --
+      -- DELIBERATELY SHORT (R3Z3N review round 3, seconded by Berion: "I would
+      -- drop credits, settings and game art buttons in games list"; main menu is
+      -- exactly "select, settings, exit"). The footer advertises the PRIMARY
+      -- action plus the way out, nothing else. The dropped bindings still WORK
+      -- where they worked before (Square still toggles cover art on a game list,
+      -- START still opens Settings) -- only the legend clutter is gone. Credits
+      -- moved into Settings entirely, so the Triangle binding is gone with it.
+      order = {"confirm", "square", "back"};
+      order_with_start = {"confirm", "start", "back"};
+      order_with_start_r2 = {"confirm", "back"};
+      order_settings_save = {"confirm", "start", "back"};
       order_keyboard = {"confirm", "square", "start", "back"};
+	      -- No `triangle` (Credits) or `select_toggle` (Hide Text) entries: neither
+	      -- appears in any order above anymore. Credits moved into Settings and the
+	      -- Settings page no longer hijacks Select. ResolveLegend/Draw tolerate a
+	      -- nil label, so an order that names a glyph with no label just draws the
+	      -- glyph -- but nothing does.
 	      labels = {
-	        triangle = "Credits",
 	        circle_main = "Exit",
 	        circle_other = "Back",
 	        start_profiles = "Settings",
 	        start_menu = "Menu",
-	        select_toggle = "Hide Text",
 	        square_backspace = "Backspace",
 	        cross_confirm = "Confirm",
 	        cross_enter = "Enter",
@@ -1635,7 +1696,7 @@ UI = {
           end
           if elf_path == nil or not SafeDoesFileExist(elf_path) then
             UI.Modal.Close()
-            UI.Notif_queue.add("No DKWDRV found at this path\n"..configured_path, "error")
+            UI.Notif_queue.add(PLDR.L("No DKWDRV found at this path").."\n"..configured_path, "error")
             return
           end
           UI.LAUNCHING = true
@@ -1753,31 +1814,17 @@ UI = {
             pcall(PLDR.RestoreWorkingDirectory, previous_cwd)
           end
           UI.LAUNCHING = false
-          UI.Notify("DKWDRV failed to launch\nreturn code: "..tostring(rc), 150, "error")
+          UI.Notify(PLDR.L("DKWDRV failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
           return
         end
         UI.Modal.cancel_action = UI.Modal.Close
         UI.Modal.triangle_action = nil
         UI.Modal.ignore_until_release = true
       end;
-      OpenSaveSettings = function (on_save, on_discard)
-        UI.Modal.active = true
-        UI.Modal.title = "Save Settings"
-        UI.Modal.body = "Save your changes before leaving?"
-        UI.Modal.options = {"Save", "Cancel", "Don't Save"}
-        UI.Modal.confirm_action = function ()
-          UI.Modal.Close()
-          if type(on_save) == "function" then on_save() end
-        end
-        UI.Modal.cancel_action = function ()
-          UI.Modal.Close()
-        end
-        UI.Modal.triangle_action = function ()
-          UI.Modal.Close()
-          if type(on_discard) == "function" then on_discard() end
-        end
-        UI.Modal.ignore_until_release = true
-      end;
+      -- (OpenSaveSettings, the old X-Save/O-Cancel/Triangle-Don't-Save leave
+      -- prompt, was removed: Back and START now open the identical
+      -- OpenSettingsMenu chooser -- R3Z3N review round 3, "they should be the
+      -- same".)
       -- The settings page's Save/Reset/Discard actions live behind START
       -- (R3Z3N review: inline list rows for them sat oddly above Memory Card
       -- and made reaching them a scroll chore).
@@ -1857,7 +1904,7 @@ UI = {
         -- reboot=1 attempts were chasing the wrong mechanism.
         local rc = System.loadELF(elf_path, reboot_iop)
         UI.LAUNCHING = false
-        UI.Notify("BOOT.ELF failed to launch\nreturn code: "..tostring(rc), 150, "error")
+        UI.Notify(PLDR.L("BOOT.ELF failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
         return
       end;
       HandleInput = function ()
@@ -1954,7 +2001,7 @@ UI = {
         end
         local hint1 = UI.Modal.ButtonHint(confirm_label, cancel_label)
         if triangle_label ~= nil then
-          local hint2 = ("Triangle: %s"):format(triangle_label)
+          local hint2 = ("%s: %s"):format(PLDR.L("Triangle"), triangle_label)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 60, 8, UI.SCR.X, 16, hint1, UI.CCOL.GREY)
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 45, 8, UI.SCR.X, 16, hint2, UI.CCOL.GREY)
         else
@@ -2150,7 +2197,16 @@ UI = {
       end;
       _DisplayKey = function (key)
         if key == nil then return "" end
-        if key == "SPACE" then return "SPACE" end
+        -- The word-keys (SPACE/BACK/DONE) are user-facing labels, so translate them
+        -- for DISPLAY while the raw key string stays the input-logic identifier
+        -- (sAGA #538: BACK/DONE could not be translated). Single-character keys are
+        -- never translated. Falls back to the English word if untranslated.
+        if key == "SPACE" or key == "BACK" or key == "DONE" then
+          if type(PLDR) == "table" and type(PLDR.L) == "function" then
+            return PLDR.L(key)
+          end
+          return key
+        end
         if UI.PathEditor.upper then
           if string.match(key, "^[a-z]$") then
             return string.upper(key)
@@ -2380,8 +2436,8 @@ UI = {
         Font.ftPrint(SFONT, input_x + 10, input_y + 10, 0, input_w - 20, 16, UI.PathEditor._BuildVisibleValue(46), Color.new(150, 205, 255, 128))
         -- The label names the state R2 SWITCHES TO, not the current one
         -- (R3Z3N: "tell people what you would change to, not what you are on").
-        local mode_label = UI.PathEditor.upper and "Case/Symbols: lower  (R2)" or "Case/Symbols: UPPER  (R2)"
-        local info_label = mode_label.."   Cursor: L1 / R1"
+        local mode_label = UI.PathEditor.upper and PLDR.L("Case/Symbols: lower  (R2)") or PLDR.L("Case/Symbols: UPPER  (R2)")
+        local info_label = mode_label.."   "..PLDR.L("Cursor: L1 / R1")
         Font.ftPrint(SFONT, input_x + 2, input_y + input_h + 10, 0, input_w - 4, 16, info_label, UI.CCOL.GREY)
 
         local key_h = 24
@@ -2534,8 +2590,13 @@ UI = {
         return true
       end
       if UI.LAUNCHING then return false end
+      -- Select toggles Hide-Text on the scenes it actually helps (the carousel
+      -- and the game lists, where it clears the view for cover art). NOT on the
+      -- Settings page: hiding the text of the page you are reading is nonsense
+      -- (R3Z3N review round 3, "get rid of hid text here"). Settings still
+      -- exposes it as the Display > Hide UI Text row.
       if UI.Pad.Events.SELECT then
-        if UI.IsHideToggleScene(UI.CURSCENE) or UI.CURSCENE == UI.SCENES.MPROFILE then
+        if UI.IsHideToggleScene(UI.CURSCENE) then
           UI.ToggleHideTextMode(true)
           return true
         end
@@ -2604,7 +2665,8 @@ UI = {
         if _da ~= "center" and _da ~= "right" then _da = "left" end
         UI.DetailsAlign = ((type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and _da) or "off"
         UI.SettingsEntryDetailsAlign = UI.DetailsAlign
-        UI.HddFs = ((type(PLDR) == "table" and PLDR.HDD_FS == "EXFAT") and "EXFAT") or "PFS"
+        UI.HddFs = (type(PLDR) == "table" and type(PLDR.NormalizeHddFs) == "function")
+    and PLDR.NormalizeHddFs(PLDR.HDD_FS) or "PFS"
         UI.SettingsEntryHddFs = UI.HddFs
         local _al = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
         if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
@@ -2681,7 +2743,6 @@ UI = {
           end
           Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-          if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
           if UI.Pad.Events.BACK then UI.SceneChange(UI.SCENES.MMAIN) end
           if UI.Pad.Events.CONFIRM then
             UI.Notif_queue.add("This backend isn't implemented yet", "warn")
@@ -2708,7 +2769,7 @@ UI = {
         if UI.CURSCENE == UI.SCENES.GSMB then
           local slots = PLDR.GetMMCESlots()
           if #slots > 1 and not UI.ShouldHideAuxText(UI.CURSCENE) then
-            Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, "Slot: "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
+            Font.ftPrint(SFONT, layout.LIST_X, layout.LIST_Y - 20, 0, UI.SCR.X, 16, PLDR.L("Slot:").." "..PLDR.MMCE.PREFIX, UI.CCOL.GREY)
           end
         end
         if (UI.GameList.CURR > (UI.GameList.STARTUP+(UI.GameList.MAXDRAW-1))) then
@@ -2786,26 +2847,9 @@ UI = {
           -- one 4:3 frame, so a fixed pixel-square shows tall on NTSC (Y=448) and
           -- wide on PAL (Y=512) (#496); size from the source aspect * (480/SCR.Y),
           -- fit inside the COVER_W box, and keep the top/right anchor.
-          local cover_w, cover_h = nil, nil
-          if preview_img ~= nil and preview_is_live_cover then
-            local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
-            local iw = Graphics.getImageWidth(preview_img)
-            local ih = Graphics.getImageHeight(preview_img)
-            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
-            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
-            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
-            if ratio >= 1 then
-              cover_w = box
-              cover_h = Round(box / ratio)
-            else
-              cover_h = box
-              cover_w = Round(box * ratio)
-            end
-            if cover_w > draw_w then cover_w = draw_w end
-            if cover_h > draw_h then cover_h = draw_h end
-          end
           -- frame.png is the decorative border (256x256), same aspect correction so
           -- it stays square on BOTH standards instead of warping per video mode.
+          -- Sized FIRST: the live cover below now fits inside the FRAME's window.
           local frame_w, frame_h = nil, nil
           if IMG.frame ~= nil then
             local fiw = Graphics.getImageWidth(IMG.frame)
@@ -2822,6 +2866,50 @@ UI = {
             end
             if frame_w > draw_w then frame_w = draw_w end
             if frame_h > draw_h then frame_h = draw_h end
+          end
+          local cover_w, cover_h, cover_x_abs, cover_y_off = nil, nil, nil, 0
+          if preview_img ~= nil and preview_is_live_cover then
+            local iw = Graphics.getImageWidth(preview_img)
+            local ih = Graphics.getImageHeight(preview_img)
+            if type(iw) ~= "number" or iw <= 0 then iw = 1 end
+            if type(ih) ~= "number" or ih <= 0 then ih = 1 end
+            local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+            if frame_w ~= nil and frame_h ~= nil then
+              -- Fit INSIDE the jewel case's cover window, measured from frame.png's
+              -- alpha channel (256x256 art; the transparent slot right of the spine
+              -- spans x 26..250, y 4..229). The window rect is FRAME-RELATIVE, so it
+              -- scales with the case on every video mode and containment holds by
+              -- construction. The old COVER_W screen-box sizing anchored the art to
+              -- the frame's OUTER edge and overflowed the window (5px right on NTSC,
+              -- 21px on PAL, and a portrait cover ran 17px past the window bottom,
+              -- flush with the case's absolute bottom edge -- the GTA screenshot,
+              -- 2026-07-20). Placeholder/disabled art keep their own tuned rect
+              -- (maintainer confirmed those register correctly).
+              local win_w = frame_w * (225 / 256)
+              local win_h = frame_h * (226 / 256)
+              local cw = win_h * ratio
+              if cw > win_w then cw = win_w end
+              cover_w = Round(cw)
+              cover_h = Round(cw / ratio)
+              local frame_x0 = draw_x + (draw_w - frame_w)
+              -- Right-anchored INSIDE the window (window right edge = png x 251),
+              -- top at the window top (png y 4); offset rides the lifted draw_y.
+              cover_x_abs = Round(frame_x0 + frame_w * (251 / 256) - cover_w)
+              cover_y_off = Round(frame_h * (4 / 256))
+            else
+              -- No frame art present: keep the original COVER_W box sizing.
+              local box = math.min(layout.COVER_W or 232, draw_w, draw_h)
+              if ratio >= 1 then
+                cover_w = box
+                cover_h = Round(box / ratio)
+              else
+                cover_h = box
+                cover_w = Round(box * ratio)
+              end
+              if cover_w > draw_w then cover_w = draw_w end
+              if cover_h > draw_h then cover_h = draw_h end
+              cover_x_abs = draw_x + (draw_w - cover_w)
+            end
           end
           -- Visible art height = the taller of the cover/frame (both top-anchored).
           -- The missing/disabled placeholder now shares the frame's aspect-corrected
@@ -2919,9 +3007,9 @@ UI = {
           -- cover uses its own COVER_W inset (also right-anchored).
           local frame_x = (frame_w ~= nil) and (draw_x + (draw_w - frame_w)) or draw_x
           if preview_is_live_cover and preview_img ~= nil and cover_w ~= nil and cover_h ~= nil then
-            -- Live cover art: right-anchored inside the frame window.
-            local cover_x = draw_x + (draw_w - cover_w)
-            Graphics.drawScaleImage(preview_img, cover_x, draw_y, cover_w, cover_h)
+            -- Live cover art: fitted + right-anchored inside the case WINDOW
+            -- (cover_x_abs/cover_y_off computed with the frame sizing above).
+            Graphics.drawScaleImage(preview_img, cover_x_abs, draw_y + cover_y_off, cover_w, cover_h)
           elseif frame_w ~= nil and frame_h ~= nil then
             -- No live cover -> the DEFAULT cover, drawn INSET in the case WINDOW exactly
             -- like a live cover (right of the spine, above the case bottom) so the case
@@ -2962,7 +3050,7 @@ UI = {
             local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
                           or UI.CoverCache.last_cover_probe
             local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
-            local cap_lines = { "No cover. Looked for:" }
+            local cap_lines = { PLDR.L("No cover. Looked for:") }
             if folder ~= nil then
               cap_lines[#cap_lines + 1] = folder
               cap_lines[#cap_lines + 1] = fname
@@ -3021,7 +3109,6 @@ UI = {
         end
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
-        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
             pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
@@ -3151,12 +3238,44 @@ UI = {
             UI.Notif_queue.add("No games found on this device", "warn")
             return
           end
+          local entry = PLDR.GAMES[UI.GameList.CURR]
+          if entry == nil then
+            UI.Notif_queue.add("Couldn't read that game selection", "error")
+            return
+          end
+          local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
+          -- Launch progress (maintainer: an ATA launch sat "a very long time on a
+          -- frozen state before the game launched"). Everything below -- the
+          -- POPSTARTER probes, the game-file probe, the adaptive-BDMA driver
+          -- staging inside RunPOPStarterGame -- is blocking device I/O that
+          -- painted NOTHING, so the game list just froze. Paint before each slow
+          -- step; the last frame stays up until POPStarter takes the screen
+          -- (the exec never returns, so there is no hide to do on success).
+          local function paint(msg, pct)
+            if type(UI.ShowSavingOverlay) == "function" then pcall(UI.ShowSavingOverlay, msg, pct) end
+          end
+          local function unpaint()
+            if type(UI.HideSavingOverlay) == "function" then pcall(UI.HideSavingOverlay) end
+            PLDR.LaunchProgress = nil
+          end
+          paint(PLDR.L("Checking POPSTARTER..."), 0.12)
           -- Empty = Automatic (no user-defined path): the launch resolver walks
           -- the device/cwd/mc ladder on its own (profiles dropped -- R3Z3N).
           local configured_popstarter_path = tostring(PLDR.POPSTARTER_PATH or "")
           local popstarter_path = configured_popstarter_path
+          -- Resolve against the root the launch call itself will use. USB entries encode
+          -- their own device root ("<root>POPS/|name") and the USB page keeps
+          -- PLDR.GAMEPATH = "" (multi-drive lists), so resolving with GAMEPATH here never
+          -- checked <drive>:/POPS/POPSTARTER.ELF and a drive-resident-only POPSTARTER
+          -- failed this gate even though RunPOPStarterGame(root, rel) below would have
+          -- found it (sAGA/oldman63). GHDD keeps GAMEPATH: its entries encode a partition
+          -- name, not a device root.
+          local resolve_location = PLDR.GAMEPATH
+          if UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
+            resolve_location = root
+          end
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
-            popstarter_path = PLDR.ResolveLaunchPopstarterPath(PLDR.GAMEPATH, configured_popstarter_path)
+            popstarter_path = PLDR.ResolveLaunchPopstarterPath(resolve_location, configured_popstarter_path)
           elseif type(PLDR.ResolvePopstarterPath) == "function" then
             popstarter_path = PLDR.ResolvePopstarterPath(configured_popstarter_path)
           end
@@ -3174,17 +3293,19 @@ UI = {
             if configured_popstarter_path == "" then
               message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
             else
-              message = "No POPSTARTER found at this path\n"..configured_popstarter_path
+              message = PLDR.L("No POPSTARTER found at this path").."\n"..configured_popstarter_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
-                message = message.."\nResolved: "..tostring(popstarter_path)
+                message = message.."\n"..PLDR.L("Resolved:").." "..tostring(popstarter_path)
               end
             end
+            unpaint()
             UI.Notif_queue.add(message, "error")
             return
           end
           if type(launch_options) == "table" and launch_options.hdd_selector_mode == "full_hdd_pfs0" then
             local lowered_popstarter = string.lower(tostring(popstarter_path or ""))
             if string.match(lowered_popstarter, "^hdd%d:") == nil and string.match(lowered_popstarter, "^pfs%d*:/") == nil then
+              unpaint()
               UI.Notif_queue.add("HDD Alt mode needs POPSTARTER on HDD", "warn")
               return
             end
@@ -3195,23 +3316,24 @@ UI = {
           -- stack), so without this gate a launch fails in-game with zero
           -- explanation.
           if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
+            unpaint()
             UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
             return
           end
-          local entry = PLDR.GAMES[UI.GameList.CURR]
-          if entry == nil then
-            UI.Notif_queue.add("Couldn't read that game selection", "error")
-            return
-          end
-          local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
+          paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           -- Skip the existence preflight on net-SMB too: per-file stat over the live
           -- smb0: browse mount is unreliable, and this is only a (non-blocking) toast.
           if UI.CURSCENE ~= UI.SCENES.GHDD and UI.CURSCENE ~= UI.SCENES.GSMBNET then
             if not doesFileExist(vcd_full) then
-              UI.Notif_queue.add("Game file missing\n"..vcd_full, "error")
+              UI.Notif_queue.add(PLDR.L("Game file missing").."\n"..vcd_full, "error")
             end
           end
+          -- Hook the slow stages INSIDE RunPOPStarterGame (adaptive-BDMA driver
+          -- staging = several memory-card writes; the handoff itself). Cleared
+          -- on the cancel path; on success the exec never comes back.
+          PLDR.LaunchProgress = paint
+          paint(PLDR.L("Starting the game..."), 0.50)
           local launch_path = PLDR.GAMEPATH
           if UI.CURSCENE == UI.SCENES.GHDD then
             launch_path = ""
@@ -3223,6 +3345,11 @@ UI = {
           else
             PLDR.RunPOPStarterGame(launch_path, entry, UI.CURSCENE, launch_options)
           end
+          -- Reached ONLY when the launch did not exec (cancelled by the adaptive
+          -- -BDMA staging gate, or failed): a successful launch never returns
+          -- here. Drop the overlay so the menu is usable and the failure toast
+          -- is readable instead of sitting behind a stuck progress box.
+          unpaint()
         end
         -- R3 = reveal / re-hide this device's hidden games. The "Hidden games"
         -- setting (GLOBAL_HIDE) filters hidden entries out of the list at SCAN
@@ -3238,23 +3365,41 @@ UI = {
              or UI.CURSCENE == UI.SCENES.GBDMHDD
              or UI.CURSCENE == UI.SCENES.GSMBNET
              or UI.CURSCENE == UI.SCENES.GUSBFAT) then
-          -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
-          -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
-          -- persisted setting -- Settings > Game List > Hidden games owns that single source
-          -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
-          -- then blocking the L3 unhide it tells you to use -- provato HW report.)
-          UI.RevealHidden = (UI.RevealHidden ~= true)
-          if PLDR._GLOBAL_HIDE_SAVED == nil then
-            PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
-          end
-          if UI.RevealHidden then
-            PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+          -- R3 reveal/re-hide only MEANS anything when the persisted "Hide hidden
+          -- games" setting is ON -- that setting is what filters hidden entries out
+          -- of the scan. When it is OFF, hidden games are ALWAYS shown (dimmed), so
+          -- there is nothing to reveal or re-hide. R3 used to toggle regardless and
+          -- fire "Hidden games filtered out again" while the games stayed on screen,
+          -- contradicting what the user saw (sAGA #539). Detect the real setting and
+          -- explain instead of lying. (During an active reveal GLOBAL_HIDE is the
+          -- transient false, so consult the captured _GLOBAL_HIDE_SAVED.)
+          local real_hide
+          if PLDR._GLOBAL_HIDE_SAVED ~= nil then
+            real_hide = (PLDR._GLOBAL_HIDE_SAVED == true)
           else
-            PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+            real_hide = (PLDR.GLOBAL_HIDE == true)
           end
-          r3_save_ok = true   -- nothing persisted now, so never a save-failure case
-          r3_hide_toggle = true
-          UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+          if not real_hide then
+            UI.Notif_queue.add(PLDR.L("Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"), "ok")
+          else
+            -- Reveal is a TRANSIENT per-session view: temporarily clear GLOBAL_HIDE so the
+            -- scan re-includes hidden games (dimmed); re-hide restores it. Does NOT touch the
+            -- persisted setting -- Settings > Game List > Hidden games owns that single source
+            -- of truth. (R3 used to flip+PERSIST GLOBAL_HIDE, fighting the Settings page and
+            -- then blocking the L3 unhide it tells you to use -- provato HW report.)
+            UI.RevealHidden = (UI.RevealHidden ~= true)
+            if PLDR._GLOBAL_HIDE_SAVED == nil then
+              PLDR._GLOBAL_HIDE_SAVED = (PLDR.GLOBAL_HIDE == true)   -- capture the real setting once (false stored as false, not nil)
+            end
+            if UI.RevealHidden then
+              PLDR.GLOBAL_HIDE = false                               -- reveal: scan re-includes hidden (dimmed)
+            else
+              PLDR.GLOBAL_HIDE = (PLDR._GLOBAL_HIDE_SAVED == true)   -- re-hide: restore the captured setting
+            end
+            r3_save_ok = true   -- nothing persisted now, so never a save-failure case
+            r3_hide_toggle = true
+            UI.Pad.Events.R1 = true   -- drive the same in-place rebuild R1 performs
+          end
         end
         -- A Settings visit cancelled an R3 reveal (restoring GLOBAL_HIDE) while
         -- this list still showed the revealed games: rebuild via the same R1
@@ -3390,7 +3535,7 @@ UI = {
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
             else
-              UI.Notif_queue.add("Couldn't write .hide to the HDD ("..tostring(reason or "")..").\nYou can still add a \"<game>.hide\" next to the .VCD from a PC.", "warn")
+              UI.Notif_queue.add(PLDR.L("Couldn't write .hide to the HDD").." ("..tostring(reason or "")..")\n"..PLDR.L("You can still add a \"<game>.hide\" next to the .VCD from a PC."), "warn")
             end
           else
             local entry = PLDR.GAMES[UI.GameList.CURR]
@@ -3418,7 +3563,7 @@ UI = {
                 PLDR.SaveGameListCache(cache_path, PLDR.GAMES, PLDR.HIDDEN)
               end
             else
-              UI.Notif_queue.add("Couldn't update hidden state ("..tostring(reason)..")", "error")
+              UI.Notif_queue.add(PLDR.L("Couldn't update hidden state").." ("..tostring(reason)..")", "error")
             end
           end
         end
@@ -3428,7 +3573,7 @@ UI = {
           if r3_save_ok then
             UI.Notif_queue.add(_r3msg, "ok")
           else
-            UI.Notif_queue.add(_r3msg.."\n(could NOT save -- reverts on reboot)", "warn")
+            UI.Notif_queue.add(PLDR.L(_r3msg).."\n"..PLDR.L("(could NOT save -- reverts on reboot)"), "warn")
           end
         end
         local cross_label = UI.Footer.labels.cross_launch
@@ -3591,7 +3736,8 @@ UI = {
           local details_align_val = (show_details_val and UI.DetailsAlign)
             or ((type(PLDR) == "table" and PLDR.DETAILS_ALIGN) or "left")
           if details_align_val ~= "center" and details_align_val ~= "right" then details_align_val = "left" end
-          local hdd_fs_val = (UI.HddFs == "EXFAT") and "EXFAT" or "PFS"
+          local hdd_fs_val = (type(PLDR.NormalizeHddFs) == "function")
+          and PLDR.NormalizeHddFs(UI.HddFs) or "PFS"
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
@@ -3658,6 +3804,17 @@ UI = {
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR._GLOBAL_HIDE_SAVED = nil   -- Settings Save re-establishes the persisted truth + drops any transient R3 reveal
             UI.RevealHidden = false
+            -- A changed list-SHAPING setting must REBUILD the game list on return:
+            -- the list scene otherwise keeps showing entries built under the OLD
+            -- value -- choosing "Hidden" left hidden games visibly on screen until
+            -- R3's rebuild happened to run (maintainer, 2026-07-20; the save+filter
+            -- chain was always correct, only the rescan was missing). Reuses the
+            -- same flag the R3-reveal cancellation path consumes (raises the
+            -- in-place R1 refresh on the next list-scene frame).
+            if (global_hide_val == true) ~= (UI.SettingsEntryGlobalHide == true)
+               or (multidisc_collapse_val == true) ~= (UI.SettingsEntryMultiDiscCollapse == true) then
+              UI.PendingHideRebuild = true
+            end
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.HDD_FS = hdd_fs_val
@@ -3742,7 +3899,7 @@ UI = {
             elseif reason == "smb_apply_failed" then
               UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
-              UI.Notif_queue.add("Couldn't save settings\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              UI.Notif_queue.add(PLDR.L("Couldn't save settings").."\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -3929,7 +4086,7 @@ UI = {
              and string.match(path, "^[Pp][Ff][Ss]%d*:") == nil then
             local ok, exists = pcall(doesFileExist, path)
             if not (ok and exists == true) then
-              UI.Notif_queue.add("Path saved, file not found:\n"..path, "warn")
+              UI.Notif_queue.add(PLDR.L("Path saved, file not found:").."\n"..path, "warn")
             end
           end
           return path
@@ -4005,6 +4162,18 @@ UI = {
             value = get_value,
             open = open_fn,
             dirty = dirty_fn
+          })
+        end
+        -- A plain label row that DOES something on Confirm (no value, no dirty
+        -- marker). Unlike the old Save/Reset/Discard action rows this one lives
+        -- INSIDE a section, so it obeys the accordion and reads as a normal
+        -- settings row -- which was the objection to the old ones.
+        local function AddAction(label, activate_fn)
+          table.insert(items, {
+            kind = "action",
+            section = current_section,
+            label = label,
+            activate = activate_fn
           })
         end
         AddSection("Storage")
@@ -4125,7 +4294,10 @@ UI = {
 
         -- Carousel device visibility checklist: a Shown/Hidden row per main-menu
         -- device. Toggling hides/shows it on the carousel (all shown by default).
-        AddSection("Carousel Devices")
+        -- "Device List", not "Carousel Devices" -- R3Z3N review round 3:
+        -- "carousel is actually device list". The rows pick which devices appear
+        -- on the main menu; calling it by our internal widget name helped nobody.
+        AddSection("Device List")
         if type(PLDR) == "table" and type(PLDR.CAROUSEL_DEVICE_KEYS) == "table" then
           local function ToggleDevice(dkey)
             if type(UI.DeviceHiddenDraft) ~= "table" then UI.DeviceHiddenDraft = {} end
@@ -4165,14 +4337,25 @@ UI = {
           end
         end
 
-        -- Internal-HDD filesystem: which of the two HDD pages shows on the carousel --
-        -- Sony APA/PFS (default) or APA-Jail exFAT. Mutually exclusive (one shows, the
-        -- other hides). A -page=ata launch still auto-enters exFAT regardless of this.
+        -- Internal-HDD page(s) on the carousel: Sony APA/PFS (default), APA-Jail exFAT,
+        -- or BOTH. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
+        -- choice -- the driver stacks were already unified onto one shared, load-once
+        -- ata_bd that serves APA/PFS and exFAT together, settles included. A -page=ata
+        -- launch still auto-enters exFAT and hides PFS regardless of this setting.
+        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH"}
+        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both"}
+        local function HddFsStep(cur, dir)
+          local idx = 1
+          for i = 1, #HDD_FS_SEQ do
+            if HDD_FS_SEQ[i] == cur then idx = i; break end
+          end
+          return HDD_FS_SEQ[((idx - 1 + dir) % #HDD_FS_SEQ) + 1]
+        end
         AddCycle(
           "Internal HDD",
-          function() return (UI.HddFs == "EXFAT") and "exFAT" or "APA / PFS (default)" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
-          function() UI.HddFs = (UI.HddFs == "EXFAT") and "PFS" or "EXFAT" end,
+          function() return HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)" end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, -1) end,
+          function() UI.HddFs = HddFsStep(UI.HddFs, 1) end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
         )
 
@@ -4190,6 +4373,14 @@ UI = {
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() UI.GlobalHide = not UI.GlobalHide end,
           function() return (UI.GlobalHide == true) ~= (UI.SettingsEntryGlobalHide == true) end
+        )
+        -- This row said WHETHER hidden games show, but never how to hide one, so
+        -- the feature was undiscoverable ("I dont know how to hide games..." --
+        -- R3Z3N review round 3). A read-only hint costs one dimmed line and
+        -- answers it where the question is actually asked.
+        AddInfo(
+          "How to hide a game",
+          function() return "L3 on the game list" end
         )
         local DETAILS_ALIGN_SEQ = {"off", "left", "center", "right"}
         local DETAILS_ALIGN_TXT = {off = "Off", left = "Left aligned", center = "Center aligned", right = "Right aligned"}
@@ -4212,7 +4403,10 @@ UI = {
         -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
         -- (beside the .vcd) is always also checked as a back-compat fallback.
         local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
-        local ART_LOCATION_TXT = {pops = "POPS (beside game)", pops_art = "POPS/ART", art = "ART (at root)"}
+        -- Spell the paths out with the device prefix. "POPS/ART" alone was
+        -- ambiguous enough that R3Z3N had to ask "I presume you mean
+        -- device:/POPS/ART?" (review round 3) -- so just say so.
+        local ART_LOCATION_TXT = {pops = "device:/POPS", pops_art = "device:/POPS/ART", art = "device:/ART"}
         local function ArtLocationStep(cur, dir)
           local idx = 1
           for i = 1, #ART_LOCATION_SEQ do
@@ -4223,7 +4417,7 @@ UI = {
         end
         AddCycle(
           "Cover/details folder",
-          function() return ART_LOCATION_TXT[UI.ArtLocation] or "POPS/ART" end,
+          function() return ART_LOCATION_TXT[UI.ArtLocation] or "device:/POPS/ART" end,
           function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
           function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
           function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
@@ -4389,13 +4583,11 @@ UI = {
             UI.Notif_queue.add("Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first", "warn")
             return
           end
+          -- ONE key per sentence; RunConfirm splits on \n after translating.
           local confirmed = UI.RunConfirm({
             "Delete the POPSTARTER folder from the memory card?",
             "",
-            "This removes the POPSTARTER pack -- including the",
-            "BDMA and SMB modules -- from mc0: / mc1:. They won't",
-            "return until you turn this back On (or re-add them",
-            "manually). Your POPSLoader settings are kept.",
+            "This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.",
           })
           if confirmed then
             PLDR.POPSTARTER_MC_FOLDER = false
@@ -4424,6 +4616,28 @@ UI = {
           function() ToggleMcFolder() end,
           function() return false end
         )
+
+        -- Credits live here now, not on a Triangle binding advertised in every
+        -- footer ("put credits in settings imo" -- R3Z3N review round 3).
+        -- CreditsReturnScene is the existing generic return mechanism, so this
+        -- comes back to Settings with the drafts intact (returning via
+        -- SceneChange does NOT re-run SyncSettingsDraftFromRuntime -- only the
+        -- START-entry handler does -- so staged edits survive the trip).
+        AddSection("About")
+        -- The advertised "check which build you are on" spot. POPSLDR_VER comes
+        -- from the embedded boot.lua so it is ALWAYS available -- unlike the
+        -- BUILD_INFO.txt stamp, which needs a loose file next to the ELF that a
+        -- normal one-file install never has (sAGA: told to check the version,
+        -- found nothing anywhere).
+        AddInfo("Version", function()
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver == "" then return "(unknown)" end
+          return ver
+        end)
+        AddAction("Credits", function()
+          UI.CreditsReturnScene = UI.SCENES.MPROFILE
+          UI.SceneChange(UI.SCENES.CREDITS)
+        end)
 
         -- Focus normalization: clamp + skip non-selectable rows.
         local function IsSelectable(idx)
@@ -4714,46 +4928,104 @@ UI = {
         if UI.Pad.Events.NAV_DOWN then MoveFocus( 1) end
 
         local focused_item = items[UI.SettingsFocus]
+        -- Section jump (sAGA: "to skip the SMB block, you have to click through
+        -- every item"). Move focus to the previous/next section's first selectable
+        -- row; the accordion follows focus, so the old block collapses and the new
+        -- one opens in one press. L1/R1 work from ANY row; LEFT/RIGHT do the same
+        -- on rows that don't consume them (cycle rows keep left/right = value
+        -- prev/next -- hijacking those would break value editing).
+        local function JumpSection(delta)
+          local order, seen = {}, {}
+          for _, it in ipairs(items) do
+            local sec = (it.kind == "section") and it.label or it.section
+            if sec ~= nil and not seen[sec] then
+              seen[sec] = true
+              order[#order + 1] = sec
+            end
+          end
+          if #order < 2 then return end
+          local cur = (focused_item ~= nil and focused_item.section) or UI.SettingsOpenSection
+          local idx = 1
+          for i = 1, #order do
+            if order[i] == cur then idx = i; break end
+          end
+          -- Walk past sections with no selectable rows (all-info blocks) instead
+          -- of dead-ending on them.
+          for step = 1, #order - 1 do
+            local target = order[((idx - 1 + delta * step) % #order) + 1]
+            for i = 1, #items do
+              if items[i].section == target and IsSelectable(i) then
+                UI.SettingsFocus = i
+                return
+              end
+            end
+          end
+        end
+        if UI.Pad.Events.L1 then JumpSection(-1) end
+        if UI.Pad.Events.R1 then JumpSection(1) end
+        -- Re-capture after a shoulder jump so same-frame LEFT/RIGHT/CONFIRM act
+        -- on the row focus actually landed on, not the pre-jump one.
+        focused_item = items[UI.SettingsFocus]
         if focused_item ~= nil then
           -- Focus is never on a section header (non-selectable), so there are no
           -- section-collapse branches: the accordion follows focus automatically.
           if UI.Pad.Events.NAV_LEFT then
-            if focused_item.kind == "cycle" and focused_item.prev then focused_item.prev() end
+            if focused_item.kind == "cycle" and focused_item.prev then
+              focused_item.prev()
+            else
+              JumpSection(-1)
+            end
           end
           if UI.Pad.Events.NAV_RIGHT then
-            if focused_item.kind == "cycle" and focused_item.next then focused_item.next() end
+            if focused_item.kind == "cycle" and focused_item.next then
+              focused_item.next()
+            else
+              JumpSection(1)
+            end
           end
           if UI.Pad.Events.CONFIRM then
             if focused_item.kind == "cycle" and focused_item.next then
               focused_item.next()
             elseif focused_item.kind == "path" and focused_item.open then
               focused_item.open()
+            elseif focused_item.kind == "action" and focused_item.activate then
+              focused_item.activate()
+              return
             end
           end
         end
 
+        -- ONE menu for both routes (R3Z3N review round 3: "the back button
+        -- prompt is different than the start prompt ... they should be the
+        -- same"). Back with unsaved edits and START now open the identical
+        -- Save Changes / Reset Defaults / Discard & Exit chooser; the old
+        -- X-Save/O-Cancel/Triangle-Don't-Save prompt is gone. Back with NOTHING
+        -- staged still leaves immediately -- prompting to save nothing is noise.
+        --
+        -- The one deliberate difference is where a SAVE lands you, which is the
+        -- user's own intent in each case: Back was on the way out, so it exits
+        -- to the scene it came from (and allow_fallback_exit=true, since a
+        -- failed save should not strand someone who was already leaving);
+        -- START was not, so it stays put on failure (allow_fallback_exit=false)
+        -- keeping every draft edit for a retry.
+        local function OpenSettingsActionMenu(save_target, allow_fallback_exit)
+          UI.Modal.OpenSettingsMenu(
+            function() queue_exit(save_target, allow_fallback_exit) end,
+            function() ResetDefaults() end,
+            function() discard_settings_and_return() end
+          )
+        end
+
         if UI.Pad.Events.BACK then
           if HasUnsavedChanges() then
-            local return_scene = UI.GetSettingsReturnScene()
-            UI.Modal.OpenSaveSettings(
-              function() queue_exit(return_scene, true) end,
-              function() discard_settings_and_return() end
-            )
+            OpenSettingsActionMenu(UI.GetSettingsReturnScene(), true)
           else
             discard_settings_and_return()
           end
           return
         end
         if UI.Pad.Events.START then
-          -- Save's allow_fallback_exit=false: a FAILED save keeps the user on
-          -- the Settings page with every draft edit intact for a retry. The
-          -- BACK-prompt Save keeps true -- the user was already leaving, so
-          -- exit-on-failure matches their intent there.
-          UI.Modal.OpenSettingsMenu(
-            function() queue_exit(UI.SCENES.MMAIN, false) end,
-            function() ResetDefaults() end,
-            function() discard_settings_and_return() end
-          )
+          OpenSettingsActionMenu(UI.SCENES.MMAIN, false)
         end
 
         local labels, order = UI.Footer.ResolveLegend({
@@ -4761,8 +5033,7 @@ UI = {
           order_id = "settings_focus",
           circle = UI.Footer.labels.circle_other,
           cross = UI.Footer.labels.cross_select,
-          start = UI.Footer.labels.start_menu,
-          select = UI.Footer.labels.select_toggle
+          start = UI.Footer.labels.start_menu
         })
         UI.Footer.Draw(labels, order)
       end;
@@ -4918,13 +5189,17 @@ UI = {
         if not UI.ShouldHideAuxText(UI.CURSCENE) then
           Font.ftPrint(UI.FONT.LABEL, UI.SCR.X_MID, top_y, 8, UI.SCR.X, 16, PLDR.L(UI.MainMenu.opts[visible_seq[center_label_idx] or visible_seq[1]]), UI.COLORS.TEXT_PRIMARY)
         end
-        local status_y = top_y + 12
+        -- STATUS_Y (TITLE_Y + 20), not top_y + 12: the status font draws at the
+        -- post-reset 17px em (bigger than the 13.75px LABEL title above it!), so
+        -- a 12px gap visibly collided on hardware (oldman63 photo). The carousel
+        -- icon math already assumes STATUS_Y, so nothing below moves.
+        local status_y = layout.STATUS_Y
         local boot_label = UI.boot_device_label
         if (boot_label == nil or boot_label == "") and UI.boot_device ~= nil and UI.boot_device ~= DEVLOCK.NONE then
           boot_label = UI.device_lock_name(UI.boot_device)
         end
         if boot_label ~= nil and boot_label ~= "" and not UI.ShouldHideAuxText(UI.CURSCENE) then
-          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, "Booted from: "..tostring(boot_label), UI.COLORS.TEXT_PRIMARY)
+          Font.ftPrint(UI.FONT.STATUS, UI.SCR.X_MID, status_y, 8, UI.SCR.X, 16, PLDR.L("Booted from:").." "..tostring(boot_label), UI.COLORS.TEXT_PRIMARY)
           status_y = status_y + 12
         end
         local function Lerp(a, b, t)
@@ -4997,13 +5272,15 @@ UI = {
             carousel.slide = 0
           end
         end
-        if UI.Pad.Events.EXIT then UI.CreditsReturnScene = UI.CURSCENE; UI.SceneChange(UI.SCENES.CREDITS) end
         if UI.Pad.Events.BACK then
           UI.Modal.OpenExit()
           return
         end
 	          if UI.Pad.Events.CONFIRM then
 	          if UI.MainMenu.OPT == 1 then
+	            -- SIO2 conflict: offer the restart dialog instead of scanning into
+	            -- the guard (MX4SIO resident would hang MMCE reads at 48%).
+	            if UI.MaybeOfferSio2Restart("MMCE") then return end
 	            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MMCE games...", 0.48, 0.88)
 	              report("Detecting MMCE device...", 0.18)
@@ -5048,6 +5325,8 @@ UI = {
             end, "Failed to load MMCE")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 2 then
+	            -- SIO2 conflict: mirror of the MMCE-entry dialog above.
+	            if UI.MaybeOfferSio2Restart("MX4SIO") then return end
 	            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
 	              report("Refreshing mass backends...", 0.18)
@@ -5098,8 +5377,9 @@ UI = {
               if type(PLDR.RefreshMassBackends) == "function" then
                 pcall(PLDR.RefreshMassBackends)
               end
-              report("Locating exFAT HDD POPS folder...", 0.42)
-              local ata_root = PLDR.InitATAPopsRoot()
+              report(PLDR.L("Locating exFAT HDD POPS folder..."), 0.42)
+              local ok_probe, ata_root = pcall(PLDR.InitATAPopsRoot)
+              if not ok_probe then ata_root = nil end
               if ata_root == nil then
                 UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
                 return
@@ -5139,12 +5419,12 @@ UI = {
 	                  -- The rc suffix tells a real mount fault apart from clean absence
                   -- (the empty-list-from-a-launcher-boot class reports only this toast).
                   local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
-                  UI.Notif_queue.add("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"..rc_hint, "warn")
+                  UI.Notif_queue.add(PLDR.L("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9")..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
                   UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
                 end
               else
-                UI.Notif_queue.add("HDD not usable\nstatus: "..PLDR.HDD.STATUS, "error")
+                UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")
               end
               report("Opening HDD list...", 1.0)
               UI.SceneChange(UI.SCENES.GHDD)
@@ -5164,7 +5444,13 @@ UI = {
               report("Checking USB roots...", 0.38)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
+              -- Show the retry so a longer probe reads as "still looking" and not as a
+              -- freeze. Only an already-failing setup ever sees past attempt 1.
+              PLDR.UsbProbeProgress = function(attempt, total)
+                report(PLDR.L("Looking for USB drive...").." ("..tostring(attempt).."/"..tostring(total)..")", 0.38)
+              end
               local usb_roots = PLDR.GetRootsByType("usb")
+              PLDR.UsbProbeProgress = nil
               if usb_roots == nil or #usb_roots < 1 then
                 if type(System) == "table" and type(System.ensureUsbMass) == "function" then
                   System.ensureUsbMass()
@@ -5175,7 +5461,21 @@ UI = {
                 usb_roots = PLDR.GetRootsByType("usb")
               end
 	              if usb_roots == nil or #usb_roots < 1 then
-	                UI.Notif_queue.add("No USB backend detected\nreseat the drive and try again", "warn")
+	                -- Say WHY. The base string stays byte-identical so the five existing
+	                -- translations still match; the diagnostic rides on a third line as raw
+	                -- numbers (untranslated on purpose -- a tester photographing the screen
+	                -- is the only telemetry this bug has).
+	                -- Pre-translate: appending the [diag] line below defeats the toast
+	                -- queue's add-time exact-match, so the translated base was reverting
+	                -- to English in EXACTLY the failure case testers photograph.
+	                local msg = PLDR.L("No USB backend detected\nreseat the drive and try again")
+	                local diag = nil
+	                if type(PLDR.GetUsbDiagText) == "function" then
+	                  local ok_d, d = pcall(PLDR.GetUsbDiagText)
+	                  if ok_d and type(d) == "string" and d ~= "" then diag = d end
+	                end
+	                if diag ~= nil then msg = msg.."\n["..diag.."]" end
+	                UI.Notif_queue.add(msg, "warn")
 	              end
 	              report("Building USB game list...", 0.44)
 	              -- Single-drive only: the combined multi-drive list was cached to the
@@ -5463,9 +5763,14 @@ UI = {
         local layout = UI.LAYOUT
         local currcol = UI.CCOL.GREY
 		
-          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, "POPSLoader\nfor POPStarter", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, "Code by El_isra", currcol)
-          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, [[
+          Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, layout.TITLE_Y, 20, UI.SCR.X, 40, PLDR.L("POPSLoader\nfor POPStarter"), currcol)
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 60, 20, UI.SCR.X, 40, PLDR.L("Code by El_isra"), currcol)
+          -- The long-string literal keeps a trailing newline that the TSV key
+          -- lacks, so L() never matched and the body stayed English under every
+          -- language even though the full translation exists (sAGA's photo:
+          -- two Hungarian lines above an English block). Strip it for the
+          -- lookup; the renderer never needed the trailing blank line.
+          Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, layout.TITLE_Y + 80, 20, UI.SCR.X, UI.SCR.Y, PLDR.L((([[
 Design by Berion
 Scripts by nuno6573 and Ripto
 Based on Enceladus by Daniel Santos
@@ -5481,19 +5786,58 @@ If you bought it, you have been scammed
 
 Compatibility problems? Visit:
 youtube.com/@hugopocked6695
-]], currcol)
+]]):gsub("\n$", ""))), currcol)
+        -- Build-identity + boot-timing lines (bottom-anchored above the footer).
+        -- Line 1: the BUILD_INFO.txt stamp when that loose file sits next to the
+        -- ELF, else the embedded POPSLDR_VER. A normal one-file install ships NO
+        -- BUILD_INFO.txt (the zip buries it under source/), and the old block
+        -- gated BOTH lines on the stamp -- so testers saw neither the version nor
+        -- the boot timing this channel asks them to photograph (sAGA, EXP8).
+        local id_line = nil
         if UI.BUILD_INFO ~= nil and UI.BUILD_INFO.stamp ~= nil then
+          id_line = UI.BUILD_INFO.stamp
+        else
+          local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
+          if ver ~= "" then id_line = "POPSLoader "..ver end
+        end
+        -- Boot profile: the whole IRX block runs before the screen exists, so
+        -- this is a direct measure of the boot black screen and of which module
+        -- owns it. A tester can photograph it. NOT nested in the stamp gate.
+        local boot_line = nil
+        if type(PLDR.GetBootProfileText) == "function" then
+          local ok_b, boot_txt = pcall(PLDR.GetBootProfileText)
+          if ok_b and type(boot_txt) == "string" and boot_txt ~= "" then
+            boot_line = boot_txt
+          end
+        end
+        if id_line ~= nil or boot_line ~= nil then
+          local line_count = ((id_line ~= nil) and 1 or 0) + ((boot_line ~= nil) and 1 or 0)
+          local stack_h = 14 * (line_count - 1)
           local stamp_y = Round(layout.FOOTER_LABEL_Y - 18)
           -- The credits body above is TOP-anchored (fixed offsets from TITLE_Y) while
-          -- this stamp is BOTTOM-anchored (SCR.Y - 64). On the 64px-shorter NTSC screen
-          -- (SCR.Y=448 -> stamp_y=384) the stamp rides UP into the credits body and overlaps
-          -- it (provato HW report); PAL (512 -> 448) clears it. Floor the stamp just below
-          -- the body so it can't overlap on either standard. Body starts at TITLE_Y+80
-          -- (ui.lua:4812, spacing 20); the lowest drawn credits line lands ~TITLE_Y+80+14*20.
-          -- Floor a touch past that (16*20) -- a safe overshoot that stays on-screen (<448).
-          local credits_bottom = (layout.TITLE_Y + 80) + (16 * 20) + 4
+          -- this stack is BOTTOM-anchored. On the 64px-shorter NTSC screen the stack
+          -- rides UP into the credits body (provato HW report), so floor it just below
+          -- the body's lowest line (~TITLE_Y+80+14*20, spacing 20); PAL never floors.
+          -- The OLD floor (16*20+4) put line 1 at y=434 on NTSC: baseline (y+15,
+          -- fntsys) at row 449 = clipped on a 448-line framebuffer, and a second line
+          -- at y=448 = entirely off-screen. Invisible while the BUILD_INFO gate hid
+          -- this layout; fatal once EXP9 un-gated it (the boot line IS the tester
+          -- photo this channel asks for). Floor at 15*20: NTSC lines land at 410/424,
+          -- baselines 425/439 <= 447, with the body ending ~405-408 just above.
+          local credits_bottom = (layout.TITLE_Y + 80) + (15 * 20)
           if stamp_y < credits_bottom then stamp_y = credits_bottom end
-          Font.ftPrint(SFONT, layout.SAFE.L, stamp_y, 0, UI.SCR.X, 16, UI.BUILD_INFO.stamp, UI.CCOL.GREY)
+          -- Belt-and-braces: keep every baseline (y+15) on-screen whatever the floor
+          -- did -- a few px of body overlap beats losing the photo line entirely.
+          local max_first = UI.SCR.Y - 16 - stack_h
+          if stamp_y > max_first then stamp_y = max_first end
+          local line_y = stamp_y
+          if id_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, id_line, UI.CCOL.GREY)
+            line_y = line_y + 14
+          end
+          if boot_line ~= nil then
+            Font.ftPrint(SFONT, layout.SAFE.L, line_y, 0, UI.SCR.X, 16, boot_line, UI.CCOL.GREY)
+          end
         end
 
         if not UI.Credits._draw_only then
@@ -5657,6 +6001,26 @@ function UI.RunConfirm(lines)
     return false
   end
   if type(lines) ~= "table" then lines = { tostring(lines or "") } end
+  -- Translate FIRST, then split on \n into display lines. Callers pass ONE key
+  -- per SENTENCE (line breaks inside it), never one key per display line: this
+  -- prompt used to be four hand-wrapped fragments, each its own i18n key, so a
+  -- translator was handed "...They won't" / "return until you turn this back On
+  -- (or re-add them" / "manually)..." and had nowhere to put Hungarian word
+  -- order. sAGA: "why does this expression consist of three parts? the logic of
+  -- the translation falls apart completely." He was right. Splitting AFTER L()
+  -- also lets each language choose its own break points.
+  local disp = {}
+  for i = 1, #lines do
+    local s = PLDR.L(tostring(lines[i] or ""))
+    local start = 1
+    while true do
+      local nl = string.find(s, "\n", start, true)
+      if nl == nil then disp[#disp + 1] = string.sub(s, start); break end
+      disp[#disp + 1] = string.sub(s, start, nl - 1)
+      start = nl + 1
+    end
+  end
+  lines = disp
   local yes_mask, no_mask = UI.ConfirmPadMask(), UI.BackPadMask()
   local settle = 0
   while settle < 30 do
@@ -5870,9 +6234,9 @@ function UI.RunVideoModeConfirm(seconds)
   while f < total_frames do
     local remaining = math.max(0, math.ceil((total_frames - f) / FPS))
     Screen.clear(UI.SCR.BGCOL or Color.new(20, 30, 80))
-    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, "Keep this display mode?", UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, UI.SCR.Y_MID - 70, 8, UI.SCR.X, 32, PLDR.L("Keep this display mode?"), UI.CCOL.YELLOW)
     Font.ftPrint(BFONT, UI.SCR.X_MID, UI.SCR.Y_MID, 8, UI.SCR.X, 24, UI.PadHintPair("Keep", "Revert"), UI.CCOL.GREY)
-    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, "Reverting in "..tostring(remaining).."s if not confirmed", UI.CCOL.GREY)
+    Font.ftPrint(SFONT, UI.SCR.X_MID, UI.SCR.Y_MID + 54, 8, UI.SCR.X, 16, PLDR.L("Reverting in").." "..tostring(remaining).."s "..PLDR.L("if not confirmed"), UI.CCOL.GREY)
     Screen.flip()
     f = f + 1
     local okp, gp = pcall(Pads.get)
@@ -5969,7 +6333,15 @@ function UI.SmbFieldCycle(field, dir)
 end
 function UI.SmbFieldOpenEditor(field)
   local d = UI.SmbEnsureDraft()
-  local title = "Edit "..(UI._SMB_LABELS[field.key] or field.key)
+  -- Full-phrase template, NOT L("Edit").." "..L(field): concatenating a fixed
+  -- "Edit" translation in front of the field name produces wrong grammar in other
+  -- languages (sAGA #538: "szerkesztes NETMASK" instead of "NETMASK szerkesztese").
+  -- The translator supplies "Edit %s" with %s wherever the language needs it, and
+  -- the (also-translated) field name is substituted. pcall guards a malformed
+  -- translation (no %s) with the old concatenation so a bad string never crashes.
+  local field_label = PLDR.L(UI._SMB_LABELS[field.key] or field.key)
+  local fmt_ok, fmt_title = pcall(string.format, PLDR.L("Edit %s"), field_label)
+  local title = fmt_ok and fmt_title or (PLDR.L("Edit").." "..field_label)
   if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
     UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
       local dd = UI.SmbEnsureDraft()
@@ -5985,7 +6357,7 @@ function UI.SmbFieldOpenEditor(field)
       if tostring(cleaned) ~= typed and type(UI.Notif_queue) == "table" then
         -- Covers both a rejected shape (falls to the field default) and a
         -- whitespace trim -- either way the user sees the value actually kept.
-        UI.Notif_queue.add((UI._SMB_LABELS[field.key] or field.key).." adjusted -- using \""..tostring(cleaned).."\"", "warn")
+        UI.Notif_queue.add(PLDR.L(UI._SMB_LABELS[field.key] or field.key).." "..PLDR.L("adjusted -- using").." \""..tostring(cleaned).."\"", "warn")
       end
       dd[field.key] = cleaned
       UI.SmbDirty = true

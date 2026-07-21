@@ -1145,6 +1145,22 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
+  -- SIO2 EXCLUSION (NHDDL's model): mmceman and mx4sio_bd cannot coexist --
+  -- both drive the shared SIO2 bus, and sustained reads from one hang with the
+  -- other resident (HW: the MMCE scan froze at 48% after an MX4SIO page visit,
+  -- 2026-07-20; wLaunchELF_R3Z IOP-resets between these two for the same
+  -- reason). If MX4SIO already claimed the bus this session, DECLINE the MMCE
+  -- bring-up with a clear message instead of loading into a hang.
+  if type(System) == "table" and type(System.getSio2Owner) == "function" then
+    local ok_o, owner = pcall(System.getSio2Owner)
+    if ok_o and owner == "MX4SIO" then
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
+      end
+      return false
+    end
+  end
+
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
   -- (any of hdd*, pfs*, ata*, apa*) boots, the IRX is deferred and
@@ -2404,7 +2420,10 @@ local function NormalizeKeyboardLayout(value)
   if key == PLDR.KEYBOARD_LAYOUT_ABNT then
     return PLDR.KEYBOARD_LAYOUT_ABNT
   end
-  return PLDR.KEYBOARD_LAYOUT_ABC
+  -- QWERTY is the fallback for anything unrecognized, matching the fresh-profile
+  -- default below (R3Z3N review round 3: "Keyboard layout default should be
+  -- QWERTY"). It is what nearly every user expects; ABC remains selectable.
+  return PLDR.KEYBOARD_LAYOUT_QWERTY
 end
 
 -- ============================================================================
@@ -2417,8 +2436,8 @@ end
 -- MACHINE-ASSISTED and community-correctable (PLDR.I18N; EN is the source, so it
 -- has no table -- it is the fallback).
 PLDR.LANGUAGE_EN = "EN"
-PLDR.LANGUAGE_ORDER = {"EN", "FR", "DE", "PT", "ES", "IT"}
-PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Francais", DE = "Deutsch", PT = "Portugues", ES = "Espanol", IT = "Italiano" }
+PLDR.LANGUAGE_ORDER = {"EN", "FR", "DE", "PT", "ES", "IT", "HU"}
+PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Francais", DE = "Deutsch", PT = "Portugues", ES = "Espanol", IT = "Italiano", HU = "Magyar" }
 PLDR.LANGUAGE = PLDR.LANGUAGE or "EN"
 local function NormalizeLanguage(value)
   local key = string.upper(tostring(value or ""))
@@ -2436,14 +2455,14 @@ PLDR.I18N = {
     ["10M Full"] = "10M intégral",
     ["10M Half"] = "10M semi",
     ["APA / PFS (default)"] = "APA / PFS (défaut)",
-    ["ART (at root)"] = "ART (à la racine)",
+    ["About"] = "À propos",
     ["Actual output"] = "Sortie réelle",
     ["Adaptive BDMA"] = "BDMA adaptatif",
     ["Applying BDMA mode"] = "Application du mode BDMA",
     ["At least one device must stay on the carousel"] = "Au moins un appareil doit rester dans le carrousel",
     ["Auto (console region)"] = "Auto (région console)",
+    ["Automatic"] = "Automatique",
     ["BDMA Mode"] = "Mode BDMA",
-    ["BDMA and SMB modules -- from mc0: / mc1:. They won't"] = "modules BDMA et SMB -- de mc0: / mc1:. Ils ne",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "Échec du changement de mode BDMA\nBDMA rétabli ; autres réglages enregistrés",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF introuvable\nvérifié mc0:/BOOT et mc1:/BOOT",
     ["Back"] = "Retour",
@@ -2459,8 +2478,9 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Serveur injoignable\nvérifiez IP / Port serveur dans réglages SMB",
     ["Cancel"] = "Annuler",
     ["Carousel (default)"] = "Carrousel (défaut)",
-    ["Carousel Devices"] = "Appareils du carrousel",
     ["Center aligned"] = "Aligné au centre",
+    ["Checking POPSTARTER..."] = "Vérification de POPSTARTER...",
+    ["Checking the game file..."] = "Vérification du fichier du jeu...",
     ["Code by El_isra"] = "Code par El_isra",
     ["Confirm"] = "Confirmer",
     ["Connecting to SMB..."] = "Connexion à SMB...",
@@ -2476,13 +2496,14 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automatique)",
     ["DHCP failed\nset a static IP in SMB settings"] = "Échec DHCP\ndéfinissez une IP statique dans réglages SMB",
     ["DKWDRV Path"] = "Chemin DKWDRV",
+    ["Defaults restored"] = "Valeurs par défaut restaurées",
     ["Delete the POPSTARTER folder from the memory card?"] = "Supprimer le dossier POPSTARTER de la carte mémoire ?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Conception par Berion\nScripts par nuno6573 et Ripto\nBasé sur Enceladus par Daniel Santos\nTests par P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k et la communauté\n\nRemerciements spéciaux à :\nkrHACKen pour avoir créé POPStarter\nuyjulian, fjtrujy, HWC et d'autres pour leur aide constante\n\nCe programme est libre et open source\nSi vous l'avez payé, vous avez été arnaqué\n\nProblèmes de compatibilité ? Visitez :\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Liste des appareils",
     ["Disc (DKWDRV)"] = "Disque (DKWDRV)",
     ["Discard & Exit"] = "Abandonner et quitter",
     ["Display"] = "Affichage",
     ["Display reverted -- new mode wasn't confirmed"] = "Affichage rétabli -- nouveau mode non confirmé",
-    ["Don't Save"] = "Ne pas enregistrer",
     ["Edit DKWDRV Path"] = "Modifier le chemin DKWDRV",
     ["Edit POPStarter Path"] = "Modifier le chemin POPStarter",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Activez d'abord le dossier POPSTARTER\n(modules BDMA / SMB requis sur la carte mémoire)",
@@ -2513,12 +2534,14 @@ PLDR.I18N = {
     ["Hidden games"] = "Jeux masqués",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "Jeux masqués filtrés.\nAppuyez sur R3 pour les révéler, puis L3 pour démasquer.",
     ["Hidden games filtered out again"] = "Jeux masqués de nouveau filtrés",
-    ["Hide Text"] = "Masquer le texte",
     ["Hide UI Text"] = "Masquer le texte de l'interface",
+    ["How to hide a game"] = "Comment masquer un jeu",
     ["Installed"] = "Installé",
     ["Internal HDD"] = "HDD interne",
+    ["Keep"] = "Conserver",
     ["Keep this display mode?"] = "Conserver ce mode d'affichage ?",
     ["Keyboard Layout"] = "Disposition du clavier",
+    ["L3 on the game list"] = "L3 dans la liste des jeux",
     ["Launch"] = "Lancer",
     ["Launch DKWDRV?"] = "Lancer DKWDRV ?",
     ["Left aligned"] = "Aligné à gauche",
@@ -2535,6 +2558,7 @@ PLDR.I18N = {
     ["Menu"] = "Menu",
     ["Multi-disc games"] = "Jeux multi-disques",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS non pris en charge\nréglez Type d'adresse = IP + une IP serveur",
+    ["No"] = "Non",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Aucun appareil MMCE détecté\nvérifié mmce0: et mmce1:",
     ["No MX4SIO device detected"] = "Aucun appareil MX4SIO détecté",
     ["No Share selected"] = "Aucun partage sélectionné",
@@ -2555,17 +2579,13 @@ PLDR.I18N = {
     ["On (per-device)"] = "Activé (par appareil)",
     ["Opening SMB list..."] = "Ouverture de la liste SMB...",
     ["Overscan (CRT inset)"] = "Overscan (marge CRT)",
-    ["POPS (beside game)"] = "POPS (à côté du jeu)",
     ["POPSLoader\nfor POPStarter"] = "POPSLoader\npour POPStarter",
     ["POPSTARTER Folder"] = "Dossier POPSTARTER",
     ["POPSTARTER Path"] = "Chemin POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Dossier POPSTARTER supprimé de la carte mémoire",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Dossier POPSTARTER restauré sur la carte mémoire\n(réglez un mode BDMA pour rajouter les modules exFAT/SMB)",
-    ["Keep"] = "Conserver",
-    ["No"] = "Non",
     ["Press CIRCLE again to discard what you typed"] = "Appuyez de nouveau sur CIRCLE pour effacer votre saisie",
     ["Press CROSS again to discard what you typed"] = "Appuyez de nouveau sur CROSS pour effacer votre saisie",
-    ["Revert"] = "Rétablir",
     ["Rebuilding HDD game list..."] = "Reconstruction de la liste HDD...",
     ["Refreshing HDD list..."] = "Actualisation de la liste HDD...",
     ["Refreshing list..."] = "Actualisation de la liste...",
@@ -2574,6 +2594,7 @@ PLDR.I18N = {
     ["Reset Defaults"] = "Rétablir les valeurs par défaut",
     ["Retrying USB scan..."] = "Nouvel essai d'analyse USB...",
     ["Return to OSDSYS?"] = "Retourner à OSDSYS ?",
+    ["Revert"] = "Rétablir",
     ["Right aligned"] = "Aligné à droite",
     ["SMB / Network"] = "SMB / Réseau",
     ["SMB connect failed"] = "Échec de connexion SMB",
@@ -2586,8 +2607,6 @@ PLDR.I18N = {
     ["SMB modules failed to load"] = "Échec du chargement des modules SMB",
     ["Save"] = "Enregistrer",
     ["Save Changes"] = "Enregistrer les modifications",
-    ["Save Settings"] = "Enregistrer les réglages",
-    ["Save your changes before leaving?"] = "Enregistrer vos modifications avant de quitter ?",
     ["Saving settings"] = "Enregistrement des réglages",
     ["Saving..."] = "Enregistrement...",
     ["Saving/Applying..."] = "Enregistrement/Application...",
@@ -2601,25 +2620,22 @@ PLDR.I18N = {
     ["Select a share"] = "Sélectionnez un partage",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Le serveur a refusé SMBv1\nactivez la prise en charge SMBv1 sur l'hôte",
     ["Settings"] = "Réglages",
-    ["Automatic"] = "Automatique",
-    ["Defaults restored"] = "Valeurs par défaut restaurées",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Partage introuvable\nvérifiez le nom du partage (l'hôte doit autoriser SMB1)",
     ["Show all discs"] = "Afficher tous les disques",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Jeux masqués affichés (grisés) -- L3 pour démasquer",
     ["Shown"] = "Affiché",
+    ["Staging drivers for this device"] = "Préparation des pilotes pour cet appareil",
+    ["Starting the game..."] = "Démarrage du jeu...",
     ["Startup"] = "Démarrage",
     ["Static (manual)"] = "Statique (manuel)",
     ["Storage"] = "Stockage",
     ["This backend isn't implemented yet"] = "Ce backend n'est pas encore implémenté",
-    ["This removes the POPSTARTER pack -- including the"] = "Ceci supprime le pack POPSTARTER -- y compris les",
     ["UI text hidden"] = "Texte de l'interface masqué",
     ["UI text shown"] = "Texte de l'interface affiché",
     ["Video Standard"] = "Standard vidéo",
     ["Visible (manage)"] = "Visible (gérer)",
     ["Working..."] = "En cours...",
     ["Yes"] = "Oui",
-    ["manually). Your POPSLoader settings are kept."] = "manuellement). Vos réglages POPSLoader sont conservés.",
-    ["return until you turn this back On (or re-add them"] = "reviendront pas tant que vous ne réactivez pas (ou rajoutez",
   },
   DE = {
     ["(not set)"] = "(nicht gesetzt)",
@@ -2630,14 +2646,14 @@ PLDR.I18N = {
     ["10M Full"] = "10M Voll",
     ["10M Half"] = "10M Halb",
     ["APA / PFS (default)"] = "APA / PFS (Standard)",
-    ["ART (at root)"] = "ART (im Stamm)",
+    ["About"] = "Über",
     ["Actual output"] = "Tatsächliche Ausgabe",
     ["Adaptive BDMA"] = "Adaptives BDMA",
     ["Applying BDMA mode"] = "BDMA-Modus wird angewendet",
     ["At least one device must stay on the carousel"] = "Mindestens ein Gerät muss im Karussell bleiben",
     ["Auto (console region)"] = "Auto (Konsolenregion)",
+    ["Automatic"] = "Automatisch",
     ["BDMA Mode"] = "BDMA-Modus",
-    ["BDMA and SMB modules -- from mc0: / mc1:. They won't"] = "BDMA- und SMB-Module -- von mc0: / mc1:. Sie kehren nicht",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "BDMA-Moduswechsel nicht angewendet\nBDMA zurückgesetzt; andere Einstellungen gespeichert",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF nicht gefunden\nmc0:/BOOT und mc1:/BOOT geprüft",
     ["Back"] = "Zurück",
@@ -2652,8 +2668,9 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Server nicht erreichbar\nServer-IP / Port in SMB-Einstellungen prüfen",
     ["Cancel"] = "Abbrechen",
     ["Carousel (default)"] = "Karussell (Standard)",
-    ["Carousel Devices"] = "Karussell-Geräte",
     ["Center aligned"] = "Zentriert",
+    ["Checking POPSTARTER..."] = "POPSTARTER wird geprüft...",
+    ["Checking the game file..."] = "Spieldatei wird geprüft...",
     ["Code by El_isra"] = "Code von El_isra",
     ["Confirm"] = "Bestätigen",
     ["Connecting to SMB..."] = "Verbinde mit SMB...",
@@ -2669,12 +2686,13 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automatisch)",
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP fehlgeschlagen\nstatische IP in SMB-Einstellungen setzen",
     ["DKWDRV Path"] = "DKWDRV-Pfad",
+    ["Defaults restored"] = "Standardwerte wiederhergestellt",
     ["Delete the POPSTARTER folder from the memory card?"] = "POPSTARTER-Ordner von der Memory Card löschen?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design von Berion\nSkripte von nuno6573 und Ripto\nBasiert auf Enceladus von Daniel Santos\nGetestet von P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k und Community\n\nBesonderer Dank an:\nkrHACKen für POPStarter\nuyjulian, fjtrujy, HWC und andere für die stete Hilfe\n\nDieses Programm ist frei und Open Source\nWenn du dafür bezahlt hast, wurdest du betrogen\n\nKompatibilitätsprobleme? Besuche:\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Geräteliste",
     ["Discard & Exit"] = "Verwerfen & Beenden",
     ["Display"] = "Anzeige",
     ["Display reverted -- new mode wasn't confirmed"] = "Anzeige zurückgesetzt -- neuer Modus nicht bestätigt",
-    ["Don't Save"] = "Nicht speichern",
     ["Edit DKWDRV Path"] = "DKWDRV-Pfad bearbeiten",
     ["Edit POPStarter Path"] = "POPStarter-Pfad bearbeiten",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Erst POPSTARTER-Ordner aktivieren\n(BDMA-/SMB-Module müssen auf der Memory Card liegen)",
@@ -2704,12 +2722,14 @@ PLDR.I18N = {
     ["Hidden games"] = "Ausgeblendete Spiele",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "Ausgeblendete Spiele sind gefiltert.\nR3 zum Anzeigen, dann L3 zum Einblenden.",
     ["Hidden games filtered out again"] = "Ausgeblendete Spiele wieder gefiltert",
-    ["Hide Text"] = "Text ausblenden",
     ["Hide UI Text"] = "UI-Text ausblenden",
+    ["How to hide a game"] = "Ein Spiel ausblenden",
     ["Installed"] = "Installiert",
     ["Internal HDD"] = "Interne HDD",
+    ["Keep"] = "Behalten",
     ["Keep this display mode?"] = "Diesen Anzeigemodus behalten?",
     ["Keyboard Layout"] = "Tastaturlayout",
+    ["L3 on the game list"] = "L3 in der Spieleliste",
     ["Launch"] = "Starten",
     ["Launch DKWDRV?"] = "DKWDRV starten?",
     ["Left aligned"] = "Linksbündig",
@@ -2725,6 +2745,7 @@ PLDR.I18N = {
     ["Menu"] = "Menü",
     ["Multi-disc games"] = "Mehrfach-Disc-Spiele",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS wird nicht unterstützt\nAdresstyp = IP + Server-IP setzen",
+    ["No"] = "Nein",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Kein MMCE-Gerät erkannt\nmmce0: und mmce1: geprüft",
     ["No MX4SIO device detected"] = "Kein MX4SIO-Gerät erkannt",
     ["No Share selected"] = "Keine Freigabe ausgewählt",
@@ -2745,17 +2766,13 @@ PLDR.I18N = {
     ["On (per-device)"] = "An (pro Gerät)",
     ["Opening SMB list..."] = "SMB-Liste wird geöffnet...",
     ["Overscan (CRT inset)"] = "Overscan (CRT-Einzug)",
-    ["POPS (beside game)"] = "POPS (neben Spiel)",
     ["POPSLoader\nfor POPStarter"] = "POPSLoader\nfür POPStarter",
     ["POPSTARTER Folder"] = "POPSTARTER-Ordner",
     ["POPSTARTER Path"] = "POPSTARTER-Pfad",
     ["POPSTARTER folder deleted from the memory card"] = "POPSTARTER-Ordner von der Memory Card gelöscht",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "POPSTARTER-Ordner auf der Memory Card wiederhergestellt\n(BDMA-Modus setzen, um exFAT/SMB-Module wieder hinzuzufügen)",
-    ["Keep"] = "Behalten",
-    ["No"] = "Nein",
     ["Press CIRCLE again to discard what you typed"] = "CIRCLE erneut drücken, um Eingabe zu verwerfen",
     ["Press CROSS again to discard what you typed"] = "CROSS erneut drücken, um Eingabe zu verwerfen",
-    ["Revert"] = "Zurücksetzen",
     ["Rebuilding HDD game list..."] = "HDD-Spieleliste wird neu erstellt...",
     ["Refreshing HDD list..."] = "HDD-Liste wird aktualisiert...",
     ["Refreshing list..."] = "Liste wird aktualisiert...",
@@ -2764,6 +2781,7 @@ PLDR.I18N = {
     ["Reset Defaults"] = "Standardwerte zurücksetzen",
     ["Retrying USB scan..."] = "USB-Scan wird wiederholt...",
     ["Return to OSDSYS?"] = "Zurück zu OSDSYS?",
+    ["Revert"] = "Zurücksetzen",
     ["Right aligned"] = "Rechtsbündig",
     ["SMB / Network"] = "SMB / Netzwerk",
     ["SMB connect failed"] = "SMB-Verbindung fehlgeschlagen",
@@ -2776,8 +2794,6 @@ PLDR.I18N = {
     ["SMB modules failed to load"] = "SMB-Module konnten nicht geladen werden",
     ["Save"] = "Speichern",
     ["Save Changes"] = "Änderungen speichern",
-    ["Save Settings"] = "Einstellungen speichern",
-    ["Save your changes before leaving?"] = "Änderungen vor dem Verlassen speichern?",
     ["Saving settings"] = "Einstellungen werden gespeichert",
     ["Saving..."] = "Wird gespeichert...",
     ["Saving/Applying..."] = "Speichern/Anwenden...",
@@ -2791,17 +2807,16 @@ PLDR.I18N = {
     ["Select a share"] = "Freigabe auswählen",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Server hat SMBv1 abgelehnt\nSMBv1-Unterstützung am Host aktivieren",
     ["Settings"] = "Einstellungen",
-    ["Automatic"] = "Automatisch",
-    ["Defaults restored"] = "Standardwerte wiederhergestellt",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Freigabe nicht gefunden\nFreigabename prüfen (Host muss SMB1 erlauben)",
     ["Show all discs"] = "Alle Discs anzeigen",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Zeige ausgeblendete Spiele (gedimmt) -- L3 zum Einblenden",
     ["Shown"] = "Eingeblendet",
+    ["Staging drivers for this device"] = "Treiber für dieses Gerät werden vorbereitet",
+    ["Starting the game..."] = "Spiel wird gestartet...",
     ["Startup"] = "Start",
     ["Static (manual)"] = "Statisch (manuell)",
     ["Storage"] = "Speicher",
     ["This backend isn't implemented yet"] = "Dieses Backend ist noch nicht implementiert",
-    ["This removes the POPSTARTER pack -- including the"] = "Dies entfernt das POPSTARTER-Paket -- einschließlich der",
     ["UI text hidden"] = "UI-Text ausgeblendet",
     ["UI text shown"] = "UI-Text eingeblendet",
     ["Video Standard"] = "Videostandard",
@@ -2809,22 +2824,20 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Sichtbar (verwalten)",
     ["Working..."] = "Arbeite...",
     ["Yes"] = "Ja",
-    ["manually). Your POPSLoader settings are kept."] = "manuell). Deine POPSLoader-Einstellungen bleiben erhalten.",
-    ["return until you turn this back On (or re-add them"] = "zurück, bis du dies wieder auf An stellst (oder sie neu",
   },
   PT = {
     ["(not set)"] = "(não definido)",
     ["(share root)"] = "(raiz do share)",
     ["(unknown)"] = "(desconhecido)",
     ["APA / PFS (default)"] = "APA / PFS (padrão)",
-    ["ART (at root)"] = "ART (na raiz)",
+    ["About"] = "Sobre",
     ["Actual output"] = "Saída real",
     ["Adaptive BDMA"] = "BDMA Adaptativo",
     ["Applying BDMA mode"] = "Aplicando modo BDMA",
     ["At least one device must stay on the carousel"] = "Ao menos um dispositivo deve ficar no carrossel",
     ["Auto (console region)"] = "Auto (região do console)",
+    ["Automatic"] = "Automático",
     ["BDMA Mode"] = "Modo BDMA",
-    ["BDMA and SMB modules -- from mc0: / mc1:. They won't"] = "módulos BDMA e SMB -- de mc0: / mc1:. Não vão",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "Mudança de modo BDMA não aplicada\nBDMA revertido; outras configurações foram salvas",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF não encontrado\nverificado mc0:/BOOT e mc1:/BOOT",
     ["Back"] = "Voltar",
@@ -2839,8 +2852,9 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Não foi possível acessar o servidor\nverifique o IP / Porta do servidor nas configurações SMB",
     ["Cancel"] = "Cancelar",
     ["Carousel (default)"] = "Carrossel (padrão)",
-    ["Carousel Devices"] = "Dispositivos do carrossel",
     ["Center aligned"] = "Alinhado ao centro",
+    ["Checking POPSTARTER..."] = "A verificar o POPSTARTER...",
+    ["Checking the game file..."] = "A verificar o ficheiro do jogo...",
     ["Code by El_isra"] = "Código por El_isra",
     ["Confirm"] = "Confirmar",
     ["Connecting to SMB..."] = "Conectando ao SMB...",
@@ -2856,13 +2870,14 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automático)",
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP falhou\ndefina um IP estático nas configurações SMB",
     ["DKWDRV Path"] = "Caminho do DKWDRV",
+    ["Defaults restored"] = "Padrões restaurados",
     ["Delete the POPSTARTER folder from the memory card?"] = "Excluir a pasta POPSTARTER do cartão de memória?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
     ["Discard & Exit"] = "Descartar e Sair",
     ["Display"] = "Tela",
     ["Display reverted -- new mode wasn't confirmed"] = "Tela revertida -- novo modo não confirmado",
-    ["Don't Save"] = "Não salvar",
     ["Edit DKWDRV Path"] = "Editar caminho do DKWDRV",
     ["Edit POPStarter Path"] = "Editar caminho do POPStarter",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Ative a pasta POPSTARTER primeiro\n(módulos BDMA / SMB devem ficar no cartão de memória)",
@@ -2891,12 +2906,14 @@ PLDR.I18N = {
     ["Hidden games"] = "Jogos ocultos",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "Jogos ocultos estão filtrados.\nPressione R3 para revelá-los, depois L3 para reexibir.",
     ["Hidden games filtered out again"] = "Jogos ocultos filtrados novamente",
-    ["Hide Text"] = "Ocultar texto",
     ["Hide UI Text"] = "Ocultar texto da interface",
+    ["How to hide a game"] = "Como ocultar um jogo",
     ["Installed"] = "Instalado",
     ["Internal HDD"] = "HDD interno",
+    ["Keep"] = "Manter",
     ["Keep this display mode?"] = "Manter este modo de tela?",
     ["Keyboard Layout"] = "Layout do teclado",
+    ["L3 on the game list"] = "L3 na lista de jogos",
     ["Launch"] = "Iniciar",
     ["Launch DKWDRV?"] = "Iniciar DKWDRV?",
     ["Left aligned"] = "Alinhado à esquerda",
@@ -2913,6 +2930,7 @@ PLDR.I18N = {
     ["Menu"] = "Menu",
     ["Multi-disc games"] = "Jogos multi-disco",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor",
+    ["No"] = "Não",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Nenhum dispositivo MMCE detectado\nverificado mmce0: e mmce1:",
     ["No MX4SIO device detected"] = "Nenhum dispositivo MX4SIO detectado",
     ["No Share selected"] = "Nenhum Share selecionado",
@@ -2933,17 +2951,13 @@ PLDR.I18N = {
     ["On (per-device)"] = "Ligado (por dispositivo)",
     ["Opening SMB list..."] = "Abrindo lista SMB...",
     ["Overscan (CRT inset)"] = "Overscan (recuo CRT)",
-    ["POPS (beside game)"] = "POPS (ao lado do jogo)",
     ["POPSLoader\nfor POPStarter"] = "POPSLoader\npara POPStarter",
     ["POPSTARTER Folder"] = "Pasta POPSTARTER",
     ["POPSTARTER Path"] = "Caminho do POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Pasta POPSTARTER excluída do cartão de memória",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)",
-    ["Keep"] = "Manter",
-    ["No"] = "Não",
     ["Press CIRCLE again to discard what you typed"] = "Pressione CIRCLE novamente para descartar o que digitou",
     ["Press CROSS again to discard what you typed"] = "Pressione CROSS novamente para descartar o que digitou",
-    ["Revert"] = "Reverter",
     ["Rebuilding HDD game list..."] = "Reconstruindo lista de jogos do HDD...",
     ["Refreshing HDD list..."] = "Atualizando lista do HDD...",
     ["Refreshing list..."] = "Atualizando lista...",
@@ -2952,6 +2966,7 @@ PLDR.I18N = {
     ["Reset Defaults"] = "Restaurar padrões",
     ["Retrying USB scan..."] = "Tentando escanear USB novamente...",
     ["Return to OSDSYS?"] = "Voltar ao OSDSYS?",
+    ["Revert"] = "Reverter",
     ["Right aligned"] = "Alinhado à direita",
     ["SMB / Network"] = "SMB / Rede",
     ["SMB connect failed"] = "Falha na conexão SMB",
@@ -2964,8 +2979,6 @@ PLDR.I18N = {
     ["SMB modules failed to load"] = "Falha ao carregar módulos SMB",
     ["Save"] = "Salvar",
     ["Save Changes"] = "Salvar alterações",
-    ["Save Settings"] = "Salvar configurações",
-    ["Save your changes before leaving?"] = "Salvar suas alterações antes de sair?",
     ["Saving settings"] = "Salvando configurações",
     ["Saving..."] = "Salvando...",
     ["Saving/Applying..."] = "Salvando/Aplicando...",
@@ -2979,17 +2992,16 @@ PLDR.I18N = {
     ["Select a share"] = "Selecione um share",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Servidor recusou SMBv1\native o suporte a SMBv1 no host",
     ["Settings"] = "Configurações",
-    ["Automatic"] = "Automático",
-    ["Defaults restored"] = "Padrões restaurados",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)",
     ["Show all discs"] = "Mostrar todos os discos",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir",
     ["Shown"] = "Exibido",
+    ["Staging drivers for this device"] = "A preparar os controladores para este dispositivo",
+    ["Starting the game..."] = "A iniciar o jogo...",
     ["Startup"] = "Inicialização",
     ["Static (manual)"] = "Estático (manual)",
     ["Storage"] = "Armazenamento",
     ["This backend isn't implemented yet"] = "Este backend ainda não foi implementado",
-    ["This removes the POPSTARTER pack -- including the"] = "Isso remove o pacote POPSTARTER -- incluindo os",
     ["UI text hidden"] = "Texto da interface ocultado",
     ["UI text shown"] = "Texto da interface exibido",
     ["Video Standard"] = "Padrão de vídeo",
@@ -2997,8 +3009,6 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visível (gerenciar)",
     ["Working..."] = "Trabalhando...",
     ["Yes"] = "Sim",
-    ["manually). Your POPSLoader settings are kept."] = "manualmente). Suas configurações do POPSLoader são mantidas.",
-    ["return until you turn this back On (or re-add them"] = "voltar até você ligar isso de novo (ou readicioná-los",
   },
   ES = {
     ["(not set)"] = "(sin definir)",
@@ -3009,14 +3019,14 @@ PLDR.I18N = {
     ["10M Full"] = "10M completo",
     ["10M Half"] = "10M medio",
     ["APA / PFS (default)"] = "APA / PFS (predet.)",
-    ["ART (at root)"] = "ART (en la raíz)",
+    ["About"] = "Acerca de",
     ["Actual output"] = "Salida real",
     ["Adaptive BDMA"] = "BDMA adaptativo",
     ["Applying BDMA mode"] = "Aplicando modo BDMA",
     ["At least one device must stay on the carousel"] = "Al menos un dispositivo debe permanecer en el carrusel",
     ["Auto (console region)"] = "Auto (región de consola)",
+    ["Automatic"] = "Automático",
     ["BDMA Mode"] = "Modo BDMA",
-    ["BDMA and SMB modules -- from mc0: / mc1:. They won't"] = "módulos BDMA y SMB -- desde mc0: / mc1:. No",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "No se aplicó el cambio de modo BDMA\nBDMA revertido; se guardaron los demás ajustes",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF no encontrado\nse revisó mc0:/BOOT y mc1:/BOOT",
     ["Back"] = "Atrás",
@@ -3032,8 +3042,9 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "No se puede contactar al servidor\nrevisa IP / puerto del servidor en ajustes SMB",
     ["Cancel"] = "Cancelar",
     ["Carousel (default)"] = "Carrusel (predet.)",
-    ["Carousel Devices"] = "Dispositivos del carrusel",
     ["Center aligned"] = "Centrado",
+    ["Checking POPSTARTER..."] = "Comprobando POPSTARTER...",
+    ["Checking the game file..."] = "Comprobando el archivo del juego...",
     ["Code by El_isra"] = "Código de El_isra",
     ["Confirm"] = "Confirmar",
     ["Connecting to SMB..."] = "Conectando a SMB...",
@@ -3049,13 +3060,14 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automático)",
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP falló\nconfigura una IP estática en ajustes SMB",
     ["DKWDRV Path"] = "Ruta de DKWDRV",
+    ["Defaults restored"] = "Valores predeterminados restaurados",
     ["Delete the POPSTARTER folder from the memory card?"] = "¿Eliminar la carpeta POPSTARTER de la tarjeta de memoria?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Diseño de Berion\nScripts de nuno6573 y Ripto\nBasado en Enceladus de Daniel Santos\nPruebas de P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k y la comunidad\n\nAgradecimientos especiales a:\nkrHACKen por crear POPStarter\nuyjulian, fjtrujy, HWC y otros por ayudar siempre\n\nEste programa es libre y de código abierto\nSi lo compraste, te estafaron\n\n¿Problemas de compatibilidad? Visita:\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
     ["Discard & Exit"] = "Descartar y salir",
     ["Display"] = "Pantalla",
     ["Display reverted -- new mode wasn't confirmed"] = "Pantalla revertida -- el nuevo modo no se confirmó",
-    ["Don't Save"] = "No guardar",
     ["Edit DKWDRV Path"] = "Editar ruta de DKWDRV",
     ["Edit POPStarter Path"] = "Editar ruta de POPStarter",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Activa primero la carpeta POPSTARTER\n(los módulos BDMA / SMB deben estar en la tarjeta de memoria)",
@@ -3085,12 +3097,14 @@ PLDR.I18N = {
     ["Hidden games"] = "Juegos ocultos",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "Los juegos ocultos están filtrados.\nPulsa R3 para revelarlos, luego L3 para mostrarlos.",
     ["Hidden games filtered out again"] = "Juegos ocultos filtrados de nuevo",
-    ["Hide Text"] = "Ocultar texto",
     ["Hide UI Text"] = "Ocultar texto de interfaz",
+    ["How to hide a game"] = "Cómo ocultar un juego",
     ["Installed"] = "Instalado",
     ["Internal HDD"] = "HDD interno",
+    ["Keep"] = "Mantener",
     ["Keep this display mode?"] = "¿Mantener este modo de pantalla?",
     ["Keyboard Layout"] = "Distribución del teclado",
+    ["L3 on the game list"] = "L3 en la lista de juegos",
     ["Launch"] = "Iniciar",
     ["Launch DKWDRV?"] = "¿Iniciar DKWDRV?",
     ["Left aligned"] = "Alineado a la izquierda",
@@ -3107,6 +3121,7 @@ PLDR.I18N = {
     ["Menu"] = "Menú",
     ["Multi-disc games"] = "Juegos multidisco",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS no es compatible\npon Tipo de dirección = IP + una IP de servidor",
+    ["No"] = "No",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "No se detectó dispositivo MMCE\nse revisó mmce0: y mmce1:",
     ["No MX4SIO device detected"] = "No se detectó dispositivo MX4SIO",
     ["No Share selected"] = "Sin recurso seleccionado",
@@ -3127,17 +3142,13 @@ PLDR.I18N = {
     ["On (per-device)"] = "Activado (por dispositivo)",
     ["Opening SMB list..."] = "Abriendo lista SMB...",
     ["Overscan (CRT inset)"] = "Overscan (margen CRT)",
-    ["POPS (beside game)"] = "POPS (junto al juego)",
     ["POPSLoader\nfor POPStarter"] = "POPSLoader\npara POPStarter",
     ["POPSTARTER Folder"] = "Carpeta POPSTARTER",
     ["POPSTARTER Path"] = "Ruta de POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Carpeta POPSTARTER eliminada de la tarjeta de memoria",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Carpeta POPSTARTER restaurada en la tarjeta de memoria\n(elige un modo BDMA para volver a añadir los módulos exFAT/SMB)",
-    ["Keep"] = "Mantener",
-    ["No"] = "No",
     ["Press CIRCLE again to discard what you typed"] = "Pulsa CIRCLE de nuevo para descartar lo escrito",
     ["Press CROSS again to discard what you typed"] = "Pulsa CROSS de nuevo para descartar lo escrito",
-    ["Revert"] = "Revertir",
     ["Rebuilding HDD game list..."] = "Recreando lista de juegos HDD...",
     ["Refreshing HDD list..."] = "Actualizando lista HDD...",
     ["Refreshing list..."] = "Actualizando lista...",
@@ -3146,6 +3157,7 @@ PLDR.I18N = {
     ["Reset Defaults"] = "Restablecer valores",
     ["Retrying USB scan..."] = "Reintentando escaneo USB...",
     ["Return to OSDSYS?"] = "¿Volver a OSDSYS?",
+    ["Revert"] = "Revertir",
     ["Right aligned"] = "Alineado a la derecha",
     ["SMB / Network"] = "SMB / Red",
     ["SMB connect failed"] = "Falló la conexión SMB",
@@ -3158,8 +3170,6 @@ PLDR.I18N = {
     ["SMB modules failed to load"] = "No se pudieron cargar los módulos SMB",
     ["Save"] = "Guardar",
     ["Save Changes"] = "Guardar cambios",
-    ["Save Settings"] = "Guardar ajustes",
-    ["Save your changes before leaving?"] = "¿Guardar los cambios antes de salir?",
     ["Saving settings"] = "Guardando ajustes",
     ["Saving..."] = "Guardando...",
     ["Saving/Applying..."] = "Guardando/Aplicando...",
@@ -3173,39 +3183,36 @@ PLDR.I18N = {
     ["Select a share"] = "Selecciona un recurso",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "El servidor rechazó SMBv1\nactiva la compatibilidad con SMBv1 en el host",
     ["Settings"] = "Ajustes",
-    ["Automatic"] = "Automático",
-    ["Defaults restored"] = "Valores predeterminados restaurados",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Recurso no encontrado\nrevisa el nombre del recurso (el host debe permitir SMB1)",
     ["Show all discs"] = "Mostrar todos los discos",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Mostrando juegos ocultos (atenuados) -- pulsa L3 para mostrarlos",
     ["Shown"] = "Mostrado",
+    ["Staging drivers for this device"] = "Preparando los controladores para este dispositivo",
+    ["Starting the game..."] = "Iniciando el juego...",
     ["Startup"] = "Arranque",
     ["Static (manual)"] = "Estática (manual)",
     ["Storage"] = "Almacenamiento",
     ["This backend isn't implemented yet"] = "Este backend aún no está implementado",
-    ["This removes the POPSTARTER pack -- including the"] = "Esto elimina el paquete POPSTARTER -- incluidos los",
     ["UI text hidden"] = "Texto de interfaz oculto",
     ["UI text shown"] = "Texto de interfaz mostrado",
     ["Video Standard"] = "Estándar de vídeo",
     ["Visible (manage)"] = "Visible (gestionar)",
     ["Working..."] = "Trabajando...",
     ["Yes"] = "Sí",
-    ["manually). Your POPSLoader settings are kept."] = "manualmente). Tus ajustes de POPSLoader se conservan.",
-    ["return until you turn this back On (or re-add them"] = "volverán hasta que lo actives de nuevo (o los vuelvas a añadir",
   },
   IT = {
     ["(not set)"] = "(non impostato)",
     ["(share root)"] = "(radice condivisione)",
     ["(unknown)"] = "(sconosciuto)",
     ["APA / PFS (default)"] = "APA / PFS (predefinito)",
-    ["ART (at root)"] = "ART (nella radice)",
+    ["About"] = "Informazioni",
     ["Actual output"] = "Uscita effettiva",
     ["Adaptive BDMA"] = "BDMA adattivo",
     ["Applying BDMA mode"] = "Applicazione modalità BDMA",
     ["At least one device must stay on the carousel"] = "Almeno un dispositivo deve restare nel carosello",
     ["Auto (console region)"] = "Auto (regione console)",
+    ["Automatic"] = "Automatico",
     ["BDMA Mode"] = "Modalità BDMA",
-    ["BDMA and SMB modules -- from mc0: / mc1:. They won't"] = "moduli BDMA e SMB -- da mc0: / mc1:. Non",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "Modifica modalità BDMA non applicata\nBDMA ripristinato; altre impostazioni salvate",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF non trovato\ncontrollati mc0:/BOOT e mc1:/BOOT",
     ["Back"] = "Indietro",
@@ -3220,8 +3227,9 @@ PLDR.I18N = {
     ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Impossibile raggiungere il server\ncontrolla IP server / Porta nelle impostazioni SMB",
     ["Cancel"] = "Annulla",
     ["Carousel (default)"] = "Carosello (predefinito)",
-    ["Carousel Devices"] = "Dispositivi carosello",
     ["Center aligned"] = "Allineato al centro",
+    ["Checking POPSTARTER..."] = "Verifica di POPSTARTER...",
+    ["Checking the game file..."] = "Verifica del file di gioco...",
     ["Code by El_isra"] = "Codice di El_isra",
     ["Confirm"] = "Conferma",
     ["Connecting to SMB..."] = "Connessione a SMB...",
@@ -3237,13 +3245,14 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automatico)",
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP non riuscito\nimposta un IP statico nelle impostazioni SMB",
     ["DKWDRV Path"] = "Percorso DKWDRV",
+    ["Defaults restored"] = "Predefiniti ripristinati",
     ["Delete the POPSTARTER folder from the memory card?"] = "Eliminare la cartella POPSTARTER dalla memory card?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design di Berion\nScript di nuno6573 e Ripto\nBasato su Enceladus di Daniel Santos\nTest di P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e la Community\n\nRingraziamenti speciali a:\nkrHACKen per aver creato POPStarter\nuyjulian, fjtrujy, HWC e altri per l'aiuto costante\n\nQuesto programma è gratuito e open source\nSe l'hai pagato, sei stato truffato\n\nProblemi di compatibilità? Visita:\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Elenco dispositivi",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
     ["Discard & Exit"] = "Scarta ed esci",
     ["Display"] = "Schermo",
     ["Display reverted -- new mode wasn't confirmed"] = "Schermo ripristinato -- nuova modalità non confermata",
-    ["Don't Save"] = "Non salvare",
     ["Edit DKWDRV Path"] = "Modifica percorso DKWDRV",
     ["Edit POPStarter Path"] = "Modifica percorso POPStarter",
     ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Attiva prima la cartella POPSTARTER\n(i moduli BDMA / SMB devono stare sulla memory card)",
@@ -3274,12 +3283,14 @@ PLDR.I18N = {
     ["Hidden games"] = "Giochi nascosti",
     ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "I giochi nascosti sono filtrati.\nPremi R3 per mostrarli, poi L3 per renderli visibili.",
     ["Hidden games filtered out again"] = "Giochi nascosti di nuovo filtrati",
-    ["Hide Text"] = "Nascondi testo",
     ["Hide UI Text"] = "Nascondi testo UI",
+    ["How to hide a game"] = "Come nascondere un gioco",
     ["Installed"] = "Installati",
     ["Internal HDD"] = "HDD interno",
+    ["Keep"] = "Mantieni",
     ["Keep this display mode?"] = "Mantenere questa modalità schermo?",
     ["Keyboard Layout"] = "Layout tastiera",
+    ["L3 on the game list"] = "L3 nell'elenco giochi",
     ["Launch"] = "Avvia",
     ["Launch DKWDRV?"] = "Avviare DKWDRV?",
     ["Left aligned"] = "Allineato a sinistra",
@@ -3295,6 +3306,7 @@ PLDR.I18N = {
     ["Menu"] = "Menu",
     ["Multi-disc games"] = "Giochi multi-disco",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS non è supportato\nimposta Tipo indirizzo = IP + un IP server",
+    ["No"] = "No",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Nessun dispositivo MMCE rilevato\ncontrollati mmce0: e mmce1:",
     ["No MX4SIO device detected"] = "Nessun dispositivo MX4SIO rilevato",
     ["No Share selected"] = "Nessuna condivisione selezionata",
@@ -3315,17 +3327,13 @@ PLDR.I18N = {
     ["On (per-device)"] = "On (per dispositivo)",
     ["Opening SMB list..."] = "Apertura lista SMB...",
     ["Overscan (CRT inset)"] = "Overscan (rientro CRT)",
-    ["POPS (beside game)"] = "POPS (accanto al gioco)",
     ["POPSLoader\nfor POPStarter"] = "POPSLoader\nper POPStarter",
     ["POPSTARTER Folder"] = "Cartella POPSTARTER",
     ["POPSTARTER Path"] = "Percorso POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Cartella POPSTARTER eliminata dalla memory card",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Cartella POPSTARTER ripristinata sulla memory card\n(imposta una modalità BDMA per riaggiungere i moduli exFAT/SMB)",
-    ["Keep"] = "Mantieni",
-    ["No"] = "No",
     ["Press CIRCLE again to discard what you typed"] = "Premi di nuovo CIRCLE per scartare il testo digitato",
     ["Press CROSS again to discard what you typed"] = "Premi di nuovo CROSS per scartare il testo digitato",
-    ["Revert"] = "Ripristina",
     ["Rebuilding HDD game list..."] = "Ricreazione lista giochi HDD...",
     ["Refreshing HDD list..."] = "Aggiornamento lista HDD...",
     ["Refreshing list..."] = "Aggiornamento lista...",
@@ -3334,6 +3342,7 @@ PLDR.I18N = {
     ["Reset Defaults"] = "Ripristina predefiniti",
     ["Retrying USB scan..."] = "Nuovo tentativo scansione USB...",
     ["Return to OSDSYS?"] = "Tornare a OSDSYS?",
+    ["Revert"] = "Ripristina",
     ["Right aligned"] = "Allineato a destra",
     ["SMB / Network"] = "SMB / Rete",
     ["SMB connect failed"] = "Connessione SMB non riuscita",
@@ -3346,8 +3355,6 @@ PLDR.I18N = {
     ["SMB modules failed to load"] = "Caricamento moduli SMB non riuscito",
     ["Save"] = "Salva",
     ["Save Changes"] = "Salva modifiche",
-    ["Save Settings"] = "Salva impostazioni",
-    ["Save your changes before leaving?"] = "Salvare le modifiche prima di uscire?",
     ["Saving settings"] = "Salvataggio impostazioni",
     ["Saving..."] = "Salvataggio...",
     ["Saving/Applying..."] = "Salvataggio/Applicazione...",
@@ -3361,17 +3368,16 @@ PLDR.I18N = {
     ["Select a share"] = "Seleziona una condivisione",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Il server ha rifiutato SMBv1\nabilita il supporto SMBv1 sull'host",
     ["Settings"] = "Impostazioni",
-    ["Automatic"] = "Automatico",
-    ["Defaults restored"] = "Predefiniti ripristinati",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Condivisione non trovata\ncontrolla il nome condivisione (l'host deve consentire SMB1)",
     ["Show all discs"] = "Mostra tutti i dischi",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Giochi nascosti mostrati (in grigio) -- premi L3 per renderli visibili",
     ["Shown"] = "Mostrato",
+    ["Staging drivers for this device"] = "Preparazione dei driver per questo dispositivo",
+    ["Starting the game..."] = "Avvio del gioco...",
     ["Startup"] = "Avvio",
     ["Static (manual)"] = "Statico (manuale)",
     ["Storage"] = "Archiviazione",
     ["This backend isn't implemented yet"] = "Questo backend non è ancora implementato",
-    ["This removes the POPSTARTER pack -- including the"] = "Questo rimuove il pacchetto POPSTARTER -- inclusi i",
     ["UI text hidden"] = "Testo UI nascosto",
     ["UI text shown"] = "Testo UI mostrato",
     ["Video Standard"] = "Standard video",
@@ -3379,8 +3385,249 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visibile (gestisci)",
     ["Working..."] = "Elaborazione...",
     ["Yes"] = "Sì",
-    ["manually). Your POPSLoader settings are kept."] = "manualmente). Le impostazioni POPSLoader sono mantenute.",
-    ["return until you turn this back On (or re-add them"] = "torneranno finché non riattivi (o li riaggiungi",
+  },
+  HU = {
+    ["(could NOT save -- reverts on reboot)"] = "(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)",
+    ["(not set)"] = "(nincs beállítva)",
+    ["(share root)"] = "(gyökérkönyvtár megosztása)",
+    ["(the usual settings location wasn't writable)"] = "(a beállítások szokásos helye nem volt írható)",
+    ["(unknown)"] = "(ismeretlen)",
+    ["-- launch cancelled"] = "-- az indítás megszakítva",
+    ["About"] = "Névjegy",
+    ["Actual output"] = "Aktuális kimenet",
+    ["Adaptive BDMA"] = "Adaptív BDMA",
+    ["Adaptive BDMA couldn't stage"] = "Az adaptív BDMA nem tudott szakaszosan működni",
+    ["adjusted -- using"] = "kiigazítva -- a következővel",
+    ["APA / PFS (default)"] = "APA / PFS (alapértelmezett)",
+    ["Applying BDMA mode"] = "BDMA mód alkalmazása",
+    ["Applying SMB modules"] = "SMB modulok alkalmazása",
+    ["ART (at root)"] = "ART (a főkönyvtárban)",
+    ["At least one device must stay on the carousel"] = "Legalább egy eszköznek meg kell maradnia",
+    ["Auto (console region)"] = "Automatikus (a konzol régiója)",
+    ["Automatic"] = "Automatikus",
+    ["Back"] = "Vissza",
+    ["Backspace"] = "Visszatörlés",
+    ["BDMA Mode"] = "BDMA mód",
+    ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "A BDMA-mód váltása nem került alkalmazásra\nA BDMA-mód visszaállt; az egyéb beállítások mentésre kerültek",
+    ["BDMA source backend not ready:"] = "A BDMA forrás-háttérrendszer még nem áll készen:",
+    ["Boot Page"] = "Startlap",
+    ["Boot sound"] = "Starthang",
+    ["BOOT.ELF failed to launch"] = "A BOOT.ELF elindítása sikertelen volt",
+    ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "A BOOT.ELF fájl nem található\nEllenőrizve: mc0:/BOOT és mc1:/BOOT",
+    ["Booted from:"] = "Boot eszköz:",
+    ["Bringing up network..."] = "Hálózat felépítése...",
+    ["Building HDD game list..."] = "HDD játéklista összeállítása...",
+    ["Building USB game list..."] = "USB játéklista összeállítása...",
+    ["Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first"] = "Az Adaptive BDMA bekapcsolt állapotában nem lehet kikapcsolni\nElőször kapcsolja ki az Adaptive BDMA-t",
+    ["Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first"] = "A BDMA engedélyezése mellett nem lehet letiltani\nElőször állítsa a BDMA módot FAT32 (No BDMA) értékre",
+    ["Can't disable while SMB modules are installed\nSet SMB modules to Not installed first"] = "Az SMB-modulok telepítése mellett nem lehet letiltani\nElőször állítsa az SMB-modulokat 'Nincs telepítve' állapotra",
+    ["Can't reach the server\ncheck Server IP / Port in SMB settings"] = "Nem sikerült kapcsolatot létesíteni a szerverrel\nEllenőrizze a szerver IP-címét és portját az SMB-beállításokban",
+    ["Cancel"] = "Mégsem",
+    ["Cannot access"] = "Nem lehet hozzáférni",
+    ["Carousel (default)"] = "Eszközlista (alapértelmezett)",
+    ["Carousel Devices"] = "Eszközök",
+    ["Case/Symbols: lower  (R2)"] = "Betűk/szimbólumok: kisbetűs  (R2)",
+    ["Case/Symbols: UPPER  (R2)"] = "Betűk/szimbólumok: NAGYBETŰS  (R2)",
+    ["Center aligned"] = "Középre igazítva",
+    ["check the memory card, or turn Adaptive BDMA off"] = "ellenőrizze a memóriakártyát, vagy kapcsolja ki az Adaptive BDMA funkciót",
+    ["Checking POPSTARTER..."] = "POPSTARTER ellenőrzése...",
+    ["Checking the game file..."] = "A játékfájl ellenőrzése...",
+    ["Code by El_isra"] = "Kódolás: El_isra",
+    ["Confirm"] = "Megerősítés",
+    ["Connecting to SMB..."] = "Csatlakozás az SMB-hez...",
+    ["Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter"] = "A PS2 IP-beállításai nem alkalmazhatók\npróbálja meg újra, vagy indítsa újra a hálózati adaptert",
+    ["Couldn't read that game selection"] = "Nem sikerült elolvasni ezt a játékválasztást",
+    ["Couldn't restore BDMA mode"] = "Nem sikerült visszaállítani a BDMA módot",
+    ["Couldn't save settings"] = "A beállítások mentése nem sikerült",
+    ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került törlésre",
+    ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra",
+    ["Couldn't update hidden state"] = "A rejtett állapotot nem sikerült frissíteni",
+    ["Couldn't write .hide to the HDD"] = "Nem sikerült a .hide fájlt a HDD-re írni",
+    ["Cover Art"] = "Borítókép",
+    ["Cover Art disabled"] = "Borítóképek letiltva",
+    ["Cover Art enabled"] = "Borítóképek engedélyezve",
+    ["Cover/details folder"] = "Borító/Részletek mappa",
+    ["Credits"] = "Közreműködők",
+    ["Cursor: L1 / R1"] = "Kurzor: L1 / R1",
+    ["Defaults restored"] = "Alapértelmezések visszaállítva",
+    ["Delete the POPSTARTER folder from the memory card?"] = "Törli a POPSTARTER mappát a memóriakártyáról?",
+    ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos 'Enceladus' című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695",
+    ["Device List"] = "Eszközlista",
+    ["DHCP (automatic)"] = "DHCP (automatikus)",
+    ["DHCP failed\nset a static IP in SMB settings"] = "A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban",
+    ["Disc (DKWDRV)"] = "Fizikai lemez (DKWDRV)",
+    ["Discard & Exit"] = "Elvetés & Kilépés",
+    ["Display"] = "Megjelenés",
+    ["Display reverted -- new mode wasn't confirmed"] = "A kijelzőmód visszaállt -- az új mód nem került megerősítésre",
+    ["DKWDRV failed to launch"] = "A DKWDRV indítása nem sikerült",
+    ["DKWDRV Path"] = "DKWDRV útvonal",
+    ["Don't Save"] = "Ne mentse el",
+    ["Edit"] = "Szerkesztés",
+    ["Edit DKWDRV Path"] = "DKWDRV útvonal szerkesztése",
+    ["Edit POPStarter Path"] = "POPStarter útvonal szerkesztése",
+    ["Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"] = "Először engedélyezze a POPSTARTER mappát\n(a BDMA / SMB moduloknak a memóriakártyán kell lenniük)",
+    ["Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)"] = "Először engedélyezze a POPSTARTER mappát\n(az SMB moduloknak a memóriakártyán kell lenniük)",
+    ["Exit"] = "Kilépés",
+    ["Failed to connect to SMB"] = "Nem sikerült csatlakozni az SMB-hez",
+    ["Failed to load HDD"] = "A HDD betöltése nem sikerült",
+    ["Failed to load HDD (exFAT)"] = "Az exFAT HDD betöltése nem sikerült",
+    ["Failed to load MMCE"] = "Az MMCE betöltése nem sikerült",
+    ["Failed to load MX4SIO"] = "Az MX4SIO betöltése nem sikerült",
+    ["Failed to load USB"] = "Az USB betöltése nem sikerült",
+    ["Failed to refresh HDD list"] = "A HDD-lista frissítése nem sikerült",
+    ["Failed to refresh list"] = "A lista frissítése nem sikerült",
+    ["FAT32-USB (None)"] = "FAT32-USB (No BDMA)",
+    ["First disc only"] = "Csak az első lemez",
+    ["Game details"] = "Játék részletek",
+    ["Game file missing"] = "Hiányzik a játékfájl",
+    ["Game hidden"] = "Játék elrejtve",
+    ["Game List"] = "Játéklista",
+    ["Game list cache"] = "Játéklista-gyorsítótár",
+    ["Game shown"] = "Játék megjelenítve",
+    ["Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS"] = "A játékok elérési útvonala kizárólag a böngészést érinti:\nA POPStarter csak a <share>/POPS mappából indíthat játékokat",
+    ["HDD Alt mode needs POPSTARTER on HDD"] = "A HDD Alt módhoz POPSTARTER szükséges a HDD-n",
+    ["HDD dir read failed:"] = "A HDD könyvtár olvasása sikertelen:",
+    ["HDD list loaded from cache (R1 rescans)"] = "A HDD-lista betöltődött a gyorsítótárból (R1 - lista frissítése)",
+    ["HDD list refreshed"] = "A HDD-lista frissült",
+    ["HDD list refreshed (no games found)"] = "A HDD-lista frissült (nincs játék)",
+    ["HDD not usable"] = "A HDD nem használható",
+    ["Hidden"] = "Elrejtve",
+    ["Hidden games"] = "Elrejtett játékok",
+    ["Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide."] = "A rejtett játékok kiszűrésre kerülnek.\nNyomja meg az R3 gombot a megjelenítéshez, az L3 gombot a rejtés feloldásához.",
+    ["Hidden games filtered out again"] = "Rejtett játékok kiszűrve",
+    ["Hide Text"] = "Szöveg elrejtése",
+    ["Hide UI Text"] = "UI szövegek elrejtése",
+    ["How to hide a game"] = "Játék elrejtése",
+    ["if not confirmed"] = "ha nincs megerősítve",
+    ["Installed"] = "Telepített",
+    ["Internal HDD"] = "Belső HDD",
+    ["Keep"] = "Megtart",
+    ["Keep this display mode?"] = "Megtartja ezt a megjelenítési módot?",
+    ["Keyboard Layout"] = "Billentyűzetkiosztás",
+    ["L3 on the game list"] = "L3 a játéklistán",
+    ["Launch"] = "Indítás",
+    ["Launch DKWDRV?"] = "Elindítja a DKWDRV-t?",
+    ["Left aligned"] = "Balra igazítva",
+    ["List refreshed"] = "Lista frissítve",
+    ["List refreshed (no games found)"] = "A lista frissítve (nincsenek játékok)",
+    ["Loaded SMB list from cache..."] = "Az SMB-lista betöltése a gyorsítótárból...",
+    ["Loading HDD (exFAT)..."] = "exFAT HDD betöltése...",
+    ["Loading HDD..."] = "HDD betöltése...",
+    ["Loading MMCE..."] = "MMCE betöltése...",
+    ["Loading MX4SIO..."] = "MX4SIO betöltése...",
+    ["Loading USB..."] = "USB betöltése...",
+    ["Locating exFAT HDD POPS folder..."] = "Az exFAT HDD-n lévő POPS mappa megkeresése...",
+    ["Looking for USB drive..."] = "USB-meghajtó keresése...",
+    ["Memory Card"] = "Memóriakártya",
+    ["Menu"] = "Menü",
+    ["Missing BDMA source (tried):"] = "Hiányzó BDMA forrás (megpróbálva):",
+    ["Missing BDMA UI source (tried):"] = "Hiányzó BDMA UI forrás (megpróbálva):",
+    ["Missing SMB module (tried):"] = "Hiányzó SMB modul (megpróbálva):",
+    ["MMCE has no POPS folder\nexpected mmce0:/POPS/"] = "Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa",
+    ["Multi-disc games"] = "Többlemezes játékok",
+    ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe",
+    ["No"] = "Nem",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nincs '__.POPS' partíció a hdd0-on:\nHozzon létre egyet __.POPS / __.POPS0...9 néven",
+    ["No cover. Looked for:"] = "Nincs borító. Itt keresve:",
+    ["No DKWDRV found at this path"] = "Ezen az elérési úton nincs DKWDRV",
+    ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)",
+    ["No games found"] = "Nincsenek játékok",
+    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)",
+    ["No games found on this device"] = "Az eszközön nem találhatóak játékok",
+    ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:",
+    ["No MX4SIO device detected"] = "Nem észlelhető MX4SIO eszköz",
+    ["No network link\ncheck the Ethernet cable / adapter"] = "Nincs hálózati kapcsolat\nEllenőrizze az Ethernet-kábelt / adaptert",
+    ["No POPSTARTER found at this path"] = "Ezen az elérési úton nincs POPSTARTER",
+    ["No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"] = "Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:",
+    ["No Share selected"] = "Nincs kiválasztott megosztás",
+    ["No Share set in SMB settings\n(server returned no shares)"] = "Az SMB-beállításokban nincs megadva megosztás\n(a szerver nem adott vissza megosztásokat)",
+    ["No USB backend detected\nreseat the drive and try again"] = "Nem észlelhető USB-háttérrendszer\nHelyezze be ismételten a meghajtót, majd próbálja újra",
+    ["Not implemented yet"] = "Jelenleg nincs megvalósítva",
+    ["Not installed"] = "Nincs telepítve",
+    ["Off"] = "Ki",
+    ["Off (deleted)"] = "Ki (törölt)",
+    ["On"] = "Be",
+    ["On (default)"] = "Be (alapértelmezett)",
+    ["On (per-device)"] = "Be (eszközönként)",
+    ["Opening SMB list..."] = "SMB-lista megnyitása...",
+    ["Operation failed"] = "Sikertelen művelet",
+    ["Path saved, file not found:"] = "Az elérési út elmentve, fájl nem található:",
+    ["POPS (beside game)"] = "POPS (a játék mellett)",
+    ["POPSLoader\nfor POPStarter"] = "POPSLoader\na POPStarter kezeléséhez",
+    ["POPSTARTER Folder"] = "POPSTARTER mappa",
+    ["POPSTARTER folder deleted from the memory card"] = "A POPSTARTER mappa törölve lett a memóriakártyáról",
+    ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "A POPSTARTER mappa visszaállítva a memóriakártyán\n(állítsa be a BDMA módot az exFAT/SMB modulok újbóli hozzáadásához)",
+    ["POPSTARTER Path"] = "POPSTARTER útvonal",
+    ["Press CIRCLE again to discard what you typed"] = "Nyomja meg újra a KÖR gombot, hogy törölje a beírt szöveget",
+    ["Press CROSS again to discard what you typed"] = "Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez",
+    ["Profile"] = "Profil",
+    ["Profile defaults restored"] = "Alapértelmezett profilbeállítások visszaállítva",
+    ["re-select it under Settings > Storage to restage"] = "A Beállítások > Tárhely menüpont alatt válassza ki újra, hogy újra feltöltse",
+    ["Rebuilding HDD game list..."] = "A HDD-n lévő játékok listájának ismételt összeállítása...",
+    ["Refreshing HDD list..."] = "A HDD-lista frissítése...",
+    ["Refreshing list..."] = "Lista frissítése...",
+    ["Rescanning HDD partitions..."] = "A HDD partíciók újraszkennelése...",
+    ["Reset"] = "Visszaállítás",
+    ["Reset Defaults"] = "Alapértelmezések visszaállítása",
+    ["Retrying USB scan..."] = "Az USB-ellenőrzés újraindítása...",
+    ["return code:"] = "válaszkód:",
+    ["Return to OSDSYS?"] = "Kilépés az OSDSYS-be?",
+    ["Revert"] = "Visszavon",
+    ["Reverting in"] = "Visszaállítás",
+    ["Right aligned"] = "Jobbra igazítva",
+    ["Save"] = "Mentés",
+    ["Save Changes"] = "Változások mentése",
+    ["Save Settings"] = "Beállítások mentése",
+    ["Save your changes before leaving?"] = "Elmenti a módosításokat, mielőtt kilép?",
+    ["Saved to"] = "Mentve ide",
+    ["Saving settings"] = "Beállítások mentése",
+    ["Saving..."] = "Mentés...",
+    ["Saving/Applying..."] = "Mentés/Alkalmazás...",
+    ["Scanning exFAT HDD games..."] = "exFAT HDD-n lévő játékok beolvasása...",
+    ["Scanning games..."] = "Játékok beolvasása...",
+    ["Scanning HDD partitions..."] = "HDD partíciók beolvasása...",
+    ["Scanning MMCE games..."] = "MMCE-játékok beolvasása...",
+    ["Scanning MX4SIO games..."] = "MX4SIO-játékok beolvasása...",
+    ["Scanning SMB games..."] = "SMB-játékok beolvasása...",
+    ["Select"] = "Kiválasztás",
+    ["Select a share"] = "Válasszon megosztást",
+    ["Server refused SMBv1\nenable SMBv1 support on the host"] = "A szerver elutasította az SMBv1-et\nEngedélyezze az SMBv1 támogatást a gazdagépen",
+    ["Settings"] = "Beállítások",
+    ["Share not found\ncheck the Share name (host must allow SMB1)"] = "A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)",
+    ["Show all discs"] = "Összes lemez",
+    ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők",
+    ["Shown"] = "Megjelenítés",
+    ["Slot:"] = "Nyílás:",
+    ["SMB / Network"] = "SMB / Hálózat",
+    ["SMB connect failed"] = "Az SMB-kapcsolat sikertelen",
+    ["SMB connection dropped"] = "Az SMB-kapcsolat megszakadt",
+    ["SMB login failed\ncheck User / Password"] = "Az SMB-bejelentkezés sikertelen volt\nEllenőrizze a felhasználónevet és a jelszót",
+    ["SMB modules"] = "SMB modulok",
+    ["SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save"] = "Az SMB-modulok nincsenek telepítve\nA játékok listája megjelenik, de ezek nélkül a rendszer nem indul el --\nTelepítse őket a Beállítások > SMB-modulok menüpontban, majd kattintson a Mentés gombra",
+    ["SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first"] = "Az SMB-modulok nincsenek telepítve\nA játékok megjelennek a listában, de nem indulnak el -- először telepítse őket\na Beállítások > SMB-modulok menüpontban",
+    ["SMB modules didn't install/remove\nmodule setting reverted; other settings were saved"] = "Az SMB-modulok telepítése/eltávolítása nem sikerült\nA modul beállításai visszaálltak; az egyéb beállítások mentésre kerültek",
+    ["SMB modules failed to load"] = "Az SMB-modulok betöltése nem sikerült",
+    ["Staging drivers for this device"] = "Illesztőprogramok előkészítése ehhez az eszközhöz",
+    ["Starting the game..."] = "A játék indítása...",
+    ["Startup"] = "Indítás",
+    ["Static (manual)"] = "Statikus (manuális)",
+    ["status:"] = "státusz:",
+    ["Storage"] = "Tároló",
+    ["This backend isn't implemented yet"] = "Ez a háttérrendszer még nincs megvalósítva",
+    ["This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept."] = "Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.",
+    ["Triangle"] = "Háromszög",
+    ["UI text hidden"] = "UI szövegek elrejtve",
+    ["UI text shown"] = "UI szövegek megjelenítve",
+    ["Unknown BDMA mode:"] = "Ismeretlen BDMA mód:",
+    ["Video Standard"] = "Videó szabvány",
+    ["Visible"] = "Látható",
+    ["Visible (manage)"] = "Láthatóak (kezelhetők)",
+    ["Working..."] = "Dolgozok...",
+    ["X = Keep      O = Revert"] = "X = Megtart      O = Visszavon",
+    ["X = Select      O = Cancel"] = "X = Kiválaszt      O = Mégsem",
+    ["X = Yes      O = No"] = "X = Igen      O = Nem",
+    ["Yes"] = "Igen",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "PC-ről továbbra is hozzáadhat egy \"<game>.hide\" fájlt a .VCD mellé.",
   },
 }
 function PLDR.L(s)
@@ -3931,6 +4178,54 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
 end
 
 
+-- Direct single-pass write: delete dest, create, chunked full-count writes.
+-- For SELF-HEALING files only (BDMA driver staging): the variant marker is
+-- written AFTER the files succeed, so a torn write leaves marker ~= target and
+-- IsBdmaModeEquipped forces a clean re-stage on the next launch. The atomic
+-- tmp/.bak dance below is for files where a torn write LOSES data (.pldrs);
+-- on a memory card System.rename is copy+delete, so that dance costs ~3x the
+-- payload in writes -- the "Staging drivers... takes forever" launch stall
+-- (maintainer, EXP24). Do NOT reroute settings/cache saves through this.
+local function WriteBytesDirectBounded(data, dest)
+  if type(data) ~= "string" then
+    return false, "invalid data"
+  end
+  if doesFileExist(dest) then
+    pcall(System.removeFile, dest)
+  end
+  local ok_open, fd = pcall(System.openFile, dest, FCREATE)
+  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
+    return false, "open destination failed"
+  end
+  local expected = string.len(data)
+  local offset = 1
+  local iters = 0
+  local MAX_ITERS = 4096
+  local wrote_all = true
+  while offset <= expected and iters < MAX_ITERS do
+    iters = iters + 1
+    local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, expected))
+    local chunk_len = string.len(chunk)
+    local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
+      wrote_all = false
+      break
+    end
+    offset = offset + chunk_len
+  end
+  if offset <= expected then
+    wrote_all = false
+  end
+  pcall(System.closeFile, fd)
+  if not wrote_all then
+    -- A torn dest must not survive: without it, the file "exists" and only the
+    -- marker mismatch protects us. Delete so the equipped check fails cleanly.
+    pcall(System.removeFile, dest)
+    return false, "write failed"
+  end
+  return true
+end
+
 local function WriteBytesAtomicBounded(data, dest)
   if type(data) ~= "string" then
     return false, "invalid data"
@@ -4167,18 +4462,38 @@ function PLDR.NormalizeHiddenDevices(value)
   return table.concat(out, ",")
 end
 
+-- The Internal-HDD page selector: "PFS" (default) | "EXFAT" | "BOTH".
+-- ONE normalizer so every site (encode/snapshot/apply/parse/commit/UI/visibility)
+-- agrees; each used to inline its own `(x == "EXFAT") and "EXFAT" or "PFS"`, which
+-- silently collapses any third value back to PFS. Anything unrecognized -- and a
+-- MISSING key -- still resolves to PFS, so no existing install changes until the
+-- user opts in (the back-compat contract from 1f2d7ca).
+PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH"}
+function PLDR.NormalizeHddFs(v)
+  local u = string.upper(tostring(v or ""))
+  if u == "EXFAT" then return "EXFAT" end
+  if u == "BOTH" then return "BOTH" end
+  return "PFS"
+end
+
 -- True if the given carousel device key is currently hidden from the carousel.
 function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
-  -- The two internal-HDD pages (PFS, exFAT) are mutually exclusive: only the one chosen in
-  -- Settings > Internal HDD shows on the carousel; the other is always hidden. An explicit
-  -- -page=ata launch is an exFAT session even if the selected device's .pldrs still says PFS.
+  -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
+  -- PFS (default) or EXFAT shows exactly one; BOTH shows both (R3Z3N: APA-Jail and PFS can
+  -- coexist). This is ONLY a visibility rule -- it has never gated a driver, mount or IRX.
+  -- The stacks were already unified onto ONE load-once ata_bd that serves APA/PFS and exFAT
+  -- together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH luaHDD.cpp's Load_HDD_IRX and
+  -- lua_ata_init, and it already carries R3Z3N's two 1s settles). So BOTH needs no C change.
+  -- An explicit -page=ata launch is still an exFAT session regardless of this setting: that
+  -- isolation is launch-arg-scoped and deliberately unchanged.
   if ukey == "EXFAT" or ukey == "PFS" then
     if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
       return ukey ~= "EXFAT"
     end
-    local fs = (string.upper(tostring(PLDR.HDD_FS or "PFS")) == "EXFAT") and "EXFAT" or "PFS"
+    local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
+    if fs == "BOTH" then return false end
     return ukey ~= fs
   end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
@@ -4353,7 +4668,7 @@ local function EncodeSettings()
     "SHOW_DETAILS="..((PLDR.SHOW_DETAILS == true) and "1" or "0"),
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    "HDD_FS="..((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    "HDD_FS="..PLDR.NormalizeHddFs(PLDR.HDD_FS),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
@@ -4402,7 +4717,7 @@ local function SnapshotSettingsState()
     show_details = (PLDR.SHOW_DETAILS == true),
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
-    hdd_fs = ((PLDR.HDD_FS == "EXFAT") and "EXFAT" or "PFS"),
+    hdd_fs = PLDR.NormalizeHddFs(PLDR.HDD_FS),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
@@ -4459,7 +4774,7 @@ local function ApplySettingsState(state)
     PLDR.ART_LOCATION = (state.art_location == "pops" or state.art_location == "art") and state.art_location or "pops_art"
   end
   if type(state.hdd_fs) == "string" then
-    PLDR.HDD_FS = (state.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(state.hdd_fs)
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -4570,7 +4885,7 @@ function PLDR.SaveSettingsAtomic()
   -- don't depend on mc0:/POPSTARTER existing.
   if target_is_mc and not mc_dir_ok then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
@@ -4584,7 +4899,7 @@ function PLDR.SaveSettingsAtomic()
       PLDR.SETTINGS_PATH = PLDR.SETTINGS_PATH_FALLBACK
       ok = true
       if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Saved to "..tostring(PLDR.SETTINGS_PATH_FALLBACK).."\n(the usual settings location wasn't writable)", "warn")
+        UI.Notif_queue.add(PLDR.L("Saved to").." "..tostring(PLDR.SETTINGS_PATH_FALLBACK).."\n"..PLDR.L("(the usual settings location wasn't writable)"), "warn")
       end
     end
   end
@@ -4630,7 +4945,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
   PLDR.DKWDRV_PATH = tostring(PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
-  PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_ABC
+  PLDR.KEYBOARD_LAYOUT = PLDR.KEYBOARD_LAYOUT_QWERTY  -- R3Z3N review round 3: QWERTY is what users expect; ABC stays selectable
   PLDR.LANGUAGE = "EN"  -- UI language (i18n); default English (source, fallback)
   PLDR.BOOT_PAGE = "Carousel"
   PLDR.COLLAPSE_MULTIDISC = false
@@ -4640,7 +4955,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT; which internal-HDD page the carousel shows (mutually exclusive; default PFS)
+  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -4838,7 +5153,7 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.ART_LOCATION = (art_location == "pops" or art_location == "art") and art_location or "pops_art"
   end
   if hdd_fs ~= nil then
-    PLDR.HDD_FS = (string.upper(hdd_fs) == "EXFAT") and "EXFAT" or "PFS"
+    PLDR.HDD_FS = PLDR.NormalizeHddFs(hdd_fs)
   end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
@@ -4914,8 +5229,8 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.details_align == "left" or opts.details_align == "center" or opts.details_align == "right" then next_details_align = opts.details_align end
   local next_art_location = (prev.art_location == "pops" or prev.art_location == "art") and prev.art_location or "pops_art"
   if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
-  local next_hdd_fs = (prev.hdd_fs == "EXFAT") and "EXFAT" or "PFS"
-  if opts.hdd_fs == "PFS" or opts.hdd_fs == "EXFAT" then next_hdd_fs = opts.hdd_fs end
+  local next_hdd_fs = PLDR.NormalizeHddFs(prev.hdd_fs)
+  if opts.hdd_fs ~= nil then next_hdd_fs = PLDR.NormalizeHddFs(opts.hdd_fs) end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
@@ -5027,7 +5342,7 @@ function PLDR.CommitSettingsChanges(opts)
       EmitStage("apply_bdma", "Restoring BDMA mode")
       local restaged = PLDR.ApplyBdmaModeOnce(next_state.bdma_mode, PLDR.NextBdmaApplyToken())
       if not restaged and UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add("Couldn't restore BDMA mode "..tostring(next_state.bdma_mode).."\nre-select it under Settings > Storage to restage", "warn")
+        UI.Notif_queue.add(PLDR.L("Couldn't restore BDMA mode").." "..tostring(next_state.bdma_mode).."\n"..PLDR.L("re-select it under Settings > Storage to restage"), "warn")
       end
     end
   end
@@ -5040,7 +5355,9 @@ function PLDR.CommitSettingsChanges(opts)
     -- sidecar matches the effective (rolled-back) state, mirroring the BDMA rollback.
     local smb_ok
     if next_state.smb_modules == true then
-      smb_ok = PLDR.ApplySmbModules()
+      smb_ok = PLDR.ApplySmbModules(function(i, n, name)
+        EmitStage("apply_smb", PLDR.L("Applying SMB modules").." ("..tostring(i).."/"..tostring(n)..") "..tostring(name))
+      end)
     else
       smb_ok = PLDR.RemoveSmbModules()
     end
@@ -5420,8 +5737,59 @@ function PLDR.EnsureUsbMassReadyOnce()
   return true
 end
 
+-- One vsync-paced frame for the scan poll loops below. A BARE Screen.flip
+-- repaints NOTHING between swaps, so the two framebuffers alternate with stale
+-- content -- the "severe visual corruption while the ATA page loads" (maintainer,
+-- EXP25 MC-boot test). When the busy overlay is up, re-issue it (ShowSavingOverlay
+-- draws the full frame, ticks the spinner, and flips -- same vsync pacing, so the
+-- N*60 frame-count timeouts stay honest). Outside an overlay context (boot-time
+-- backend init, headless harness) fall back to the plain flip/sleep.
+local function PaceScanFrame()
+  if type(UI) == "table" and UI.SavingActive == true and type(UI.ShowSavingOverlay) == "function" then
+    local ok = pcall(UI.ShowSavingOverlay, UI.SavingMessage, UI.SavingProgress)
+    if ok then return end
+  end
+  if type(Screen) == "table" and type(Screen.flip) == "function" then
+    pcall(Screen.flip)
+  elseif type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 0)
+  end
+end
+
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
+    -- SIO2 EXCLUSION (mirror of the guard in EnsureMmceReadyOnce): if mmceman
+    -- already claimed the SIO2 bus this session, DECLINE loading mx4sio_bd --
+    -- the two cannot coexist (shared-bus hang at 48%, HW 2026-07-20).
+    if type(System) == "table" and type(System.getSio2Owner) == "function" then
+      local ok_o, owner = pcall(System.getSio2Owner)
+      if ok_o and owner == "MMCE" then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
+        end
+        return
+      end
+    end
+    -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
+    -- IOP module loader. Queueing System.initMX4SIO behind it would block this
+    -- page forever if that load ever wedges (the one-wedge-two-pages "42%"
+    -- cascade). Wait screen-alive up to ~20s for it to finish; if it is STILL
+    -- running after that, decline this scan pass instead of queueing blind --
+    -- the next page entry retries cleanly.
+    if type(System) == "table" and type(System.initATAStatus) == "function" then
+      local ok_st, st = pcall(System.initATAStatus)
+      if ok_st and st == 1 then
+        for _ = 1, (20 * 60) do
+          PaceScanFrame()
+          local ok2, s2 = pcall(System.initATAStatus)
+          if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+        end
+        local ok3, s3 = pcall(System.initATAStatus)
+        if ok3 and s3 == 1 then
+          return
+        end
+      end
+    end
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       pcall(System.initMX4SIO)
     end
@@ -5429,10 +5797,36 @@ local function EnsureMassBackendsReady(mode)
   end
 
   if mode == "ata" then
-    -- ata_bd is the BDM block driver for the internal exFAT drive. Idempotent;
-    -- mirrors the MX4SIO bring-up (usbmass first, then the device driver).
-    if type(System) == "table" and type(System.initATA) == "function" then
-      pcall(System.initATA)
+    -- LAZY ASYNC bring-up (OPL's arrangement -- its "ps2atad" embed is the same
+    -- ata_bd blob loaded mid-session on a worker thread). NO boot-time load
+    -- anymore (the ~5-6s black-screen cost was unacceptable); the page pays for
+    -- the drive it is opening, screen alive. Frame-count the timeout, NOT
+    -- Timer.getTime (MICROSECONDS trap). A working bring-up takes seconds
+    -- (spin-up included); ~90s is a generous ceiling before we give up and the
+    -- page reports no drive. The APA/PFS hdd0: boot path is separate and
+    -- synchronous (luaHDD) and latches the same load-once flag.
+    local S = System
+    local have_async = type(S) == "table"
+      and type(S.initATAAsync) == "function"
+      and type(S.initATAStatus) == "function"
+    if have_async then
+      local started = -1
+      pcall(function() started = S.initATAAsync() end)
+      -- started: -1 spawn-failed, 1 running, 2 done-ok (already loaded)
+      if type(started) == "number" and started >= 0 then
+        local st = started
+        for _ = 1, (90 * 60) do
+          if st == 2 or st == 3 then break end
+          PaceScanFrame()
+          local ok2, s2 = pcall(S.initATAStatus)
+          if ok2 and type(s2) == "number" then st = s2 end
+        end
+        return
+      end
+      -- async couldn't start (thread create failed) -- fall through to sync.
+    end
+    if type(S) == "table" and type(S.initATA) == "function" then
+      pcall(S.initATA)
     end
     return
   end
@@ -5502,19 +5896,164 @@ local function BuildMassRootIdentity(mode)
   return identity
 end
 
-local function BuildUsbIdentityDeferred()
-  -- Bounded retry masks the first-entry USB probe quirk without requiring
-  -- the user to leave and re-enter the page.
+-- Turn System.getUsbDiag()'s raw IRX return codes into one short line for the
+-- USB error toast. Deliberately NOT translated: these are numbers for us, and a
+-- tester photographing the screen is the only channel we have.
+-- The whole point is to split "a module failed to load" from "the modules are up
+-- but no drive enumerated" -- indistinguishable until now, which is why two
+-- shipped fixes for this bug were aimed at the wrong half.
+-- One line summarising where boot time went: the total, and the single most
+-- expensive stage. main.cpp runs the ENTIRE IRX block before initGraphics(), so
+-- every millisecond here is black screen. Shown on the Credits screen because a
+-- tester can photograph it; BootStamp itself has always existed but only ever fed
+-- a DPRINTF, which is compiled out of release builds.
+-- Deliberately reports the biggest DELTA, not the biggest absolute stamp: the
+-- stamps are cumulative, so the gap between consecutive stamps is the cost of the
+-- module that sits between them.
+function PLDR.GetBootProfileText()
+  if type(System) ~= "table" or type(System.getBootProfile) ~= "function" then
+    return nil
+  end
+  local ok, prof = pcall(System.getBootProfile)
+  if not ok or type(prof) ~= "table" then
+    return nil
+  end
+  local n = 0
+  for _ in pairs(prof) do n = n + 1 end
+  if n < 1 then return nil end
+
+  local total, prev = 0, 0
+  local worst_name, worst_delta = nil, -1
+  for i = 1, n do
+    local e = prof[i]
+    if type(e) == "table" and type(e.ms) == "number" then
+      local d = e.ms - prev
+      if d > worst_delta then
+        worst_delta = d
+        worst_name = tostring(e.stage or "?")
+      end
+      prev = e.ms
+      total = e.ms
+    end
+  end
+  if worst_name == nil then return nil end
+  -- Defensive clamp (oldman63: the line ran off the Credits screen). The whole
+  -- line must fit ~63 SFONT chars on a 640px screen; the scaffolding + two ms
+  -- values eat ~28, so cap the stage name -- the "+Nms" payload at the END is
+  -- the part a truncated line would otherwise lose. Stage labels are ASCII.
+  if #worst_name > 20 then
+    worst_name = string.sub(worst_name, 1, 18)..".."
+  end
+  return "boot "..tostring(total).."ms (slowest: "..worst_name.." +"..tostring(worst_delta).."ms)"
+end
+
+function PLDR.GetUsbDiagText()
+  if type(System) ~= "table" or type(System.getUsbDiag) ~= "function" then
+    return nil
+  end
+  local ok, d = pcall(System.getUsbDiag)
+  if not ok or type(d) ~= "table" then
+    return nil
+  end
+  local function bad(id, ret)
+    -- -999 = never attempted. A load is good when both id and ret are >= 0.
+    if id == -999 then return true end
+    return not (type(id) == "number" and type(ret) == "number" and id >= 0 and ret >= 0)
+  end
+  -- Report the FIRST broken link in the chain; everything after it is a
+  -- meaningless cascade.
+  local chain = {
+    {"usbd", d.usbd_id, d.usbd_ret},
+    {"bdm", d.bdm_id, d.bdm_ret},
+    {"bdmfs_fatfs", d.bdmfs_id, d.bdmfs_ret},
+    {"usbmass_bd", d.usbmass_id, d.usbmass_ret},
+  }
+  for _, m in ipairs(chain) do
+    if bad(m[2], m[3]) then
+      if m[2] == -999 then
+        return m[1].." never loaded"
+      end
+      return m[1].." failed (id "..tostring(m[2])..", rc "..tostring(m[3])..")"
+    end
+  end
+  -- Every module loaded. Now split the four ways this can still fail, because
+  -- "modules OK, no drive seen" conflates all of them and that ambiguity has cost
+  -- this bug three tester cycles.
+  --   bdm=0  -> usbmass_bd never published a block device: it died in probe /
+  --             connect / SET_CONFIGURATION / SCSI warm-up, or in bd_cache_create's
+  --             UNCHECKED 128 KiB alloc.
+  --   bdm>0  -> BDM has the drive but bdmfs_fatfs never mounted it as massN:
+  --             (f_mount failed, or the GPT handler's alloc-failure-returns-0 bug
+  --             made BDM stop trying other filesystem handlers).
+  -- iop128k=no is the smoking gun for the cache-alloc theory: POPSLoader loads far
+  -- more IOP modules than OPL/wLaunchELF, so we may simply be out of contiguous IOP
+  -- RAM by the time BDM wants its cache. That is OUR footprint, not the user's drive.
+  local parts = {}
+  local n = -1
+  if type(System.bdmList) == "function" then
+    local ok_l, l = pcall(System.bdmList)
+    if ok_l and type(l) == "table" then
+      n = 0
+      for _ in pairs(l) do n = n + 1 end
+    end
+  end
+  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?")
+
+  if type(System.iopHeapProbe) == "function" then
+    local ok_h, h = pcall(System.iopHeapProbe)
+    if ok_h and type(h) == "table" then
+      if h.can_alloc_128k then
+        parts[#parts + 1] = "iop128k=ok"
+      else
+        parts[#parts + 1] = "iop128k=NO(" .. tostring(h.largest or "?") .. ")"
+      end
+    end
+  end
+
+  if n == 0 then
+    return "no block device published, " .. table.concat(parts, " ")
+  elseif n > 0 then
+    return "drive found but not mounted, " .. table.concat(parts, " ")
+  end
+  return "modules OK, no drive seen, " .. table.concat(parts, " ")
+end
+
+-- How long to keep looking for a USB drive before giving up.
+-- Was 3 (~2s). wLaunchELF_R3Z -- which browses the SAME drive fine on the SAME
+-- console that reports "No USB backend detected" to us -- never gives up at all:
+-- scanUsbMassDevices (filer.c:903) re-runs loadUsbModules() + re-stats usb0..N on
+-- every UI tick, and its 5s throttle is gated on USB_mass_scanned, which is only
+-- set once a drive is FOUND. So while nothing is found R3Z rescans continuously,
+-- forever, for as long as you sit in the browser. We looked for two seconds and
+-- quit permanently. A drive that enumerates at t=6s is found by R3Z and is
+-- invisible to us no matter how many times the tester retries.
+-- We cannot literally loop forever (this is a blocking scan on page entry, not a
+-- UI loop), so bound it -- but bound it at "slower than any plausible drive"
+-- rather than at 2 seconds. A working setup still returns on attempt 1 and pays
+-- nothing; only an already-failing setup ever waits.
+local USB_PROBE_ATTEMPTS = 12
+
+local function BuildUsbIdentityDeferred(progress)
   local attempts = 0
   local identity = nil
-  while attempts < 3 do
+  while attempts < USB_PROBE_ATTEMPTS do
     attempts = attempts + 1
+    -- BuildMassRootIdentity -> EnsureMassBackendsReady("usb") -> EnsureUsbMassReadyOnce
+    -- re-attempts the module load every pass. EnsureUsbMass only latches on
+    -- SUCCESS, so a failed load is retried here the way R3Z retries it.
     identity = BuildMassRootIdentity("usb")
     if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
       return identity
     end
-    WaitMassProbeRetry(attempts, 3)
-    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+    local hook = progress
+    if type(hook) ~= "function" and type(PLDR.UsbProbeProgress) == "function" then
+      hook = PLDR.UsbProbeProgress
+    end
+    if type(hook) == "function" then
+      pcall(hook, attempts, USB_PROBE_ATTEMPTS)
+    end
+    WaitMassProbeRetry(attempts, USB_PROBE_ATTEMPTS)
+    if attempts < USB_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
@@ -5530,6 +6069,16 @@ end
 -- re-pokes (refreshMassBackends) before the 1s settle, so more attempts = more of
 -- exactly the bring-up work R1 does, without making the user press R1.
 local function BuildMX4IdentityDeferred()
+  -- SIO2 exclusion short-circuit: when MMCE owns the bus, the driver load was
+  -- DECLINED (EnsureMassBackendsReady) -- nothing will ever enumerate, so skip
+  -- the 6x1s retry ladder and return one no-retry scan (empty; the guard's
+  -- toast already told the user why).
+  if type(System) == "table" and type(System.getSio2Owner) == "function" then
+    local ok_o, owner = pcall(System.getSio2Owner)
+    if ok_o and owner == "MMCE" then
+      return BuildMassRootIdentity("mx4sio")
+    end
+  end
   -- FUNCTION-local (not chunk-level): system.lua's main chunk is near Lua's 200-local cap.
   local MX4_PROBE_ATTEMPTS = 6
   -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its
@@ -5563,6 +6112,16 @@ function PLDR.GetMX4SIOMassRootNow()
 end
 
 local function BuildATAIdentityDeferred()
+  -- If the lazy async bring-up did not finish (load failed, no drive, or the
+  -- worker timed out in EnsureMassBackendsReady), there is nothing to
+  -- enumerate: skip the 4x1s retry ladder and do one no-retry scan to keep the
+  -- return shape. The page then reports no drive promptly.
+  if type(System) == "table" and type(System.ataReady) == "function" then
+    local ok, ready = pcall(System.ataReady)
+    if ok and ready == false then
+      return BuildMassRootIdentity("ata")
+    end
+  end
   -- The internal HDD via ata_bd/BDM enumerates ASYNCHRONOUSLY and is slower to appear
   -- than MX4SIO/USB (dev9 bring-up + HDD spin-up + BDM registration all take time).
   -- The old retry re-scanned with NO delay, racing that enumeration -> "No exFAT HDD
@@ -5667,7 +6226,13 @@ function PLDR.EnsureBackendForAppDir()
   return true
 end
 
-local function WriteBdmaModeMarker(mode_key)
+local function WriteBdmaModeMarker(mode_key, launch_fast)
+  -- launch_fast (adaptive launch staging): direct write. A torn marker cannot
+  -- match any target, so the next launch just re-stages -- self-healing.
+  if launch_fast == true then
+    local ok = WriteBytesDirectBounded(tostring(mode_key or ""), BDMA_MODE_MARKER_PATH)
+    return ok == true
+  end
   return WriteAtomic(BDMA_MODE_MARKER_PATH, tostring(mode_key or ""))
 end
 
@@ -5703,7 +6268,7 @@ function PLDR.NextBdmaApplyToken()
   return "bdma:"..tostring(PLDR._bdma_apply_seq)
 end
 
-function PLDR.ApplyBdmaModeOnce(mode_key, token)
+function PLDR.ApplyBdmaModeOnce(mode_key, token, launch_fast)
   if PLDR._bdma_apply_guard.in_progress then
     return false, "busy"
   end
@@ -5713,7 +6278,7 @@ function PLDR.ApplyBdmaModeOnce(mode_key, token)
 
   PLDR._bdma_apply_guard.in_progress = true
   local ok, res, err = xpcall(function()
-    local aok, aerr = PLDR.ApplyBdmaMode(mode_key)
+    local aok, aerr = PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return aok, aerr
   end, function(e)
     return false, tostring(e)
@@ -5727,11 +6292,18 @@ function PLDR.ApplyBdmaModeOnce(mode_key, token)
   return false, err or res or "apply failed"
 end
 
-function PLDR.ApplyBdmaMode(mode_key)
+-- launch_fast=true is the ADAPTIVE LAUNCH path (maintainer's EXP24 spec: "a
+-- simple paste of 2 files from the embed"): embeds only (no APP_DIR override
+-- probing, so no EnsureBackendForAppDir device init -- with the ATA drive
+-- resident those mass-slot probes can wait on a disk spin-up), and direct
+-- single-pass writes (the atomic tmp/.bak dance costs ~3x the payload on a
+-- memory card). The manual Settings apply keeps the original behavior:
+-- external overrides honored, atomic writes, no launch on the line.
+function PLDR.ApplyBdmaMode(mode_key, launch_fast)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
@@ -5756,14 +6328,46 @@ function PLDR.ApplyBdmaMode(mode_key)
   local suffix = BDMA_SUFFIX[selected]
   if suffix == nil then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Unknown BDMA mode: "..tostring(selected))
+      UI.Notif_queue.add(PLDR.L("Unknown BDMA mode:").." "..tostring(selected))
     end
     return false
   end
 
+  if launch_fast == true then
+    -- Launch staging: two embed pastes, nothing else. No backend init, no
+    -- external probing, no tmp/.bak. Self-healing: the marker goes last, so
+    -- any failure leaves marker ~= target and the next launch re-stages.
+    for i = 1, #BDMA_COPY_FILES do
+      local name = BDMA_COPY_FILES[i]
+      local rel = name..suffix
+      local bytes = nil
+      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, rel)
+        if ok_embedded and embedded ~= nil then
+          bytes = embedded
+        end
+      end
+      if bytes == nil then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..rel)
+        end
+        return false
+      end
+      local dest = POPSTARTER_PACK_ROOT.."/"..name
+      local ok_write, wrote = pcall(WriteBytesDirectBounded, bytes, dest)
+      if not ok_write or not wrote then
+        return false
+      end
+    end
+    if not WriteBdmaModeMarker(selected, true) then
+      return false
+    end
+    return true
+  end
+
   if not PLDR.EnsureBackendForAppDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("BDMA source backend not ready:\n"..APP_DIR_NORM)
+      UI.Notif_queue.add(PLDR.L("BDMA source backend not ready:").."\n"..APP_DIR_NORM)
     end
     return false
   end
@@ -5786,7 +6390,7 @@ function PLDR.ApplyBdmaMode(mode_key)
       end
       if bytes == nil then
         if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add("Missing BDMA source (tried):\n"..table.concat(paths, "\n"))
+          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..table.concat(paths, "\n"))
         end
         return false
       end
@@ -5873,14 +6477,27 @@ function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
   local target = PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if target == nil then return true end
   if PLDR.IsBdmaModeEquipped(target) then return true end
-  local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken())
+  -- Staging writes several driver files to the memory card -- the slowest
+  -- unpainted step in a launch (maintainer: an ATA launch sat "a very long time
+  -- on a frozen state"). ui.lua installs PLDR.LaunchProgress before the launch;
+  -- best-effort, never load-bearing. IsBdmaModeEquipped above means an
+  -- already-correct card pays nothing and paints nothing.
+  if type(PLDR.LaunchProgress) == "function" then
+    pcall(PLDR.LaunchProgress, PLDR.L("Staging drivers for this device").." ("..tostring(target)..")", 0.65)
+  end
+  -- launch_fast=true: embeds-only + direct writes (see ApplyBdmaMode) -- the
+  -- launch stall was the atomic dance + the APP_DIR backend init, not the 63KB.
+  local ok, why = PLDR.ApplyBdmaModeOnce(target, PLDR.NextBdmaApplyToken(), true)
+  if ok and type(PLDR.LaunchProgress) == "function" then
+    pcall(PLDR.LaunchProgress, PLDR.L("Starting the game..."), 0.85)
+  end
   -- No success toast: a successful launch execs POPStarter and never returns to
   -- the UI loop, so nothing queued here could ever render. The tester-visible
   -- success signal is the launch itself (and bdma_mode.txt naming the variant).
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     -- The caller CANCELS the launch on false, returning to the menu loop --
     -- which is the only place this warn can actually be seen.
-    UI.Notif_queue.add("Adaptive BDMA couldn't stage "..tostring(target).." -- launch cancelled\n("..tostring(why or "apply failed")..") check the memory card, or turn Adaptive BDMA off", "warn")
+    UI.Notif_queue.add(PLDR.L("Adaptive BDMA couldn't stage").." "..tostring(target).." "..PLDR.L("-- launch cancelled").."\n("..tostring(why or "apply failed")..") "..PLDR.L("check the memory card, or turn Adaptive BDMA off"), "warn")
   end
   return ok
 end
@@ -5929,33 +6546,59 @@ end
 -- override -> embedded fallback, exactly like ApplyBdmaMode) and generates the
 -- 2 .DAT from the current PLDR.SMB. Idempotent (atomic overwrites), so it is safe
 -- to re-run whenever an SMB field changes to regenerate the .DAT.
-function PLDR.ApplySmbModules()
+function PLDR.ApplySmbModules(progress)
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
+  end
+  -- Per-file progress (maintainer report: the save overlay sat on one static
+  -- "Applying SMB modules" through 8 slow memory-card writes -- long enough
+  -- that a normal user reads it as a crash). progress(i, total, name) fires
+  -- before each write; the caller repaints. Best-effort, never load-bearing.
+  local total = #PLDR.SMB_IRX_FILES + 2  -- the 6 IRX + IPCONFIG.DAT + SMBCONFIG.DAT
+  local function step(i, name)
+    if type(progress) == "function" then pcall(progress, i, total, name) end
   end
   local cfg = PLDR.SmbCopy(PLDR.SMB)
   for i = 1, #PLDR.SMB_IRX_FILES do
     local name = PLDR.SMB_IRX_FILES[i]
+    step(i, name)
     local dest = POPSTARTER_PACK_ROOT.."/"..name
     local paths = PLDR.BdmaSourceCandidates(name)
     local fd, source = PLDR.TryOpenFirst(paths)
     if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       System.closeFile(fd)
     end
+    -- Resolve what SHOULD be there before writing anything.
+    local bytes, want_size = nil, nil
     if source == nil then
-      local bytes = GetEmbeddedAssetBytes(name)
+      bytes = GetEmbeddedAssetBytes(name)
       if bytes == nil then
-        if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Missing SMB module (tried):\n"..table.concat(paths, "\n")) end
+        if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Missing SMB module (tried):").."\n"..table.concat(paths, "\n")) end
         return false
       end
+      want_size = #bytes
+    else
+      want_size = GetFileSizeSafe(source)
+    end
+    -- Skip files already installed (maintainer: "it shouldn't be pasting the
+    -- files unless they aren't there already"). These 6 IRX are static build
+    -- artifacts, so a byte-size match means the right file is on the card --
+    -- the same staleness test IsBdmaModeEquipped uses to avoid rewriting a
+    -- correct card. Turns a re-save from 8 slow memory-card writes into 2
+    -- (only the settings-bearing .DATs below always regenerate). A missing
+    -- dest gives GetFileSizeSafe nil, so a fresh install still writes all 6.
+    local have_size = GetFileSizeSafe(dest)
+    if have_size ~= nil and want_size ~= nil and have_size == want_size and have_size > 0 then
+      -- already present and the right size: leave it alone
+    elseif bytes ~= nil then
       if not WriteBytesAtomicBounded(bytes, dest) then return false end
     else
-      local src_size = GetFileSizeSafe(source)
-      if not CopyExternalAtomicBounded(source, dest, src_size) then return false end
+      if not CopyExternalAtomicBounded(source, dest, want_size) then return false end
     end
   end
   -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
+  step(#PLDR.SMB_IRX_FILES + 1, "IPCONFIG.DAT")
   local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
   local ip_body = PLDR.RenderSmbIpconfig(cfg)
   if ip_body == nil then
@@ -5964,6 +6607,7 @@ function PLDR.ApplySmbModules()
     if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
   end
   -- SMBCONFIG.DAT: always generated from the current settings.
+  step(total, "SMBCONFIG.DAT")
   if not WriteBytesAtomicBounded(PLDR.RenderSmbConfig(cfg), POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
     return false
   end
@@ -5975,7 +6619,7 @@ end
 -- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
 function PLDR.RemoveSmbModules()
   if not PLDR.EnsurePopstarterDir() then
-    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR)) end
+    if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local ok = true
@@ -6024,14 +6668,14 @@ function PLDR.EnsurePopstarterUiAssets()
   if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("Cannot access "..tostring(PLDR.POPSTARTER_DIR))
+      UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR))
     end
     return false
   end
 
   if not PLDR.EnsureBackendForAppDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then
-      UI.Notif_queue.add("BDMA source backend not ready:\n"..APP_DIR_NORM)
+      UI.Notif_queue.add(PLDR.L("BDMA source backend not ready:").."\n"..APP_DIR_NORM)
     end
     return false
   end
@@ -6057,7 +6701,7 @@ function PLDR.EnsurePopstarterUiAssets()
         end
         if bytes == nil then
           if UI ~= nil and UI.Notif_queue ~= nil then
-            UI.Notif_queue.add("Missing BDMA UI source (tried):\n"..table.concat(paths, "\n"))
+            UI.Notif_queue.add(PLDR.L("Missing BDMA UI source (tried):").."\n"..table.concat(paths, "\n"))
           end
           return false
         end
@@ -6303,8 +6947,10 @@ end
 
 function PLDR.InitATAPopsRoot()
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
-  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). BuildATAIdentity
-  -- loads the driver (System.initATA, idempotent) and classifies the ata slot.
+  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). The driver comes
+  -- up LAZILY on page entry via the async worker (EnsureMassBackendsReady "ata"
+  -- branch, screen alive); BuildATAIdentityDeferred then observes
+  -- System.ataReady() and classifies slots, skipping retries after a failure.
   local root = PLDR.GetATAMassRootNow()
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"
@@ -6441,7 +7087,7 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   if DIR == nil then
     -- The partition mounted but its root would not list: surface it instead of
     -- silently showing "No games found" (dir-read faults were invisible before).
-    pcall(UI.Notif_queue.add, string.format("HDD dir read failed: %s (%s)", tostring(list_path), tostring(partition)))
+    pcall(UI.Notif_queue.add, PLDR.L("HDD dir read failed:")..string.format(" %s (%s)", tostring(list_path), tostring(partition)))
     if type(on_progress) == "function" then
       pcall(on_progress, (tonumber(partition_index) or 1) / math.max(tonumber(partition_total) or 1, 1))
     end

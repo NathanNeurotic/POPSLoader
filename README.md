@@ -73,7 +73,7 @@ Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0
 | File Path | Description |
 | :--- | :--- |
 | `<device>:/POPS/GameName.VCD` | Your PS1 game image |
-| `<device>:/POPS/ART/GameName.png` | Optional cover art (200x200 8-bit PNG recommended). The `POPS/ART/` subfolder is the default location, checked first; a `<device>:/POPS/GameName.png` beside the VCD always works as a fallback. You can pick where covers (and the matching `GameName.txt` *Game details* sidecar) are looked for first in *Settings → Game List → Cover/details folder*: **POPS/ART** (default), **POPS** (beside the game), or a top-level **ART** folder at the device root. |
+| `<device>:/POPS/ART/GameName.png` | Optional cover art (200x200 8-bit PNG recommended). The `POPS/ART/` subfolder is the default location, checked first; a `<device>:/POPS/GameName.png` beside the VCD always works as a fallback. You can pick where covers (and the matching `GameName.txt` *Game details* sidecar) are looked for first in *Settings → Game List → Cover/details folder*: **device:/POPS/ART** (default), **device:/POPS** (beside the game), or **device:/ART** at the device root. |
 | `<device>:/POPS/IOPRP252.IMG` | Required POPS support file |
 | `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary. A `POPSTARTER.ELF` dropped here is used automatically for that device's games (so you can keep, say, a USB-delay build on the USB drive without forcing it everywhere) — unless you set an explicit **POPSTARTER Path**, which always wins. See [Settings](#other-settings). |
 | `<device>:/POPS/POPS.ELF` | POPS emulator engine binary |
@@ -113,9 +113,8 @@ Navigate POPSLoader using a standard PS2 controller.
 | **R1** | Refresh / rescan the current device's game list, in place (e.g. after hot-plugging a drive or card). USB / MMCE / MX4SIO / HDD (PFS) re-scan live by default; if *Game list cache* is enabled in Settings they instead rebuild their saved per-device cache. |
 | **Cross (X)** | Confirm option / Launch selected game. On a **Japanese-ROM console** the convention flips automatically: **Circle confirms and Cross cancels** (POPSLoader reads `rom0:ROMVER` at boot), and every on-screen button hint follows. |
 | **Circle (O)** | Go back to the Main Menu / Cancel (Cross on a Japanese-ROM console) |
-| **Triangle (△)** | Open the Credits screen (any button returns you to where you were). Exit shortcuts, including BOOT.ELF where available, live in the Exit menu opened with **Circle** on the Main Menu. |
 | **Start** | Open Settings |
-| **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art) |
+| **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art). Works on the device list and the game lists; on the Settings page use *Display → Hide UI Text* instead. |
 | **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
@@ -145,7 +144,7 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 | :--- | :--- | :--- |
 | **Boot Page** | **Carousel** (default) · MX4SIO · USB · MMCE · HDD (PFS) · HDD (exFAT) | Where POPSLoader lands after the boot sequence. *Carousel* shows the normal device wheel. Pick a device and POPSLoader opens **straight into that device's game list** at startup (it loads that backend automatically). If the chosen device is hidden (e.g. an HDD Boot Page after switching *Internal HDD* the other way), boot lands on the carousel with a message saying why. A `-page=` launch argument still overrides this for that one boot. |
 
-### Carousel Devices
+### Device List
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
@@ -173,7 +172,8 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 - **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. The USB page can't tell FAT32 from exFAT drives, so there your saved **BDMA Mode** decides: `exFAT-USB` keeps the exFAT drivers for USB launches, anything else means your USB drive is FAT32 (drivers removed, POPStarter's built-in stack used). Default **Off**.
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on (or while Adaptive BDMA is on), and you can't enable either while this folder is off.
 - **Hide UI Text** — **On/Off**; clears on-screen text for a clean cover-art view (also toggled with **Select**).
-- **Keyboard Layout** — on-screen keyboard layout for the path editor (QWERTY / DVORAK / ABC / AZERTY / QWERTZ / ABNT). This is the only place the layout is chosen; the keyboard itself no longer carries a layout strip.
+- **Keyboard Layout** — on-screen keyboard layout for the path editor: **QWERTY** (default) / DVORAK / ABC / AZERTY / QWERTZ / ABNT. This is the only place the layout is chosen; the keyboard itself no longer carries a layout strip.
+- **Credits** — *Settings → About → Credits*. (It used to be a Triangle shortcut advertised in every footer.)
 
 ### SMB / Network
 
