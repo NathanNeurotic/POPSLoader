@@ -868,49 +868,11 @@ UI = {
       UI.SavingMessage = "Saving..."
       UI.SavingProgress = nil
     end;
-    -- SIO2 conflict dialog (maintainer, 2026-07-20): mmceman and mx4sio_bd
-    -- cannot share the IOP session (same SIO2 port, raw register ownership,
-    -- no timeouts -- the 48% scan hang). Instead of only blocking, offer a
-    -- POPSLoader RESTART: self-exec through the IOP-reset launch route with
-    -- -page=<target>, so the fresh instance boots clean and lands directly on
-    -- the page the user wanted. Safer than an in-place R3Z-style reset: the
-    -- boot sequence rebuilds everything by definition, no latch surgery.
-    -- Returns true when it handled the entry (dialog opened -> caller must
-    -- return without scanning). Falls through (false) when: no conflict, or
-    -- an hdd0:-booted session (its launch route preserves the IOP, so a
-    -- restart would NOT clear the bus -- the system.lua guard toast covers it).
-    MaybeOfferSio2Restart = function (target)
-      if type(System) ~= "table" or type(System.getSio2Owner) ~= "function" then return false end
-      local ok, owner = pcall(System.getSio2Owner)
-      if not ok or type(owner) ~= "string" or owner == "" or owner == target then return false end
-      local argv0 = ""
-      if type(System.GetArgv0) == "function" then
-        local ok0, a0 = pcall(System.GetArgv0)
-        if ok0 and type(a0) == "string" then argv0 = a0 end
-      end
-      local low = string.lower(argv0)
-      if string.find(low, "^hdd") or string.find(low, "^pfs")
-         or string.find(low, "^ata") or string.find(low, "^apa") then
-        return false
-      end
-      local owner_label = (owner == "BOTH") and PLDR.L("Another device") or owner
-      UI.Modal.active = true
-      UI.Modal.title = PLDR.L("Device conflict")
-      UI.Modal.body = owner_label.." "..PLDR.L("is active -- restart POPSLoader to browse").." "..target.."?"
-      UI.Modal.options = {PLDR.L("Restart"), PLDR.L("Cancel")}
-      UI.Modal.confirm_action = function ()
-        local self_path = argv0
-        if self_path == "" then self_path = "POPSLOADER.ELF" end
-        local page_arg = (target == "MMCE") and "-page=mmce" or "-page=mx4sio"
-        pcall(System.loadELF, self_path, 1, self_path, page_arg)
-        -- Reaching here means the exec FAILED (a successful exec never returns).
-        UI.Modal.Close()
-        UI.Notif_queue.add(PLDR.L("Restart failed -- power cycle to switch device"), "error")
-      end
-      UI.Modal.cancel_action = UI.Modal.Close
-      UI.Modal.ignore_until_release = true
-      return true
-    end;
+    -- EXP32: the SIO2 "Device conflict / Restart" dialog is GONE. mmceman and
+    -- mx4sio_bd coexist on freesio2 (EXP31), exactly as OPL/RiptOPL run them
+    -- concurrently with no exclusion -- there is no conflict left to dialog
+    -- about. (The -page= self-exec plumbing in luasystem.cpp stays: launch
+    -- args use it independently.)
     RunBusyTask = function (initial_message, worker, failure_message)
       UI.ShowSavingOverlay(initial_message or "Working...", 0.05)
       local function report(message, progress)
@@ -3458,11 +3420,10 @@ UI = {
                 PLDR.SaveGameListCache(mmce_prefix.."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GMX4SIO then
-              report("Refreshing mass backends...", 0.16)
-              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(true) end
+              -- EXP32: enumeration only (driver is boot-resident); no markers,
+              -- no bdm_query poke -- the bounded sweep IS the refresh.
+              report("Checking the MX4SIO card...", 0.16)
               local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(false) end
               PLDR.CleanupGameList()
               if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
                 report("Scanning MX4SIO games...", 0.30)
@@ -3470,8 +3431,8 @@ UI = {
                 PLDR.SaveGameListCache(mx4sio_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GBDMHDD then
-              report("Refreshing mass backends...", 0.16)
-              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
+              -- EXP32: enumeration only; the bounded sweep is the refresh.
+              report("Checking the exFAT HDD...", 0.16)
               local ata_root = PLDR.InitATAPopsRoot()
               PLDR.CleanupGameList()
               if type(ata_root) == "string" and ata_root ~= "" then
@@ -5278,9 +5239,6 @@ UI = {
         end
 	          if UI.Pad.Events.CONFIRM then
 	          if UI.MainMenu.OPT == 1 then
-	            -- SIO2 conflict: offer the restart dialog instead of scanning into
-	            -- the guard (MX4SIO resident would hang MMCE reads at 48%).
-	            if UI.MaybeOfferSio2Restart("MMCE") then return end
 	            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MMCE games...", 0.48, 0.88)
 	              report("Detecting MMCE device...", 0.18)
@@ -5325,32 +5283,22 @@ UI = {
             end, "Failed to load MMCE")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 2 then
-	            -- SIO2 conflict: mirror of the MMCE-entry dialog above.
-	            if UI.MaybeOfferSio2Restart("MX4SIO") then return end
 	            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
-	              report("Refreshing mass backends...", 0.18)
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
-              -- MX4SIO crash-marker: its probe lives in a vendored IOP driver
-              -- that can BLOCK with no card. Mark "pending" before the probe;
-              -- if we hang in there the marker survives, and the next boot's
-              -- Boot-Page auto-enter skips MX4SIO (see system.lua). Cleared as
-              -- soon as the probe returns -- it returns on a no-card result, just
-              -- never on a hang -- so only a genuine stall leaves it set.
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-                PLDR.SetMx4sioAutoEnterPending(true)
-              end
-              if type(PLDR.RefreshMassBackends) == "function" then
-                pcall(PLDR.RefreshMassBackends)
-              end
+              -- EXP32: mx4sio_bd has been resident since boot (main.cpp), so
+              -- this is enumeration only -- a bounded opendir+ioctl sweep (3
+              -- passes, 1s settles), never a driver load. No markers, no
+              -- SIO2 guard, no bdm_query poke: none of that exists anymore.
               report("Locating MX4SIO POPS folder...", 0.42)
-              local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-                PLDR.SetMx4sioAutoEnterPending(false)
-              end
+              local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
-                UI.Notif_queue.add("No MX4SIO device detected", "warn")
+                if mx4_status == "notready" then
+                  UI.Notif_queue.add("MX4SIO driver did not start\n(the boot-time driver load failed -- check the SD card and reboot)", "warn")
+                else
+                  UI.Notif_queue.add("No MX4SIO device detected", "warn")
+                end
                 return
 	              end
 	              PLDR.CleanupGameList()
@@ -5371,17 +5319,25 @@ UI = {
           elseif UI.MainMenu.OPT == 3 then
             local ok = UI.RunBusyTask("Loading HDD (exFAT)...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.48, 0.9)
-              report("Refreshing mass backends...", 0.18)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
-              if type(PLDR.RefreshMassBackends) == "function" then
-                pcall(PLDR.RefreshMassBackends)
-              end
+              -- EXP32: the ata_bd worker was kicked in the BOOT window
+              -- (do_boot_init) for exFAT installs, so this normally finds it
+              -- already done and just enumerates. If the drive is still
+              -- probing, the wait below is BOUNDED (10s, screen alive) and
+              -- reports honestly instead of freezing; the worker keeps
+              -- running, so re-entering the page a moment later succeeds.
+              -- The old bdm_query re-poke (an RPC that could land mid-module-
+              -- registration) is gone from this path.
               report(PLDR.L("Locating exFAT HDD POPS folder..."), 0.42)
-              local ok_probe, ata_root = pcall(PLDR.InitATAPopsRoot)
-              if not ok_probe then ata_root = nil end
+              local ok_probe, ata_root, ata_status = pcall(PLDR.InitATAPopsRoot)
+              if not ok_probe then ata_root = nil; ata_status = nil end
               if ata_root == nil then
-                UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                if ata_status == "notready" then
+                  UI.Notif_queue.add(PLDR.L("The internal drive is still starting\nopen this page again in a moment"), "warn")
+                else
+                  UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                end
                 return
               end
               PLDR.CleanupGameList()
