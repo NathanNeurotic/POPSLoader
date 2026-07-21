@@ -1145,11 +1145,21 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
-  -- EXP32: the old SIO2 session-exclusion guard is GONE. mmceman and
-  -- mx4sio_bd coexist on the shared bus exactly as in OPL/RiptOPL: both ride
-  -- the freesio2 sio2man (EXP31), whose transfer queue is the arbitration the
-  -- stock manager lacked. No reference launcher latches "who owns SIO2" --
-  -- OPL runs both drivers concurrently and only throttles background polling.
+  -- MMCE<->MX4SIO GATE (mirror of the one in EnsureMassBackendsReady): the
+  -- conflict is ELECTRICAL -- the two adapters tie the memcard port's /ACK pin
+  -- differently (R3Z3N, 2026-07-21) -- so the two drivers must never be
+  -- resident together. wLaunchELF_R3Z full-IOP-resets to switch between them;
+  -- NHDDL never loads mmceman when MX4SIO mode is on. First engaged wins the
+  -- session; decline the second with the restart message.
+  if type(System) == "table" and type(System.getSio2Owner) == "function" then
+    local ok_o, owner = pcall(System.getSio2Owner)
+    if ok_o and owner == "MX4SIO" then
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
+      end
+      return false
+    end
+  end
 
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
@@ -5745,10 +5755,25 @@ end
 -- no-op, a single boot-failure retry, or a bounded status poll.
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
-    -- Boot loaded mx4sio_bd (main.cpp, after usbmass_bd). This call is the
-    -- single page-entry RETRY for a failed boot load -- OPL's success-only
-    -- latch rule (a failure is retried at the next entry, never poisoned for
-    -- the session). Normal case: latched no-op.
+    -- MMCE<->MX4SIO GATE (R3Z3N, the R3Z author, 2026-07-21: the two adapters
+    -- "tie /ACK (a pin on the memcard port) differently" -- the conflict is
+    -- ELECTRICAL, so no bus manager can arbitrate it; wLaunchELF_R3Z switches
+    -- between the two stacks with a FULL IOP RESET, NHDDL never loads mmceman
+    -- in mx4sio mode). First driver engaged wins the session; decline the
+    -- second with the restart message. IRX cannot unload, so a restart is the
+    -- honest switch path -- same as R3Z's reset, minus the in-place reboot.
+    if type(System) == "table" and type(System.getSio2Owner) == "function" then
+      local ok_o, owner = pcall(System.getSio2Owner)
+      if ok_o and owner == "MMCE" then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
+        end
+        return false
+      end
+    end
+    -- LAZY load on first engagement (R3Z/OPL model; no boot-time load). A
+    -- failed load never latches -- the next entry retries (OPL's success-only
+    -- latch rule). Latched no-op once loaded.
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       local ok_c, loaded = pcall(System.initMX4SIO)
       return ok_c and loaded ~= false

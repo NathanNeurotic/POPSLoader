@@ -827,6 +827,37 @@ t23 = lua.execute(r'''
 ''')
 check("T23 ready transports classify by driver name (sdc->mx4sio, ata->ata, usb excluded)", t23)
 
+t24 = lua.execute(r'''
+  -- (e) MMCE<->MX4SIO electrical gate (R3Z3N: /ACK pin tie conflict): the
+  -- second driver must DECLINE while the first owns the session -- and must
+  -- never even attempt its IRX load.
+  local load_attempted = false
+  System.initMX4SIO = function() load_attempted = true; return true end
+  System.getSio2Owner = function() return "MMCE" end
+  local root, status = PLDR.GetMX4SIOMassRootNow()
+  if root ~= nil or status ~= "notready" then
+    return false, "mx4sio must decline while MMCE owns the session"
+  end
+  if load_attempted then
+    return false, "mx4sio_bd load attempted despite the MMCE gate"
+  end
+  -- mirror: MMCE declines while MX4SIO owns the session
+  System.getSio2Owner = function() return "MX4SIO" end
+  PLDR._mmce_ready = nil
+  local ok_m = PLDR.EnsureMmceReadyOnce()
+  if ok_m ~= false then
+    return false, "EnsureMmceReadyOnce must return false while MX4SIO owns the session"
+  end
+  -- no owner: both sides proceed
+  System.getSio2Owner = function() return "" end
+  local root2 = PLDR.GetMX4SIOMassRootNow()
+  if not load_attempted then
+    return false, "mx4sio_bd load should proceed with no session owner"
+  end
+  return true
+''')
+check("T24 MMCE<->MX4SIO gate: second driver declines, never loads (first engaged wins)", t24)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

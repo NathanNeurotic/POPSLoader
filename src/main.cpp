@@ -84,7 +84,6 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-extern bool EnsureMx4sioBd(void);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -632,18 +631,18 @@ int main(int argc, char * argv[])
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
-    // EXP32: mx4sio_bd joins the boot-window transport set, right after
-    // usbmass_bd -- the position NHDDL's module table and OPL's LoadModules
-    // both use. The load itself is quick (card detection runs on the driver's
-    // own IOP thread), and loading here -- into the same near-empty IOP as the
-    // rest of the BDM set -- is what deletes page-time module loading (the 42%
-    // freeze class) from the MX4SIO page. Coexistence with mcman/mmceman on
-    // the shared SIO2 bus is the bus manager's job (freesio2, EXP31), exactly
-    // as in OPL/RiptOPL, which run mmceman + mx4sio_bd together with no
-    // exclusion. Failure is non-fatal: the latch stays unset and the MX4SIO
-    // page retries the load once on entry (success-only latch, OPL's rule).
-    EnsureMx4sioBd();
-    BootStamp("mx4sio_bd");
+    /* NO mx4sio_bd at boot (maintainer, EXP32 revision): storage stacks load
+     * LAZILY when their device is engaged -- cwd/boot-device determines what
+     * boot needs (boot.lua's mx4sio: branch loads it on an mx4sio boot), and
+     * the MX4SIO page loads it on first entry. This matches wLaunchELF_R3Z
+     * (storage_driver_stack_mode, stacks on engagement) and OPL (transports on
+     * its IO worker at first BDM init). It is also load-bearing for the
+     * MMCE<->MX4SIO gate below in Lua: R3Z3N (the R3Z author): the two adapters
+     * "tie /ACK (a pin on the memcard port) differently" -- an ELECTRICAL
+     * conflict no bus manager can arbitrate -- so the two drivers must never
+     * be resident together. Lazy loading means most sessions engage at most
+     * one, and the first engaged wins the session (R3Z switches by full IOP
+     * reset; we decline the second with a restart message). */
 
     /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
      * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page

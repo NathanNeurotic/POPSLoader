@@ -5287,15 +5287,16 @@ UI = {
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
-              -- EXP32: mx4sio_bd has been resident since boot (main.cpp), so
-              -- this is enumeration only -- a bounded opendir+ioctl sweep (3
-              -- passes, 1s settles), never a driver load. No markers, no
-              -- SIO2 guard, no bdm_query poke: none of that exists anymore.
+              -- EXP32: mx4sio_bd loads LAZILY on this first entry (R3Z/OPL
+              -- model; the MMCE<->MX4SIO electrical gate lives in system.lua's
+              -- dispatcher and queues its own message when it declines). After
+              -- the load: a bounded opendir+ioctl sweep (3 passes, 1s
+              -- settles). No markers, no bdm_query poke, no unbounded wait.
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
                 if mx4_status == "notready" then
-                  UI.Notif_queue.add("MX4SIO driver did not start\n(the boot-time driver load failed -- check the SD card and reboot)", "warn")
+                  UI.Notif_queue.add("MX4SIO could not start this session", "warn")
                 else
                   UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 end
