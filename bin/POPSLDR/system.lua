@@ -5721,6 +5721,25 @@ function PLDR.EnsureUsbMassReadyOnce()
   return true
 end
 
+-- One vsync-paced frame for the scan poll loops below. A BARE Screen.flip
+-- repaints NOTHING between swaps, so the two framebuffers alternate with stale
+-- content -- the "severe visual corruption while the ATA page loads" (maintainer,
+-- EXP25 MC-boot test). When the busy overlay is up, re-issue it (ShowSavingOverlay
+-- draws the full frame, ticks the spinner, and flips -- same vsync pacing, so the
+-- N*60 frame-count timeouts stay honest). Outside an overlay context (boot-time
+-- backend init, headless harness) fall back to the plain flip/sleep.
+local function PaceScanFrame()
+  if type(UI) == "table" and UI.SavingActive == true and type(UI.ShowSavingOverlay) == "function" then
+    local ok = pcall(UI.ShowSavingOverlay, UI.SavingMessage, UI.SavingProgress)
+    if ok then return end
+  end
+  if type(Screen) == "table" and type(Screen.flip) == "function" then
+    pcall(Screen.flip)
+  elseif type(System) == "table" and type(System.sleep) == "function" then
+    pcall(System.sleep, 0)
+  end
+end
+
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
     -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
@@ -5732,13 +5751,8 @@ local function EnsureMassBackendsReady(mode)
     if type(System) == "table" and type(System.initATAStatus) == "function" then
       local ok_st, st = pcall(System.initATAStatus)
       if ok_st and st == 1 then
-        local can_flip = type(Screen) == "table" and type(Screen.flip) == "function"
         for _ = 1, (20 * 60) do
-          if can_flip then
-            pcall(Screen.flip)
-          elseif type(System.sleep) == "function" then
-            pcall(System.sleep, 0)
-          end
+          PaceScanFrame()
           local ok2, s2 = pcall(System.initATAStatus)
           if ok2 and type(s2) == "number" and s2 ~= 1 then break end
         end
@@ -5772,15 +5786,10 @@ local function EnsureMassBackendsReady(mode)
       pcall(function() started = S.initATAAsync() end)
       -- started: -1 spawn-failed, 1 running, 2 done-ok (already loaded)
       if type(started) == "number" and started >= 0 then
-        local can_flip = type(Screen) == "table" and type(Screen.flip) == "function"
         local st = started
         for _ = 1, (90 * 60) do
           if st == 2 or st == 3 then break end
-          if can_flip then
-            pcall(Screen.flip)
-          elseif type(S.sleep) == "function" then
-            pcall(S.sleep, 0)
-          end
+          PaceScanFrame()
           local ok2, s2 = pcall(S.initATAStatus)
           if ok2 and type(s2) == "number" then st = s2 end
         end

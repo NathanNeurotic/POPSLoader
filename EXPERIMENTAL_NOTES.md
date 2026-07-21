@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP25**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP25** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP26**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP26** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below, nothing missing.
 
@@ -10,7 +10,15 @@
 
 ---
 
-## New in EXP25: fast boot is back, the internal drive loads on demand, and driver staging is two quick pastes
+## New in EXP26: the loading-screen corruption is fixed
+
+EXP25's maintainer test confirmed the two headline goals on real hardware: fast boot with the internal drive loading on demand from its own page, and the MX4SIO page working right after it. One cosmetic bug came with it: **severe visual corruption while the exFAT page loaded the drive**, clearing up the moment loading finished. That was ours: while the drive loaded in the background, the waiting loop flipped the screen every frame without drawing anything between flips, so the display alternated between two stale frames. EXP26 redraws the progress overlay properly on every frame instead, so the load now shows a steady, animated progress screen. Same fix applies to the brief wait the MX4SIO page does when the drive is still coming up.
+
+Everything else is EXP25 unchanged, and the EXP25 test list below still applies. One extra ask this round: **launch an MX4SIO game** (not just the page). If POPSTARTER still comes up broken from an MX4SIO launch, that confirms the one remaining open issue (the launch handoff inherits the launcher's live system state, which only hurts MX4SIO because its SD card shares a bus with the pads and memory cards), and the candidate fix is already scoped.
+
+---
+
+## EXP25: fast boot is back, the internal drive loads on demand, and driver staging is two quick pastes
 
 EXP24 proved its two big fixes on real hardware: the MX4SIO page scans again and the internal exFAT drive listed and launched a game. It also introduced one thing the maintainer rightly rejected (a 5 to 6 second black screen at boot for the internal drive stack) and exposed two launch-time problems (driver staging taking far too long, and an MX4SIO launch coming up broken). EXP25 keeps everything EXP24 proved and fixes what it got wrong.
 
