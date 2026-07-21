@@ -1145,21 +1145,10 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
-  -- SIO2 EXCLUSION (NHDDL's model): mmceman and mx4sio_bd cannot coexist --
-  -- both drive the shared SIO2 bus, and sustained reads from one hang with the
-  -- other resident (HW: the MMCE scan froze at 48% after an MX4SIO page visit,
-  -- 2026-07-20; wLaunchELF_R3Z IOP-resets between these two for the same
-  -- reason). If MX4SIO already claimed the bus this session, DECLINE the MMCE
-  -- bring-up with a clear message instead of loading into a hang.
-  if type(System) == "table" and type(System.getSio2Owner) == "function" then
-    local ok_o, owner = pcall(System.getSio2Owner)
-    if ok_o and owner == "MX4SIO" then
-      if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
-      end
-      return false
-    end
-  end
+  -- NO MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs both
+  -- drivers resident together in the field on the same freesio2 bus manager
+  -- we now carry (EXP31). See the matching note in EnsureMassBackendsReady's
+  -- mx4sio branch for the recorded R3Z3N tradeoff.
 
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
@@ -4329,27 +4318,19 @@ function PLDR.EnsurePopstarterDir()
   return EnsurePopstarterPackDir(PLDR.POPSTARTER_DIR)
 end
 
--- MX4SIO auto-enter crash-marker. MX4SIO's card probe lives in a vendored IOP
--- driver (mx4sio_bd.irx) that can BLOCK when no card is present (notably PCSX2
--- with MX4SIO emulated but no card image). A blocked IOP module cannot be timed
--- out from the EE, so instead we bound the blast radius: mark "MX4SIO entry
--- pending" right before the probe and clear it once the probe returns. If a
--- later boot still finds the marker set, the previous MX4SIO entry never
--- returned (it hung) -- so the persisted-Boot-Page auto-enter skips MX4SIO that
--- boot, and a single stall cannot brick every boot. All ops are best-effort
--- (pcall) so the marker machinery can never itself error or wedge the boot.
+-- EXP32: the MX4SIO auto-enter crash-marker is GONE (no reference launcher
+-- persists failure state -- grep OPL/NHDDL for crash markers: zero). The hang
+-- it bounded (a page-entry driver load that never returned) no longer exists:
+-- mx4sio_bd loads lazily via the matched-vintage SDK set (the wedge was the
+-- c1debd1 mismatched core, fixed), the load returns promptly (card detection
+-- runs on the driver's own IOP thread), and every enumeration wait after it
+-- is bounded (settle-retry budget, never an unbounded probe). One legacy duty
+-- remains:
+-- an install upgrading from a marker-era build may have the marker file on
+-- the memory card; clear it opportunistically so it cannot confuse anything.
 local MX4SIO_PENDING_MARKER = PLDR.POPSTARTER_DIR.."/.mx4sio_autoenter_pending"
-function PLDR.SetMx4sioAutoEnterPending(pending)
-  if pending then
-    pcall(PLDR.EnsurePopstarterDir)
-    pcall(WriteAtomic, MX4SIO_PENDING_MARKER, "1")
-  else
-    pcall(System.removeFile, MX4SIO_PENDING_MARKER)
-  end
-end
-function PLDR.IsMx4sioAutoEnterPending()
-  local ok, exists = pcall(doesFileExist, MX4SIO_PENDING_MARKER)
-  return ok and exists == true
+function PLDR.ClearLegacyMx4sioMarker()
+  pcall(System.removeFile, MX4SIO_PENDING_MARKER)
 end
 
 local function RecursiveRemoveDir(dir, preserve_path, depth)
@@ -5011,8 +4992,20 @@ function PLDR.LoadSettingsNonFatal()
     -- (BuildUsbIdentityDeferred). Only a mass*: sidecar needs it -- MC/HDD/MMCE
     -- are already mounted at boot, so they skip the retry (and its sleep).
     if loaded_path == nil and string.match(string.lower(sidecar), "^mass%d*:/") ~= nil then
-      for _ = 1, 3 do
+      -- Legacy-mass boot-device resolution (maintainer, 2026-07-21): an old
+      -- launcher can hand us a mass* argv0 that is REALLY an MX4SIO card or
+      -- the internal exFAT drive, not USB -- and that slot only exists once
+      -- ITS driver is loaded. So the heal ladder escalates: pass 1 = USB only
+      -- (the common case, unchanged); passes 2-3 also lazy-load mx4sio_bd
+      -- (cheap; its slot then mounts and the ioctl names it "sdc") and kick
+      -- the ata worker (non-blocking; an exFAT-backed cwd resolves once the
+      -- drive registers). Bounded: 3 passes x 1s, same as before.
+      for attempt = 1, 3 do
         if type(PLDR.EnsureUsbMassReadyOnce) == "function" then pcall(PLDR.EnsureUsbMassReadyOnce) end
+        if attempt >= 2 and type(System) == "table" then
+          if type(System.initMX4SIO) == "function" then pcall(System.initMX4SIO) end
+          if type(System.initATAAsync) == "function" then pcall(System.initATAAsync) end
+        end
         if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
         if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
         loaded_path = ProbeSidecarAliases()
@@ -5756,86 +5749,90 @@ local function PaceScanFrame()
   end
 end
 
+-- EXP32: the reference-parity dispatcher. Returns TRUE when the mode's
+-- transport is ready to ENUMERATE, false when it is not -- and a caller that
+-- gets false must NOT sweep (NHDDL's rule: never probe a device class whose
+-- driver isn't up; the sweep's fileXio RPCs against a half-registered core
+-- were one of the wedge channels). No branch here loads a module on the UI
+-- thread, ever, beyond the LAZY first-engagement load: usbmass_bd is boot-
+-- resident, mx4sio_bd loads on first engagement (quick, detection async on
+-- its own IOP thread), and ata loads only on its worker (do_boot_init kicks
+-- it for exFAT installs; page entry is a bounded status poll, never a load).
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
-    -- SIO2 EXCLUSION (mirror of the guard in EnsureMmceReadyOnce): if mmceman
-    -- already claimed the SIO2 bus this session, DECLINE loading mx4sio_bd --
-    -- the two cannot coexist (shared-bus hang at 48%, HW 2026-07-20).
-    if type(System) == "table" and type(System.getSio2Owner) == "function" then
-      local ok_o, owner = pcall(System.getSio2Owner)
-      if ok_o and owner == "MMCE" then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
-        end
-        return
-      end
-    end
-    -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
-    -- IOP module loader. Queueing System.initMX4SIO behind it would block this
-    -- page forever if that load ever wedges (the one-wedge-two-pages "42%"
-    -- cascade). Wait screen-alive up to ~20s for it to finish; if it is STILL
-    -- running after that, decline this scan pass instead of queueing blind --
-    -- the next page entry retries cleanly.
+    -- CASCADE BOUND: the ata worker loads its modules through the SAME IOP
+    -- module loader a page-entry initMX4SIO uses. If that load is in flight
+    -- (exFAT boot kick still running, or another page kicked it), wait
+    -- screen-alive -- BOUNDED -- instead of queueing a synchronous load
+    -- behind a possibly-wedged loader (the one-wedge-two-pages class). Still
+    -- running after the budget -> report not-ready; the next entry retries.
+    -- (Lazy loading re-opened this window; rev1's boot-time load had closed
+    -- it, so the bound returns with the laziness.)
     if type(System) == "table" and type(System.initATAStatus) == "function" then
       local ok_st, st = pcall(System.initATAStatus)
       if ok_st and st == 1 then
-        for _ = 1, (20 * 60) do
+        for _ = 1, (10 * 60) do
           PaceScanFrame()
           local ok2, s2 = pcall(System.initATAStatus)
-          if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+          if ok2 and type(s2) == "number" and s2 ~= 1 then st = s2 break end
         end
-        local ok3, s3 = pcall(System.initATAStatus)
-        if ok3 and s3 == 1 then
-          return
-        end
+        if st == 1 then return false end
       end
     end
+    -- LAZY load on first engagement (maintainer directive; OPL loads
+    -- transports at first BDM init, R3Z loads stacks when engaged). NO
+    -- MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs mmceman
+    -- and mx4sio_bd resident together in the field and it works; we carry the
+    -- same freesio2 bus manager OPL does (EXP31). [Recorded tradeoff: R3Z3N
+    -- advises gating -- the adapters tie the memcard port's /ACK differently
+    -- -- and R3Z full-IOP-resets between the stacks; the maintainer weighed
+    -- OPL's field evidence and chose coexistence.] A failed load never
+    -- latches -- the next entry retries (OPL's success-only latch rule).
+    -- Latched no-op once loaded.
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
+      local ok_c, loaded = pcall(System.initMX4SIO)
+      return ok_c and loaded ~= false
     end
-    return
+    return true
   end
 
   if mode == "ata" then
-    -- LAZY ASYNC bring-up (OPL's arrangement -- its "ps2atad" embed is the same
-    -- ata_bd blob loaded mid-session on a worker thread). NO boot-time load
-    -- anymore (the ~5-6s black-screen cost was unacceptable); the page pays for
-    -- the drive it is opening, screen alive. Frame-count the timeout, NOT
-    -- Timer.getTime (MICROSECONDS trap). A working bring-up takes seconds
-    -- (spin-up included); ~90s is a generous ceiling before we give up and the
-    -- page reports no drive. The APA/PFS hdd0: boot path is separate and
-    -- synchronous (luaHDD) and latches the same load-once flag.
+    -- ata_bd loads on the EE worker, kicked at BOOT by do_boot_init when the
+    -- Internal-HDD setting includes exFAT -- into the same near-empty IOP as
+    -- the EXP22 build, the only arrangement hardware-proven on the SCPH-30004
+    -- class (identical bytes wedged when loaded mid-session onto a full IOP).
+    -- Entering the page before the worker finishes (or when the boot kick was
+    -- skipped -- setting just changed this session) polls BOUNDED and ONCE:
+    -- OPL's 10s ATA budget, screen alive. Still running after that -> report
+    -- not-ready; the worker keeps going and the next page entry usually finds
+    -- it done. NEVER a synchronous load here -- the old sync fallback was the
+    -- historically-freezing configuration.
     local S = System
-    local have_async = type(S) == "table"
-      and type(S.initATAAsync) == "function"
-      and type(S.initATAStatus) == "function"
-    if have_async then
-      local started = -1
-      pcall(function() started = S.initATAAsync() end)
-      -- started: -1 spawn-failed, 1 running, 2 done-ok (already loaded)
-      if type(started) == "number" and started >= 0 then
-        local st = started
-        for _ = 1, (90 * 60) do
-          if st == 2 or st == 3 then break end
-          PaceScanFrame()
-          local ok2, s2 = pcall(S.initATAStatus)
-          if ok2 and type(s2) == "number" then st = s2 end
-        end
-        return
+    if type(S) ~= "table" or type(S.initATAAsync) ~= "function"
+       or type(S.initATAStatus) ~= "function" then
+      return false
+    end
+    local st = -1
+    pcall(function() st = S.initATAAsync() end)
+    -- st: -1 spawn-failed, 1 running, 2 done-ok (a done-fail re-spawns inside
+    -- initATAAsync, so a bad early probe stays retryable -- RiptOPL's rule).
+    if st == 2 then return true end
+    if type(st) ~= "number" or st < 0 then return false end
+    for _ = 1, (10 * 60) do
+      PaceScanFrame()
+      local ok2, s2 = pcall(S.initATAStatus)
+      if ok2 and type(s2) == "number" then
+        st = s2
+        if st ~= 1 then break end
       end
-      -- async couldn't start (thread create failed) -- fall through to sync.
     end
-    if type(S) == "table" and type(S.initATA) == "function" then
-      pcall(S.initATA)
-    end
-    return
+    return st == 2
   end
 
   if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
     pcall(PLDR.EnsureUsbMassReadyOnce)
-    return
   end
-
+  return true
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
@@ -5848,7 +5845,7 @@ local function WaitMassProbeRetry(attempt, max_attempts)
 end
 
 local function BuildMassRootIdentity(mode)
-  EnsureMassBackendsReady(mode)
+  local ready = EnsureMassBackendsReady(mode)
 
   local identity = {
     usb = {},
@@ -5856,6 +5853,13 @@ local function BuildMassRootIdentity(mode)
     ata = {},
     present_roots = {}
   }
+
+  -- Not ready = do NOT sweep (NHDDL: never probe a class whose driver isn't
+  -- up). Return the empty identity plus the flag so callers can distinguish
+  -- "drive still starting" from "no device found".
+  if ready == false then
+    return identity, false
+  end
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
@@ -5893,7 +5897,7 @@ local function BuildMassRootIdentity(mode)
     end
   end
 
-  return identity
+  return identity, true
 end
 
 -- Turn System.getUsbDiag()'s raw IRX return codes into one short line for the
@@ -6060,105 +6064,76 @@ local function BuildUsbIdentityDeferred(progress)
   return identity or BuildMassRootIdentity("usb")
 end
 
--- MX4SIO gets the LARGEST retry budget of the deferred mass builders (USB 3,
--- ATA 4, MX4SIO 6): the SD-over-SPI bridge (MX4SIO / SD2PS2TD) is the slowest and
--- flakiest to mount, and FifthFox reported intermittent "not detected" on real
--- hardware that a manual R1 rescan (a whole fresh set of attempts) reliably fixed
--- -- i.e. the card just needs more init+settle cycles than 3. Each attempt re-runs
--- the init (EnsureMassBackendsReady -> System.initMX4SIO) and WaitMassProbeRetry
--- re-pokes (refreshMassBackends) before the 1s settle, so more attempts = more of
--- exactly the bring-up work R1 does, without making the user press R1.
-local function BuildMX4IdentityDeferred()
-  -- SIO2 exclusion short-circuit: when MMCE owns the bus, the driver load was
-  -- DECLINED (EnsureMassBackendsReady) -- nothing will ever enumerate, so skip
-  -- the 6x1s retry ladder and return one no-retry scan (empty; the guard's
-  -- toast already told the user why).
-  if type(System) == "table" and type(System.getSio2Owner) == "function" then
-    local ok_o, owner = pcall(System.getSio2Owner)
-    if ok_o and owner == "MMCE" then
-      return BuildMassRootIdentity("mx4sio")
-    end
-  end
-  -- FUNCTION-local (not chunk-level): system.lua's main chunk is near Lua's 200-local cap.
-  local MX4_PROBE_ATTEMPTS = 6
-  -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its
-  -- own IOP thread AFTER the IRX loads, so the EE side must SETTLE between re-scans or it
-  -- races the still-mounting FAT volume and finds nothing. Sleep 1s between attempts -- the
-  -- same pattern BuildUsbIdentityDeferred and BuildATAIdentityDeferred use. (7462a41 dropped
-  -- the old InitMX4SIOPopsRoot retry/settle loop and left THIS builder as the only deferred
-  -- one without a delay, so a cold first entry kicked out at "Locating MX4SIO..." 42% because
-  -- identity.mx4sio was still empty -- regression reported ~2026-06-17.)
+-- EXP32: ONE bounded deferred builder for the lazily-loaded transports
+-- (mx4sio, ata) -- one settle-retry MECHANISM replacing the two divergent
+-- ladder implementations, with a per-mode BUDGET where hardware demanded it
+-- (see the budget note inside). A pass is just cheap opendir+ioctl sweeps.
+-- The old ladders' WaitMassProbeRetry re-poke (a bdm_query RPC that could
+-- land mid-module-registration -- one of the wedge channels) is gone from
+-- these paths. Second return distinguishes "transport not ready" (worker
+-- still starting / load declined or failed) from "swept clean, nothing
+-- there", so the page can say the truthful thing instead of a generic
+-- no-device toast. (USB keeps its own builder unchanged above: its attempt
+-- ladder + diag flow is HW-confirmed since the #508 fix, no freeze channel.)
+local function BuildBoundedIdentityDeferred(mode)
+  -- ONE mechanism (settle-retry sweep), per-mode BUDGET where hardware
+  -- demanded it: mx4sio keeps its 6 passes -- the SD-over-SPI bridge is the
+  -- slowest/flakiest to mount, the budget was raised 3->6 precisely because
+  -- FifthFox hit intermittent "not detected" at 3 on real hardware, and the
+  -- maintainer reports zero misses since (2026-07-21: "I haven't had a no
+  -- MX4SIO detected in a long time"). The settle exists because mx4sio_bd
+  -- self-detects the card on its own IOP thread AFTER the IRX loads; an
+  -- immediate sweep races the still-mounting volume (the old two-entries-to-
+  -- see-the-card quirk). ata keeps 3: its worker completes detection before
+  -- enumeration is allowed at all, so passes only cover FS-mount lag.
+  local budget = (mode == "mx4sio") and 6 or 3
+  local identity, ready
   local attempts = 0
-  while attempts < MX4_PROBE_ATTEMPTS do
+  while attempts < budget do
     attempts = attempts + 1
-    local identity = BuildMassRootIdentity("mx4sio")
-    if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
-      return identity
+    identity, ready = BuildMassRootIdentity(mode)
+    if ready == false then
+      return identity, false
     end
-    WaitMassProbeRetry(attempts, MX4_PROBE_ATTEMPTS)
-    if attempts < MX4_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
+    if type(identity) == "table" and type(identity[mode]) == "table" and #identity[mode] > 0 then
+      return identity, true
+    end
+    if attempts < budget and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
-  return BuildMassRootIdentity("mx4sio")
+  -- Return the LAST attempt's result -- re-sweeping here would be a redundant
+  -- extra pass of the same probes (review finding on the EXP32 PR).
+  return identity, ready
 end
 
+-- Both Now-getters return (root|nil, status): "ready" with a root, or nil with
+-- "notready" (transport still starting -- ata worker mid-probe) / "nodevice"
+-- (swept, nothing present). Callers that ignore the second value keep working.
 function PLDR.GetMX4SIOMassRootNow()
-  local identity = BuildMX4IdentityDeferred()
-  if type(identity) == "table" and type(identity.mx4sio) == "table" then
-    return identity.mx4sio[1] or nil
+  local identity, ready = BuildBoundedIdentityDeferred("mx4sio")
+  if type(identity) == "table" and type(identity.mx4sio) == "table" and identity.mx4sio[1] ~= nil then
+    return identity.mx4sio[1], "ready"
   end
-  return nil
-end
-
-local function BuildATAIdentityDeferred()
-  -- If the lazy async bring-up did not finish (load failed, no drive, or the
-  -- worker timed out in EnsureMassBackendsReady), there is nothing to
-  -- enumerate: skip the 4x1s retry ladder and do one no-retry scan to keep the
-  -- return shape. The page then reports no drive promptly.
-  if type(System) == "table" and type(System.ataReady) == "function" then
-    local ok, ready = pcall(System.ataReady)
-    if ok and ready == false then
-      return BuildMassRootIdentity("ata")
-    end
-  end
-  -- The internal HDD via ata_bd/BDM enumerates ASYNCHRONOUSLY and is slower to appear
-  -- than MX4SIO/USB (dev9 bring-up + HDD spin-up + BDM registration all take time).
-  -- The old retry re-scanned with NO delay, racing that enumeration -> "No exFAT HDD
-  -- detected" on real hardware (CosmicScale 2026-06-23). Retry WITH a 1s settle between
-  -- attempts -- the same pattern the USB path uses, and NHDDL's devices_bdm.c retry loop
-  -- (the authoritative exFAT-HDD launcher: it re-opendir's mass: spaced apart, not once).
-  local attempts = 0
-  while attempts < 4 do
-    attempts = attempts + 1
-    local identity = BuildMassRootIdentity("ata")
-    if type(identity) == "table" and type(identity.ata) == "table" and #identity.ata > 0 then
-      return identity
-    end
-    WaitMassProbeRetry(attempts, 4)
-    if attempts < 4 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
-    end
-  end
-  return BuildMassRootIdentity("ata")
+  return nil, (ready == false) and "notready" or "nodevice"
 end
 
 function PLDR.GetATAMassRootNow()
-  local identity = BuildATAIdentityDeferred()
-  if type(identity) == "table" and type(identity.ata) == "table" then
-    return identity.ata[1] or nil
+  local identity, ready = BuildBoundedIdentityDeferred("ata")
+  if type(identity) == "table" and type(identity.ata) == "table" and identity.ata[1] ~= nil then
+    return identity.ata[1], "ready"
   end
-  return nil
+  return nil, (ready == false) and "notready" or "nodevice"
 end
 
 function PLDR.GetRootsByType(kind, _mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
-    local identity = BuildMX4IdentityDeferred()
+    local identity = BuildBoundedIdentityDeferred("mx4sio")
     return identity.mx4sio
   end
   if wanted == "ata" then
-    local identity = BuildATAIdentityDeferred()
+    local identity = BuildBoundedIdentityDeferred("ata")
     return identity.ata
   end
 
@@ -6180,10 +6155,8 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mx4sio%d*:/") then
-    if type(_G.ensureMx4sioInit) == "function" then
-      local ok = pcall(_G.ensureMx4sioInit)
-      if ok then return true end
-    end
+    -- (EXP32: the dead _G.ensureMx4sioInit fallback is gone -- nothing has
+    -- defined it since the PR #476 era; System.initMX4SIO is the one path.)
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       local ok = pcall(System.initMX4SIO)
       return ok
@@ -6207,10 +6180,6 @@ function PLDR.EnsureBackendForAppDir()
       and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
-      if type(_G.ensureMx4sioInit) == "function" then
-        local ok = pcall(_G.ensureMx4sioInit)
-        if ok then return true end
-      end
       if type(System) == "table" and type(System.initMX4SIO) == "function" then
         local ok = pcall(System.initMX4SIO)
         if ok then return true end
@@ -6937,25 +6906,27 @@ function PLDR.InitMX4SIOPopsRoot()
   -- probe / System.sleep re-poke loop / _G.ensureMx4sioInit: that synchronous
   -- card-hunting is exactly what stalled a no-card MX4SIO on PCSX2. With no card
   -- this just returns nil (empty list) instead of blocking.
-  local root = PLDR.GetMX4SIOMassRootNow()
+  local root, status = PLDR.GetMX4SIOMassRootNow()
   if type(root) == "string" and root ~= "" then
     PLDR.SetMX4SIORoot(root)
     return root.."POPS/"
   end
-  return nil
+  return nil, status
 end
 
 function PLDR.InitATAPopsRoot()
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
-  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). The driver comes
-  -- up LAZILY on page entry via the async worker (EnsureMassBackendsReady "ata"
-  -- branch, screen alive); BuildATAIdentityDeferred then observes
-  -- System.ataReady() and classifies slots, skipping retries after a failure.
-  local root = PLDR.GetATAMassRootNow()
+  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). EXP32: the
+  -- worker is kicked in the BOOT window (do_boot_init) for exFAT installs;
+  -- page entry polls it BOUNDED (EnsureMassBackendsReady "ata", 10s max,
+  -- screen alive, never a synchronous load) and then runs the bounded sweep.
+  -- Second return: "notready" while the drive is still starting, "nodevice"
+  -- after a clean empty sweep -- the page toasts accordingly.
+  local root, status = PLDR.GetATAMassRootNow()
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"
   end
-  return nil
+  return nil, status
 end
 
 -- Menu-side SMB (Increment 1). LAZY: brings up the network + connects/opens the share
@@ -8925,6 +8896,29 @@ end
 -- below as an upvalue). Inner block kept at its original indentation for a clean diff.
 local function do_boot_init()
 PLDR.AutoInitStartupBackends()
+-- EXP32: kick the ata_bd worker in the BOOT window when this install uses the
+-- exFAT page (Internal HDD = EXFAT/BOTH, or an explicit -page=ata session).
+-- This restores the one arrangement hardware-proven on the SCPH-30004 class
+-- (EXP22): the identical blob loading into a near-empty IOP right after the
+-- boot module set, before any page RPC traffic exists to interleave with it.
+-- The worker keeps boot responsive (probe runs behind the splash/carousel;
+-- no ~5s boot cost), and by the time the user opens the exFAT page the state
+-- is usually already done-ok. PFS-only installs skip this entirely -- they
+-- never pay for a drive they don't use.
+do
+  local want_ata_boot = (PLDR.NormalizeHddFs(PLDR.HDD_FS) ~= "PFS")
+  if not want_ata_boot and type(PLDR.IsExplicitATASession) == "function" then
+    want_ata_boot = (PLDR.IsExplicitATASession() == true)
+  end
+  if want_ata_boot and type(System) == "table" and type(System.initATAAsync) == "function" then
+    pcall(System.initATAAsync)
+  end
+end
+-- One-time hygiene: clear a leftover crash-marker file from marker-era builds
+-- (the marker system is gone in EXP32; see ClearLegacyMx4sioMarker).
+if type(PLDR.ClearLegacyMx4sioMarker) == "function" then
+  pcall(PLDR.ClearLegacyMx4sioMarker)
+end
 -- LATE START re-poll: the pre-splash poll above covers wired port-0 pads (pad_init
 -- blocks until stable), but DS3/DS4 over ds34usb/ds34bt enumerate asynchronously
 -- over seconds -- a user holding START on such a pad through boot was MISSED by
@@ -8983,21 +8977,9 @@ if type(PLDR.LAUNCH_ARGS) ~= "table"
       UI.Notif_queue.add("Boot Page device is hidden -- landed on the carousel.\nCheck Settings > Boot Page / Internal HDD.", "warn")
     end
   end
-  -- MX4SIO crash-loop guard: its probe can stall in a vendored IOP driver when
-  -- no card is present. If a prior MX4SIO entry left the pending marker set it
-  -- hung -- skip the auto-enter this boot and warn, so one stall cannot brick
-  -- every boot. When NOT auto-entering MX4SIO (opt 2), clear any stale marker so
-  -- a later working MX4SIO can auto-enter again.
-  if opt == 2 then
-    if type(PLDR.IsMx4sioAutoEnterPending) == "function" and PLDR.IsMx4sioAutoEnterPending() then
-      opt = nil
-      if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-        UI.Notif_queue.add("MX4SIO auto-enter skipped: it stalled last boot.\nInsert a card or change Boot Page in Settings.", "warn")
-      end
-    end
-  elseif type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-    PLDR.SetMx4sioAutoEnterPending(false)
-  end
+  -- EXP32: the MX4SIO crash-loop boot guard is gone with the marker system --
+  -- page entry no longer loads drivers (boot does), so there is no unbounded
+  -- probe for a marker to bound. Auto-enter proceeds for every device alike.
   if opt ~= nil and type(UI) == "table" and type(UI.MainMenu) == "table" then
     local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil
     if carousel ~= nil then carousel.allowOptWrite = true end

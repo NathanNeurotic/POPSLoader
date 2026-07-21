@@ -631,6 +631,18 @@ int main(int argc, char * argv[])
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
+    /* NO mx4sio_bd at boot (maintainer, EXP32 revision): storage stacks load
+     * LAZILY when their device is engaged -- cwd/boot-device determines what
+     * boot needs (boot.lua's mx4sio: branch loads it on an mx4sio boot, the
+     * legacy-mass sidecar heal in system.lua escalates usb -> mx4sio -> ata
+     * when a mass* cwd doesn't resolve as USB), and the MX4SIO page loads it
+     * on first entry. Matches wLaunchELF_R3Z (stacks on engagement) and OPL
+     * (transports at first BDM init). mmceman and mx4sio_bd COEXIST when both
+     * get engaged -- official OPL runs both resident in the field on the same
+     * freesio2 bus manager we carry (EXP31); no gate (maintainer call,
+     * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
+     * recorded R3Z3N tradeoff). */
+
     /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
      * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page
      * brings the stack up LAZILY on a background EE worker (System.initATAAsync

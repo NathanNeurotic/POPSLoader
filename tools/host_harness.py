@@ -751,6 +751,132 @@ if lua.globals().PLDR.GetBootProfileText() is not None:
     t20 = False; print("    T20 FAIL: throwing getBootProfile should yield nil")
 check("T20 Boot profile reports slowest stage by DELTA (not biggest cumulative stamp)", t20)
 
+# ---- T21-T23: the EXP32 reference-parity device core -------------------------
+# The device layer's contract (NHDDL/OPL model): a transport that is not ready
+# is NEVER swept (no fileXio probes against a half-registered core), the page
+# gets a truthful status ("notready" vs "nodevice"), and a ready transport
+# enumerates by driver-name classification. All through the public PLDR API
+# with System.* overridden per scenario.
+t21 = lua.execute(r'''
+  -- (a) mx4sio boot-load failed and the page-entry retry also fails:
+  -- GetMX4SIOMassRootNow must report "notready" WITHOUT sweeping massN:.
+  System.initMX4SIO = function() return false end
+  local swept = false
+  local real_dfe = doesFolderExist
+  doesFolderExist = function(p) swept = true; return real_dfe(p) end
+  local root, status = PLDR.GetMX4SIOMassRootNow()
+  doesFolderExist = real_dfe
+  if root ~= nil then return false, "expected nil root, got "..tostring(root) end
+  if status ~= "notready" then return false, "expected notready, got "..tostring(status) end
+  if swept then return false, "swept massN: while transport not ready" end
+  return true
+''')
+check("T21 mx4sio not-ready: no sweep + truthful 'notready' status", t21)
+
+t22 = lua.execute(r'''
+  -- (b) ata worker still running: bounded poll expires -> "notready", no sweep.
+  System.initATAAsync = function() return 1 end
+  System.initATAStatus = function() return 1 end
+  local swept = false
+  local real_dfe = doesFolderExist
+  doesFolderExist = function(p) swept = true; return real_dfe(p) end
+  local root, status = PLDR.GetATAMassRootNow()
+  doesFolderExist = real_dfe
+  if root ~= nil then return false, "expected nil root" end
+  if status ~= "notready" then return false, "expected notready, got "..tostring(status) end
+  if swept then return false, "swept while worker still running" end
+  -- (c) worker done-ok but no ata device mounted: clean "nodevice".
+  System.initATAAsync = function() return 2 end
+  System.initATAStatus = function() return 2 end
+  local root2, status2 = PLDR.GetATAMassRootNow()
+  if root2 ~= nil then return false, "expected nil root for empty sweep" end
+  if status2 ~= "nodevice" then return false, "expected nodevice, got "..tostring(status2) end
+  return true
+''')
+check("T22 ata worker states: bounded 'notready' poll + clean 'nodevice' sweep", t22)
+
+t23 = lua.execute(r'''
+  -- (d) happy paths: ready transports enumerate by driver-name classification.
+  System.initMX4SIO = function() return true end
+  System.initATAAsync = function() return 2 end
+  System.initATAStatus = function() return 2 end
+  local real_dfe = doesFolderExist
+  local real_drv = PLDR.GetMassMountDriver
+  doesFolderExist = function(p)
+    if p == "mass:/" or p == "mass0:/" then return true end
+    return real_dfe(p)
+  end
+  PLDR.GetMassMountDriver = function(root) return "sdc" end
+  local mx_root, mx_status = PLDR.GetMX4SIOMassRootNow()
+  PLDR.GetMassMountDriver = function(root) return "ata" end
+  local ata_root, ata_status = PLDR.GetATAMassRootNow()
+  PLDR.GetMassMountDriver = function(root) return "usb" end
+  local none_root, none_status = PLDR.GetMX4SIOMassRootNow()
+  doesFolderExist = real_dfe
+  PLDR.GetMassMountDriver = real_drv
+  if mx_root ~= "mass:/" or mx_status ~= "ready" then
+    return false, "mx4sio: expected mass:/ ready, got "..tostring(mx_root).."/"..tostring(mx_status)
+  end
+  if ata_root ~= "mass:/" or ata_status ~= "ready" then
+    return false, "ata: expected mass:/ ready, got "..tostring(ata_root).."/"..tostring(ata_status)
+  end
+  if none_root ~= nil or none_status ~= "nodevice" then
+    return false, "usb-driver slot must not classify as mx4sio"
+  end
+  return true
+''')
+check("T23 ready transports classify by driver name (sdc->mx4sio, ata->ata, usb excluded)", t23)
+
+t24 = lua.execute(r'''
+  -- (e) MMCE<->MX4SIO COEXISTENCE (maintainer call, 2026-07-21: official OPL
+  -- runs both drivers resident on freesio2; no gate). Neither side may decline
+  -- because of the other being resident -- this locks the decision in so a
+  -- future change can't silently reintroduce a gate.
+  local load_attempted = false
+  System.initMX4SIO = function() load_attempted = true; return true end
+  System.getSio2Owner = function() return "MMCE" end
+  PLDR.GetMX4SIOMassRootNow()
+  if not load_attempted then
+    return false, "mx4sio_bd load must proceed even with mmceman resident (no gate)"
+  end
+  -- mirror: MMCE bring-up proceeds while mx4sio_bd is resident
+  System.getSio2Owner = function() return "MX4SIO" end
+  PLDR._mmce_ready = nil
+  local mmce_load_attempted = false
+  System.ensureMmceman = function() mmce_load_attempted = true; return true end
+  local ok_m = PLDR.EnsureMmceReadyOnce()
+  if ok_m == false or not mmce_load_attempted then
+    return false, "EnsureMmceReadyOnce must proceed with mx4sio_bd resident (no gate)"
+  end
+  System.getSio2Owner = function() return "" end
+  return true
+''')
+check("T24 MMCE<->MX4SIO coexistence: neither driver declines because the other is resident", t24)
+
+t25 = lua.execute(r'''
+  -- (f) cascade bound: while the ata worker holds the IOP module loader
+  -- (state==1), a MX4SIO page entry must wait BOUNDED and report not-ready --
+  -- never queue its synchronous IRX load behind a possibly-wedged loader.
+  local load_attempted = false
+  System.initMX4SIO = function() load_attempted = true; return true end
+  System.initATAStatus = function() return 1 end
+  local root, status = PLDR.GetMX4SIOMassRootNow()
+  if status ~= "notready" then
+    return false, "expected notready while ata load in flight, got "..tostring(status)
+  end
+  if load_attempted then
+    return false, "mx4sio IRX load queued behind an in-flight ata load"
+  end
+  -- loader free again: the load proceeds
+  System.initATAStatus = function() return 2 end
+  PLDR.GetMX4SIOMassRootNow()
+  if not load_attempted then
+    return false, "mx4sio load should proceed once the ata load finished"
+  end
+  return true
+''')
+check("T25 cascade bound: MX4SIO waits bounded while the ata load holds the IOP loader", t25)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

@@ -219,14 +219,13 @@ void MarkMmcemanLoaded()
 }
 
 // System.getSio2Owner(): which SIO2-bus storage driver is resident this
-// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
-// (the already-conflicted legacy state this guard exists to prevent). mmceman
-// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
-// sustained reads from one hang with the other resident (HW-confirmed 48%
-// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
-// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
-// reset, the pages check this and DECLINE the second driver with a message.
-// Reads the load latches directly so it cannot miss a C-internal load path.
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH".
+// EXP32: DIAGNOSTIC-ONLY. The Lua exclusion guards that read this are gone --
+// mmceman and mx4sio_bd coexist (maintainer call, 2026-07-21: official OPL
+// runs both resident on freesio2, which we carry since EXP31; the contrary
+// R3Z3N /ACK-wiring position is recorded in system.lua as the fallback).
+// Kept because it reads the load latches directly (cannot miss a C-internal
+// load path) -- useful for future diagnostics and the harness contract tests.
 static int lua_get_sio2_owner(lua_State *L)
 {
 	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
@@ -1491,6 +1490,32 @@ static int lua_reinit_pad(lua_State *L)
 	return 1;
 }
 
+// EXP32: mx4sio_bd loads LAZILY, on engagement -- the MX4SIO page's first entry
+// (via System.initMX4SIO), an mx4sio: boot (boot.lua), or the legacy-mass
+// sidecar heal (system.lua) when a mass* cwd turns out not to be USB-backed.
+// No boot-time load: storage stacks load when their device is engaged
+// (wLaunchELF_R3Z's model; OPL loads transports at first BDM init on its
+// worker). Coexists with mmceman when both get engaged (official OPL runs
+// both resident on freesio2; maintainer call 2026-07-21, no gate). The module
+// load itself is cheap and returns promptly (card detection runs on the
+// driver's own IOP thread). Failure never latches: the next page entry
+// retries (success-only latch, OPL's rule). usbmass_bd stays ordered first
+// (maintainer 2026-05-28: "mx4sio will need the usb drivers to activate
+// before it"; EnsureUsbMass is idempotent/latched -- a no-op after boot).
+bool EnsureMx4sioBd(void)
+{
+	if (!EnsureUsbMass()) {
+		return false;
+	}
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+	return true;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1501,21 +1526,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	// Per maintainer 2026-05-28: "mx4sio will need the usb drivers to
-	// activate before it with it. USB will never need MX4SIO drivers."
-	// Enforce the dependency order at the lowest level so any caller of
-	// System.initMX4SIO automatically gets usbmass_bd loaded first --
-	// previously, Lua callers that didn't explicitly ensure UsbMass
-	// could load mx4sio_bd into a state where the broader BDM mass
-	// stack wasn't ready. EnsureUsbMass is idempotent (gated by
-	// usbmass_irx_loaded), so this costs nothing on repeat calls.
-	bool ok = EnsureUsbMass();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioBd();
 
 	lua_pushboolean(L, ok);
 	if (ok) {
@@ -1602,16 +1613,22 @@ static int lua_ata_ready(lua_State *L)
 }
 
 // ============================================================================
-// Lazy async ata_bd bring-up (OPL's arrangement). There is NO boot-time ata
-// load (maintainer: the ~5-6s black-screen cost is unacceptable); the exFAT
-// page kicks this worker on entry and polls, screen alive. OPL is the
-// precedent for the whole shape: its "ps2atad_irx" embed is actually the SDK's
-// ata_bd.irx blob (OPL Makefile:622) loaded mid-session on its IO worker
-// thread, on the same consoles where our old SYNCHRONOUS page-time load froze.
-// The earlier async attempt (EXP23) was sunk by two since-fixed bugs riding
-// along -- a bdm core with no GPT support and a mismatched mx4sio_bd -- not by
-// this mechanism. Worker mirrors the proven Graphics.threadLoadImage pattern
-// (ee_thread_t, priority 16, ExitDeleteThread).
+// Async ata_bd bring-up worker. EXP32: the PREFERRED kick is at BOOT (Lua
+// do_boot_init calls initATAAsync when the Internal-HDD setting includes
+// exFAT), so the identical blob loads into the same near-empty IOP as the
+// EXP22 build -- the only configuration hardware-proven on sAGA's SCPH-30004
+// (the byte-identical driver worked at boot and wedged mid-session; the IOP
+// census at load time IS the variable, per the EXP24 analysis "no reference
+// loads BDM-atad late onto a full IOP"). The worker keeps boot responsive:
+// the probe runs behind the splash/carousel instead of blocking ~5s.
+// Page entry only POLLS the state, bounded -- it never loads synchronously
+// (the sync fallback was the historically-freezing configuration and is gone).
+// A done-fail state (3) re-spawns on the next initATAAsync call, so a failed
+// early probe stays RETRYABLE at page-entry time -- RiptOPL's hddsupport.c
+// SCPH-30004 rule ("early dev9 revisions fail the seconds-after-power-on
+// probe and succeed at tab-entry time"; a consumed count poisoned the session).
+// Worker mirrors the proven Graphics.threadLoadImage pattern (ee_thread_t,
+// priority 16, ExitDeleteThread).
 //
 // THE APA/PFS BOOT PATH IS UNCHANGED: luaHDD.cpp Load_HDD_IRX calls the
 // SYNCHRONOUS EnsureAtaBdm at boot on hdd0: boots (must finish before pfs1:
@@ -1636,9 +1653,11 @@ static int ata_async_thread(void *arg)
 
 // System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
 // return immediately with the state int. If ata_bd is already loaded (e.g. an
-// APA-HDD boot brought it up) it reports done-ok (2) without spawning. Returns
-// -1 if the thread could not be created, so the Lua caller falls back to the
-// synchronous System.initATA.
+// APA-HDD boot brought it up) it reports done-ok (2) without spawning. A
+// prior done-fail (3) re-spawns -- failure is retryable by design (RiptOPL's
+// SCPH-30004 rule). Returns -1 if the thread could not be created; the Lua
+// caller reports "no drive" -- it must NEVER load synchronously on the UI
+// thread (that was the freezing configuration).
 static int lua_ata_init_async(lua_State *L)
 {
 	if (g_ata_bd_loaded) {
@@ -1671,9 +1690,10 @@ static int lua_ata_init_async(lua_State *L)
 }
 
 // System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
-// ALSO the cross-page cascade guard: while state==1 an ata load is in flight on
-// the IOP module loader -- other pages must NOT queue their own driver load
-// behind it (System.initMX4SIO would block forever if the ata load ever wedges).
+// ALSO read by the Lua-side cascade bound: the ata worker's module loads go
+// through the same IOP module loader a page-entry initMX4SIO uses, so while
+// state==1 the MX4SIO page waits BOUNDED (screen alive) instead of queueing a
+// synchronous load behind a possibly-wedged loader, then reports not-ready.
 static int lua_ata_init_status(lua_State *L)
 {
 	(void)L;
