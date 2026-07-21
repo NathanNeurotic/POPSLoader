@@ -6056,9 +6056,20 @@ end
 -- (USB keeps its own builder unchanged below: its attempt ladder + diag flow
 -- is HW-confirmed since the #508 fix, and USB has no freeze channel.)
 local function BuildBoundedIdentityDeferred(mode)
+  -- ONE mechanism (settle-retry sweep), per-mode BUDGET where hardware
+  -- demanded it: mx4sio keeps its 6 passes -- the SD-over-SPI bridge is the
+  -- slowest/flakiest to mount, the budget was raised 3->6 precisely because
+  -- FifthFox hit intermittent "not detected" at 3 on real hardware, and the
+  -- maintainer reports zero misses since (2026-07-21: "I haven't had a no
+  -- MX4SIO detected in a long time"). The settle exists because mx4sio_bd
+  -- self-detects the card on its own IOP thread AFTER the IRX loads; an
+  -- immediate sweep races the still-mounting volume (the old two-entries-to-
+  -- see-the-card quirk). ata keeps 3: its worker completes detection before
+  -- enumeration is allowed at all, so passes only cover FS-mount lag.
+  local budget = (mode == "mx4sio") and 6 or 3
   local identity, ready
   local attempts = 0
-  while attempts < 3 do
+  while attempts < budget do
     attempts = attempts + 1
     identity, ready = BuildMassRootIdentity(mode)
     if ready == false then
@@ -6067,12 +6078,12 @@ local function BuildBoundedIdentityDeferred(mode)
     if type(identity) == "table" and type(identity[mode]) == "table" and #identity[mode] > 0 then
       return identity, true
     end
-    if attempts < 3 and type(System) == "table" and type(System.sleep) == "function" then
+    if attempts < budget and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
   -- Return the LAST attempt's result -- re-sweeping here would be a redundant
-  -- fourth pass of the same probes (review finding on the EXP32 PR).
+  -- extra pass of the same probes (review finding on the EXP32 PR).
   return identity, ready
 end
 
