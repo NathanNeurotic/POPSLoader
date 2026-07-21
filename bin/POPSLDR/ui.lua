@@ -3804,6 +3804,17 @@ UI = {
             PLDR.GLOBAL_HIDE = global_hide_val
             PLDR._GLOBAL_HIDE_SAVED = nil   -- Settings Save re-establishes the persisted truth + drops any transient R3 reveal
             UI.RevealHidden = false
+            -- A changed list-SHAPING setting must REBUILD the game list on return:
+            -- the list scene otherwise keeps showing entries built under the OLD
+            -- value -- choosing "Hidden" left hidden games visibly on screen until
+            -- R3's rebuild happened to run (maintainer, 2026-07-20; the save+filter
+            -- chain was always correct, only the rescan was missing). Reuses the
+            -- same flag the R3-reveal cancellation path consumes (raises the
+            -- in-place R1 refresh on the next list-scene frame).
+            if (global_hide_val == true) ~= (UI.SettingsEntryGlobalHide == true)
+               or (multidisc_collapse_val == true) ~= (UI.SettingsEntryMultiDiscCollapse == true) then
+              UI.PendingHideRebuild = true
+            end
             PLDR.SHOW_DETAILS = show_details_val
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.HDD_FS = hdd_fs_val
