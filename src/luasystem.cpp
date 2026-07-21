@@ -218,6 +218,29 @@ void MarkMmcemanLoaded()
 	mmceman_irx_loaded = true;
 }
 
+// System.getSio2Owner(): which SIO2-bus storage driver is resident this
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
+// (the already-conflicted legacy state this guard exists to prevent). mmceman
+// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
+// sustained reads from one hang with the other resident (HW-confirmed 48%
+// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
+// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
+// reset, the pages check this and DECLINE the second driver with a message.
+// Reads the load latches directly so it cannot miss a C-internal load path.
+static int lua_get_sio2_owner(lua_State *L)
+{
+	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
+		lua_pushstring(L, "BOTH");
+	} else if (mmceman_irx_loaded) {
+		lua_pushstring(L, "MMCE");
+	} else if (mx4sio_irx_loaded) {
+		lua_pushstring(L, "MX4SIO");
+	} else {
+		lua_pushstring(L, "");
+	}
+	return 1;
+}
+
 static bool EnsureBdmQueryRpc()
 {
 	if (!bdm_rpc_loaded) {
@@ -2089,6 +2112,7 @@ static const luaL_Reg System_functions[] = {
 	{"ataReady",               lua_ata_ready},
 	{"initATAAsync",           lua_ata_init_async},
 	{"initATAStatus",          lua_ata_init_status},
+	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},

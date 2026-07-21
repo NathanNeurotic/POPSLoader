@@ -1145,6 +1145,22 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
+  -- SIO2 EXCLUSION (NHDDL's model): mmceman and mx4sio_bd cannot coexist --
+  -- both drive the shared SIO2 bus, and sustained reads from one hang with the
+  -- other resident (HW: the MMCE scan froze at 48% after an MX4SIO page visit,
+  -- 2026-07-20; wLaunchELF_R3Z IOP-resets between these two for the same
+  -- reason). If MX4SIO already claimed the bus this session, DECLINE the MMCE
+  -- bring-up with a clear message instead of loading into a hang.
+  if type(System) == "table" and type(System.getSio2Owner) == "function" then
+    local ok_o, owner = pcall(System.getSio2Owner)
+    if ok_o and owner == "MX4SIO" then
+      if UI ~= nil and UI.Notif_queue ~= nil then
+        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
+      end
+      return false
+    end
+  end
+
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
   -- (any of hdd*, pfs*, ata*, apa*) boots, the IRX is deferred and
@@ -5742,6 +5758,18 @@ end
 
 local function EnsureMassBackendsReady(mode)
   if mode == "mx4sio" then
+    -- SIO2 EXCLUSION (mirror of the guard in EnsureMmceReadyOnce): if mmceman
+    -- already claimed the SIO2 bus this session, DECLINE loading mx4sio_bd --
+    -- the two cannot coexist (shared-bus hang at 48%, HW 2026-07-20).
+    if type(System) == "table" and type(System.getSio2Owner) == "function" then
+      local ok_o, owner = pcall(System.getSio2Owner)
+      if ok_o and owner == "MMCE" then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
+        end
+        return
+      end
+    end
     -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
     -- IOP module loader. Queueing System.initMX4SIO behind it would block this
     -- page forever if that load ever wedges (the one-wedge-two-pages "42%"
@@ -6041,6 +6069,16 @@ end
 -- re-pokes (refreshMassBackends) before the 1s settle, so more attempts = more of
 -- exactly the bring-up work R1 does, without making the user press R1.
 local function BuildMX4IdentityDeferred()
+  -- SIO2 exclusion short-circuit: when MMCE owns the bus, the driver load was
+  -- DECLINED (EnsureMassBackendsReady) -- nothing will ever enumerate, so skip
+  -- the 6x1s retry ladder and return one no-retry scan (empty; the guard's
+  -- toast already told the user why).
+  if type(System) == "table" and type(System.getSio2Owner) == "function" then
+    local ok_o, owner = pcall(System.getSio2Owner)
+    if ok_o and owner == "MMCE" then
+      return BuildMassRootIdentity("mx4sio")
+    end
+  end
   -- FUNCTION-local (not chunk-level): system.lua's main chunk is near Lua's 200-local cap.
   local MX4_PROBE_ATTEMPTS = 6
   -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its

@@ -142,7 +142,13 @@ Missing BDMA source (tried):	Missing BDMA source (tried):
 Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
 Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE não tem pasta POPS\nesperado mmce0:/POPS/
+MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)
 Multi-disc games	Jogos multi-disco
+MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)
 NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor
 NetBIOS name	NetBIOS name
 Netmask	Netmask

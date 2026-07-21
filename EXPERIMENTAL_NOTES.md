@@ -2,7 +2,7 @@
 
 **This is an opt-in EXPERIMENTAL build. It is not a replacement for the public release, and it is not the rolling build either.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.0.1**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP27**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP27** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
+**How to tell you are running it:** open **Settings**, then **About**, and read the **Version** row: it says **v1.0.2-dev-EXP28**. The **Credits** page shows the same line at the bottom left, with the boot timing under it. A version ending in **-EXP28** = this build; any older EXP number = an older experimental, please update; plain **v1.0.2-dev** = the rolling test build; no version anywhere = the public 1.0.1 release or older.
 
 **What the name means:** this build is the **rolling** build (1.0.2-dev) plus the experiments below, nothing missing.
 
@@ -10,7 +10,17 @@
 
 ---
 
-## New in EXP27: cover art stays inside the case frame
+## New in EXP28: MMCE and MX4SIO now respect each other
+
+The maintainer's cross-device test found the last conflict pair: with both the MMCE driver and the MX4SIO driver loaded in one session, the second device's game scan hangs at 48% during directory reads. They share the same internal bus (the one the pads and memory cards also live on), and the reference launchers agree they cannot coexist: NHDDL refuses to load both, and wLaunchELF R3Z restarts its whole driver stack when switching between them. Each alone works perfectly.
+
+EXP28 ships the safe half of that answer: **the first of the two you use owns the bus for the session.** Opening the other page afterwards shows a clear message ("MX4SIO was used this session, restart to browse MMCE, the two share a bus") instead of loading into a hang. Boots from an MMCE or MX4SIO device claim the bus at boot, matching. The full R3Z-style answer (seamless switching via an in-session driver-stack restart) is being designed against R3Z's source now; it needs careful handling of everything else our system keeps loaded, so it gets its own build rather than a rush job.
+
+Also from this test round: **an MX4SIO game launched successfully** (the earlier launch breakage is confirmed gone with the on-demand drive loading), and the cover-art fit fix from EXP27 rides along for its first hardware look.
+
+---
+
+## EXP27: cover art stays inside the case frame
 
 The maintainer's screenshot showed real cover art spilling out of the jewel-case frame (bottom-right), while the placeholder and disabled art sat correctly inside it. Confirmed by measuring the frame image and replaying the sizing math: the real cover was sized against a fixed screen box and anchored to the case's outer edge, so it overflowed the case's transparent cover window by 5px on the right on NTSC, 21px on PAL, and portrait covers ran 17px past the window bottom. EXP27 sizes and anchors the cover inside the case's actual window, measured from the frame image itself, so it scales with the case and stays contained on every video standard by construction. Placeholder and disabled art are untouched. One look at any game with cover art confirms it.
 

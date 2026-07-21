@@ -152,7 +152,13 @@ Missing BDMA source (tried):	Hiányzó BDMA forrás (megpróbálva):
 Missing BDMA UI source (tried):	Hiányzó BDMA UI forrás (megpróbálva):
 Missing SMB module (tried):	Hiányzó SMB modul (megpróbálva):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
+MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
+(the two share a bus and cannot run together)
 Multi-disc games	Többlemezes játékok
+MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
+(the two share a bus and cannot run together)
 NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
 NetBIOS name	NetBIOS name
 Netmask	Netmask
