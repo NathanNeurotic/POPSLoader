@@ -1546,7 +1546,33 @@ static int lua_mx4sio_init(lua_State *L)
 // freeze with the HDD light latched on (CosmicScale APA-Jail HDD, 2026-06-25). Load-once via
 // g_ata_bd_loaded (a non-static global shared with luaHDD.cpp).
 bool g_ata_bd_loaded = false;
-bool EnsureAtaBdm()
+
+// EXP33: EnsureAtaBdm is called from TWO threads now -- the boot-time async
+// worker (do_boot_init's initATAAsync kick, new in EXP32) AND the main thread
+// (APA page: HDD.Initialize -> Load_HDD_IRX -> EnsureAtaBdm; and the exFAT
+// page). The load-once latches (g_ata_bd_loaded / g_dev9_loaded / bdm+bdmfs)
+// are plain bools set AFTER the load, so two concurrent callers both read
+// them false and BOTH loaded -- a second ata_bd _start re-resets the live ATA
+// bus (the CosmicScale APA-Jail 42% class). Serialize the whole bring-up with
+// a binary semaphore so the second caller waits and returns the completed
+// result. Created before the worker is ever spawned (lua_ata_init_async) so
+// it always exists by the time the worker runs; the Lua-side cascade bound in
+// PLDR.LoadHDDModules normally keeps the main thread from even entering here
+// while the worker runs, so this sema almost never actually blocks.
+static int g_ata_bdm_sema = -1;
+void EnsureAtaBdmSemaInit()
+{
+	if (g_ata_bdm_sema < 0) {
+		ee_sema_t s;
+		s.init_count = 1;
+		s.max_count = 1;
+		s.attr = 0;
+		s.option = 0;
+		g_ata_bdm_sema = CreateSema(&s);
+	}
+}
+
+static bool EnsureAtaBdmInner()
 {
 	if (!EnsureDev9()) {
 		return false;
@@ -1574,6 +1600,22 @@ bool EnsureAtaBdm()
 		sleep(1);
 	}
 	return true;
+}
+
+// Locking wrapper (see EnsureAtaBdmSemaInit above). Double-checked: a caller
+// that waited behind an in-flight load returns immediately once g_ata_bd_loaded
+// is set. All callers (worker thread, APA path, exFAT path) go through here.
+bool EnsureAtaBdm()
+{
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0) {
+		WaitSema(g_ata_bdm_sema);
+	}
+	bool ok = EnsureAtaBdmInner();
+	if (g_ata_bdm_sema >= 0) {
+		SignalSema(g_ata_bdm_sema);
+	}
+	return ok;
 }
 
 static int lua_ata_init(lua_State *L)
@@ -1669,6 +1711,10 @@ static int lua_ata_init_async(lua_State *L)
 		lua_pushinteger(L, 1);
 		return 1;
 	}
+	// Create the EnsureAtaBdm mutex BEFORE the worker exists, so the worker's
+	// EnsureAtaBdm and any concurrent main-thread EnsureAtaBdm serialize on the
+	// same sema (main thread is single-threaded w.r.t. the worker right here).
+	EnsureAtaBdmSemaInit();
 	g_ata_async_state = 1;
 	ee_thread_t th;
 	th.attr = 0;

@@ -877,6 +877,37 @@ t25 = lua.execute(r'''
 ''')
 check("T25 cascade bound: MX4SIO waits bounded while the ata load holds the IOP loader", t25)
 
+# T26 APA scan diagnostics: a __.POPS partition that mounts (FOUNDANY) but whose
+# listing has NO .vcd files must yield zero games AND a SCAN_DIAG that names the
+# "mounted-but-empty" case (avail>0, remount_fail==0, entries>0, vcds==0) -- the
+# self-diagnosing readout behind the EXP33 "no games" toast.
+t26 = E('''function()
+  FAKEHDD.parts = {
+    ["__.POPS"] = { files = {}, listing = {
+      { name = "README.TXT", directory = false },
+      { name = "ART", directory = true } } },
+  }
+  FAKEHDD.names = { "__.POPS" }
+  FAKEHDD.status = 0
+  PLDR.HDD.LOADSTATE = 0
+  PLDR.LoadHDDModules()
+  PLDR.GLOBAL_HIDE = false
+  PLDR.COLLAPSE_MULTIDISC = false
+  PLDR.HDD.HAS_CHECKED = false
+  PLDR.HDD.CheckAvailableHddPopsParts(nil)
+  if PLDR.HDD.FOUNDANY ~= true then return false, "foundany should be true (partition mounted)" end
+  PLDR.HDD.BuildGameList(nil)
+  if #PLDR.GAMES ~= 0 then return false, "expected 0 games, got "..#PLDR.GAMES end
+  local d = PLDR.HDD.SCAN_DIAG
+  if type(d) ~= "table" then return false, "no SCAN_DIAG" end
+  if (d.avail or 0) < 1 then return false, "avail should be >=1" end
+  if (d.remount_fail or 0) ~= 0 then return false, "remount_fail should be 0 (mount ok)" end
+  if (d.entries or 0) < 2 then return false, "entries should count the listing" end
+  if (d.vcds or 0) ~= 0 then return false, "vcds should be 0" end
+  return true
+end''')()
+check("T26 APA scan diag: mounted-but-empty partition yields 0 games + legible SCAN_DIAG", t26)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

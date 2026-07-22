@@ -2,9 +2,31 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP32**. The check is simple: a version ending in **-EXP32** = this build; **-EXP31** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP33**. The check is simple: a version ending in **-EXP33** = this build; **-EXP32** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP33: the two EXP32 field bugs — APA "no games" and re-entry stalls
+
+**EXP32 rebuilt the device layer correctly, but two tester reports came back that the rebuild didn't cover.** EXP33 does not touch the EXP32 architecture — it fixes those two specific reports and, where a cause could not be proven off-console, makes the build *tell us what it saw* instead of failing silently.
+
+**Report 1 — APA (internal PFS) lists no games, even on a fresh boot straight to APA.** "There should be at least 1 game." The partitions mount, but the game list comes back empty. Two things could cause this and EXP33 addresses both:
+- **A boot-vs-page race on the internal drive.** In EXP32 the internal drive can be brought up from *two* places at once — the background boot warm-up and the moment you open the APA page — and if they overlap, the second one re-resets the live ATA bus mid-scan (the same class of fault as the old 42% freeze). EXP33 serializes the two: the page waits, screen alive, for the background warm-up to finish before it touches the drive, backed by a native lock so they can never both drive the bus at once.
+- **A single dropped re-mount.** During the scan each POPS partition is mounted a second time to read its files; if that one attempt loses a race with the coexisting drive stack, that partition silently contributed zero games. EXP33 retries that mount once (after a 1-second settle) — but *only* for partitions already known to be present, so it can never reintroduce a stall hunting for a partition that isn't there.
+- **And if it's neither of those:** the "no games" message now *reports what the scan actually saw* — how many partitions mounted, how many files and how many `.vcd` files it counted, or which partition's re-mount failed and with what error code. So the next report from hardware is self-diagnosing: "mounted 2/2, 40 files, 0 VCD" means the folder truly has no games; "mounted 1/2, remount-fail" means we caught the drop. No more opaque "partitions are empty."
+
+**Report 2 — leave the MX4SIO (or USB) page and come back, and it stalls: only the background shows, activity light stuck on, then the list finally pops in.** Two causes, both fixed:
+- **Cover-art probe firing during the screen transition.** Reading a cover is a synchronous file read, and a *missing* cover is a full directory walk (seconds on SD-over-SIO2 or USB 1.1). EXP32 could kick that off while the fade-in was still running, so the render loop blocked on the opaque overlay — exactly the "only the background shows" symptom. EXP33 holds the cover probe until the list has painted and the transition has finished.
+- **The "this cover is missing" memory was thrown away on exit.** The first visit walks the disk for every missing cover and remembers the misses; EXP32 discarded that memory when you left the page, so re-entering walked the whole disk *again*. EXP33 keeps the negative-cover memory across a page exit (while still freeing the decoded images, so memory doesn't grow) — a re-entry no longer re-walks the disk for covers it already knows are absent. A manual refresh (R1) or switching to a different device still does a full, clean rescan.
+
+**Honest status:** the re-entry stall fixes address the reported mechanism directly and are testable off-console (the regression net now has 27 host-side tests). The APA fixes are a mix: the race serialization and retry-once are real defensive fixes, but whether they *are* sAGA's / the reporter's exact cause is not something we can prove without the hardware — which is why the self-diagnosing readout is in this build. If APA still shows no games on EXP33, the message it prints tells us precisely where to look next.
+
+**What to test on EXP33:**
+- **APA no-games (whoever hit it):** boot straight to APA (MC boot is fine), open the internal PFS page. If games appear — good. If it still says "no games found," **read the second line of that message and send it verbatim** — that line is the whole point of this build.
+- **MX4SIO / USB re-entry stall:** open the MX4SIO page, go into a game or another page, come back to MX4SIO. Then do the same for USB. Expected: the list repaints promptly, no long "only background, light stuck on" pause on the return. If you can, try it once with Cover Art on and once with it off (Settings) — that isolates whether covers are the culprit.
+- **Everyone:** MC, MMCE, controllers and saves should behave exactly as EXP32; boot time unchanged.
 
 ---
 

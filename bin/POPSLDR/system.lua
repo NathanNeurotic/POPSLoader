@@ -7066,9 +7066,18 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   end
   local hide_set = CollectHideBasenames(DIR)
   local total_entries = #DIR
+  -- EXP33 diag: raw counts so a zero-games scan can report "N files, M VCD"
+  -- (mounted-but-empty vs had-VCDs-but-all-filtered) -- see BuildGameList.
+  if type(PLDR.HDD.SCAN_DIAG) == "table" then
+    PLDR.HDD.SCAN_DIAG.entries = (PLDR.HDD.SCAN_DIAG.entries or 0) + total_entries
+  end
   for i = 1, #DIR do
     if not DIR[i].directory then
-      if string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
+      local is_vcd_file = string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
+      if is_vcd_file and type(PLDR.HDD.SCAN_DIAG) == "table" then
+        PLDR.HDD.SCAN_DIAG.vcds = (PLDR.HDD.SCAN_DIAG.vcds or 0) + 1
+      end
+      if is_vcd_file
          and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
         local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
         if not (PLDR.GLOBAL_HIDE and is_hidden) then
@@ -7242,6 +7251,15 @@ function PLDR.HDD.BuildGameList(on_progress)
   PLDR.HIDDEN = {}
   PLDR.HDD.GAMEPARTS = {}
   PLDR.HDD.FROM_CACHE = false
+  -- EXP33: scan diagnostics. When the scan yields zero games on a drive whose
+  -- __.POPS partitions DID mount in pass 1 (the "partitions are empty" report),
+  -- these counters let the page say WHY -- a silent pass-2 re-mount failure vs a
+  -- mounted-but-empty listing vs everything filtered -- so the next hardware
+  -- report is self-diagnosing instead of opaque. (entries/vcds are added by
+  -- AppendHddGameList.)
+  PLDR.HDD.SCAN_DIAG = { avail = 0, remounted = 0, remount_fail = 0,
+                         last_fail_part = nil, last_fail_rc = nil,
+                         entries = 0, vcds = 0 }
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   local ordered_partitions = GetOrderedHddPopsPartitions()
@@ -7249,12 +7267,31 @@ function PLDR.HDD.BuildGameList(on_progress)
   for i = 1, total_partitions do
     local partition = ordered_partitions[i]
     if PLDR.HDD.AVAILABLE[partition] == true then
-      local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      PLDR.HDD.SCAN_DIAG.avail = PLDR.HDD.SCAN_DIAG.avail + 1
+      local mounted, prefix, slot, mrc = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      -- Retry ONCE: this partition mounted in pass 1, so a pass-2 miss is
+      -- transient (the warm single-attempt mount -- hdd_spinup_waited latched --
+      -- lost a race with the coexisting BDM/exFAT stack on the same drive). This
+      -- is a leading suspect for the silent-zero-games report. Scoped to
+      -- AVAILABLE partitions ONLY, so it can never reintroduce the
+      -- absent-partition scan stall the single-attempt mode exists to prevent.
+      if not (mounted and prefix ~= nil) then
+        if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
+        mounted, prefix, slot, mrc = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      end
       if mounted and prefix ~= nil then
+        PLDR.HDD.SCAN_DIAG.remounted = PLDR.HDD.SCAN_DIAG.remounted + 1
         PLDR.GAMEPATH = prefix
         AppendHddGameList(partition, prefix, on_progress, i, total_partitions)
         if slot ~= nil then
           UMountHddPartitionTracked(slot)
+        end
+      else
+        PLDR.HDD.SCAN_DIAG.remount_fail = PLDR.HDD.SCAN_DIAG.remount_fail + 1
+        PLDR.HDD.SCAN_DIAG.last_fail_part = partition
+        PLDR.HDD.SCAN_DIAG.last_fail_rc = mrc
+        if type(on_progress) == "function" then
+          pcall(on_progress, i / math.max(total_partitions, 1))
         end
       end
     elseif type(on_progress) == "function" then
@@ -7289,6 +7326,24 @@ function PLDR.HDD.BuildGameList(on_progress)
 end
 
 function PLDR.LoadHDDModules()
+  -- EXP33 cascade bound: the boot-time ata worker (do_boot_init's initATAAsync
+  -- kick, fired every boot where Internal HDD includes exFAT) and this APA path
+  -- BOTH call the native EnsureAtaBdm. Before EXP33 they raced the load-once
+  -- latches -> double ata_bd load, whose 2nd _start re-resets the live ATA bus
+  -- (CosmicScale APA-Jail 42% class; a leading suspect for the fresh-boot
+  -- "APA lists no games" report). Wait screen-alive for the worker to finish so
+  -- HDD.Initialize's EnsureAtaBdm runs AFTER it (then it's a latched no-op). A
+  -- native mutex (EnsureAtaBdm sema) backs this up if the wait ever times out.
+  if type(System) == "table" and type(System.initATAStatus) == "function" then
+    local ok_st, st = pcall(System.initATAStatus)
+    if ok_st and st == 1 then
+      for _ = 1, (10 * 60) do
+        PaceScanFrame()
+        local ok2, s2 = pcall(System.initATAStatus)
+        if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+      end
+    end
+  end
   local ID, RET, SUCCESS, MODULE
   if PLDR.HDD.LOADSTATE == 0 then
     SUCCESS, MODULE, ID, RET = HDD.Initialize()
