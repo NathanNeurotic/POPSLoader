@@ -2,9 +2,23 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP35**. The check is simple: a version ending in **-EXP35** = this build; **-EXP34** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP36**. The check is simple: a version ending in **-EXP36** = this build; **-EXP35** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP36: devices identify themselves directly (no more per-slot probing)
+
+This is a device-layer cleanup that should make the MX4SIO and exFAT pages both **faster and steadier**, and is the right way to have done it from the start.
+
+**The change.** When POPSLoader opens the MX4SIO page (or the exFAT page), it already knows which driver it just loaded — so it now asks the driver **directly** which storage slot it owns, using the enumeration the PS2 SDK already provides. Previously it did the opposite: it opened *every* `mass0:`…`mass9:` slot in turn and asked each one "who are you?" That per-slot interrogation is slow, and on a drive that's still spinning up it could **stall the console** — a plausible contributor to the "carousel appears then freezes" report. The per-slot interrogation is gone from these pages; the slower query now survives in exactly one place where it's genuinely needed (working out what an *old launcher* handed us when it boots us from a generic `mass:` path).
+
+**Why it's safe.** Same drives, same files, same folders — only *how the page finds the right slot* changed, from "scan and ask everyone" to "ask the one driver we loaded." CosmicScale's exFAT drive is reached the same way, just directly. If the direct enumeration is ever unavailable, it falls back to the old scan, so nothing hard-breaks. The device layer now has 30 host-side tests (up from 29), including one that proves the page resolves its slot from the enumeration with **zero** per-slot probing.
+
+**What to test on EXP36:**
+- **MX4SIO and exFAT pages:** do they open at least as quickly as before, and steadily? (This change is aimed squarely at the freeze/stall path.)
+- Everything from EXP35 still applies — the boot no longer probes exFAT, covers live at `<device>:/ART/<name>_COV.png`.
 
 ---
 
