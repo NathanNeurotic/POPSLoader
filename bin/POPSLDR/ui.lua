@@ -229,39 +229,25 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
-  -- PLDR.ART_LOCATION). EXP34: exactly ONE location is probed (maintainer directive -- no
-  -- beside-the-.vcd fallback), and the OPL standard "<name>_COV.png" is the ONLY accepted
-  -- cover name (no legacy "<name>.png"). Locations: "art" (default) = a top-level
-  -- <device>:/ART/ folder (OPL's mass:/ART layout); "pops_art" = a <gamedir>/ART/ subfolder;
-  -- "pops" = the game's own folder beside the .vcd. Within that one folder the disc-marker-
-  -- stripped name is tried first (one file serves every disc of a multi-disc game), then the
-  -- exact per-disc name. The .txt details sidecar rides this list (<name>_COV.png -> <name>.txt).
-  -- CoverCache lists each folder ONCE (dir_listing) so a missing cover is an instant set
-  -- lookup, never a per-file FAT dir-walk (the MX4SIO/USB "art lookup lag").
+  -- EXP35: cover location is HARD-LOCKED to <device-root>/ART/<name>_COV.png on
+  -- removable devices (OPL standard, maintainer decision -- no ART_LOCATION choice
+  -- anymore). ONE folder (the device root's ART/), ONE name (the OPL "_COV.png"),
+  -- so at most one bounded fopen per game. A multi-disc game falls back to the
+  -- disc-marker-stripped name so one cover serves every disc. The <name>.txt
+  -- details sidecar rides the same folder. (HDD/PFS keeps its fixed
+  -- __common/POPS/ART/ layout -- handled in the use_hdd_common_art branch above.)
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
   local has_stripped = (stripped ~= "" and stripped ~= name)
-  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "art"
+  local artdir = (string.match(dir, "^(%a+%d*:/)") or dir).."ART/"
   local out, seen = {}, {}
-  local function add_variant(d, bn)
-    -- OPL standard "<name>_COV.png" only.
-    local pc = d..bn.."_COV.png"
-    if not seen[pc] then seen[pc] = true; out[#out + 1] = pc end
+  local function add_variant(bn)
+    local p = artdir..bn.."_COV.png"
+    if not seen[p] then seen[p] = true; out[#out + 1] = p end
   end
-  local function add_dir(d)
-    if d == nil or d == "" then return end
-    if has_stripped then add_variant(d, stripped) end
-    add_variant(d, name)
-  end
-  if loc == "art" then
-    add_dir((string.match(dir, "^(%a+%d*:/)") or dir).."ART/")
-  elseif loc == "pops" then
-    add_dir(dir)   -- the game's own folder (beside the .vcd)
-  else  -- "pops_art" (and any unknown value): <gamedir>/ART/
-    add_dir(dir.."ART/")
-  end
+  if has_stripped then add_variant(stripped) end
+  add_variant(name)
   return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
@@ -325,7 +311,6 @@ local CoverCache = {
   entries = {},
   order = {},
   failed = {},
-  dir_listing = {},  -- EXP34: dir -> set of lowercased filenames present (or false = listing unavailable, don't gate)
   last_key = nil,
   last_img = nil,
   last_desc = nil,
@@ -343,7 +328,6 @@ function CoverCache:Clear()
   end
   self.order = {}
   self.failed = {}
-  self.dir_listing = {}  -- EXP34: drop cached folder listings (R1 refresh / device switch = fresh disk view)
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
@@ -371,50 +355,16 @@ function CoverCache:ReleaseTextures()
   self.last_desc_lines = nil
   self.desc_scroll = 0
   self.last_cover_probe = nil
-  -- self.failed AND self.dir_listing intentionally preserved: both reflect on-disk
-  -- state keyed by absolute path, so re-entering the SAME device skips the re-walk;
+  -- self.failed intentionally preserved: it reflects on-disk state keyed by absolute
+  -- path, so re-entering the SAME device skips re-probing covers already known absent;
   -- a different device uses different paths (no collision) and R1 does a full Clear.
 end
--- EXP34: existence via ONE cached directory listing instead of blind per-file fopens.
--- A missing cover was a full FAT dir-chain walk per candidate (seconds on SD-over-SIO2
--- / USB 1.1 -- the reported "art lookup lag" / MX4SIO "extended freeze"). Now each folder
--- is listed once (memoized in dir_listing) and a cover's existence is an O(1) set lookup;
--- only a genuinely-present file is ever opened. If a folder can't be listed, cache a
--- sentinel and fall back to the fopen path so a listing-hostile driver never regresses.
-function CoverCache:ListDirSet(dir)
-  if type(System) ~= "table" or type(System.listDirectory) ~= "function" then return false end
-  local function build(d)
-    local ok, DIR = pcall(System.listDirectory, d)
-    if not ok or type(DIR) ~= "table" then return nil end
-    local s = {}
-    for i = 1, #DIR do
-      local e = DIR[i]
-      if type(e) == "table" and type(e.name) == "string" and not e.directory then
-        s[string.lower(e.name)] = true
-      end
-    end
-    return s
-  end
-  local s = build(dir)
-  if s == nil then
-    -- Retry without the trailing slash (some fileXio backends want the bare dir).
-    local bare = string.gsub(dir, "/+$", "")
-    if bare ~= "" and bare ~= dir then s = build(bare) end
-  end
-  if s == nil then return false end
-  return s
-end
-function CoverCache:DirHas(path)
-  local dir, file = string.match(path, "^(.*/)([^/]+)$")
-  if dir == nil or file == nil then return true end  -- unparseable: don't gate
-  local set = self.dir_listing[dir]
-  if set == nil then
-    set = self:ListDirSet(dir)
-    self.dir_listing[dir] = set
-  end
-  if set == false then return true end  -- listing unavailable: don't gate (fall back to fopen)
-  return set[string.lower(file)] == true
-end
+-- EXP35: the EXP34 dir-listing existence cache (CoverCache:ListDirSet / :DirHas,
+-- backed by self.dir_listing) was REMOVED -- it ran System.listDirectory
+-- (opendir/readdir) on the cover folder, which on the MX4SIO bdmfs_fatfs backend
+-- correlated with a per-navigation lag ending in "not enough memory" (2026-07-22).
+-- Cover existence is a single bounded Graphics.loadImage (fopen) again; misses are
+-- memoized in self.failed. See CoverCache:GetOrLoad.
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
@@ -440,13 +390,14 @@ function CoverCache:GetOrLoad(path)
     self.failed[path] = true
     return nil
   end
-  -- EXP34: gate on the cached folder listing so a missing cover is an instant set
-  -- lookup, not an fopen dir-walk. DirHas returns true when it can't list the folder,
-  -- so a listing-hostile driver still falls through to the fopen path below.
-  if not self:DirHas(path) then
-    self.failed[path] = true
-    return nil
-  end
+  -- EXP35: the EXP34 dir-listing gate was REMOVED here. On MX4SIO the maintainer
+  -- hit per-navigation lag ending in an "Enceladus ERROR! not enough memory" crash
+  -- (2026-07-22); `System.listDirectory` (opendir/readdir) on `mass:/ART/` over the
+  -- bdmfs_fatfs backend is the prime suspect (a runaway/leaky dir walk on a missing
+  -- or quirky folder), and it was the one thing EXP34 newly ran on the cover path.
+  -- Cover existence is back to a single bounded `Graphics.loadImage` (fopen) below --
+  -- and thanks to the EXP34 single-location + `_COV`-only change that is ONE candidate
+  -- per game, not the old 4-candidate ladder, with `self.failed` memoizing each miss.
   -- Load straight through Graphics.loadImage (fopen) with no separate doesFileExist() open()
   -- pre-probe. In ps2sdk fopen and open both funnel through the SAME libcglue _open
   -- (ee/libcglue/src/glue.c -> __path_absolute), so an open() existence check and an fopen()
@@ -4483,29 +4434,10 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
-        -- Where REMOVABLE-device cover .png + details .txt are looked for (HDD keeps its
-        -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
-        -- (beside the .vcd) is always also checked as a back-compat fallback.
-        local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
-        -- Spell the paths out with the device prefix. "POPS/ART" alone was
-        -- ambiguous enough that R3Z3N had to ask "I presume you mean
-        -- device:/POPS/ART?" (review round 3) -- so just say so.
-        local ART_LOCATION_TXT = {pops = "device:/POPS", pops_art = "device:/POPS/ART", art = "device:/ART"}
-        local function ArtLocationStep(cur, dir)
-          local idx = 1
-          for i = 1, #ART_LOCATION_SEQ do
-            if ART_LOCATION_SEQ[i] == cur then idx = i; break end
-          end
-          idx = ((idx - 1 + dir) % #ART_LOCATION_SEQ) + 1
-          return ART_LOCATION_SEQ[idx]
-        end
-        AddCycle(
-          "Cover/details folder",
-          function() return ART_LOCATION_TXT[UI.ArtLocation] or "device:/POPS/ART" end,
-          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
-          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
-          function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
-        )
+        -- EXP35: the "Cover/details folder" (ART_LOCATION) row was REMOVED -- cover
+        -- art is now HARD-LOCKED to <device-root>/ART/<name>_COV.png (OPL standard,
+        -- maintainer). There is no folder choice to make anymore; ART_LOCATION is kept
+        -- inert in the settings file only so older sidecars still parse.
         AddCycle(
           "Game list cache",
           function() return UI.GameListCache and "On" or "Off" end,

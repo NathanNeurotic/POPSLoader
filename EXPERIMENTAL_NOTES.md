@@ -2,9 +2,28 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP34**. The check is simple: a version ending in **-EXP34** = this build; **-EXP33** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP35**. The check is simple: a version ending in **-EXP35** = this build; **-EXP34** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP35: two EXP34 regressions fixed (boot black-screen, MX4SIO memory crash) + cover art hard-locked
+
+EXP34's testing turned up two regressions the new defaults introduced. EXP35 fixes both and simplifies the cover system so it can't misbehave again.
+
+**Boot no longer probes the internal exFAT drive.** EXP34 made *Internal HDD = Both* the default, and a leftover rule warmed up the exFAT drive **at every boot** because of it. On at least one console (a 4TB GPT exFAT internal drive) that boot-time probe **black-screened the machine before the menu** — an unrecoverable boot. EXP35 stops probing exFAT at boot entirely: the exFAT page brings the drive up **when you open it** (screen stays alive; if the drive is slow it says "still starting" instead of freezing), exactly like every other device. A normal boot never touches the internal drive now. *(If you deliberately launch straight to the exFAT page with a `-page=ata` argument, that still pre-warms it — you asked for that page.)*
+
+**MX4SIO no longer lags-then-crashes on cover art.** EXP34 added a folder-listing step to the cover lookup; on MX4SIO that step could run away and end in an **"Enceladus ERROR! not enough memory"** crash after browsing a few games. That step is **removed**. Combined with the change below, looking up a cover is now a single, bounded file check per game.
+
+**Cover art is hard-locked to one place and one name.** No more folder setting. Covers are read from **`<device>:/ART/<gamename>_COV.png`** — the OPL layout — full stop. (The internal HDD keeps its fixed `__common/POPS/ART/` location.) One folder, one name, so put `<GameID>_COV.png` files in `<device>:/ART/` and they show. The *Cover/details folder* setting is gone (it did nothing useful and was a foot-gun).
+
+**Honest status:** the boot-probe removal directly addresses the black-screen mechanism, and the cover crash's most likely cause (the new listing step) is gone. Both are the kind of fault only your consoles can fully confirm — so this build is the test. If MX4SIO still misbehaves *with cover art turned off* (Square), that points past the art code at the device layer, and that's the next thread to pull.
+
+**What to test on EXP35:**
+- **sAGA / anyone with an internal exFAT drive:** does it boot to the menu now (no black screen)? Then open the exFAT page and see if the drive lists.
+- **MX4SIO:** browse the game list — does it stay responsive without the memory crash? If it still stalls, try it again with **Cover Art OFF (Square)** and say whether that changes anything.
+- **Covers:** put your art at `<device>:/ART/<name>_COV.png` and confirm it shows.
 
 ---
 

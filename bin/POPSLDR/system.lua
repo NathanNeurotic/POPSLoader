@@ -9210,10 +9210,19 @@ PLDR.AutoInitStartupBackends()
 -- is usually already done-ok. PFS-only installs skip this entirely -- they
 -- never pay for a drive they don't use.
 do
-  local want_ata_boot = (PLDR.NormalizeHddFs(PLDR.HDD_FS) ~= "PFS")
-  if not want_ata_boot and type(PLDR.IsExplicitATASession) == "function" then
-    want_ata_boot = (PLDR.IsExplicitATASession() == true)
-  end
+  -- EXP35: do NOT warm up exFAT at boot just because the Internal-HDD setting
+  -- INCLUDES it. EXP34's new HDD_FS=BOTH default made this fire on EVERY boot,
+  -- and on sAGA's 4TB GPT exFAT internal drive the boot-time ata_bd bring-up
+  -- BLACK-SCREENED the console before the menu (2026-07-22) -- a boot the user
+  -- can't recover from without reinstalling. The exFAT page already kicks the
+  -- ata worker itself on entry (async, bounded to OPL's ~10s budget, screen
+  -- alive, NEVER a synchronous load -- see the GBDMHDD loader), so the boot
+  -- warm-up was only a perf pre-load, not a correctness requirement. Keep it
+  -- ONLY for an explicit -page=ata launch (the user opted straight into that
+  -- page and accepts the pre-warm); a normal boot no longer probes exFAT at all,
+  -- matching the lazy-load rule every other device already follows.
+  local want_ata_boot = (type(PLDR.IsExplicitATASession) == "function")
+                        and (PLDR.IsExplicitATASession() == true)
   if want_ata_boot and type(System) == "table" and type(System.initATAAsync) == "function" then
     pcall(System.initATAAsync)
   end
