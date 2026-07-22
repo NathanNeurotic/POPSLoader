@@ -5391,7 +5391,17 @@ UI = {
               -- The old bdm_query re-poke (an RPC that could land mid-module-
               -- registration) is gone from this path.
               report(PLDR.L("Locating exFAT HDD POPS folder..."), 0.42)
-              local ok_probe, ata_root, ata_status = pcall(PLDR.InitATAPopsRoot)
+              -- EXP43: hand the bring-up a reporter so each internal step paints
+              -- BEFORE the call it names. A wedged drive freezes inside one of these
+              -- IOP calls and never repaints, so whatever is on screen at that moment
+              -- IS the diagnosis -- one photo names the stuck call and the slot. This
+              -- is the EXP11 channel, dropped by the EXP32 rebuild; without it a
+              -- failed exFAT round yields no information at all, which is what
+              -- EXP38/39/40 each cost. Progress stays inside the 0.42-0.48 band the
+              -- single step used to occupy, so the bar does not jump around.
+              local ok_probe, ata_root, ata_status = pcall(PLDR.InitATAPopsRoot, function (msg)
+                report(tostring(msg), 0.44)
+              end)
               if not ok_probe then ata_root = nil; ata_status = nil end
               if ata_root == nil then
                 if ata_status == "notready" then

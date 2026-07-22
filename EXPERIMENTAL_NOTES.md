@@ -2,9 +2,38 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP42**. The check is simple: a version ending in **-EXP42** = this build; **-EXP41** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP43**. The check is simple: a version ending in **-EXP43** = this build; **-EXP42** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP43: if the internal drive freezes, the screen now tells us where
+
+**sAGA, this one is for you, and it is the important part of this build.**
+
+**Nothing about the drive fix changed.** EXP40's "phantom slave" fix is in this build exactly as it was. What changed is what happens **if it does not work**.
+
+**The problem with the last three builds.** EXP38, EXP39 and EXP40 all tried to fix the internal exFAT freeze, and all three asked you to boot, and none of them could tell us anything when they failed. The screen just sat on **"Locating exFAT HDD POPS folder..."** forever. That single message covered about a dozen separate internal steps, so "it froze" narrowed nothing down. Three of your test rounds produced no usable information, and that is our fault, not yours.
+
+We had solved this once. Back in EXP11 that step was split into numbered sub-steps so a frozen screen named the exact stuck call. When the device layer was rebuilt a few builds ago, that got quietly dropped and nobody noticed.
+
+**What changed.** It is back, and better placed. The bring-up now paints a specific message **before** each step that can hang:
+
+- **exFAT step 1: starting the drive**
+- **exFAT step 2.N: checking massN:**
+- **exFAT step 3.N: identifying massN:**
+- **exFAT step 4: reading the device list**
+
+A frozen console cannot redraw the screen, so whatever message is showing when it stops **is** the answer. It tells us which call hung and, for the numbered ones, which drive slot.
+
+**What to do (sAGA, one boot):** open the **HDD (exFAT)** page and give it up to two minutes, since some failure paths are slow rather than truly stuck.
+
+- **If it lists your games:** the phantom-slave fix worked. That is the win we have been chasing, please say so.
+- **If it freezes: photograph the screen.** The message on it, word for word including the number, is the whole diagnosis. That single photo is worth more than every report on the last three builds combined.
+- **If you see "No exFAT HDD detected" after a few seconds:** that is a clean answer too, not a freeze. Tell us.
+
+Also included, unchanged from the previous builds: the **MX4SIO page fix** (EXP41) and the **cover art setting** (EXP42), both described below.
 
 ---
 

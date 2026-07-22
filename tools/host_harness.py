@@ -548,6 +548,50 @@ t32 = E('''function()
 end''')()
 check("T32 EXP42 COVER_ART persists, defaults ON, and drives the live cover box", t32)
 
+# T33 EXP43: the internal-exFAT bring-up must report each step BEFORE the call it
+# names. This is the EXP11 freeze channel, which the EXP32 device-layer rebuild
+# silently dropped -- and its absence is why EXP38, EXP39 and EXP40 each burned a
+# hardware round without producing any evidence. A frozen IOP call never returns to
+# repaint, so the message already on screen IS the diagnosis; if these steps stop
+# firing, a failed exFAT round goes back to telling us nothing. Assert the channel
+# exists, is ordered, names the slot, and stays optional (nil reporter must be safe).
+t33 = E('''function()
+  local seen = {}
+  local rep = function(msg) seen[#seen + 1] = tostring(msg) end
+  System.initATAAsync = function() return 2 end
+  System.initATAStatus = function() return 2 end
+  local real_dfe = doesFolderExist
+  local real_drv = PLDR.GetMassMountDriver
+  doesFolderExist = function(p)
+    if p == "mass:/" or p == "mass0:/" then return true end
+    return real_dfe(p)
+  end
+  PLDR.GetMassMountDriver = function(root) return "ata" end
+  local root = PLDR.InitATAPopsRoot(rep)
+  doesFolderExist = real_dfe
+  PLDR.GetMassMountDriver = real_drv
+  if root == nil then return false, "ata root should resolve in this fixture" end
+  if #seen == 0 then return false, "NO steps reported -- the freeze channel is gone" end
+  local joined = table.concat(seen, " | ")
+  -- step 1 must come first: it is painted before the drive is started, which is the
+  -- call most likely to hang on a wedged 4TB adapter.
+  if not string.find(seen[1], "step 1", 1, true) then
+    return false, "first step should be 'step 1', got: "..tostring(seen[1])
+  end
+  -- the per-slot steps must name the slot, or a photo cannot identify WHICH slot hung
+  if not string.find(joined, "checking mass", 1, true) then
+    return false, "no per-slot 'checking mass<N>:' step: "..joined
+  end
+  if not string.find(joined, "identifying mass", 1, true) then
+    return false, "no per-slot 'identifying mass<N>:' step: "..joined
+  end
+  -- and a nil reporter must remain completely safe (every other caller passes none)
+  local ok_nil = pcall(function() return PLDR.InitATAPopsRoot() end)
+  if not ok_nil then return false, "InitATAPopsRoot() with no reporter must not error" end
+  return true
+end''')()
+check("T33 EXP43 exFAT bring-up reports each step before the call that can freeze", t33)
+
 # T16 the newly-wired "English holdout" draw sites (modal body/hints, busy overlay,
 # path-editor title, empty-states, share picker) must have their keys in the table so
 # PLDR.L() at those sites actually translates. A future table regen dropping any of

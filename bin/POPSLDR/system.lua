@@ -6108,7 +6108,17 @@ local function WaitMassProbeRetry(attempt, max_attempts)
   end
 end
 
-local function BuildMassRootIdentity(mode)
+-- `report(msg)` is OPTIONAL and exists for ONE reason: the internal-exFAT freeze.
+-- A hung IOP call never returns, so the only evidence a tester can give us is the
+-- message that was ALREADY on screen when it stopped. Every step below is therefore
+-- painted BEFORE the call it names. This is the EXP11 numbered-step channel, which
+-- the EXP32 device-layer rebuild dropped -- without it a failed sAGA round tells us
+-- nothing, which is exactly what happened on EXP38/39/40.
+local function BuildMassRootIdentity(mode, report)
+  local function step(msg)
+    if type(report) == "function" then pcall(report, msg) end
+  end
+  step("exFAT step 1: starting the drive")
   local ready = EnsureMassBackendsReady(mode)
 
   local identity = {
@@ -6188,7 +6198,11 @@ local function BuildMassRootIdentity(mode)
   for slot = 0, 9 do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
+    -- Painted before the dopen: a slot backed by a wedged drive hangs HERE, and
+    -- the slot number on screen is then the whole diagnosis.
+    step("exFAT step 2."..tostring(slot)..": checking "..tostring(root))
     if normalized ~= nil and doesFolderExist(normalized) then
+      step("exFAT step 3."..tostring(slot)..": identifying "..tostring(root))
       local driver = PLDR.GetMassMountDriver(normalized)
       identity.drivers[normalized] = (type(driver) == "string" and driver ~= "") and driver or "(none)"
       record(normalized, ClassifyMassRootDriver(driver))
@@ -6199,6 +6213,7 @@ local function BuildMassRootIdentity(mode)
   -- mass slot each one landed on. A device that appears here but in no slot above
   -- is enumerated-but-not-mounted, which is the single most useful thing to know
   -- when a page comes up empty.
+  step("exFAT step 4: reading the device list")
   if type(System) == "table" and type(System.bdmList) == "function" then
     local ok, list = pcall(System.bdmList)
     if ok and type(list) == "table" then
@@ -6392,7 +6407,7 @@ end
 -- there", so the page can say the truthful thing instead of a generic
 -- no-device toast. (USB keeps its own builder unchanged above: its attempt
 -- ladder + diag flow is HW-confirmed since the #508 fix, no freeze channel.)
-local function BuildBoundedIdentityDeferred(mode)
+local function BuildBoundedIdentityDeferred(mode, report)
   -- ONE mechanism (settle-retry sweep), per-mode BUDGET where hardware
   -- demanded it: mx4sio keeps its 6 passes -- the SD-over-SPI bridge is the
   -- slowest/flakiest to mount, the budget was raised 3->6 precisely because
@@ -6408,7 +6423,10 @@ local function BuildBoundedIdentityDeferred(mode)
   local attempts = 0
   while attempts < budget do
     attempts = attempts + 1
-    identity, ready = BuildMassRootIdentity(mode)
+    if type(report) == "function" and attempts > 1 then
+      pcall(report, "exFAT: retrying (pass "..tostring(attempts).." of "..tostring(budget)..")")
+    end
+    identity, ready = BuildMassRootIdentity(mode, report)
     if ready == false then
       return identity, false
     end
@@ -6435,8 +6453,8 @@ function PLDR.GetMX4SIOMassRootNow()
   return nil, (ready == false) and "notready" or "nodevice"
 end
 
-function PLDR.GetATAMassRootNow()
-  local identity, ready = BuildBoundedIdentityDeferred("ata")
+function PLDR.GetATAMassRootNow(report)
+  local identity, ready = BuildBoundedIdentityDeferred("ata", report)
   if type(identity) == "table" and type(identity.ata) == "table" and identity.ata[1] ~= nil then
     return identity.ata[1], "ready"
   end
@@ -7231,7 +7249,7 @@ function PLDR.InitMX4SIOPopsRoot()
   return nil, status
 end
 
-function PLDR.InitATAPopsRoot()
+function PLDR.InitATAPopsRoot(report)
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
   -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). EXP32: the
   -- worker is kicked in the BOOT window (do_boot_init) for exFAT installs;
@@ -7239,7 +7257,7 @@ function PLDR.InitATAPopsRoot()
   -- screen alive, never a synchronous load) and then runs the bounded sweep.
   -- Second return: "notready" while the drive is still starting, "nodevice"
   -- after a clean empty sweep -- the page toasts accordingly.
-  local root, status = PLDR.GetATAMassRootNow()
+  local root, status = PLDR.GetATAMassRootNow(report)
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"
   end
