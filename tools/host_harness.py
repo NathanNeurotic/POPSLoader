@@ -908,6 +908,58 @@ t26 = E('''function()
 end''')()
 check("T26 APA scan diag: mounted-but-empty partition yields 0 games + legible SCAN_DIAG", t26)
 
+# T27 EXP34 hidden-count: a __.POPS partition with ONE .vcd whose basename is
+# hidden (a matching .hide sidecar) + Global Hide ON must yield zero games AND
+# SCAN_DIAG.hidden==1 (vcds==1) -- so the toast can say "1 hidden -- Global Hide
+# is on" instead of reading as a device fault (the FifthFox APA "hidden by
+# accident" case). Turning Global Hide off must then reveal the game.
+t27 = E('''function()
+  FAKEHDD.parts = {
+    ["__.POPS"] = { files = {}, listing = {
+      { name = "MyGame.vcd", directory = false },
+      { name = "MyGame.hide", directory = false } } },
+  }
+  FAKEHDD.names = { "__.POPS" }
+  FAKEHDD.status = 0
+  PLDR.HDD.LOADSTATE = 0
+  PLDR.LoadHDDModules()
+  PLDR.COLLAPSE_MULTIDISC = false
+  PLDR.HDD.HAS_CHECKED = false
+  PLDR.HDD.CheckAvailableHddPopsParts(nil)
+  PLDR.GLOBAL_HIDE = true
+  PLDR.HDD.BuildGameList(nil)
+  if #PLDR.GAMES ~= 0 then return false, "expected 0 games with Global Hide on, got "..#PLDR.GAMES end
+  local d = PLDR.HDD.SCAN_DIAG
+  if type(d) ~= "table" then return false, "no SCAN_DIAG" end
+  if (d.vcds or 0) ~= 1 then return false, "vcds should be 1, got "..tostring(d.vcds) end
+  if (d.hidden or 0) ~= 1 then return false, "hidden should be 1, got "..tostring(d.hidden) end
+  if (d.collapsed or 0) ~= 0 then return false, "collapsed should be 0" end
+  PLDR.GLOBAL_HIDE = false
+  PLDR.HDD.BuildGameList(nil)
+  if #PLDR.GAMES ~= 1 then return false, "expected 1 game with Global Hide off, got "..#PLDR.GAMES end
+  return true
+end''')()
+check("T27 EXP34 hidden-count: hidden VCD yields 0 games + SCAN_DIAG.hidden, reveals when unhidden", t27)
+
+# T28 EXP34 config defaults: fresh settings (no sidecar override) must carry the
+# maintainer's new defaults -- ART_LOCATION "art", HDD_FS "BOTH", i.Link hidden,
+# and the SMB/network block (IP/gateway/DNS/server/share/user/port).
+t28 = E('''function()
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.ART_LOCATION ~= "art" then return false, "ART_LOCATION default should be 'art', got "..tostring(PLDR.ART_LOCATION) end
+  if PLDR.HDD_FS ~= "BOTH" then return false, "HDD_FS default should be 'BOTH', got "..tostring(PLDR.HDD_FS) end
+  local hd = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
+  if string.find(hd, "ILINK", 1, true) == nil then return false, "i.Link should be hidden by default, HIDDEN_DEVICES="..tostring(PLDR.HIDDEN_DEVICES) end
+  local smb = PLDR.SmbDefaults()
+  local want = { PS2_IP="192.168.1.10", GATEWAY="192.168.1.1", DNS="192.168.1.1",
+                 SERVER="192.168.1.100", SHARE="games", USER="guest", PORT="1111" }
+  for k, v in pairs(want) do
+    if tostring(smb[k]) ~= v then return false, "SMB "..k.." should be "..v..", got "..tostring(smb[k]) end
+  end
+  return true
+end''')()
+check("T28 EXP34 config defaults: ART=art, HDD=BOTH, i.Link hidden, SMB/network block", t28)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

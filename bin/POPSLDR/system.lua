@@ -2625,6 +2625,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visible (gérer)",
     ["Working..."] = "En cours...",
     ["Yes"] = "Oui",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(échec de l'enregistrement -- annulé au redémarrage)",
+    ["(the usual settings location wasn't writable)"] = "(l'emplacement habituel des réglages n'était pas accessible en écriture)",
+    ["-- launch cancelled"] = "-- lancement annulé",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptatif n'a pas pu préparer",
+    ["Applying SMB modules"] = "Application des modules SMB",
+    ["BDMA source backend not ready:"] = "Backend source BDMA non prêt :",
+    ["BOOT.ELF failed to launch"] = "Échec du lancement de BOOT.ELF",
+    ["Booted from:"] = "Démarré depuis :",
+    ["Cannot access"] = "Accès impossible",
+    ["Case/Symbols: UPPER  (R2)"] = "Casse/Symboles : MAJ  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Casse/Symboles : min  (R2)",
+    ["Couldn't restore BDMA mode"] = "Impossible de restaurer le mode BDMA",
+    ["Couldn't save settings"] = "Impossible d'enregistrer les réglages",
+    ["Couldn't update hidden state"] = "Impossible de mettre à jour l'état masqué",
+    ["Couldn't write .hide to the HDD"] = "Impossible d'écrire .hide sur le disque dur",
+    ["Cursor: L1 / R1"] = "Curseur : L1 / R1",
+    ["DKWDRV failed to launch"] = "Échec du lancement de DKWDRV",
+    ["Edit"] = "Modifier",
+    ["Edit %s"] = "Modifier %s",
+    ["Game file missing"] = "Fichier de jeu manquant",
+    ["HDD dir read failed:"] = "Échec de lecture du dossier du disque dur :",
+    ["HDD not usable"] = "Disque dur inutilisable",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Les jeux masqués sont déjà affichés ici (grisés)\nActivez « Masquer les jeux cachés » dans les Réglages pour les filtrer",
+    ["Locating exFAT HDD POPS folder..."] = "Localisation du dossier POPS du disque exFAT...",
+    ["Looking for USB drive..."] = "Recherche d'un lecteur USB...",
+    ["Missing BDMA UI source (tried):"] = "Source d'interface BDMA manquante (essayé) :",
+    ["Missing BDMA source (tried):"] = "Source BDMA manquante (essayé) :",
+    ["Missing SMB module (tried):"] = "Module SMB manquant (essayé) :",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Aucune partition '__.POPS' sur hdd0:\nformatez-en une avec __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Aucun DKWDRV trouvé à ce chemin",
+    ["No POPSTARTER found at this path"] = "Aucun POPSTARTER trouvé à ce chemin",
+    ["Path saved, file not found:"] = "Chemin enregistré, fichier introuvable :",
+    ["Resolved:"] = "Résolu :",
+    ["Reverting in"] = "Annulation dans",
+    ["Saved to"] = "Enregistré dans",
+    ["Slot:"] = "Emplacement :",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "Le disque interne démarre encore\nrouvrez cette page dans un instant",
+    ["Triangle"] = "Triangle",
+    ["Unknown BDMA mode:"] = "Mode BDMA inconnu :",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Vous pouvez toujours ajouter un « <jeu>.hide » à côté du .VCD depuis un PC.",
+    ["adjusted -- using"] = "ajusté -- utilise",
+    ["check the memory card, or turn Adaptive BDMA off"] = "vérifiez la carte mémoire, ou désactivez le BDMA adaptatif",
+    ["if not confirmed"] = "si non confirmé",
+    ["re-select it under Settings > Storage to restage"] = "resélectionnez-le dans Réglages > Stockage pour le repréparer",
+    ["return code:"] = "code de retour :",
+    ["status:"] = "état :",
   },
   DE = {
     ["(not set)"] = "(nicht gesetzt)",
@@ -2813,6 +2860,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Sichtbar (verwalten)",
     ["Working..."] = "Arbeite...",
     ["Yes"] = "Ja",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(konnte NICHT speichern -- wird beim Neustart verworfen)",
+    ["(the usual settings location wasn't writable)"] = "(der übliche Einstellungsort war nicht beschreibbar)",
+    ["-- launch cancelled"] = "-- Start abgebrochen",
+    ["Adaptive BDMA couldn't stage"] = "Adaptives BDMA konnte nicht bereitstellen",
+    ["Applying SMB modules"] = "SMB-Module werden angewendet",
+    ["BDMA source backend not ready:"] = "BDMA-Quell-Backend nicht bereit:",
+    ["BOOT.ELF failed to launch"] = "BOOT.ELF konnte nicht gestartet werden",
+    ["Booted from:"] = "Gestartet von:",
+    ["Cannot access"] = "Kein Zugriff auf",
+    ["Case/Symbols: UPPER  (R2)"] = "Groß/Zeichen: GROSS  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Groß/Zeichen: klein  (R2)",
+    ["Couldn't restore BDMA mode"] = "BDMA-Modus konnte nicht wiederhergestellt werden",
+    ["Couldn't save settings"] = "Einstellungen konnten nicht gespeichert werden",
+    ["Couldn't update hidden state"] = "Verborgen-Status konnte nicht aktualisiert werden",
+    ["Couldn't write .hide to the HDD"] = "Konnte .hide nicht auf die HDD schreiben",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "DKWDRV konnte nicht gestartet werden",
+    ["Edit"] = "Bearbeiten",
+    ["Edit %s"] = "%s bearbeiten",
+    ["Game file missing"] = "Spieldatei fehlt",
+    ["HDD dir read failed:"] = "HDD-Verzeichnis konnte nicht gelesen werden:",
+    ["HDD not usable"] = "HDD nicht verwendbar",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Verborgene Spiele werden hier bereits angezeigt (abgedunkelt)\nAktiviere \"Verborgene Spiele ausblenden\" in den Einstellungen, um sie zu filtern",
+    ["Locating exFAT HDD POPS folder..."] = "exFAT-HDD-POPS-Ordner wird gesucht...",
+    ["Looking for USB drive..."] = "USB-Laufwerk wird gesucht...",
+    ["Missing BDMA UI source (tried):"] = "BDMA-UI-Quelle fehlt (versucht):",
+    ["Missing BDMA source (tried):"] = "BDMA-Quelle fehlt (versucht):",
+    ["Missing SMB module (tried):"] = "SMB-Modul fehlt (versucht):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Keine '__.POPS'-Partitionen auf hdd0:\nlege eine mit __.POPS / __.POPS0...9 an",
+    ["No DKWDRV found at this path"] = "Kein DKWDRV unter diesem Pfad gefunden",
+    ["No POPSTARTER found at this path"] = "Kein POPSTARTER unter diesem Pfad gefunden",
+    ["Path saved, file not found:"] = "Pfad gespeichert, Datei nicht gefunden:",
+    ["Resolved:"] = "Aufgelöst:",
+    ["Reverting in"] = "Zurücksetzen in",
+    ["Saved to"] = "Gespeichert in",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "Das interne Laufwerk startet noch\nöffne diese Seite gleich erneut",
+    ["Triangle"] = "Dreieck",
+    ["Unknown BDMA mode:"] = "Unbekannter BDMA-Modus:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Du kannst weiterhin eine \"<Spiel>.hide\" neben die .VCD vom PC aus hinzufügen.",
+    ["adjusted -- using"] = "angepasst -- verwende",
+    ["check the memory card, or turn Adaptive BDMA off"] = "prüfe die Memory Card oder schalte adaptives BDMA aus",
+    ["if not confirmed"] = "wenn nicht bestätigt",
+    ["re-select it under Settings > Storage to restage"] = "wähle es unter Einstellungen > Speicher erneut, um es neu bereitzustellen",
+    ["return code:"] = "Rückgabecode:",
+    ["status:"] = "Status:",
   },
   PT = {
     ["(not set)"] = "(não definido)",
@@ -2998,6 +3092,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visível (gerenciar)",
     ["Working..."] = "Trabalhando...",
     ["Yes"] = "Sim",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(NÃO foi possível salvar -- revertido ao reiniciar)",
+    ["(the usual settings location wasn't writable)"] = "(o local usual das configurações não era gravável)",
+    ["-- launch cancelled"] = "-- lançamento cancelado",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptativo não pôde preparar",
+    ["Applying SMB modules"] = "Aplicando módulos SMB",
+    ["BDMA source backend not ready:"] = "Backend de origem BDMA não está pronto:",
+    ["BOOT.ELF failed to launch"] = "Falha ao iniciar BOOT.ELF",
+    ["Booted from:"] = "Iniciado a partir de:",
+    ["Cannot access"] = "Não é possível acessar",
+    ["Case/Symbols: UPPER  (R2)"] = "Maiúsc./Símbolos: MAIÚSC  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Maiúsc./Símbolos: minúsc  (R2)",
+    ["Couldn't restore BDMA mode"] = "Não foi possível restaurar o modo BDMA",
+    ["Couldn't save settings"] = "Não foi possível salvar as configurações",
+    ["Couldn't update hidden state"] = "Não foi possível atualizar o estado oculto",
+    ["Couldn't write .hide to the HDD"] = "Não foi possível gravar .hide no HDD",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "Falha ao iniciar DKWDRV",
+    ["Edit"] = "Editar",
+    ["Edit %s"] = "Editar %s",
+    ["Game file missing"] = "Arquivo do jogo ausente",
+    ["HDD dir read failed:"] = "Falha ao ler o diretório do HDD:",
+    ["HDD not usable"] = "HDD não utilizável",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Os jogos ocultos já são exibidos aqui (esmaecidos)\nAtive \"Ocultar jogos ocultos\" nas Configurações para filtrá-los",
+    ["Locating exFAT HDD POPS folder..."] = "Localizando a pasta POPS do HDD exFAT...",
+    ["Looking for USB drive..."] = "Procurando unidade USB...",
+    ["Missing BDMA UI source (tried):"] = "Origem da interface BDMA ausente (tentado):",
+    ["Missing BDMA source (tried):"] = "Origem BDMA ausente (tentado):",
+    ["Missing SMB module (tried):"] = "Módulo SMB ausente (tentado):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nenhuma partição '__.POPS' em hdd0:\nformate uma com __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Nenhum DKWDRV encontrado neste caminho",
+    ["No POPSTARTER found at this path"] = "Nenhum POPSTARTER encontrado neste caminho",
+    ["Path saved, file not found:"] = "Caminho salvo, arquivo não encontrado:",
+    ["Resolved:"] = "Resolvido:",
+    ["Reverting in"] = "Revertendo em",
+    ["Saved to"] = "Salvo em",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "A unidade interna ainda está iniciando\nabra esta página novamente em instantes",
+    ["Triangle"] = "Triângulo",
+    ["Unknown BDMA mode:"] = "Modo BDMA desconhecido:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Você ainda pode adicionar um \"<jogo>.hide\" ao lado do .VCD a partir de um PC.",
+    ["adjusted -- using"] = "ajustado -- usando",
+    ["check the memory card, or turn Adaptive BDMA off"] = "verifique o cartão de memória ou desative o BDMA adaptativo",
+    ["if not confirmed"] = "se não confirmado",
+    ["re-select it under Settings > Storage to restage"] = "selecione-o novamente em Configurações > Armazenamento para repreparar",
+    ["return code:"] = "código de retorno:",
+    ["status:"] = "status:",
   },
   ES = {
     ["(not set)"] = "(sin definir)",
@@ -3188,6 +3329,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visible (gestionar)",
     ["Working..."] = "Trabajando...",
     ["Yes"] = "Sí",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(NO se pudo guardar -- se revierte al reiniciar)",
+    ["(the usual settings location wasn't writable)"] = "(la ubicación habitual de ajustes no admitía escritura)",
+    ["-- launch cancelled"] = "-- lanzamiento cancelado",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptativo no pudo preparar",
+    ["Applying SMB modules"] = "Aplicando módulos SMB",
+    ["BDMA source backend not ready:"] = "Backend de origen BDMA no está listo:",
+    ["BOOT.ELF failed to launch"] = "No se pudo iniciar BOOT.ELF",
+    ["Booted from:"] = "Arrancado desde:",
+    ["Cannot access"] = "No se puede acceder",
+    ["Case/Symbols: UPPER  (R2)"] = "Mayús/Símbolos: MAYÚS  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Mayús/Símbolos: minús  (R2)",
+    ["Couldn't restore BDMA mode"] = "No se pudo restaurar el modo BDMA",
+    ["Couldn't save settings"] = "No se pudieron guardar los ajustes",
+    ["Couldn't update hidden state"] = "No se pudo actualizar el estado oculto",
+    ["Couldn't write .hide to the HDD"] = "No se pudo escribir .hide en el HDD",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "No se pudo iniciar DKWDRV",
+    ["Edit"] = "Editar",
+    ["Edit %s"] = "Editar %s",
+    ["Game file missing"] = "Falta el archivo del juego",
+    ["HDD dir read failed:"] = "Error al leer el directorio del HDD:",
+    ["HDD not usable"] = "HDD no utilizable",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Los juegos ocultos ya se muestran aquí (atenuados)\nActiva \"Ocultar juegos ocultos\" en Ajustes para filtrarlos",
+    ["Locating exFAT HDD POPS folder..."] = "Localizando la carpeta POPS del HDD exFAT...",
+    ["Looking for USB drive..."] = "Buscando unidad USB...",
+    ["Missing BDMA UI source (tried):"] = "Falta la fuente de interfaz BDMA (probado):",
+    ["Missing BDMA source (tried):"] = "Falta la fuente BDMA (probado):",
+    ["Missing SMB module (tried):"] = "Falta el módulo SMB (probado):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "No hay particiones '__.POPS' en hdd0:\nformatea una con __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "No se encontró DKWDRV en esta ruta",
+    ["No POPSTARTER found at this path"] = "No se encontró POPSTARTER en esta ruta",
+    ["Path saved, file not found:"] = "Ruta guardada, archivo no encontrado:",
+    ["Resolved:"] = "Resuelto:",
+    ["Reverting in"] = "Revirtiendo en",
+    ["Saved to"] = "Guardado en",
+    ["Slot:"] = "Ranura:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "La unidad interna aún está iniciando\nabre esta página de nuevo en un momento",
+    ["Triangle"] = "Triángulo",
+    ["Unknown BDMA mode:"] = "Modo BDMA desconocido:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Aún puedes añadir un \"<juego>.hide\" junto al .VCD desde un PC.",
+    ["adjusted -- using"] = "ajustado -- usando",
+    ["check the memory card, or turn Adaptive BDMA off"] = "comprueba la tarjeta de memoria o desactiva el BDMA adaptativo",
+    ["if not confirmed"] = "si no se confirma",
+    ["re-select it under Settings > Storage to restage"] = "vuelve a seleccionarlo en Ajustes > Almacenamiento para reprepararlo",
+    ["return code:"] = "código de retorno:",
+    ["status:"] = "estado:",
   },
   IT = {
     ["(not set)"] = "(non impostato)",
@@ -3374,6 +3562,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visibile (gestisci)",
     ["Working..."] = "Elaborazione...",
     ["Yes"] = "Sì",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(salvataggio NON riuscito -- annullato al riavvio)",
+    ["(the usual settings location wasn't writable)"] = "(la posizione abituale delle impostazioni non era scrivibile)",
+    ["-- launch cancelled"] = "-- avvio annullato",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adattivo non è riuscito a preparare",
+    ["Applying SMB modules"] = "Applicazione dei moduli SMB",
+    ["BDMA source backend not ready:"] = "Backend di origine BDMA non pronto:",
+    ["BOOT.ELF failed to launch"] = "Avvio di BOOT.ELF non riuscito",
+    ["Booted from:"] = "Avviato da:",
+    ["Cannot access"] = "Impossibile accedere",
+    ["Case/Symbols: UPPER  (R2)"] = "Maiusc/Simboli: MAIUSC  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Maiusc/Simboli: minusc  (R2)",
+    ["Couldn't restore BDMA mode"] = "Impossibile ripristinare la modalità BDMA",
+    ["Couldn't save settings"] = "Impossibile salvare le impostazioni",
+    ["Couldn't update hidden state"] = "Impossibile aggiornare lo stato nascosto",
+    ["Couldn't write .hide to the HDD"] = "Impossibile scrivere .hide sull'HDD",
+    ["Cursor: L1 / R1"] = "Cursore: L1 / R1",
+    ["DKWDRV failed to launch"] = "Avvio di DKWDRV non riuscito",
+    ["Edit"] = "Modifica",
+    ["Edit %s"] = "Modifica %s",
+    ["Game file missing"] = "File di gioco mancante",
+    ["HDD dir read failed:"] = "Lettura della cartella HDD non riuscita:",
+    ["HDD not usable"] = "HDD non utilizzabile",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "I giochi nascosti sono già mostrati qui (in grigio)\nAttiva \"Nascondi giochi nascosti\" nelle Impostazioni per filtrarli",
+    ["Locating exFAT HDD POPS folder..."] = "Ricerca della cartella POPS dell'HDD exFAT...",
+    ["Looking for USB drive..."] = "Ricerca dell'unità USB...",
+    ["Missing BDMA UI source (tried):"] = "Origine UI BDMA mancante (tentato):",
+    ["Missing BDMA source (tried):"] = "Origine BDMA mancante (tentato):",
+    ["Missing SMB module (tried):"] = "Modulo SMB mancante (tentato):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nessuna partizione '__.POPS' su hdd0:\nformattane una con __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Nessun DKWDRV trovato in questo percorso",
+    ["No POPSTARTER found at this path"] = "Nessun POPSTARTER trovato in questo percorso",
+    ["Path saved, file not found:"] = "Percorso salvato, file non trovato:",
+    ["Resolved:"] = "Risolto:",
+    ["Reverting in"] = "Ripristino tra",
+    ["Saved to"] = "Salvato in",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "L'unità interna si sta ancora avviando\nriapri questa pagina tra un momento",
+    ["Triangle"] = "Triangolo",
+    ["Unknown BDMA mode:"] = "Modalità BDMA sconosciuta:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Puoi comunque aggiungere un \"<gioco>.hide\" accanto al .VCD da un PC.",
+    ["adjusted -- using"] = "regolato -- in uso",
+    ["check the memory card, or turn Adaptive BDMA off"] = "controlla la memory card oppure disattiva il BDMA adattivo",
+    ["if not confirmed"] = "se non confermato",
+    ["re-select it under Settings > Storage to restage"] = "riselezionalo in Impostazioni > Archiviazione per ripreparare",
+    ["return code:"] = "codice di ritorno:",
+    ["status:"] = "stato:",
   },
   HU = {
     ["(could NOT save -- reverts on reboot)"] = "(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)",
@@ -3617,6 +3852,11 @@ PLDR.I18N = {
     ["X = Yes      O = No"] = "X = Igen      O = Nem",
     ["Yes"] = "Igen",
     ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "PC-ről továbbra is hozzáadhat egy \"<game>.hide\" fájlt a .VCD mellé.",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["Edit %s"] = "%s szerkesztése",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt már láthatók (halványítva)\nKapcsolja be a \"Rejtett játékok elrejtése\" opciót a Beállításokban a szűréshez",
+    ["Resolved:"] = "Feloldva:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy pillanat múlva",
   },
 }
 function PLDR.L(s)
@@ -4507,10 +4747,10 @@ end
 -- brought up lazily on SMB-page entry (a later stage), never here or at boot.
 PLDR.SMB_FIELDS = {
   { key = "DHCP",      kind = "bool", default = true },
-  { key = "PS2_IP",    kind = "str",  default = "192.168.0.10" },
+  { key = "PS2_IP",    kind = "str",  default = "192.168.1.10" },
   { key = "NETMASK",   kind = "str",  default = "255.255.255.0" },
-  { key = "GATEWAY",   kind = "str",  default = "192.168.0.1" },
-  { key = "DNS",       kind = "str",  default = "192.168.0.1" },
+  { key = "GATEWAY",   kind = "str",  default = "192.168.1.1" },
+  { key = "DNS",       kind = "str",  default = "192.168.1.1" },
   { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" } },
   -- ADDR_TYPE/NB_ADDR are kept in the spec so old sidecar lines still parse, but
   -- HIDDEN from the settings UI: the connect binding hard-rejects "netbios"
@@ -4519,10 +4759,10 @@ PLDR.SMB_FIELDS = {
   -- makes SmbSanitize's enum branch coerce any persisted value back to "ip".
   { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip" }, hidden = true },
   { key = "NB_ADDR",   kind = "str",  default = "", hidden = true },
-  { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
+  { key = "SERVER",    kind = "str",  default = "192.168.1.100" },
   { key = "PORT",      kind = "str",  default = "1111" },
-  { key = "SHARE",     kind = "str",  default = "" },
-  { key = "USER",      kind = "str",  default = "" },
+  { key = "SHARE",     kind = "str",  default = "games" },
+  { key = "USER",      kind = "str",  default = "guest" },
   { key = "PASS",      kind = "str",  default = "" },
   { key = "PATH",      kind = "str",  default = "" },
 }
@@ -4932,11 +5172,11 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.COLLAPSE_MULTIDISC = false
   PLDR.GLOBAL_HIDE = false
   PLDR.POPSTARTER_MC_FOLDER = true
-  PLDR.HIDDEN_DEVICES = ""
+  PLDR.HIDDEN_DEVICES = "ILINK"  -- EXP34: hide the i.Link page by default (maintainer); users re-show it in Settings > Device List
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
-  PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
+  PLDR.ART_LOCATION = "art"  -- EXP34 default "art" = <device-root>/ART/ (matches OPL's mass:/ART layout); pops|pops_art|art. Cover .png + details .txt live here on REMOVABLE devices (HDD uses __common/POPS/ART)
+  PLDR.HDD_FS = "BOTH"  -- EXP34 default BOTH (maintainer): show both internal-HDD pages (PFS + exFAT). PFS|EXFAT|BOTH. BOTH means the exFAT boot warm-up runs each boot (EXP33 cascade-bound + sema make that safe).
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -7074,18 +7314,27 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   for i = 1, #DIR do
     if not DIR[i].directory then
       local is_vcd_file = string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
-      if is_vcd_file and type(PLDR.HDD.SCAN_DIAG) == "table" then
-        PLDR.HDD.SCAN_DIAG.vcds = (PLDR.HDD.SCAN_DIAG.vcds or 0) + 1
+      local diag = (type(PLDR.HDD.SCAN_DIAG) == "table") and PLDR.HDD.SCAN_DIAG or nil
+      if is_vcd_file and diag then
+        diag.vcds = (diag.vcds or 0) + 1
       end
-      if is_vcd_file
-         and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-        local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
-        if not (PLDR.GLOBAL_HIDE and is_hidden) then
-          local encoded = EncodeHddGameEntry(partition, DIR[i].name)
-          if encoded ~= nil then
-            if is_hidden then PLDR.HIDDEN[encoded] = true end
-            table.insert(PLDR.GAMES, encoded)
-            PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+      if is_vcd_file then
+        -- EXP34: count WHY a counted VCD becomes zero games -- collapsed (multi-disc)
+        -- vs hidden (Global Hide) -- so the "no games" toast can say so instead of
+        -- reading as a device fault (the FifthFox/APA "hidden by accident" case).
+        if PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name) then
+          if diag then diag.collapsed = (diag.collapsed or 0) + 1 end
+        else
+          local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+          if PLDR.GLOBAL_HIDE and is_hidden then
+            if diag then diag.hidden = (diag.hidden or 0) + 1 end
+          else
+            local encoded = EncodeHddGameEntry(partition, DIR[i].name)
+            if encoded ~= nil then
+              if is_hidden then PLDR.HIDDEN[encoded] = true end
+              table.insert(PLDR.GAMES, encoded)
+              PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+            end
           end
         end
       end
@@ -7259,7 +7508,7 @@ function PLDR.HDD.BuildGameList(on_progress)
   -- AppendHddGameList.)
   PLDR.HDD.SCAN_DIAG = { avail = 0, remounted = 0, remount_fail = 0,
                          last_fail_part = nil, last_fail_rc = nil,
-                         entries = 0, vcds = 0 }
+                         entries = 0, vcds = 0, hidden = 0, collapsed = 0 }
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   local ordered_partitions = GetOrderedHddPopsPartitions()
