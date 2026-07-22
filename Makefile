@@ -318,6 +318,25 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
 
+# EXP40: ata_bd.irx is BUILT FROM SOURCE (iop/ata_bd_fast) rather than picked up
+# from iop/embed/ or the SDK via vpath. The vendored ps2atad.c is the current
+# R3Z/OPL driver source with EXP21's device-1 disable: a retail PS2's internal
+# ATA bus is master-only, so forcing devinfo[1].exists=0 before the config loop
+# removes the phantom-slave probe -- which the source investigation identified as
+# the likely 4TB-GPT freeze (a SATA-bridge adapter can float device 1 "present",
+# and BDM then allocates an UNCHECKED second ~129 KiB cache AND races the mount
+# thread against _start on one unguarded atad command state). The DVR-PS2 path
+# (ata_dvrp_workaround) still probes device 1, so genuine two-device units are
+# unaffected. This explicit rule is more specific than the generic
+# $(EE_ASM_DIR)%.c: %.irx rule above, so it wins and the vpath copies are never
+# consulted for ata_bd -- iop/embed/ata_bd.irx is deleted to keep exactly one
+# ata_bd in the tree.
+iop/ata_bd_fast/ata_bd.irx: iop/ata_bd_fast
+	$(MAKE) -C $<
+
+$(EE_ASM_DIR)ata_bd.c: iop/ata_bd_fast/ata_bd.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ata_bd_irx
+
 # mx4sio_bd.irx now resolves via the generic %.irx rule + vpath, i.e. from the
 # SAME ps2sdk that provides bdm/bdmfs_fatfs/usbmass_bd -- BDM drivers must be one
 # vintage as a matched set. The old pinned copy (iop/embed/PS2SDK_MX4SIO/, left
