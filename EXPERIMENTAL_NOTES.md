@@ -2,9 +2,25 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP36**. The check is simple: a version ending in **-EXP36** = this build; **-EXP35** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP37**. The check is simple: a version ending in **-EXP37** = this build; **-EXP36** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP37: the MX4SIO cover-art lag/crash — hardware-confirmed and fixed
+
+The MX4SIO "browse a few games and it lags then crashes with *not enough memory*" bug is **found and fixed**, and this time it was confirmed on hardware before shipping: turning **Cover Art off (Square)** made the lag and the crash both vanish — which proved the cost was the per-game cover *lookup*, not the drive.
+
+**What was happening.** When your covers aren't in the folder the app now reads (`<device>:/ART/<name>_COV.png`), *every* game you scroll to triggers a **failed file open** — and on MX4SIO a failed open of a file in a folder that isn't there is a slow driver dir-walk. Doing that for game after game piled up into the lag, and eventually the crash.
+
+**The fix.** POPSLoader now checks whether the cover **folder** exists **once** (a single cheap check, remembered), and if it's not there it **skips the cover lookup for every game instantly** — no per-game file opens at all. If the folder *is* there, covers load exactly as before. So a device with no `ART` folder browses as fast as with Cover Art off, automatically.
+
+**Also in EXP37:** the USB page no longer hunts for a drive **12 times** when there's none — it makes a reasonable, bounded try and fails fast and clean (you flagged the ~12-second hang crawling 38%→44%).
+
+**What to test:**
+- **MX4SIO:** browse the game list with Cover Art **on** — smooth now, no crash? (If you *want* covers, put them at `<device>:/ART/<gamename>_COV.png`.)
+- **USB with no drive plugged:** opening the USB page should fail quickly and cleanly, not hang for ~12 seconds.
 
 ---
 

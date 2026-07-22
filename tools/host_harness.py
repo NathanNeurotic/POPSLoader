@@ -1000,6 +1000,36 @@ t29 = lua.execute(r'''
 ''')
 check("T29 EXP36 direct BDM slot resolution (parId->massN:/, no devctl scan)", t29)
 
+# T30 EXP37: the hardware-confirmed MX4SIO fix. When the cover's ART FOLDER is
+# absent, GetOrLoad must skip the per-game file open entirely (that slow failed
+# open, repeated per navigation, is the lag that OOMs on MX4SIO). A present folder
+# still loads. Graphics.loadImage is a call-counter tripwire.
+t30 = lua.execute(r'''
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  local real_dfe = doesFolderExist
+  local real_load = Graphics.loadImage
+  local load_calls = 0
+  Graphics.loadImage = function(p) load_calls = load_calls + 1; return 1 end
+  cc:Clear()
+  doesFolderExist = function(d) return false end          -- folder absent
+  local a = cc:GetOrLoad("mass:/ART/Game_COV.png")
+  local calls_absent = load_calls
+  cc:Clear()
+  doesFolderExist = function(d) return true end           -- folder present
+  local b = cc:GetOrLoad("mass:/ART/Game2_COV.png")
+  local calls_present = load_calls
+  doesFolderExist = real_dfe
+  Graphics.loadImage = real_load
+  cc:Clear()
+  if a ~= nil then return false, "absent-folder cover must be nil, got "..tostring(a) end
+  if calls_absent ~= 0 then return false, "absent folder must NOT open any file, loadImage calls="..calls_absent end
+  if b == nil then return false, "present-folder cover should load" end
+  if calls_present ~= 1 then return false, "present folder should loadImage once, calls="..calls_present end
+  return true
+''')
+check("T30 EXP37 cover folder-gate: absent ART folder skips the per-game file open", t30)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
