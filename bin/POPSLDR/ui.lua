@@ -343,6 +343,28 @@ function CoverCache:Clear()
   self.desc_scroll = 0
   self.last_cover_probe = nil
 end
+-- EXP33: scene-exit cleanup that FREES decoded covers (memory) but KEEPS the
+-- negative-miss memo (self.failed). Re-entering the same device then skips the
+-- re-probe of covers already known absent -- each miss is a full FAT dir-chain
+-- walk on SD-over-SIO2 / USB 1.1, which is the "exit and re-enter MX4SIO stalls"
+-- report. self.failed is keyed by full path, so a different device (or an R1
+-- refresh, which calls the full Clear) never collides. last_img is freed here,
+-- so it MUST be dropped, not kept.
+function CoverCache:ReleaseTextures()
+  local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
+  for key, img in pairs(self.entries) do
+    if free_ok then pcall(Graphics.freeImage, img) end
+    self.entries[key] = nil
+  end
+  self.order = {}
+  self.last_key = nil
+  self.last_img = nil
+  self.last_desc = nil
+  self.last_desc_lines = nil
+  self.desc_scroll = 0
+  self.last_cover_probe = nil
+  -- self.failed intentionally preserved
+end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
@@ -3186,7 +3208,15 @@ UI = {
             end
             if UI.GameList.CoverPending then
               UI.GameList.CoverPendingFrames = (UI.GameList.CoverPendingFrames or 0) + 1
-              if not nav_event and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
+              -- EXP33: never fire the cover probe while the scene transition is
+              -- still running. UpdateSelection does a SYNCHRONOUS read on the
+              -- game device, and a missing cover is a full FAT dir-chain walk
+              -- (seconds on SD-over-SIO2 / USB 1.1). Firing it mid-fade blocked
+              -- the render loop on the opaque background overlay -- the reported
+              -- "only the background shows, activity light stuck on, then the
+              -- list pops in". Let the list paint and the fade finish first.
+              local transitioning = type(UI.Transition) == "table" and UI.Transition.active == true
+              if not nav_event and not transitioning and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
                 local entry = PLDR.GAMES[UI.GameList.CURR]
                 local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
                 UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
@@ -3388,7 +3418,20 @@ UI = {
           if r3_hide_toggle then
             -- R3 drove this rebuild; its reveal/hide toast fires below instead.
           elseif #PLDR.GAMES < 1 then
-            UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
+            -- EXP33: same self-diagnosing readout as the first-entry toast.
+            local d = PLDR.HDD.SCAN_DIAG
+            local diag = ""
+            if type(d) == "table" then
+              if (tonumber(d.remount_fail) or 0) > 0 then
+                diag = string.format("\nmounted %d/%d, remount-fail (rc %s on %s)",
+                         tonumber(d.remounted) or 0, tonumber(d.avail) or 0,
+                         tostring(d.last_fail_rc), tostring(d.last_fail_part))
+              elseif (tonumber(d.avail) or 0) > 0 then
+                diag = string.format("\n%d part, %d files, %d VCD",
+                         tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+              end
+            end
+            UI.Notif_queue.add("HDD list refreshed (no games found)"..diag, "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
@@ -5377,7 +5420,24 @@ UI = {
                   local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
                   UI.Notif_queue.add(PLDR.L("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9")..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
-                  UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
+                  -- EXP33: self-diagnosing. FOUNDANY means pass 1 mounted a
+                  -- __.POPS partition; zero games then is EITHER a silent pass-2
+                  -- re-mount failure (shows rc + partition) OR a mounted-but-
+                  -- empty listing (shows file/VCD counts). The next report says
+                  -- which, instead of the opaque "partitions are empty".
+                  local d = PLDR.HDD.SCAN_DIAG
+                  local diag = ""
+                  if type(d) == "table" then
+                    if (tonumber(d.remount_fail) or 0) > 0 then
+                      diag = string.format("\nmounted %d/%d, remount-fail (rc %s on %s)",
+                               tonumber(d.remounted) or 0, tonumber(d.avail) or 0,
+                               tostring(d.last_fail_rc), tostring(d.last_fail_part))
+                    else
+                      diag = string.format("\n%d part, %d files, %d VCD",
+                               tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+                    end
+                  end
+                  UI.Notif_queue.add("No games found on hdd0:"..diag, "warn")
                 end
               else
                 UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")
@@ -5873,7 +5933,11 @@ function UI.IsUsbScene(scene)
 end
 function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
-    if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+    -- EXP33: free textures but keep the negative-miss memo (see ReleaseTextures)
+    -- so re-entering the same device doesn't re-walk the FAT for missing covers.
+    if UI.CoverCache ~= nil and UI.CoverCache.ReleaseTextures ~= nil then
+      UI.CoverCache:ReleaseTextures()
+    elseif UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
     end
   end
