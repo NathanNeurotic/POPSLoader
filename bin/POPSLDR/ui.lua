@@ -211,15 +211,13 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
       -- One art file serves all discs: disc-marker-stripped name first, then the
-      -- exact per-disc name. EXP34: OPL-compatible "<name>_COV.png" first, then the
-      -- legacy "<name>.png" (so existing covers still show). Resolver existence-
-      -- confirms each, so only present files are returned.
+      -- exact per-disc name. EXP34: the OPL standard "<name>_COV.png" is the ONLY
+      -- accepted name (maintainer: enforce one standard, no legacy fallback). The
+      -- resolver existence-confirms each, so only present files are returned.
       local out = {}
       local function add_hdd(bn)
         local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn.."_COV.png")
         if rc ~= nil then out[#out + 1] = rc end
-        local rl = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn..".png")
-        if rl ~= nil then out[#out + 1] = rl end
       end
       if stripped_basename ~= "" and stripped_basename ~= basename then add_hdd(stripped_basename) end
       add_hdd(basename)
@@ -233,12 +231,12 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   local base = StripExtension(vcd_path)
   -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
   -- PLDR.ART_LOCATION). EXP34: exactly ONE location is probed (maintainer directive -- no
-  -- more always-on beside-the-.vcd fallback): "art" (default) = a top-level <device>:/ART/
-  -- folder (matches OPL's mass:/ART layout); "pops_art" = a <gamedir>/ART/ subfolder;
+  -- beside-the-.vcd fallback), and the OPL standard "<name>_COV.png" is the ONLY accepted
+  -- cover name (no legacy "<name>.png"). Locations: "art" (default) = a top-level
+  -- <device>:/ART/ folder (OPL's mass:/ART layout); "pops_art" = a <gamedir>/ART/ subfolder;
   -- "pops" = the game's own folder beside the .vcd. Within that one folder the disc-marker-
   -- stripped name is tried first (one file serves every disc of a multi-disc game), then the
-  -- exact per-disc name; and for each, OPL-compatible "<name>_COV.png" first, then legacy
-  -- "<name>.png". The .txt details sidecar rides this list (each *.png -> <name>.txt).
+  -- exact per-disc name. The .txt details sidecar rides this list (<name>_COV.png -> <name>.txt).
   -- CoverCache lists each folder ONCE (dir_listing) so a missing cover is an instant set
   -- lookup, never a per-file FAT dir-walk (the MX4SIO/USB "art lookup lag").
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
@@ -248,11 +246,9 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "art"
   local out, seen = {}, {}
   local function add_variant(d, bn)
-    -- OPL-compatible "<name>_COV.png" first, then legacy "<name>.png".
+    -- OPL standard "<name>_COV.png" only.
     local pc = d..bn.."_COV.png"
     if not seen[pc] then seen[pc] = true; out[#out + 1] = pc end
-    local pl = d..bn..".png"
-    if not seen[pl] then seen[pl] = true; out[#out + 1] = pl end
   end
   local function add_dir(d)
     if d == nil or d == "" then return end
@@ -4112,16 +4108,31 @@ UI = {
           end
           -- These three were MISSING from Reset Defaults (the action's label promised
           -- them): Internal HDD page, cover/details folder, carousel device visibility.
-          if tostring(UI.HddFs) ~= "PFS" then
-            UI.HddFs = "PFS"
+          -- EXP34: reset targets track the new factory defaults (HDD_FS=BOTH,
+          -- ART_LOCATION=art, i.Link hidden) so Reset == factory-fresh (see comment above).
+          if tostring(UI.HddFs) ~= "BOTH" then
+            UI.HddFs = "BOTH"
             UI.ProfileDirty = true
           end
-          if tostring(UI.ArtLocation) ~= "pops_art" then
-            UI.ArtLocation = "pops_art"
+          if tostring(UI.ArtLocation) ~= "art" then
+            UI.ArtLocation = "art"
             UI.ProfileDirty = true
           end
-          if type(UI.DeviceHiddenDraft) == "table" and next(UI.DeviceHiddenDraft) ~= nil then
-            UI.DeviceHiddenDraft = {}
+          -- Factory default hides the i.Link page (HIDDEN_DEVICES="ILINK").
+          local default_hidden = { ILINK = true }
+          local hidden_matches = true
+          if type(UI.DeviceHiddenDraft) ~= "table" then
+            hidden_matches = false
+          else
+            for k in pairs(default_hidden) do
+              if UI.DeviceHiddenDraft[k] ~= true then hidden_matches = false break end
+            end
+            for k in pairs(UI.DeviceHiddenDraft) do
+              if default_hidden[k] ~= true then hidden_matches = false break end
+            end
+          end
+          if not hidden_matches then
+            UI.DeviceHiddenDraft = { ILINK = true }
             UI.ProfileDirty = true
           end
           if type(PLDR.SmbDefaults) == "function" and type(PLDR.SMB_FIELDS) == "table" then
