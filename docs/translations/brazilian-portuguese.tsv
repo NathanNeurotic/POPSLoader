@@ -62,9 +62,7 @@ Couldn't save settings -- POPSTARTER folder NOT deleted	Não foi possível salva
 Couldn't save settings -- POPSTARTER folder NOT restored	Não foi possível salvar -- pasta POPSTARTER NÃO restaurada
 Couldn't update hidden state	Couldn't update hidden state
 Couldn't write .hide to the HDD	Couldn't write .hide to the HDD
-Cover Art	Capa
-Cover Art disabled	Capa desativada
-Cover Art enabled	Capa ativada
+Cover art	Capa
 Cover/details folder	Pasta de capas/detalhes
 Credits	Créditos
 Cursor: L1 / R1	Cursor: L1 / R1
@@ -156,7 +154,6 @@ NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é sup
 NetBIOS name	NetBIOS name
 Netmask	Netmask
 No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9
-No cover. Looked for:	Sem capa. Procurado em:
 No DKWDRV found at this path	No DKWDRV found at this path
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)
 No games found	Nenhum jogo encontrado

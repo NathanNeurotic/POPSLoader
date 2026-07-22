@@ -2494,9 +2494,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Impossible de lire cette sélection de jeu",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Échec d'enregistrement -- dossier POPSTARTER NON supprimé",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Échec d'enregistrement -- dossier POPSTARTER NON restauré",
-    ["Cover Art"] = "Jaquettes",
-    ["Cover Art disabled"] = "Jaquettes désactivées",
-    ["Cover Art enabled"] = "Jaquettes activées",
+    ["Cover art"] = "Jaquettes",
     ["Cover/details folder"] = "Dossier jaquettes/détails",
     ["Credits"] = "Crédits",
     ["DHCP (automatic)"] = "DHCP (automatique)",
@@ -2570,7 +2568,6 @@ PLDR.I18N = {
     ["No Share selected"] = "Aucun partage sélectionné",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Aucun partage défini dans réglages SMB\n(le serveur n'a renvoyé aucun partage)",
     ["No USB backend detected\nreseat the drive and try again"] = "Aucun backend USB détecté\nreconnectez le lecteur et réessayez",
-    ["No cover. Looked for:"] = "Aucune jaquette. Recherché :",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Aucun HDD exFAT détecté\nformatez le disque interne en exFAT (Mode BDMA = ATA)",
     ["No games found"] = "Aucun jeu trouvé",
     ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Aucun jeu trouvé sur hdd0:\n(partitions __.POPS vides)",
@@ -2731,9 +2728,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Spielauswahl nicht lesbar",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Einstellungen nicht gespeichert -- POPSTARTER-Ordner NICHT gelöscht",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Einstellungen nicht gespeichert -- POPSTARTER-Ordner NICHT wiederhergestellt",
-    ["Cover Art"] = "Coverbild",
-    ["Cover Art disabled"] = "Coverbild deaktiviert",
-    ["Cover Art enabled"] = "Coverbild aktiviert",
+    ["Cover art"] = "Coverbild",
     ["Cover/details folder"] = "Cover-/Detailordner",
     ["Credits"] = "Mitwirkende",
     ["DHCP (automatic)"] = "DHCP (automatisch)",
@@ -2804,7 +2799,6 @@ PLDR.I18N = {
     ["No Share selected"] = "Keine Freigabe ausgewählt",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Keine Freigabe in SMB-Einstellungen gesetzt\n(Server lieferte keine Freigaben)",
     ["No USB backend detected\nreseat the drive and try again"] = "Kein USB-Backend erkannt\nLaufwerk neu einstecken und erneut versuchen",
-    ["No cover. Looked for:"] = "Kein Cover. Gesucht nach:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Keine exFAT-HDD erkannt\ninternes Laufwerk als exFAT formatieren (BDMA-Modus = ATA)",
     ["No games found"] = "Keine Spiele gefunden",
     ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Keine Spiele auf hdd0: gefunden\n(__.POPS-Partitionen sind leer)",
@@ -2962,9 +2956,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Não foi possível ler essa seleção de jogo",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Não foi possível salvar -- pasta POPSTARTER NÃO excluída",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Não foi possível salvar -- pasta POPSTARTER NÃO restaurada",
-    ["Cover Art"] = "Capa",
-    ["Cover Art disabled"] = "Capa desativada",
-    ["Cover Art enabled"] = "Capa ativada",
+    ["Cover art"] = "Capa",
     ["Cover/details folder"] = "Pasta de capas/detalhes",
     ["Credits"] = "Créditos",
     ["DHCP (automatic)"] = "DHCP (automático)",
@@ -3036,7 +3028,6 @@ PLDR.I18N = {
     ["No Share selected"] = "Nenhum Share selecionado",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Nenhum Share definido nas configurações SMB\n(servidor não retornou shares)",
     ["No USB backend detected\nreseat the drive and try again"] = "Nenhum backend USB detectado\nreconecte o drive e tente novamente",
-    ["No cover. Looked for:"] = "Sem capa. Procurado em:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)",
     ["No games found"] = "Nenhum jogo encontrado",
     ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nenhum jogo encontrado em hdd0:\n(partições __.POPS estão vazias)",
@@ -3199,9 +3190,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "No se pudo leer esa selección de juego",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "No se pudieron guardar los ajustes -- carpeta POPSTARTER NO eliminada",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "No se pudieron guardar los ajustes -- carpeta POPSTARTER NO restaurada",
-    ["Cover Art"] = "Carátulas",
-    ["Cover Art disabled"] = "Carátulas desactivadas",
-    ["Cover Art enabled"] = "Carátulas activadas",
+    ["Cover art"] = "Carátulas",
     ["Cover/details folder"] = "Carpeta de carátulas/detalles",
     ["Credits"] = "Créditos",
     ["DHCP (automatic)"] = "DHCP (automático)",
@@ -3274,7 +3263,6 @@ PLDR.I18N = {
     ["No Share selected"] = "Sin recurso seleccionado",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Sin recurso definido en ajustes SMB\n(el servidor no devolvió recursos)",
     ["No USB backend detected\nreseat the drive and try again"] = "No se detectó backend USB\nreconecta la unidad e inténtalo de nuevo",
-    ["No cover. Looked for:"] = "Sin carátula. Se buscó:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "No se detectó HDD exFAT\nformatea la unidad interna en exFAT (Modo BDMA = ATA)",
     ["No games found"] = "No se encontraron juegos",
     ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "No se encontraron juegos en hdd0:\n(las particiones __.POPS están vacías)",
@@ -3431,9 +3419,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Impossibile leggere la selezione del gioco",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Impossibile salvare le impostazioni -- cartella POPSTARTER NON eliminata",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Impossibile salvare le impostazioni -- cartella POPSTARTER NON ripristinata",
-    ["Cover Art"] = "Copertine",
-    ["Cover Art disabled"] = "Copertine disattivate",
-    ["Cover Art enabled"] = "Copertine attivate",
+    ["Cover art"] = "Copertine",
     ["Cover/details folder"] = "Cartella copertine/dettagli",
     ["Credits"] = "Crediti",
     ["DHCP (automatic)"] = "DHCP (automatico)",
@@ -3506,7 +3492,6 @@ PLDR.I18N = {
     ["No Share selected"] = "Nessuna condivisione selezionata",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Nessuna condivisione impostata nelle impostazioni SMB\n(il server non ha restituito condivisioni)",
     ["No USB backend detected\nreseat the drive and try again"] = "Nessun backend USB rilevato\nreinserisci l'unità e riprova",
-    ["No cover. Looked for:"] = "Nessuna copertina. Cercata in:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nessun HDD exFAT rilevato\nformatta l'unità interna in exFAT (Modalità BDMA = ATA)",
     ["No games found"] = "Nessun gioco trovato",
     ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nessun gioco trovato su hdd0:\n(le partizioni __.POPS sono vuote)",
@@ -3684,9 +3669,7 @@ PLDR.I18N = {
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra",
     ["Couldn't update hidden state"] = "A rejtett állapotot nem sikerült frissíteni",
     ["Couldn't write .hide to the HDD"] = "Nem sikerült a .hide fájlt a HDD-re írni",
-    ["Cover Art"] = "Borítókép",
-    ["Cover Art disabled"] = "Borítóképek letiltva",
-    ["Cover Art enabled"] = "Borítóképek engedélyezve",
+    ["Cover art"] = "Borítókép",
     ["Cover/details folder"] = "Borító/Részletek mappa",
     ["Credits"] = "Közreműködők",
     ["Cursor: L1 / R1"] = "Kurzor: L1 / R1",
@@ -3769,7 +3752,6 @@ PLDR.I18N = {
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe",
     ["No"] = "Nem",
     ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nincs '__.POPS' partíció a hdd0-on:\nHozzon létre egyet __.POPS / __.POPS0...9 néven",
-    ["No cover. Looked for:"] = "Nincs borító. Itt keresve:",
     ["No DKWDRV found at this path"] = "Ezen az elérési úton nincs DKWDRV",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)",
     ["No games found"] = "Nincsenek játékok",
@@ -4907,6 +4889,7 @@ local function EncodeSettings()
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     "HDD_FS="..PLDR.NormalizeHddFs(PLDR.HDD_FS),
+    "COVER_ART="..((PLDR.COVER_ART ~= false) and "1" or "0"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
@@ -4956,6 +4939,7 @@ local function SnapshotSettingsState()
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     hdd_fs = PLDR.NormalizeHddFs(PLDR.HDD_FS),
+    cover_art = (PLDR.COVER_ART ~= false),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
@@ -5013,6 +4997,14 @@ local function ApplySettingsState(state)
   end
   if type(state.hdd_fs) == "string" then
     PLDR.HDD_FS = PLDR.NormalizeHddFs(state.hdd_fs)
+  end
+  if type(state.cover_art) == "boolean" then
+    PLDR.COVER_ART = state.cover_art
+    -- Keep the live list in step, including on the rollback path (a failed save
+    -- re-applies the previous state and the preview box must follow it back).
+    if type(UI) == "table" and type(UI.SetCoverPreview) == "function" then
+      UI.SetCoverPreview(state.cover_art)
+    end
   end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
@@ -5194,6 +5186,7 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
   PLDR.ART_LOCATION = "art"  -- EXP34 default "art" = <device-root>/ART/ (matches OPL's mass:/ART layout); pops|pops_art|art. Cover .png + details .txt live here on REMOVABLE devices (HDD uses __common/POPS/ART)
   PLDR.HDD_FS = "BOTH"  -- EXP34 default BOTH (maintainer): show both internal-HDD pages (PFS + exFAT). PFS|EXFAT|BOTH. BOTH means the exFAT boot warm-up runs each boot (EXP33 cascade-bound + sema make that safe).
+  PLDR.COVER_ART = true  -- draw cover art in the game-list preview box (default ON; was a session-only Square toggle until EXP42 made it a saved setting)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -5325,6 +5318,7 @@ function PLDR.LoadSettingsNonFatal()
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
   local art_location = string.match(data, "\nART_LOCATION=([^\n]+)") or string.match(data, "^ART_LOCATION=([^\n]+)")
   local hdd_fs = string.match(data, "\nHDD_FS=([^\n]+)") or string.match(data, "^HDD_FS=([^\n]+)")
+  local cover_art = string.match(data, "\nCOVER_ART=([^\n]+)") or string.match(data, "^COVER_ART=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
@@ -5405,6 +5399,10 @@ function PLDR.LoadSettingsNonFatal()
   if hdd_fs ~= nil then
     PLDR.HDD_FS = PLDR.NormalizeHddFs(hdd_fs)
   end
+  local ca = ParseBooleanSetting(cover_art)
+  if ca ~= nil then
+    PLDR.COVER_ART = ca == true
+  end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
     PLDR.GAMELIST_CACHE = glc == true
@@ -5453,6 +5451,11 @@ function PLDR.LoadSettingsNonFatal()
     else
       UI.HideTextMode = (hide_text_enabled == true)
     end
+    if type(UI.SetCoverPreview) == "function" then
+      UI.SetCoverPreview(PLDR.COVER_ART ~= false)
+    else
+      UI.CoverPreviewEnabled = (PLDR.COVER_ART ~= false)
+    end
   end
   return true
 end
@@ -5481,6 +5484,9 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
   local next_hdd_fs = PLDR.NormalizeHddFs(prev.hdd_fs)
   if opts.hdd_fs ~= nil then next_hdd_fs = PLDR.NormalizeHddFs(opts.hdd_fs) end
+  -- Default-ON boolean, so the fallback is `~= false` (mirrors next_boot_sound).
+  local next_cover_art = (prev.cover_art ~= false)
+  if type(opts.cover_art) == "boolean" then next_cover_art = opts.cover_art end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
@@ -5523,6 +5529,7 @@ function PLDR.CommitSettingsChanges(opts)
     details_align = next_details_align,
     art_location = next_art_location,
     hdd_fs = next_hdd_fs,
+    cover_art = next_cover_art,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
     overscan = next_overscan,

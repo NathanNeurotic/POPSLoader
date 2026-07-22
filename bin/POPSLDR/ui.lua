@@ -316,8 +316,7 @@ local CoverCache = {
   last_img = nil,
   last_desc = nil,
   last_desc_lines = nil,
-  desc_scroll = 0,
-  last_cover_probe = nil  -- primary path we looked for when a cover is MISSING (list-view diagnostic)
+  desc_scroll = 0
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -335,7 +334,6 @@ function CoverCache:Clear()
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
-  self.last_cover_probe = nil
 end
 -- EXP33: scene-exit cleanup that FREES decoded covers (memory) but KEEPS the
 -- negative-miss memo (self.failed). Re-entering the same device then skips the
@@ -356,7 +354,6 @@ function CoverCache:ReleaseTextures()
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
-  self.last_cover_probe = nil
   -- self.failed intentionally preserved: it reflects on-disk state keyed by absolute
   -- path, so re-entering the SAME device skips re-probing covers already known absent;
   -- a different device uses different paths (no collision) and R1 does a full Clear.
@@ -444,7 +441,6 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_img = nil
   self.last_desc = nil
   self.last_desc_lines = nil
-  self.last_cover_probe = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
@@ -506,20 +502,8 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       return img
     end
   end
-  -- No cover loaded: remember the FIRST place we looked (candidates[1], the ART_LOCATION
-  -- choice) so the list view can print a small "looked for <path>" caption -- lets a tester
-  -- confirm the .png name/folder without a hardware round-trip. The HDD branch has no
-  -- candidate when the png is missing (see above), so synthesize the DISPLAY-ONLY
-  -- expected path -- the one page whose art location is least guessable.
-  self.last_cover_probe = candidates[1]
-  if self.last_cover_probe == nil and use_hdd_common_art == true then
-    local cap_base = ExtractHddArtBasename(entry)
-    if cap_base ~= "" then
-      local cap_stripped = StripDiscMarker(cap_base)
-      if cap_stripped ~= "" then cap_base = cap_stripped end
-      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base.."_COV.png"
-    end
-  end
+  -- No cover loaded. Nothing to remember: the list view used to print the first probed
+  -- path as a "No cover. Looked for: <path>" caption, and that caption is gone (EXP42).
   return nil
 end
 
@@ -888,6 +872,30 @@ UI = {
     end;
     ToggleHideTextMode = function (notify)
       return UI.SetHideTextMode(not UI.HideTextMode, notify)
+    end;
+    -- EXP42: applies the "Cover art" setting (PLDR.COVER_ART) to the LIVE game list.
+    -- Turning it on re-arms the deferred cover load (the settle counter runs on the next
+    -- list frame); turning it off drops the current selection's decoded image so the box
+    -- falls back to the plain jewel-case placeholder immediately. Carries the exact side
+    -- effects the old Square handler had, so behaviour is unchanged: only the trigger
+    -- moved to Settings. Callable from the settings loader before the list scene exists,
+    -- so both GameList and the cover cache are optional here.
+    SetCoverPreview = function (enabled)
+      local next_state = (enabled ~= false)
+      UI.CoverPreviewEnabled = next_state
+      if type(UI.GameList) == "table" then
+        if next_state then
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = true
+          UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
+        else
+          UI.GameList.CoverPending = false
+        end
+      end
+      if not next_state and UI.CoverCache ~= nil then
+        UI.CoverCache:UpdateSelection(nil)
+      end
+      return next_state
     end;
     GetSettingsReturnScene = function ()
       local scene = UI.SettingsReturnScene or UI.LASTSCENE or UI.SCENES.MMAIN
@@ -2678,6 +2686,8 @@ UI = {
         if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
         UI.ArtLocation = _al
         UI.SettingsEntryArtLocation = UI.ArtLocation
+        UI.CoverArt = (type(PLDR) == "table" and PLDR.COVER_ART ~= false)
+        UI.SettingsEntryCoverArt = UI.CoverArt
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -2758,7 +2768,6 @@ UI = {
             order_id = "start_r2",
             circle = UI.Footer.labels.circle_other,
             cross = UI.Footer.labels.cross_confirm,
-            square = "Cover Art",
             start = UI.Footer.labels.start_profiles
           })
           UI.Footer.Draw(labels, order)
@@ -3044,34 +3053,11 @@ UI = {
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
           end
-          -- Missing-cover diagnostic: when preview is ON but the selected game has NO cover
-          -- (and the details panel isn't already using this space, and UI text isn't hidden),
-          -- print the primary path we looked for so a tester can confirm the .png name/folder
-          -- without a hardware round-trip. Device prefix trimmed; folder + filename on their
-          -- own lines. Clears with the same Select / Hide-UI-Text that clears other text.
-          if cover_enabled and cover_img == nil and details_lines == nil
-             and UI.HideTextMode ~= true and UI.CoverCache ~= nil
-             and type(UI.CoverCache.last_cover_probe) == "string"
-             and UI.CoverCache.last_cover_probe ~= "" then
-            local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
-                          or UI.CoverCache.last_cover_probe
-            local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
-            local cap_lines = { PLDR.L("No cover. Looked for:") }
-            if folder ~= nil then
-              cap_lines[#cap_lines + 1] = folder
-              cap_lines[#cap_lines + 1] = fname
-            else
-              cap_lines[#cap_lines + 1] = shown
-            end
-            local cap_y = draw_y + art_h + 8
-            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 40  -- same footer clearance as the details panel
-            for ci = 1, #cap_lines do
-              if cap_y > cap_bottom then break end
-              Font.ftPrint(SFONT, draw_x, cap_y, 0, draw_w, 14, cap_lines[ci], UI.CCOL.GREY)
-              cap_y = cap_y + 14
-            end
-          end
-          -- (Cover preview OFF now shows the plain default cover above -- no text label.)
+          -- EXP42: the "No cover. Looked for: <path>" caption is REMOVED (maintainer:
+          -- "totally useless"). It shipped as a tester self-check aid back when cover
+          -- paths were user-selectable; EXP35 hard-locked the location, so it only ever
+          -- added noise for normal users, who read an empty jewel case fine. Cover
+          -- preview OFF likewise shows the plain default cover above, with no text label.
           -- Paint the description: window the visible slice from the scroll offset,
           -- with a "..." affordance when there's more above/below (font-safe, same
           -- idiom as the old truncation). draw_y/details_y already include the lift.
@@ -3188,21 +3174,10 @@ UI = {
             end
           end
         end
-        if UI.Pad.Events.SQUARE then
-          UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
-          if UI.CoverPreviewEnabled then
-            UI.GameList.CoverLastIndex = nil
-            UI.GameList.CoverPending = true
-            UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
-            UI.Notif_queue.add("Cover Art enabled", "ok")
-          else
-            if UI.CoverCache ~= nil then
-              UI.CoverCache:UpdateSelection(nil)
-            end
-            UI.GameList.CoverPending = false
-            UI.Notif_queue.add("Cover Art disabled", "ok")
-          end
-        end
+        -- EXP42: Square no longer toggles cover art here. It was a session-only flip
+        -- that reset every boot and was undiscoverable once the footer legend dropped
+        -- it; it now lives in Settings > Game List > "Cover art" (PLDR.COVER_ART),
+        -- which persists. UI.SetCoverPreview is what that setting drives.
         if UI.CoverCache ~= nil then
           -- Cover-load settle: DECODE the selection's cover only after the cursor has been
           -- STABLE for ~250ms, FRAME-COUNTED (Timer.getTime is microseconds, so the old
@@ -3616,7 +3591,6 @@ UI = {
           order_id = "start_r2",
           circle = UI.Footer.labels.circle_other,
           cross = cross_label,
-          square = "Cover Art",
           start = UI.Footer.labels.start_profiles,
           R2 = UI.CURSCENE == UI.SCENES.GHDD and ammount > 0 and "HDD Alt" or nil
         })
@@ -3770,6 +3744,7 @@ UI = {
           local hdd_fs_val = (type(PLDR.NormalizeHddFs) == "function")
           and PLDR.NormalizeHddFs(UI.HddFs) or "PFS"
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
+          local cover_art_val = UI.CoverArt ~= false
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
           local bdma_adaptive_val = UI.BdmaAdaptive == true
@@ -3797,6 +3772,7 @@ UI = {
                 details_align = details_align_val,
                 hdd_fs = hdd_fs_val,
                 art_location = art_location_val,
+                cover_art = cover_art_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
                 bdma_adaptive = bdma_adaptive_val,
@@ -3850,6 +3826,10 @@ UI = {
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.HDD_FS = hdd_fs_val
             PLDR.ART_LOCATION = art_location_val
+            PLDR.COVER_ART = cover_art_val
+            if type(UI.SetCoverPreview) == "function" then
+              UI.SetCoverPreview(cover_art_val)
+            end
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
             PLDR.BDMA_ADAPTIVE = bdma_adaptive_val
@@ -4021,6 +4001,10 @@ UI = {
           end
           if UI.GameListCache == true then
             UI.GameListCache = false
+            UI.ProfileDirty = true
+          end
+          if UI.CoverArt ~= true then   -- default ON
+            UI.CoverArt = true
             UI.ProfileDirty = true
           end
           if UI.BootSound ~= true then   -- default ON
@@ -4449,6 +4433,16 @@ UI = {
         -- art is now HARD-LOCKED to <device-root>/ART/<name>_COV.png (OPL standard,
         -- maintainer). There is no folder choice to make anymore; ART_LOCATION is kept
         -- inert in the settings file only so older sidecars still parse.
+        -- EXP42: cover art used to be a Square toggle on the game list -- session-only,
+        -- lost on every boot, and invisible once the footer legend was trimmed. Same
+        -- behaviour, now discoverable and persisted.
+        AddCycle(
+          "Cover art",
+          function() return UI.CoverArt and "On" or "Off" end,
+          function() UI.CoverArt = not UI.CoverArt end,
+          function() UI.CoverArt = not UI.CoverArt end,
+          function() return (UI.CoverArt == true) ~= (UI.SettingsEntryCoverArt == true) end
+        )
         AddCycle(
           "Game list cache",
           function() return UI.GameListCache and "On" or "Off" end,
@@ -4563,6 +4557,7 @@ UI = {
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
             or tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation)
             or tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs)
+            or (UI.CoverArt == true) ~= (UI.SettingsEntryCoverArt == true)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true)

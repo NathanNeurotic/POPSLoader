@@ -2,9 +2,26 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP41**. The check is simple: a version ending in **-EXP41** = this build; **-EXP40** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP42**. The check is simple: a version ending in **-EXP42** = this build; **-EXP41** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP42: cover art is a saved setting now
+
+Two small interface changes. **EXP41's device fix is included in this build**, so if you have not tested EXP41 yet, testing EXP42 covers both. The EXP41 section below is still the important one.
+
+**Cover art is now in Settings.** It used to be the **Square** button on a game list, which meant it reset to on every time you rebooted and there was nothing on screen telling you the button existed. It now lives in **Settings, Game List, Cover art**, defaults to **On**, and is saved with the rest of your settings. Turning it off shows the plain empty case instead of loading each game's picture, which is a little quicker on a big list. **Square now does nothing on a game list.**
+
+**The "No cover. Looked for:" line is gone.** When a game had no picture, the box used to print the exact path it had checked. That was added as a self-check aid back when you could choose where covers lived; EXP35 locked that location down, so the line had stopped earning its space.
+
+**What to test on EXP42 (interface):**
+- **Settings, Game List, Cover art** turns pictures on and off, and the game list changes as soon as you save without needing to leave Settings.
+- Set it to **Off**, save, reboot: it should still be **Off**. Then set it back to **On** and confirm that sticks too.
+- **Reset Defaults** puts it back to **On**.
+- A game with no picture shows the plain empty case and **no path text** underneath.
+- Your existing settings still load normally after updating (this adds a new saved value, so an older settings file simply defaults cover art to On).
 
 ---
 

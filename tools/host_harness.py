@@ -499,6 +499,55 @@ t15 = E('''function()
 end''')()
 check("T15 LANGUAGE persists (save -> sidecar -> reload)", t15)
 
+# T32 EXP42 COVER_ART: cover art moved from a session-only Square toggle to a persisted
+# setting, so it must round-trip like any other, DEFAULT ON, and drive the live list via
+# UI.SetCoverPreview. Default-ON booleans are the easy ones to get wrong: the `~= false`
+# idiom is what makes an absent key mean ON rather than OFF, so assert the absent-key
+# case explicitly (an older sidecar with no COVER_ART= line must not turn covers off).
+t32 = E('''function()
+  if PLDR.COVER_ART ~= true then return false, "default should be ON, got "..tostring(PLDR.COVER_ART) end
+  -- OFF round-trips through the sidecar
+  PLDR.COVER_ART = false
+  local saved = PLDR.SaveSettingsAtomic()
+  local sidecar = nil
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") and string.find(content, "COVER_ART=", 1, true) then sidecar = content end
+  end
+  if not saved then return false, "save failed" end
+  if not (sidecar and string.find(sidecar, "COVER_ART=0", 1, true)) then return false, "COVER_ART=0 not persisted" end
+  PLDR.COVER_ART = true
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.COVER_ART ~= false then return false, "OFF did not reload, got "..tostring(PLDR.COVER_ART) end
+  -- and the live list follows the loaded value
+  if UI.CoverPreviewEnabled ~= false then return false, "UI.CoverPreviewEnabled not applied on load" end
+  -- ON round-trips too
+  PLDR.COVER_ART = true
+  PLDR.SaveSettingsAtomic()
+  PLDR.COVER_ART = false
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.COVER_ART ~= true then return false, "ON did not reload" end
+  if UI.CoverPreviewEnabled ~= true then return false, "UI.CoverPreviewEnabled not re-enabled on load" end
+  -- SetCoverPreview carries the old Square handler's side effects
+  if type(UI.SetCoverPreview) ~= "function" then return false, "UI.SetCoverPreview missing" end
+  UI.SetCoverPreview(false)
+  if UI.CoverPreviewEnabled ~= false then return false, "SetCoverPreview(false) did not take" end
+  if UI.GameList.CoverPending ~= false then return false, "CoverPending should clear when off" end
+  UI.SetCoverPreview(true)
+  if UI.CoverPreviewEnabled ~= true then return false, "SetCoverPreview(true) did not take" end
+  if UI.GameList.CoverPending ~= true then return false, "CoverPending should re-arm when on" end
+  -- An OLD sidecar with no COVER_ART= line must default to ON, not OFF.
+  for path, content in pairs(FAKEFS.files) do
+    if string.match(path, "%.pldrs$") then
+      FAKEFS.files[path] = string.gsub(content, "COVER_ART=[^\\n]*\\n", "")
+    end
+  end
+  PLDR.COVER_ART = false
+  PLDR.LoadSettingsNonFatal()
+  if PLDR.COVER_ART ~= true then return false, "absent COVER_ART key must default ON, got "..tostring(PLDR.COVER_ART) end
+  return true
+end''')()
+check("T32 EXP42 COVER_ART persists, defaults ON, and drives the live cover box", t32)
+
 # T16 the newly-wired "English holdout" draw sites (modal body/hints, busy overlay,
 # path-editor title, empty-states, share picker) must have their keys in the table so
 # PLDR.L() at those sites actually translates. A future table regen dropping any of
