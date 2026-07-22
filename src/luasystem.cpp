@@ -1257,67 +1257,6 @@ static int lua_getDiscType(lua_State *L)
 extern int mmce_slot0_ready;
 extern int mmce_slot1_ready;
 
-// System.dirNameSet(path[, cap]) -> { ["name.png"] = true, ... }, count  |  nil on failure
-//
-// EXP46. Exists for ONE reason: on FAT, proving a file is ABSENT costs a walk of the
-// WHOLE directory, while finding one can stop early. The maintainer's MX4SIO ART/
-// folder is shared with OPL and holds thousands of _COV/_ICO/_SCR/_BG files, none
-// matching his PS1 game names -- so every cover lookup was a full scan of that folder,
-// per title, over bit-banged SPI. That is the reported hang.
-//
-// The fix is to read the directory ONCE. Both previous attempts (EXP34, EXP44) did
-// that with System.listDirectory, which builds a Lua SUB-TABLE per entry
-// (name/size/directory) -- thousands of tables at once, which is the "not enough
-// memory" EXP35 saw and why it was ripped out twice. This builds the ONE table we
-// actually need, keyed by name, straight from readdir: no intermediate array, no
-// per-entry table, no size/stat fields we never read.
-//
-// `cap` bounds the work so a pathological folder cannot stall or exhaust memory: on
-// exceeding it we free the table and return nil, and the caller falls back to plain
-// per-file opens (never worse than the old behaviour). Directories are skipped.
-static int lua_dirnameset(lua_State *L)
-{
-	int argc = lua_gettop(L);
-	if (argc != 1 && argc != 2)
-		return luaL_error(L, "Argument error: System.dirNameSet(path[, cap]) takes one or two arguments.");
-	const char *folder = luaL_checkstring(L, 1);
-	int cap = (argc == 2) ? (int)luaL_checkinteger(L, 2) : 4096;
-	if (cap <= 0) cap = 4096;
-
-	DIR *d = opendir(folder);
-	if (!d) {
-		lua_pushnil(L);
-		return 1;
-	}
-
-	lua_newtable(L);
-	int count = 0;
-	struct dirent *ent;
-	while ((ent = readdir(d)) != NULL) {
-		if (ent->d_name[0] == '\0') continue;
-		if (ent->d_name[0] == '.' &&
-		    (ent->d_name[1] == '\0' || (ent->d_name[1] == '.' && ent->d_name[2] == '\0')))
-			continue;
-#ifdef OLD_DIRENT
-		if (S_ISDIR(ent->d_stat.st_mode)) continue;
-#else
-		if (ent->d_type == DT_DIR) continue;
-#endif
-		if (++count > cap) {
-			closedir(d);
-			lua_pop(L, 1);      // drop the partial table; caller falls back
-			lua_pushnil(L);
-			return 1;
-		}
-		lua_pushstring(L, ent->d_name);
-		lua_pushboolean(L, 1);
-		lua_settable(L, -3);
-	}
-	closedir(d);
-	lua_pushinteger(L, count);
-	return 2;
-}
-
 static int lua_direxists(lua_State *L)
 {
     int argc = lua_gettop(L);
@@ -2215,7 +2154,6 @@ static const luaL_Reg System_functions[] = {
 	//{"doesFileExist",            lua_checkexist}, BREAKS ERROR HANDLING IF DECLARED INSIDE TABLE. DONT ASK ME WHY
 	{"currentDirectory",             lua_curdir},
 	{"listDirectory",           	    lua_dir},
-	{"dirNameSet",                   lua_dirnameset},
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
 	{"removeFile",               lua_removeFile},
