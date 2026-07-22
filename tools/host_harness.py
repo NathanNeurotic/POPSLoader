@@ -1030,12 +1030,11 @@ t30 = lua.execute(r'''
 ''')
 check("T30 EXP37 cover folder-gate: absent ART folder skips the per-game file open", t30)
 
-# T31 EXP38: the internal exFAT (ata_bd) block stack is brought up at boot,
-# SYNCHRONOUSLY under the welcome splash, ONLY when exFAT is reachable this session
-# (Internal HDD = EXFAT/BOTH, or a -page=ata launch). This is the EXP22 arrangement
-# sAGA confirmed reads his 4TB GPT drive; it was reverted once (EXP35) after the
-# ASYNC variant black-screened, so pin the gate: it must NOT silently drift back to
-# PFS-only warm-up, and PFS installs must still pay nothing.
+# T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
+# boot-load ATA -- it only controls which HDD pages the carousel shows. Only an
+# EXPLICIT request (-page=ata / -page=exfat) warms ATA at boot; a normal MC/USB boot
+# with the exFAT page merely visible goes lazy (ATA loads when the page is opened).
+# EXP38 broke this by warming on EXFAT/BOTH; pin the gate so it stays explicit-only.
 t31 = lua.execute(r'''
   if type(PLDR.WantExfatBootBringup) ~= "function" then
     return false, "PLDR.WantExfatBootBringup missing"
@@ -1047,14 +1046,16 @@ t31 = lua.execute(r'''
     return PLDR.WantExfatBootBringup() == true
   end
   local cases = {
-    -- fs,      page,  want,  why
-    {"PFS",     nil,   false, "PFS-only must NOT warm up ata at boot"},
-    {nil,       nil,   false, "missing key resolves PFS -> no warm-up"},
-    {"garbage", nil,   false, "unknown value resolves PFS -> no warm-up"},
-    {"EXFAT",   nil,   true,  "exFAT-only warms up"},
-    {"BOTH",    nil,   true,  "BOTH warms up (sAGA's default case)"},
-    {"both",    nil,   true,  "case-insensitive"},
-    {"PFS",     "ATA", true,  "-page=ata forces warm-up even under PFS"},
+    -- fs,      page,    want,  why
+    {"PFS",     nil,     false, "PFS-only: no boot warm-up"},
+    {nil,       nil,     false, "missing key: no boot warm-up"},
+    {"garbage", nil,     false, "unknown value: no boot warm-up"},
+    {"EXFAT",   nil,     false, "EXP40: EXFAT is a VISIBILITY setting -> NO boot warm-up (lazy at page)"},
+    {"BOTH",    nil,     false, "EXP40: BOTH (default) must NOT boot-load ATA -- sAGA's case, goes lazy"},
+    {"both",    nil,     false, "case-insensitive: still no warm-up"},
+    {"PFS",     "ATA",   true,  "-page=ata is an EXPLICIT request -> warm at boot"},
+    {"BOTH",    "ATA",   true,  "-page=ata wins even under BOTH"},
+    {"PFS",     "EXFAT", true,  "-page=exfat is also an explicit request"},
   }
   for _, c in ipairs(cases) do
     local got = want(c[1], c[2])
@@ -1067,7 +1068,7 @@ t31 = lua.execute(r'''
   PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
   return true
 ''')
-check("T31 EXP38 boot exFAT warm-up gate (EXFAT/BOTH/-page=ata warm; PFS/missing skip)", t31)
+check("T31 EXP40 boot ATA gate: explicit -page=ata/exfat warms; EXFAT/BOTH/PFS stay lazy", t31)
 
 print()
 fails = [r for r in results if not r[1]]

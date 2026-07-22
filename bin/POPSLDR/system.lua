@@ -2357,20 +2357,19 @@ function PLDR.IsExplicitATASession()
   return page == "ATA" or page == "EXFAT"
 end
 
--- EXP38: TRUE when the internal exFAT (ata_bd) block stack should be brought up at
--- boot, SYNCHRONOUSLY, under the welcome splash (see do_boot_init). This is the
--- reference model -- OPL/R3Z/NHDDL load the whole block stack in one serial window
--- under a loading screen -- and the EXP22 arrangement sAGA confirmed reads his 4TB
--- GPT drive. Gated so PFS-only installs pay nothing:
---   * Internal HDD = EXFAT or BOTH  -> the exFAT page is reachable this session.
---   * an explicit -page=ata launch  -> the user opted straight into exFAT.
--- Named + pure so the host harness can lock it (this fix has been reverted before).
+-- EXP40: RESTORE LAZY. TRUE only when the session EXPLICITLY requests the ATA
+-- backend, in which case ATA is warmed at boot (under the splash). The Internal-HDD
+-- setting (EXFAT/BOTH) is a VISIBILITY control -- which HDD pages the carousel shows
+-- -- NOT a "use the ATA device now" signal, so it must NOT trigger a boot-time load.
+-- EXP38's mistake was conflating those: HDD_FS=BOTH (the default) boot-loaded ATA on
+-- every MC/USB boot, which both violated the CWD/page-lazy architecture and was the
+-- wrong device state (a normal boot never requested ATA). A normal boot now brings
+-- ATA up LAZILY when the user opens the exFAT page (InitATAPopsRoot), exactly like
+-- every other device. Only an explicit -page=ata / -page=exfat launch warms it early
+-- (the user opted straight into that page). APA/PFS boots load ATAD separately via
+-- boot.lua -> HDD.Initialize (pfs1: needs it), unchanged. Named + pure so the host
+-- harness can lock the gate (EXP38 broadened it by mistake; keep it explicit-only).
 function PLDR.WantExfatBootBringup()
-  local hdd_fs = (type(PLDR.NormalizeHddFs) == "function")
-                 and PLDR.NormalizeHddFs(PLDR.HDD_FS) or "PFS"
-  if hdd_fs == "EXFAT" or hdd_fs == "BOTH" then
-    return true
-  end
   return (type(PLDR.IsExplicitATASession) == "function")
          and (PLDR.IsExplicitATASession() == true)
 end

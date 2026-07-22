@@ -2,9 +2,45 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP38**. The check is simple: a version ending in **-EXP38** = this build; **-EXP37** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP40**. The check is simple: a version ending in **-EXP40** = this build; **-EXP39** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP40: the phantom "device 1" — and back to lazy
+
+Two things: undo a wrong turn, and finally test a real fix we wrote months ago but never ran on hardware.
+
+**Back to lazy.** EXP38/39 loaded the internal drive **at boot** whenever the Internal-HDD setting was `EXFAT`/`BOTH` — but that setting only controls **which pages are visible**, not "use the drive now." That broke POPSLoader's lazy-by-design behavior and was never how the drive should come up. EXP40 undoes it: a normal MC/USB boot **no longer touches the internal drive at all** — it loads **only when you open the exFAT HDD page** (or launch straight to it). Every other device stays exactly as it was.
+
+**The real fix — the phantom slave.** A deep byte-level + source investigation found a concrete mechanism for the freeze. The internal-ATA driver probes **two** devices, a "master" (your drive) and a "slave." A retail PS2 has no slave — but a 4TB drive behind a SATA adapter can float the bus so the driver *thinks* a slave is present. When it does, the storage layer tries to allocate a **second ~129 KB cache** (an allocation it never checks — if it fails, it crashes) **and** runs two sets of drive commands at once over one shared channel. POPSLoader loads more IOP modules than the lean reference tools, so it's the most likely to have no room left for that phantom second buffer — which is exactly why it hangs where R3Z/OPL don't, on the same drive.
+
+**We already wrote the fix — and never tested it.** Back in EXP21 we made the driver tell itself *"there is no slave"* on a retail PS2 before it probes, which removes both the phantom buffer and the command collision (genuine dual-drive DVR consoles are left alone). It was buried under EXP22 ~40 minutes later, before anyone ran it on hardware. EXP40 revives it — the driver is now **built from source** with that one change — and puts it on the drive, on the correct lazy path.
+
+**Honest status:** this is a **real fix attached to a testable hypothesis**, not a guaranteed win. If sAGA's exFAT page finally lists games → the phantom slave was the culprit and we've cracked it. If it still freezes → the device-1 theory is cleanly refuted, and the next build adds on-screen instrumentation to catch the exact line. Either way, it's decisive.
+
+**What to test on EXP40:**
+- **sAGA / internal exFAT:** boot normally from MC/USB (no more boot-time drive load), then open the **exFAT HDD** page — does it list your games instead of hanging at ~42%?
+- **MX4SIO / MMCE / USB:** all unchanged — please confirm they're still healthy (this build recompiles the ATA driver from source, so a quick sanity pass matters).
+
+---
+
+## New in EXP39: the exFAT freeze — one clean variable (the boot chime)
+
+EXP38 froze on the splash. A deep source-level comparison (byte-hashing every driver against the loaders that read sAGA's drive) settled two things for good, then found the real lead:
+
+**It is NOT the drivers.** Our `ata_bd` is byte-identical to the one wLaunchELF R3Z and official OPL ship. We already shipped the *complete* byte-exact reference driver set (an earlier experiment) and it still froze — and RiptOPL ships an *older* ATA driver than ours and reads the drive fine. So the module bytes are fully exonerated. GPT parsing and 48-bit addressing are both present and working. Chasing the drivers is over.
+
+**The real difference is something only POPSLoader does:** it starts the **boot chime** *before* it brings the internal drive up, and the chime keeps playing *through* the drive load. So the drive comes up while the audio hardware is actively streaming. **No other loader does this** — R3Z has no boot sound, NHDDL loads storage on a freshly-reset console, OPL/wOPL start their sound *after* storage. And it's the one thing that differs between the placement that **works** (EXP22 — drive loads before any audio) and the one that **froze** (EXP38 — drive loads during the chime).
+
+**The change:** EXP39 keeps everything from EXP38 exactly the same, and moves **one thing** — the boot chime now starts **after** the internal drive is up, not before. The splash still covers the load; the only difference is the chime begins a moment later, in silence-then-sound instead of sound-through-load.
+
+This is a deliberate **one-variable test.** If it works, the audio-during-storage collision was the freeze and we finally have the mechanism. If it still freezes, we've cleanly ruled audio out and the next suspect (the controller-adapter drivers initializing at the same time) is already lined up.
+
+**What to test on EXP39:**
+- **sAGA / internal exFAT drive:** boot to the menu. The splash may still sit a few seconds while the drive loads (that's expected — don't power off). Does it reach the menu now, and does the exFAT HDD page list your games instead of hanging on the splash? You'll notice the boot chime starts a touch later than before — that's the fix, not a bug.
+- **MX4SIO / MMCE / USB:** confirm all still behave exactly as they did on EXP37/38.
 
 ---
 
