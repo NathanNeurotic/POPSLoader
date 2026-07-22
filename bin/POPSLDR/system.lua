@@ -6297,10 +6297,13 @@ end
 -- quit permanently. A drive that enumerates at t=6s is found by R3Z and is
 -- invisible to us no matter how many times the tester retries.
 -- We cannot literally loop forever (this is a blocking scan on page entry, not a
--- UI loop), so bound it -- but bound it at "slower than any plausible drive"
--- rather than at 2 seconds. A working setup still returns on attempt 1 and pays
--- nothing; only an already-failing setup ever waits.
-local USB_PROBE_ATTEMPTS = 12
+-- UI loop), so bound it. EXP37: a REASONABLE bound (3), not 12 -- a present USB
+-- returns on attempt 1 and pays nothing, so the only thing the old 12 did was make
+-- a NO-USB page hang ~12s (progress crawling 38%..44%) before failing (maintainer:
+-- "shouldn't have to look for usb 12 fucking times... reasonable try and gracefully
+-- fail"). 3 attempts (matches the ata/default settle budget) still covers a slow
+-- enumerate but fails fast and clean when there is simply no drive.
+local USB_PROBE_ATTEMPTS = 3
 
 local function BuildUsbIdentityDeferred(progress)
   local attempts = 0
