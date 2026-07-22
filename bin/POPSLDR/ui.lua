@@ -210,15 +210,19 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
       return {}
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
-      -- One art file serves all discs: try the disc-marker-stripped name first, then
-      -- the exact per-disc name (back-compat with existing <full-name>.png covers).
+      -- One art file serves all discs: disc-marker-stripped name first, then the
+      -- exact per-disc name. EXP34: OPL-compatible "<name>_COV.png" first, then the
+      -- legacy "<name>.png" (so existing covers still show). Resolver existence-
+      -- confirms each, so only present files are returned.
       local out = {}
-      if stripped_basename ~= "" and stripped_basename ~= basename then
-        local r1 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..stripped_basename..".png")
-        if r1 ~= nil then out[#out + 1] = r1 end
+      local function add_hdd(bn)
+        local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn.."_COV.png")
+        if rc ~= nil then out[#out + 1] = rc end
+        local rl = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn..".png")
+        if rl ~= nil then out[#out + 1] = rl end
       end
-      local r2 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
-      if r2 ~= nil then out[#out + 1] = r2 end
+      if stripped_basename ~= "" and stripped_basename ~= basename then add_hdd(stripped_basename) end
+      add_hdd(basename)
       return out
     end
     return {}
@@ -228,34 +232,40 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   end
   local base = StripExtension(vcd_path)
   -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
-  -- PLDR.ART_LOCATION): "pops_art" = a POPS/ART/ subfolder (default; matches the HDD/PFS
-  -- __common/POPS/ART layout); "pops" = the game's own POPS folder beside the .vcd; "art" =
-  -- a top-level <device>:/ART/ folder. The game's own folder is ALWAYS also checked as a
-  -- final back-compat fallback so art beside the .vcd never stops showing. Within each
-  -- folder the disc-marker-stripped name is tried first (one file serves every disc of a
-  -- multi-disc game), then the exact per-disc name. The .txt details sidecar rides this
-  -- same list (each .png -> .txt). CoverCache memoizes misses (once per game per session).
+  -- PLDR.ART_LOCATION). EXP34: exactly ONE location is probed (maintainer directive -- no
+  -- more always-on beside-the-.vcd fallback): "art" (default) = a top-level <device>:/ART/
+  -- folder (matches OPL's mass:/ART layout); "pops_art" = a <gamedir>/ART/ subfolder;
+  -- "pops" = the game's own folder beside the .vcd. Within that one folder the disc-marker-
+  -- stripped name is tried first (one file serves every disc of a multi-disc game), then the
+  -- exact per-disc name; and for each, OPL-compatible "<name>_COV.png" first, then legacy
+  -- "<name>.png". The .txt details sidecar rides this list (each *.png -> <name>.txt).
+  -- CoverCache lists each folder ONCE (dir_listing) so a missing cover is an instant set
+  -- lookup, never a per-file FAT dir-walk (the MX4SIO/USB "art lookup lag").
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
   local has_stripped = (stripped ~= "" and stripped ~= name)
-  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
+  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "art"
   local out, seen = {}, {}
+  local function add_variant(d, bn)
+    -- OPL-compatible "<name>_COV.png" first, then legacy "<name>.png".
+    local pc = d..bn.."_COV.png"
+    if not seen[pc] then seen[pc] = true; out[#out + 1] = pc end
+    local pl = d..bn..".png"
+    if not seen[pl] then seen[pl] = true; out[#out + 1] = pl end
+  end
   local function add_dir(d)
     if d == nil or d == "" then return end
-    if has_stripped then
-      local p = d..stripped..".png"
-      if not seen[p] then seen[p] = true; out[#out + 1] = p end
-    end
-    local p2 = d..name..".png"
-    if not seen[p2] then seen[p2] = true; out[#out + 1] = p2 end
+    if has_stripped then add_variant(d, stripped) end
+    add_variant(d, name)
   end
-  if loc == "pops_art" then
-    add_dir(dir.."ART/")
-  elseif loc == "art" then
+  if loc == "art" then
     add_dir((string.match(dir, "^(%a+%d*:/)") or dir).."ART/")
+  elseif loc == "pops" then
+    add_dir(dir)   -- the game's own folder (beside the .vcd)
+  else  -- "pops_art" (and any unknown value): <gamedir>/ART/
+    add_dir(dir.."ART/")
   end
-  add_dir(dir)   -- the game's own folder (beside the .vcd) -- always a fallback
   return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
@@ -319,6 +329,7 @@ local CoverCache = {
   entries = {},
   order = {},
   failed = {},
+  dir_listing = {},  -- EXP34: dir -> set of lowercased filenames present (or false = listing unavailable, don't gate)
   last_key = nil,
   last_img = nil,
   last_desc = nil,
@@ -336,6 +347,7 @@ function CoverCache:Clear()
   end
   self.order = {}
   self.failed = {}
+  self.dir_listing = {}  -- EXP34: drop cached folder listings (R1 refresh / device switch = fresh disk view)
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
@@ -363,7 +375,49 @@ function CoverCache:ReleaseTextures()
   self.last_desc_lines = nil
   self.desc_scroll = 0
   self.last_cover_probe = nil
-  -- self.failed intentionally preserved
+  -- self.failed AND self.dir_listing intentionally preserved: both reflect on-disk
+  -- state keyed by absolute path, so re-entering the SAME device skips the re-walk;
+  -- a different device uses different paths (no collision) and R1 does a full Clear.
+end
+-- EXP34: existence via ONE cached directory listing instead of blind per-file fopens.
+-- A missing cover was a full FAT dir-chain walk per candidate (seconds on SD-over-SIO2
+-- / USB 1.1 -- the reported "art lookup lag" / MX4SIO "extended freeze"). Now each folder
+-- is listed once (memoized in dir_listing) and a cover's existence is an O(1) set lookup;
+-- only a genuinely-present file is ever opened. If a folder can't be listed, cache a
+-- sentinel and fall back to the fopen path so a listing-hostile driver never regresses.
+function CoverCache:ListDirSet(dir)
+  if type(System) ~= "table" or type(System.listDirectory) ~= "function" then return false end
+  local function build(d)
+    local ok, DIR = pcall(System.listDirectory, d)
+    if not ok or type(DIR) ~= "table" then return nil end
+    local s = {}
+    for i = 1, #DIR do
+      local e = DIR[i]
+      if type(e) == "table" and type(e.name) == "string" and not e.directory then
+        s[string.lower(e.name)] = true
+      end
+    end
+    return s
+  end
+  local s = build(dir)
+  if s == nil then
+    -- Retry without the trailing slash (some fileXio backends want the bare dir).
+    local bare = string.gsub(dir, "/+$", "")
+    if bare ~= "" and bare ~= dir then s = build(bare) end
+  end
+  if s == nil then return false end
+  return s
+end
+function CoverCache:DirHas(path)
+  local dir, file = string.match(path, "^(.*/)([^/]+)$")
+  if dir == nil or file == nil then return true end  -- unparseable: don't gate
+  local set = self.dir_listing[dir]
+  if set == nil then
+    set = self:ListDirSet(dir)
+    self.dir_listing[dir] = set
+  end
+  if set == false then return true end  -- listing unavailable: don't gate (fall back to fopen)
+  return set[string.lower(file)] == true
 end
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
@@ -387,6 +441,13 @@ function CoverCache:GetOrLoad(path)
     return nil
   end
   if type(Graphics) ~= "table" or type(Graphics.loadImage) ~= "function" then
+    self.failed[path] = true
+    return nil
+  end
+  -- EXP34: gate on the cached folder listing so a missing cover is an instant set
+  -- lookup, not an fopen dir-walk. DirHas returns true when it can't list the folder,
+  -- so a listing-hostile driver still falls through to the fopen path below.
+  if not self:DirHas(path) then
     self.failed[path] = true
     return nil
   end
@@ -439,7 +500,10 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     -- first, exact name as back-compat fallback). One <name>.txt serves all discs;
     -- first existing read wins.
     for ci = 1, #candidates do
-      local desc_path = string.gsub(candidates[ci], "%.png$", ".txt")
+      -- EXP34: covers are now "<name>_COV.png" (OPL) or legacy "<name>.png"; the
+      -- details sidecar stays "<name>.txt" -- strip the _COV suffix before swapping.
+      local desc_path = string.gsub(candidates[ci], "_COV%.png$", ".png")
+      desc_path = string.gsub(desc_path, "%.png$", ".txt")
       if desc_path ~= candidates[ci] then
         local d = ReadGameDetailsText(desc_path)
         if d ~= nil then
@@ -495,7 +559,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     if cap_base ~= "" then
       local cap_stripped = StripDiscMarker(cap_base)
       if cap_stripped ~= "" then cap_base = cap_stripped end
-      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base..".png"
+      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base.."_COV.png"
     end
   end
   return nil
@@ -3429,6 +3493,11 @@ UI = {
               elseif (tonumber(d.avail) or 0) > 0 then
                 diag = string.format("\n%d part, %d files, %d VCD",
                          tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+                if (tonumber(d.hidden) or 0) > 0 then
+                  diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                elseif (tonumber(d.collapsed) or 0) > 0 then
+                  diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                end
               end
             end
             UI.Notif_queue.add("HDD list refreshed (no games found)"..diag, "warn")
@@ -5435,6 +5504,11 @@ UI = {
                     else
                       diag = string.format("\n%d part, %d files, %d VCD",
                                tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+                      if (tonumber(d.hidden) or 0) > 0 then
+                        diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                      elseif (tonumber(d.collapsed) or 0) > 0 then
+                        diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                      end
                     end
                   end
                   UI.Notif_queue.add("No games found on hdd0:"..diag, "warn")

@@ -2,9 +2,39 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP33**. The check is simple: a version ending in **-EXP33** = this build; **-EXP32** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP34**. The check is simple: a version ending in **-EXP34** = this build; **-EXP33** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP34: cover-art that stops stalling, OPL art out of the box, and better defaults
+
+EXP33's testing surfaced two things at once: the APA "no games" report turned out to be **an accidentally-hidden game** (not a bug — the EXP33 readout is what exposed it), and the real remaining pain was **cover-art lookup lagging** on MX4SIO and USB. EXP34 fixes the lag, adopts OPL's art layout, and sets a batch of more useful defaults.
+
+**Cover-art no longer stalls the list.** The old code checked for each cover by *trying to open several candidate files per game* — and on SD-over-SIO2 or USB 1.1 a missing file is a slow directory walk, done over and over. EXP34 lists each art folder **once** and then every check is instant, so a device with no art (or a game with none) never stalls the browser again. Covers that *are* present still load; they just don't drag the whole list down first.
+
+**One art location, honored exactly — no more guessing.** Cover art is read from the single folder you choose in Settings (nothing else is probed):
+- **`ART` (new default)** — a top-level `<device>:/ART/` folder. This is **OPL's layout**, so if you already have an OPL `ART` folder it just works.
+- **`POPS/ART`** — an `ART/` subfolder next to your games.
+- **`POPS`** — right beside the `.vcd`.
+
+**OPL-compatible art naming.** Covers are now read as **`<gamename>_COV.png`** (OPL's convention) first, with the older plain `<gamename>.png` still accepted as a fallback so nothing you already have disappears. Put OPL's `<ID>_COV.png` files in `<device>:/ART/` and they show up.
+
+**New defaults (all still changeable in Settings):**
+- **Internal HDD = Both** (PFS *and* exFAT pages shown) instead of PFS-only.
+- **i.Link page hidden** by default (re-show it under Settings → Device List if you use it).
+- **Cover/details folder = `ART`** (see above).
+- **Network/SMB defaults** refreshed to a common home-LAN layout: PS2 IP `192.168.1.10`, gateway/DNS `192.168.1.1`, server `192.168.1.100`, share `games`, user `guest`, port `1111`. (DHCP is still ON by default — flip it off in Settings if you want these static values used as-is.)
+
+**APA "no games" now says *why*.** If a scan finds `.vcd` files but lists zero games, the message now tells you the reason — e.g. *"1 part, 5 files, 1 VCD (1 hidden — Global Hide is on)"* — so an accidentally-hidden game (exactly what EXP33 turned up) reads as "hidden," not "broken."
+
+**These changes only affect NEW installs / unset options.** If you already saved settings, your existing choices (art folder, HDD filesystem, network, device list) are kept — the new defaults apply where you never set one.
+
+**What to test on EXP34:**
+- **Cover-art speed:** open MX4SIO and USB, scroll the list. It should stay responsive whether or not art is present. If you have OPL art, drop it in `<device>:/ART/` as `<name>_COV.png` and confirm it shows.
+- **Existing covers:** if you were using plain `<name>.png` in your chosen folder, confirm they still appear (the legacy name is still accepted).
+- **Defaults:** on a fresh install (or after a settings reset) confirm Internal HDD shows both pages, i.Link is hidden, and the SMB settings show the new values.
 
 ---
 

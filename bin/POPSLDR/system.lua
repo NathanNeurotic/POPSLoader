@@ -4507,10 +4507,10 @@ end
 -- brought up lazily on SMB-page entry (a later stage), never here or at boot.
 PLDR.SMB_FIELDS = {
   { key = "DHCP",      kind = "bool", default = true },
-  { key = "PS2_IP",    kind = "str",  default = "192.168.0.10" },
+  { key = "PS2_IP",    kind = "str",  default = "192.168.1.10" },
   { key = "NETMASK",   kind = "str",  default = "255.255.255.0" },
-  { key = "GATEWAY",   kind = "str",  default = "192.168.0.1" },
-  { key = "DNS",       kind = "str",  default = "192.168.0.1" },
+  { key = "GATEWAY",   kind = "str",  default = "192.168.1.1" },
+  { key = "DNS",       kind = "str",  default = "192.168.1.1" },
   { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" } },
   -- ADDR_TYPE/NB_ADDR are kept in the spec so old sidecar lines still parse, but
   -- HIDDEN from the settings UI: the connect binding hard-rejects "netbios"
@@ -4519,10 +4519,10 @@ PLDR.SMB_FIELDS = {
   -- makes SmbSanitize's enum branch coerce any persisted value back to "ip".
   { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip" }, hidden = true },
   { key = "NB_ADDR",   kind = "str",  default = "", hidden = true },
-  { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
+  { key = "SERVER",    kind = "str",  default = "192.168.1.100" },
   { key = "PORT",      kind = "str",  default = "1111" },
-  { key = "SHARE",     kind = "str",  default = "" },
-  { key = "USER",      kind = "str",  default = "" },
+  { key = "SHARE",     kind = "str",  default = "games" },
+  { key = "USER",      kind = "str",  default = "guest" },
   { key = "PASS",      kind = "str",  default = "" },
   { key = "PATH",      kind = "str",  default = "" },
 }
@@ -4932,11 +4932,11 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.COLLAPSE_MULTIDISC = false
   PLDR.GLOBAL_HIDE = false
   PLDR.POPSTARTER_MC_FOLDER = true
-  PLDR.HIDDEN_DEVICES = ""
+  PLDR.HIDDEN_DEVICES = "ILINK"  -- EXP34: hide the i.Link page by default (maintainer); users re-show it in Settings > Device List
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
-  PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
+  PLDR.ART_LOCATION = "art"  -- EXP34 default "art" = <device-root>/ART/ (matches OPL's mass:/ART layout); pops|pops_art|art. Cover .png + details .txt live here on REMOVABLE devices (HDD uses __common/POPS/ART)
+  PLDR.HDD_FS = "BOTH"  -- EXP34 default BOTH (maintainer): show both internal-HDD pages (PFS + exFAT). PFS|EXFAT|BOTH. BOTH means the exFAT boot warm-up runs each boot (EXP33 cascade-bound + sema make that safe).
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
@@ -7074,18 +7074,27 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   for i = 1, #DIR do
     if not DIR[i].directory then
       local is_vcd_file = string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
-      if is_vcd_file and type(PLDR.HDD.SCAN_DIAG) == "table" then
-        PLDR.HDD.SCAN_DIAG.vcds = (PLDR.HDD.SCAN_DIAG.vcds or 0) + 1
+      local diag = (type(PLDR.HDD.SCAN_DIAG) == "table") and PLDR.HDD.SCAN_DIAG or nil
+      if is_vcd_file and diag then
+        diag.vcds = (diag.vcds or 0) + 1
       end
-      if is_vcd_file
-         and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-        local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
-        if not (PLDR.GLOBAL_HIDE and is_hidden) then
-          local encoded = EncodeHddGameEntry(partition, DIR[i].name)
-          if encoded ~= nil then
-            if is_hidden then PLDR.HIDDEN[encoded] = true end
-            table.insert(PLDR.GAMES, encoded)
-            PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+      if is_vcd_file then
+        -- EXP34: count WHY a counted VCD becomes zero games -- collapsed (multi-disc)
+        -- vs hidden (Global Hide) -- so the "no games" toast can say so instead of
+        -- reading as a device fault (the FifthFox/APA "hidden by accident" case).
+        if PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name) then
+          if diag then diag.collapsed = (diag.collapsed or 0) + 1 end
+        else
+          local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+          if PLDR.GLOBAL_HIDE and is_hidden then
+            if diag then diag.hidden = (diag.hidden or 0) + 1 end
+          else
+            local encoded = EncodeHddGameEntry(partition, DIR[i].name)
+            if encoded ~= nil then
+              if is_hidden then PLDR.HIDDEN[encoded] = true end
+              table.insert(PLDR.GAMES, encoded)
+              PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+            end
           end
         end
       end
@@ -7259,7 +7268,7 @@ function PLDR.HDD.BuildGameList(on_progress)
   -- AppendHddGameList.)
   PLDR.HDD.SCAN_DIAG = { avail = 0, remounted = 0, remount_fail = 0,
                          last_fail_part = nil, last_fail_rc = nil,
-                         entries = 0, vcds = 0 }
+                         entries = 0, vcds = 0, hidden = 0, collapsed = 0 }
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   local ordered_partitions = GetOrderedHddPopsPartitions()
