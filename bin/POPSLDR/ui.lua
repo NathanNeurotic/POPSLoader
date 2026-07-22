@@ -312,6 +312,8 @@ local CoverCache = {
   order = {},
   failed = {},
   dir_present = {},  -- EXP37: dir -> bool (does the cover FOLDER exist); checked once, memoized
+  dir_names = {},    -- EXP46: dir -> {name=true} from ONE System.dirNameSet, or false = probe per file
+  dir_names_max = 4096,  -- bound: a folder bigger than this falls back rather than allocate
   last_key = nil,
   last_img = nil,
   last_desc = nil,
@@ -329,6 +331,7 @@ function CoverCache:Clear()
   self.order = {}
   self.failed = {}
   self.dir_present = {}  -- EXP37: re-check cover folders on R1 refresh / device switch
+  self.dir_names = {}    -- EXP46: re-read cover folders too, so newly-added art is seen
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
@@ -412,17 +415,43 @@ function CoverCache:GetOrLoad(path)
       self.failed[path] = true
       return nil
     end
-    -- EXP45: NO directory listing here. EXP44 added one (list the ART folder once,
-    -- answer hits/misses from a name set) and it did NOT fix the MX4SIO lag -- the
-    -- maintainer reported it still "hanging like hell". That is the SECOND time
-    -- System.listDirectory on the cover folder has been implicated on this exact
-    -- hardware: EXP34 added it, EXP35 removed it for lag + "not enough memory",
-    -- EXP44 re-added it, EXP45 removes it again. It stays out.
+    -- EXP46: THE actual cost, finally identified from the maintainer's setup. His
+    -- MX4SIO ART/ folder is deliberately SHARED WITH OPL, so it holds thousands of
+    -- _COV/_ICO/_SCR/_BG files, none matching his PS1 game names. On FAT, proving a
+    -- file is ABSENT costs a walk of the WHOLE directory (a hit can stop early), so
+    -- every title was scanning that entire folder, over bit-banged SPI. That is the
+    -- hang -- and it explains why EXP37's folder gate did nothing (the folder very
+    -- much exists) and why cover-art-OFF is perfectly smooth (zero probes).
     --
-    -- What remains is deliberately the BETA-era shape, which was fast: a memoized
-    -- per-folder existence check (above) and then ONE bounded open per candidate
-    -- (below), with misses memoized in self.failed. Nothing per-frame, nothing
-    -- unbounded, no listing.
+    -- Read the folder ONCE, then answer every hit and miss from memory: one walk
+    -- instead of one per title.
+    --
+    -- EXP34 and EXP44 both had this idea and both were reverted for lag + "not
+    -- enough memory". The IDEA was right; the IMPLEMENTATION was the problem -- both
+    -- used System.listDirectory, which builds a Lua SUB-TABLE per entry
+    -- (name/size/directory). On a folder this size that is thousands of tables at
+    -- once, which is exactly the OOM EXP35 hit. System.dirNameSet (EXP46,
+    -- src/luasystem.cpp) builds the ONE name-keyed table we actually need straight
+    -- from readdir -- no intermediate array, no per-entry table, no stat fields --
+    -- and returns nil past `cap` so a pathological folder falls back to per-file
+    -- opens instead of allocating. Do NOT reintroduce listDirectory here.
+    local names = self.dir_names[dir]
+    if names == nil then
+      names = false
+      if type(System) == "table" and type(System.dirNameSet) == "function" then
+        local ok, set = pcall(System.dirNameSet, dir, self.dir_names_max)
+        if ok and type(set) == "table" then names = set end
+      end
+      self.dir_names[dir] = names
+    end
+    if type(names) == "table" then
+      local fname = string.match(path, "([^/]+)$")
+      if fname ~= nil and names[fname] ~= true then
+        -- Known-absent from the single read: no filesystem call at all.
+        self.failed[path] = true
+        return nil
+      end
+    end
   end
   -- Folder present (or unverifiable): load straight through Graphics.loadImage
   -- (fopen); it returns nil for a genuinely missing file, memoized in self.failed.

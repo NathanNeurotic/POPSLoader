@@ -2,13 +2,36 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP45**. The check is simple: a version ending in **-EXP45** = this build; **-EXP44** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP46**. The check is simple: a version ending in **-EXP46** = this build; **-EXP45** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
 
-## New in EXP45: EXP44's cover-art change is reverted
+## New in EXP46: the MX4SIO cover-art hang, found
+
+**We found it, and the cause was your shared `ART` folder — which is not your fault, it is a completely reasonable thing to do.**
+
+**What was happening.** Your `ART` folder is shared with OPL on purpose, so it holds thousands of files. Almost none of them are named after your PS1 games.
+
+Here is the part that turns that into a hang. On this kind of card, asking "is this file here?" is cheap when the answer is **yes** (the console stops the moment it finds it) and expensive when the answer is **no** (it has to read the folder **all the way to the end** to be sure). With thousands of files in there and no matching cover, **every single game you moved to read your entire `ART` folder, start to finish**, over the slowest connection on the console.
+
+That is why turning cover art off fixed it completely, and why it never happened in the old builds: back then covers sat next to your games in the small `POPS` folder, and they were usually **there**, so the console stopped early every time.
+
+**What changed.** The folder is now read **once**, and after that every game is answered from memory. Whether a cover exists or not, there is no more folder reading while you navigate. Pictures that are there still load exactly as before.
+
+**Why this is not the same as the last two attempts.** Twice before we tried "read the folder once" and both times it had to be pulled for stutter and out-of-memory crashes. The idea was right; the method was wrong. Both used a general-purpose folder reader that builds a small record for **every** file, so on a folder your size it tried to build thousands of them at once. This build adds a purpose-made reader that collects only the filenames and nothing else, and refuses outright if a folder is unreasonably large, falling back to the old behaviour rather than risking memory.
+
+**What to test on EXP46 (this is the one that matters):**
+- **MX4SIO, cover art ON, your shared `ART` folder in place.** Browse the list and move between titles. The hang should be gone.
+- **Games that do have a cover** should still show it.
+- **Games with no cover** should be instant, showing the plain empty case.
+- Watch for any "not enough memory" message. There should be none, but that is the failure mode of the two previous attempts, so it is worth a specific look.
+- Add a cover, press **R1** to refresh, and it should be picked up.
+
+---
+
+## ~~New in EXP45: EXP44's cover-art change is reverted~~ (superseded by EXP46)
 
 **EXP44 did not work and is undone.** The MX4SIO stutter with cover art on is still there, and EXP44's attempt at it is out of this build. The cover code is back to exactly what EXP43 had.
 

@@ -592,6 +592,66 @@ t33 = E('''function()
 end''')()
 check("T33 EXP43 exFAT bring-up reports each step before the call that can freeze", t33)
 
+# T34 EXP46: the MX4SIO cover hang. The maintainer's ART/ folder is SHARED WITH OPL --
+# thousands of _COV/_ICO/_SCR/_BG files, none matching his PS1 game names. On FAT,
+# proving a file ABSENT walks the whole directory (a hit stops early), so every title
+# scanned that entire folder over bit-banged SPI. Read the folder ONCE instead.
+#
+# Assert the three properties that make this correct AND that stop it becoming the
+# EXP34/EXP44 OOM again: the folder is read exactly ONCE across many games; a
+# known-absent cover costs ZERO opens; and if the folder read fails or is refused
+# (dirNameSet returns nil past its cap) we FALL BACK to a per-file open rather than
+# silently showing no art. Also pin that listDirectory is NOT used -- it built a Lua
+# sub-table per entry, which is what got this reverted twice.
+t34 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  local real_dfe, real_load = doesFolderExist, Graphics.loadImage
+  local real_set, real_ls = System.dirNameSet, System.listDirectory
+  local set_calls, load_calls, ls_calls = 0, 0, 0
+  doesFolderExist = function(d) return true end
+  Graphics.loadImage = function(p) load_calls = load_calls + 1; return 1 end
+  System.listDirectory = function(d) ls_calls = ls_calls + 1; return {} end
+  System.dirNameSet = function(d, cap)
+    set_calls = set_calls + 1
+    return { ["Present_COV.png"] = true }, 1
+  end
+  cc:Clear()
+  for i = 1, 10 do cc:GetOrLoad("mass0:/ART/Missing" .. i .. "_COV.png") end
+  local misses_loaded, reads_after_misses = load_calls, set_calls
+  local hit = cc:GetOrLoad("mass0:/ART/Present_COV.png")
+  local loaded_after_hit, reads_after_hit = load_calls, set_calls
+  -- refused folder (over cap / unreadable) must fall back to a real open
+  cc:Clear()
+  System.dirNameSet = function(d, cap) set_calls = set_calls + 1; return nil end
+  load_calls = 0
+  cc:GetOrLoad("mass0:/ART/Whatever_COV.png")
+  local fallback_loads = load_calls
+  doesFolderExist, Graphics.loadImage = real_dfe, real_load
+  System.dirNameSet, System.listDirectory = real_set, real_ls
+  cc:Clear()
+  if reads_after_misses ~= 1 then
+    return false, "ART folder must be read ONCE for many games, got "..reads_after_misses
+  end
+  if misses_loaded ~= 0 then
+    return false, "known-absent covers must cost ZERO opens, got "..misses_loaded
+  end
+  if reads_after_hit ~= 1 then
+    return false, "folder read must be memoized, re-read: "..reads_after_hit
+  end
+  if hit == nil or loaded_after_hit ~= 1 then
+    return false, "a present cover must still load exactly once, calls="..loaded_after_hit
+  end
+  if fallback_loads ~= 1 then
+    return false, "a refused folder read must fall back to a per-file open, calls="..fallback_loads
+  end
+  if ls_calls ~= 0 then
+    return false, "System.listDirectory must NOT be used on the cover path (EXP34/EXP44 OOM)"
+  end
+  return true
+end''')()
+check("T34 EXP46 ART folder read once via dirNameSet; absent covers cost zero opens", t34)
+
 
 # T16 the newly-wired "English holdout" draw sites (modal body/hints, busy overlay,
 # path-editor title, empty-states, share picker) must have their keys in the table so
