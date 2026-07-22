@@ -2,9 +2,27 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP38**. The check is simple: a version ending in **-EXP38** = this build; **-EXP37** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP39**. The check is simple: a version ending in **-EXP39** = this build; **-EXP38** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP39: the exFAT freeze — one clean variable (the boot chime)
+
+EXP38 froze on the splash. A deep source-level comparison (byte-hashing every driver against the loaders that read sAGA's drive) settled two things for good, then found the real lead:
+
+**It is NOT the drivers.** Our `ata_bd` is byte-identical to the one wLaunchELF R3Z and official OPL ship. We already shipped the *complete* byte-exact reference driver set (an earlier experiment) and it still froze — and RiptOPL ships an *older* ATA driver than ours and reads the drive fine. So the module bytes are fully exonerated. GPT parsing and 48-bit addressing are both present and working. Chasing the drivers is over.
+
+**The real difference is something only POPSLoader does:** it starts the **boot chime** *before* it brings the internal drive up, and the chime keeps playing *through* the drive load. So the drive comes up while the audio hardware is actively streaming. **No other loader does this** — R3Z has no boot sound, NHDDL loads storage on a freshly-reset console, OPL/wOPL start their sound *after* storage. And it's the one thing that differs between the placement that **works** (EXP22 — drive loads before any audio) and the one that **froze** (EXP38 — drive loads during the chime).
+
+**The change:** EXP39 keeps everything from EXP38 exactly the same, and moves **one thing** — the boot chime now starts **after** the internal drive is up, not before. The splash still covers the load; the only difference is the chime begins a moment later, in silence-then-sound instead of sound-through-load.
+
+This is a deliberate **one-variable test.** If it works, the audio-during-storage collision was the freeze and we finally have the mechanism. If it still freezes, we've cleanly ruled audio out and the next suspect (the controller-adapter drivers initializing at the same time) is already lined up.
+
+**What to test on EXP39:**
+- **sAGA / internal exFAT drive:** boot to the menu. The splash may still sit a few seconds while the drive loads (that's expected — don't power off). Does it reach the menu now, and does the exFAT HDD page list your games instead of hanging on the splash? You'll notice the boot chime starts a touch later than before — that's the fix, not a bug.
+- **MX4SIO / MMCE / USB:** confirm all still behave exactly as they did on EXP37/38.
 
 ---
 

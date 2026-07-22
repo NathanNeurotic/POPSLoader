@@ -1522,8 +1522,6 @@ UI = {
           DrawTargetScene(next_scene or UI.SCENES.MMAIN)
         end
 
-        -- Start boot sound once; explicit holds must not be lengthened by audio duration.
-        TryBootSound()
         local FPS = UI.GetDisplayRefreshHz()
         local SPLASH_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
         local CREDITS_HOLD_FRAMES = math.floor(4.0 * FPS + 0.5)
@@ -1540,6 +1538,22 @@ UI = {
         -- then resume and read the now-ready state. (boot_init_fn never returns on
         -- a -game auto-launch -- the splash just showed briefly before the launch.)
         if type(boot_init_fn) == "function" then boot_init_fn() end
+        -- EXP39: start the boot chime AFTER boot_init_fn (the storage bring-up),
+        -- not before it. boot_init_fn does the synchronous internal-exFAT (ata_bd)
+        -- load under this splash; TryBootSound -> Sound.loadADPCM lazily fires
+        -- audsrv_init + audsrv_adpcm_init and starts ADPCM PLAYBACK, so starting it
+        -- first means the ata_bd SifExecModuleBuffer runs while SPU2/audsrv DMA+RPC
+        -- traffic is live. That active-audio-during-storage window is the ONE thing
+        -- EXP22 (loads ATA before any audio -> reads sAGA's 4TB GPT drive) and EXP38
+        -- (loads ATA during the chime -> froze on this splash frame) differ on, and
+        -- NO reference loader plays audio during its storage bring-up (R3Z has no
+        -- audsrv, NHDDL resets the IOP, OPL/wOPL queue audio behind storage). The
+        -- byte-identical driver already read this drive in the pre-audio window, so
+        -- the module bytes are exonerated (EXP17/18 A/B + RiptOPL ships the same
+        -- pre-fix ATA and works). The splash still hides the storage delay; only the
+        -- chime now begins after it. (On a -game auto-launch boot_init_fn never
+        -- returns, so the chime is simply skipped -- correct for a direct launch.)
+        TryBootSound()
         StepHoldFrames(DrawSplash, SPLASH_HOLD_FRAMES)
         StepFade(DrawSplash, 0, 128, INTRO_FADE_OUT_MS)
 
