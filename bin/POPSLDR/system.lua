@@ -6105,34 +6105,59 @@ local function BuildMassRootIdentity(mode)
   local seen_mx4 = {}
   local seen_ata = {}
 
-  for slot = 0, 9 do
-    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-    local normalized = NormalizeMassRoot(root)
-    if normalized ~= nil and doesFolderExist(normalized) then
-      if seen_present[normalized] ~= true then
-        seen_present[normalized] = true
-        table.insert(identity.present_roots, normalized)
-      end
+  local function record(normalized, kind)
+    if normalized == nil then return end
+    if seen_present[normalized] ~= true then
+      seen_present[normalized] = true
+      table.insert(identity.present_roots, normalized)
+    end
+    if kind == "mx4sio" then
+      if seen_mx4[normalized] ~= true then seen_mx4[normalized] = true; table.insert(identity.mx4sio, normalized) end
+    elseif kind == "ata" then
+      if seen_ata[normalized] ~= true then seen_ata[normalized] = true; table.insert(identity.ata, normalized) end
+    else
+      if seen_usb[normalized] ~= true then seen_usb[normalized] = true; table.insert(identity.usb, normalized) end
+    end
+  end
 
-      -- Only classify mounted roots. Probing absent slots can be slow and can
-      -- produce unstable driver readings on some hardware.
-      local driver = PLDR.GetMassMountDriver(normalized)
-      local kind = ClassifyMassRootDriver(driver)
-      if kind == "mx4sio" then
-        if seen_mx4[normalized] ~= true then
-          seen_mx4[normalized] = true
-          table.insert(identity.mx4sio, normalized)
+  -- EXP36: resolve each mass slot DIRECTLY from the BDM device enumeration
+  -- (System.bdmList -> bdm_query.irx -> PS2SDK bdm_get_bd). Each connected block
+  -- device already carries its driver name AND its own mass unit (parId), so we
+  -- map driver->slot with ZERO per-slot devctl scan. This is the modern
+  -- SDK-blessed path (maintainer): the old "open every mass0..9 and
+  -- getMassMountDriver each" walk (a fileXioIoctl2 per slot) is what could stall
+  -- the carousel on a mid-bringup/flaky ATA slot, and devctl now survives ONLY in
+  -- the legacy-cwd normalizer (classify_mass_boot). We still doesFolderExist each
+  -- resolved root so a device that is enumerated-but-not-yet-mounted is skipped.
+  local used_bdm = false
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      used_bdm = true
+      for i = 1, #list do
+        local d = list[i]
+        if type(d) == "table" and d.parId ~= nil then
+          local n = tonumber(d.parId)
+          if n ~= nil and n >= 0 then
+            local root = (n == 0) and "mass:/" or ("mass"..tostring(n)..":/")
+            local normalized = NormalizeMassRoot(root)
+            if normalized ~= nil and doesFolderExist(normalized) then
+              record(normalized, ClassifyMassRootDriver(d.name))
+            end
+          end
         end
-      elseif kind == "ata" then
-        if seen_ata[normalized] ~= true then
-          seen_ata[normalized] = true
-          table.insert(identity.ata, normalized)
-        end
-      else
-        if seen_usb[normalized] ~= true then
-          seen_usb[normalized] = true
-          table.insert(identity.usb, normalized)
-        end
+      end
+    end
+  end
+
+  -- Last-resort fallback ONLY when the BDM enumeration is unavailable (bdm_query
+  -- RPC down): the legacy per-slot devctl scan, so a page never hard-breaks.
+  if not used_bdm then
+    for slot = 0, 9 do
+      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+      local normalized = NormalizeMassRoot(root)
+      if normalized ~= nil and doesFolderExist(normalized) then
+        record(normalized, ClassifyMassRootDriver(PLDR.GetMassMountDriver(normalized)))
       end
     end
   end

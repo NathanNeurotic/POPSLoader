@@ -960,6 +960,46 @@ t28 = E('''function()
 end''')()
 check("T28 EXP34 config defaults: ART=art, HDD=BOTH, i.Link hidden, SMB/network block", t28)
 
+# T29 EXP36: mass slots resolve DIRECTLY from System.bdmList (each BDM device's own
+# parId -> massN:/), with NO per-slot devctl scan. ata on parId 0 -> mass:/, the
+# mx4sio (sdc) device on parId 1 -> mass1:/. PLDR.GetMassMountDriver is a tripwire:
+# if the direct path is taken it must never be consulted.
+t29 = lua.execute(r'''
+  System.initMX4SIO = function() return true end
+  System.initATAAsync = function() return 2 end
+  System.initATAStatus = function() return 2 end
+  local real_dfe = doesFolderExist
+  local real_drv = PLDR.GetMassMountDriver
+  System.bdmList = function()
+    return {
+      { name = "ata", parId = 0, devNr = 0 },
+      { name = "sdc", parId = 1, devNr = 1 },
+    }
+  end
+  doesFolderExist = function(p)
+    if p == "mass:/" or p == "mass0:/" or p == "mass1:/" then return true end
+    return real_dfe(p)
+  end
+  local devctl_called = false
+  PLDR.GetMassMountDriver = function(root) devctl_called = true; return "usb" end
+  local ata_root, ata_status = PLDR.GetATAMassRootNow()
+  local mx_root, mx_status = PLDR.GetMX4SIOMassRootNow()
+  doesFolderExist = real_dfe
+  PLDR.GetMassMountDriver = real_drv
+  System.bdmList = nil
+  if ata_root ~= "mass:/" or ata_status ~= "ready" then
+    return false, "ata direct: expected mass:/ ready, got "..tostring(ata_root).."/"..tostring(ata_status)
+  end
+  if mx_root ~= "mass1:/" or mx_status ~= "ready" then
+    return false, "mx4sio direct: expected mass1:/ ready, got "..tostring(mx_root).."/"..tostring(mx_status)
+  end
+  if devctl_called then
+    return false, "getMassMountDriver was called -- the direct BDM path must not devctl-scan"
+  end
+  return true
+''')
+check("T29 EXP36 direct BDM slot resolution (parId->massN:/, no devctl scan)", t29)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
