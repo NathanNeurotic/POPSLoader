@@ -2357,6 +2357,24 @@ function PLDR.IsExplicitATASession()
   return page == "ATA" or page == "EXFAT"
 end
 
+-- EXP38: TRUE when the internal exFAT (ata_bd) block stack should be brought up at
+-- boot, SYNCHRONOUSLY, under the welcome splash (see do_boot_init). This is the
+-- reference model -- OPL/R3Z/NHDDL load the whole block stack in one serial window
+-- under a loading screen -- and the EXP22 arrangement sAGA confirmed reads his 4TB
+-- GPT drive. Gated so PFS-only installs pay nothing:
+--   * Internal HDD = EXFAT or BOTH  -> the exFAT page is reachable this session.
+--   * an explicit -page=ata launch  -> the user opted straight into exFAT.
+-- Named + pure so the host harness can lock it (this fix has been reverted before).
+function PLDR.WantExfatBootBringup()
+  local hdd_fs = (type(PLDR.NormalizeHddFs) == "function")
+                 and PLDR.NormalizeHddFs(PLDR.HDD_FS) or "PFS"
+  if hdd_fs == "EXFAT" or hdd_fs == "BOTH" then
+    return true
+  end
+  return (type(PLDR.IsExplicitATASession) == "function")
+         and (PLDR.IsExplicitATASession() == true)
+end
+
 PLDR.VIDEO_STANDARD_AUTO = "AUTO"
 PLDR.VIDEO_STANDARD_NTSC = "NTSC"
 PLDR.VIDEO_STANDARD_PAL = "PAL"
@@ -9228,31 +9246,37 @@ end
 -- below as an upvalue). Inner block kept at its original indentation for a clean diff.
 local function do_boot_init()
 PLDR.AutoInitStartupBackends()
--- EXP32: kick the ata_bd worker in the BOOT window when this install uses the
--- exFAT page (Internal HDD = EXFAT/BOTH, or an explicit -page=ata session).
--- This restores the one arrangement hardware-proven on the SCPH-30004 class
--- (EXP22): the identical blob loading into a near-empty IOP right after the
--- boot module set, before any page RPC traffic exists to interleave with it.
--- The worker keeps boot responsive (probe runs behind the splash/carousel;
--- no ~5s boot cost), and by the time the user opens the exFAT page the state
--- is usually already done-ok. PFS-only installs skip this entirely -- they
--- never pay for a drive they don't use.
+-- EXP38: bring the internal exFAT block stack (ata_bd) up HERE, SYNCHRONOUSLY,
+-- under the welcome splash -- the REFERENCE model. OPL, wLaunchELF_R3Z and NHDDL
+-- all load their whole block-device stack together in ONE serial window under a
+-- loading screen, before anything else touches the bus. POPSLoader diverged into
+-- lazy per-page loading, and THAT divergence is the exFAT freeze: ata_bd loaded
+-- late (mid-session, onto a busy IOP) OR async (a worker racing other IOP traffic)
+-- wedges its own bring-up (EXP24: "the IOP census at load time IS the variable;
+-- no reference loads BDM-atad late onto a full IOP").
+--
+-- This is the EXP22 arrangement sAGA confirmed reads his 4TB GPT drive ("works
+-- just fine"), with the two reasons it was reverted BOTH removed:
+--   * NO black screen -- do_boot_init runs UNDER the splash (graphics already up),
+--     so the seconds ata_bd needs show the frozen splash, not a black panel. That
+--     is exactly why the "slow device bring-up" belongs here (see the header note).
+--   * NO async race -- the EXP32/35 kick used initATAAsync (a WORKER) that kept
+--     running past do_boot_init and wedged the splash->menu transition on sAGA's
+--     drive (the 2026-07-22 black screen the EXP35 gate was chasing). A SYNCHRONOUS
+--     load blocks do_boot_init and finishes BEFORE the transition: serial, no
+--     concurrent bus traffic, exactly the EXP22 condition that worked.
+--
+-- Gated on exFAT actually being enabled (Internal HDD = EXFAT/BOTH, or a -page=ata
+-- session) so PFS-only installs pay nothing; and ata_bd self-exits fast when SPD
+-- reports no ATA device, so a driveless console barely notices. ata_bd is dev9-only
+-- -- this does NOT load or touch mmceman/SIO2 (MMCE) or the MX4SIO stack, and it
+-- shares the load-once EnsureAtaBdm with the APA/PFS boot path. The exFAT PAGE then
+-- finds the stack already up (initATA is load-once) and just reads it.
 do
-  -- EXP35: do NOT warm up exFAT at boot just because the Internal-HDD setting
-  -- INCLUDES it. EXP34's new HDD_FS=BOTH default made this fire on EVERY boot,
-  -- and on sAGA's 4TB GPT exFAT internal drive the boot-time ata_bd bring-up
-  -- BLACK-SCREENED the console before the menu (2026-07-22) -- a boot the user
-  -- can't recover from without reinstalling. The exFAT page already kicks the
-  -- ata worker itself on entry (async, bounded to OPL's ~10s budget, screen
-  -- alive, NEVER a synchronous load -- see the GBDMHDD loader), so the boot
-  -- warm-up was only a perf pre-load, not a correctness requirement. Keep it
-  -- ONLY for an explicit -page=ata launch (the user opted straight into that
-  -- page and accepts the pre-warm); a normal boot no longer probes exFAT at all,
-  -- matching the lazy-load rule every other device already follows.
-  local want_ata_boot = (type(PLDR.IsExplicitATASession) == "function")
-                        and (PLDR.IsExplicitATASession() == true)
-  if want_ata_boot and type(System) == "table" and type(System.initATAAsync) == "function" then
-    pcall(System.initATAAsync)
+  local want_ata_boot = (type(PLDR.WantExfatBootBringup) == "function")
+                        and (PLDR.WantExfatBootBringup() == true)
+  if want_ata_boot and type(System) == "table" and type(System.initATA) == "function" then
+    pcall(System.initATA)
   end
 end
 -- One-time hygiene: clear a leftover crash-marker file from marker-era builds

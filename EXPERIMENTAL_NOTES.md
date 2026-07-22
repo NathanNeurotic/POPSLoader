@@ -2,9 +2,31 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP37**. The check is simple: a version ending in **-EXP37** = this build; **-EXP36** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP38**. The check is simple: a version ending in **-EXP38** = this build; **-EXP37** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP38: the internal exFAT drive freeze — stop diverging from OPL
+
+This is the fix for the internal **exFAT HDD freeze** — sAGA's 4TB GPT drive that stalls at *"Locating exFAT HDD POPS folder… 42%"* (and, on the boot-warm-up path, black-screened before the menu). It is **not** a module problem, a memory problem, or a "can't read GPT" problem — the drivers that read his drive are already in the build, byte-for-byte the same ones that read it on EXP22.
+
+**What was actually wrong.** Every working loader — OPL, wLaunchELF R3Z, NHDDL — brings its whole storage stack up **the same way: together, in one go, under a loading screen, before anything else touches the drive bus.** POPSLoader had drifted into doing the opposite — loading the internal-drive driver (`ata_bd`) **late and by itself**, either mid-session when you open the page or on a background worker racing other startup work. On a big drive that late/split bring-up **wedges the drive bus** — which is the 42% hang (and, when it raced boot, the black screen). Same driver, wrong moment.
+
+**The fix — do what the reference loaders do.** When the internal drive is enabled (Internal HDD = **exFAT** or **Both**, the default), POPSLoader now brings the `ata_bd` stack up **at boot, in one shot, while the welcome splash is on screen** — before the menu, before anything else uses the bus. This is the *exact* arrangement sAGA confirmed reads his drive ("works just fine" on EXP22), with the two reasons it was pulled last time both removed:
+- **No black screen** — it runs under the splash (the picture is already up), so the few seconds the drive needs show the splash, not a black panel.
+- **No race** — it finishes completely before the menu appears, instead of a background worker still churning as the menu loads (that race was the earlier black-screen).
+
+**Scope — what this does *not* touch.** `ata_bd` lives on the dev9 (ATA) bus. This change **does not load or touch MMCE** (that's `mmceman` on the SIO2 bus — a completely separate thing) and does not change how MX4SIO or USB load. PFS-only setups skip it entirely and pay nothing.
+
+**Honest status.** This restores the one configuration your drive is *known* to read, moved to a spot where it can't black-screen and can't race. I can't prove it on your hardware from here — so this build is the test. The one thing worth a second look is **MX4SIO** (it shares the block-device core with `ata_bd`): it was collateral damage the *last* time this was tried, but that was bundled with a driver swap we've since settled on, and the SDK drivers we now ship are the same ones OPL runs with `ata_bd` and MX4SIO resident together. If MX4SIO regresses, that's the next thread — but I expect it to be clean.
+
+**What to test on EXP38:**
+- **sAGA / internal exFAT drive:** boot to the menu (no black screen), then open the **exFAT HDD** page — does the game list finally come up instead of hanging at 42%? (The splash may sit a few seconds longer at boot while the drive comes up — that's the drive loading, and it's expected.)
+- **MX4SIO:** browse the MX4SIO list as usual and confirm it's still healthy — no new hang or crash.
+- **MMCE and USB:** confirm they behave exactly as they did on EXP37 (they shouldn't change at all).
+- **PFS-only users:** boot should be as fast as before (this doesn't run for you).
 
 ---
 

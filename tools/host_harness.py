@@ -1030,6 +1030,45 @@ t30 = lua.execute(r'''
 ''')
 check("T30 EXP37 cover folder-gate: absent ART folder skips the per-game file open", t30)
 
+# T31 EXP38: the internal exFAT (ata_bd) block stack is brought up at boot,
+# SYNCHRONOUSLY under the welcome splash, ONLY when exFAT is reachable this session
+# (Internal HDD = EXFAT/BOTH, or a -page=ata launch). This is the EXP22 arrangement
+# sAGA confirmed reads his 4TB GPT drive; it was reverted once (EXP35) after the
+# ASYNC variant black-screened, so pin the gate: it must NOT silently drift back to
+# PFS-only warm-up, and PFS installs must still pay nothing.
+t31 = lua.execute(r'''
+  if type(PLDR.WantExfatBootBringup) ~= "function" then
+    return false, "PLDR.WantExfatBootBringup missing"
+  end
+  local saved_fs, saved_args = PLDR.HDD_FS, PLDR.LAUNCH_ARGS
+  local function want(fs, page)
+    PLDR.HDD_FS = fs
+    PLDR.LAUNCH_ARGS = page and {page = page} or {}
+    return PLDR.WantExfatBootBringup() == true
+  end
+  local cases = {
+    -- fs,      page,  want,  why
+    {"PFS",     nil,   false, "PFS-only must NOT warm up ata at boot"},
+    {nil,       nil,   false, "missing key resolves PFS -> no warm-up"},
+    {"garbage", nil,   false, "unknown value resolves PFS -> no warm-up"},
+    {"EXFAT",   nil,   true,  "exFAT-only warms up"},
+    {"BOTH",    nil,   true,  "BOTH warms up (sAGA's default case)"},
+    {"both",    nil,   true,  "case-insensitive"},
+    {"PFS",     "ATA", true,  "-page=ata forces warm-up even under PFS"},
+  }
+  for _, c in ipairs(cases) do
+    local got = want(c[1], c[2])
+    if got ~= c[3] then
+      PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+      return false, string.format("%s: fs=%s page=%s -> %s (want %s)",
+        c[4], tostring(c[1]), tostring(c[2]), tostring(got), tostring(c[3]))
+    end
+  end
+  PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
+  return true
+''')
+check("T31 EXP38 boot exFAT warm-up gate (EXFAT/BOTH/-page=ata warm; PFS/missing skip)", t31)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
