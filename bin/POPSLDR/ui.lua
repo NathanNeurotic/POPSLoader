@@ -312,8 +312,6 @@ local CoverCache = {
   order = {},
   failed = {},
   dir_present = {},  -- EXP37: dir -> bool (does the cover FOLDER exist); checked once, memoized
-  dir_names = {},    -- EXP44: dir -> {name=true} name set from ONE listing, or false = fall back to per-file opens
-  dir_names_max = 1024,  -- over this an ART folder is not worth flattening; fall back rather than allocate
   last_key = nil,
   last_img = nil,
   last_desc = nil,
@@ -331,7 +329,6 @@ function CoverCache:Clear()
   self.order = {}
   self.failed = {}
   self.dir_present = {}  -- EXP37: re-check cover folders on R1 refresh / device switch
-  self.dir_names = {}    -- EXP44: re-list cover folders too, so newly-added art is seen
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
@@ -415,59 +412,17 @@ function CoverCache:GetOrLoad(path)
       self.failed[path] = true
       return nil
     end
-    -- EXP44: the folder EXISTS, so EXP37's gate above does nothing and every game
-    -- pays a real filesystem probe. That is the remaining MX4SIO lag: on FAT a
-    -- MISS must scan the WHOLE directory to prove absence (a hit stops early), and
-    -- multi-disc games probe twice -- the disc-stripped name first, then the exact
-    -- one. BETA was fast because the cover sat BESIDE the .vcd, in the very folder
-    -- the game scan had just walked (hot in the driver's cache) and there was only
-    -- ONE candidate. Moving art to <root>/ART/ lost that locality; the cost is the
-    -- per-navigation directory walk, not the decode (BETA's 200 "ms" settle was
-    -- really 200us -- sub-frame -- so BETA decoded on EVERY selection change and
-    -- was still snappy).
+    -- EXP45: NO directory listing here. EXP44 added one (list the ART folder once,
+    -- answer hits/misses from a name set) and it did NOT fix the MX4SIO lag -- the
+    -- maintainer reported it still "hanging like hell". That is the SECOND time
+    -- System.listDirectory on the cover folder has been implicated on this exact
+    -- hardware: EXP34 added it, EXP35 removed it for lag + "not enough memory",
+    -- EXP44 re-added it, EXP45 removes it again. It stays out.
     --
-    -- Fix: read the folder ONCE, keep only a flat name set, and answer every hit
-    -- and miss from memory. Zero directory walks per navigation.
-    --
-    -- This is EXP34's idea, which EXP35 removed for causing lag + "not enough
-    -- memory". EXP37 later proved (on hardware) that the cost was the per-game
-    -- OPEN, not the listing -- but the OOM half was REAL: System.listDirectory
-    -- builds a Lua sub-table per entry (name/size/directory) with no cap
-    -- (src/luasystem.cpp lua_dir), so a large ART folder allocates hundreds of
-    -- tables at once. So it comes back WITH the guards it never had: flatten to a
-    -- name set immediately, drop the heavy table, collect it, and hard-cap the
-    -- entry count -- over the cap we set `false` and fall back to the old
-    -- per-file open, which is never worse than today.
-    local names = self.dir_names[dir]
-    if names == nil then
-      names = false
-      if type(System) == "table" and type(System.listDirectory) == "function" then
-        local ok, listing = pcall(System.listDirectory, dir)
-        if ok and type(listing) == "table" and #listing <= self.dir_names_max then
-          local set = {}
-          for i = 1, #listing do
-            local e = listing[i]
-            if type(e) == "table" and e.directory ~= true and type(e.name) == "string" then
-              set[e.name] = true
-            end
-          end
-          names = set
-        end
-        listing = nil
-        -- Release the intermediate entry tables now rather than at some arbitrary
-        -- later frame: IOP/EE headroom is exactly what EXP35 ran out of.
-        if type(collectgarbage) == "function" then pcall(collectgarbage) end
-      end
-      self.dir_names[dir] = names
-    end
-    if type(names) == "table" then
-      local fname = string.match(path, "([^/]+)$")
-      if fname ~= nil and names[fname] ~= true then
-        -- Known-absent from the one listing: no filesystem call at all.
-        self.failed[path] = true
-        return nil
-      end
-    end
+    -- What remains is deliberately the BETA-era shape, which was fast: a memoized
+    -- per-folder existence check (above) and then ONE bounded open per candidate
+    -- (below), with misses memoized in self.failed. Nothing per-frame, nothing
+    -- unbounded, no listing.
   end
   -- Folder present (or unverifiable): load straight through Graphics.loadImage
   -- (fopen); it returns nil for a genuinely missing file, memoized in self.failed.

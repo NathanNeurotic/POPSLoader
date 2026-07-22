@@ -2,13 +2,30 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP44**. The check is simple: a version ending in **-EXP44** = this build; **-EXP43** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP45**. The check is simple: a version ending in **-EXP45** = this build; **-EXP44** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
 
-## New in EXP44: cover art is fast again on MX4SIO
+## New in EXP45: EXP44's cover-art change is reverted
+
+**EXP44 did not work and is undone.** The MX4SIO stutter with cover art on is still there, and EXP44's attempt at it is out of this build. The cover code is back to exactly what EXP43 had.
+
+**Why it is being pulled rather than adjusted.** EXP44 made the loader read the whole `ART` folder once and remember its contents. That same approach was tried before, in EXP34, and removed in EXP35 because it caused stutter and out-of-memory crashes on MX4SIO. Putting it back was a mistake, and the honest read is that this technique has now been implicated twice on this exact hardware. It stays out.
+
+**Where this actually stands: the cause is still not known.** Two separate fixes have now been aimed at this and both missed. Rather than guess a third time, the code is back to its last known state while the cause is properly investigated. The current leading idea, which is **not yet confirmed**, is that looking for a cover that is not there is the slowest possible operation on this kind of card, and it happens while the screen is trying to draw. If that turns out to be right, the fix is to look for covers **in the background** instead of making the list wait, which is what OPL does.
+
+**What to test on EXP45 (MX4SIO):**
+- **With cover art OFF**, browsing should be smooth. Please confirm this is still true.
+- **With cover art ON**, expect the stutter to still be there. That is not a regression from EXP44, it is EXP43's behaviour restored. Confirming it is unchanged (not worse) is genuinely useful.
+- Everything else in this build (the MX4SIO page fix, the cover-art setting, the exFAT freeze messages) is untouched and still worth testing.
+
+**One question that would settle a lot:** does your MX4SIO card have an `ART` folder at the root, even an empty one? If there is no `ART` folder at all, the loader is supposed to skip cover lookups entirely, and the fact that it still stutters would tell us something important.
+
+---
+
+## ~~New in EXP44: cover art is fast again on MX4SIO~~ (REVERTED in EXP45)
 
 **The report:** MX4SIO stutters when the list first appears and again on every title you move to, with cover art on. Turn cover art off and it is perfectly smooth. It never used to do this.
 
