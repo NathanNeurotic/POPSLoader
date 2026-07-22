@@ -592,6 +592,66 @@ t33 = E('''function()
 end''')()
 check("T33 EXP43 exFAT bring-up reports each step before the call that can freeze", t33)
 
+# T34 EXP44: the MX4SIO cover lag. EXP37 fixed the ART-folder-ABSENT case; when the
+# folder EXISTS every game still paid a real filesystem probe, and on FAT a MISS must
+# scan the whole directory to prove absence (multi-disc games probe twice). That is
+# the reported "lags on every title". Fix: list the folder ONCE, answer hits and
+# misses from a flat name set. Assert the two properties that make it fast, because
+# both are easy to lose in a refactor: the listing happens ONCE across many games,
+# and a known-absent cover costs ZERO loadImage calls. Also assert the OOM guard --
+# an oversized folder must fall BACK to per-file opens rather than flatten.
+t34 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  local real_dfe, real_load, real_ls = doesFolderExist, Graphics.loadImage, System.listDirectory
+  local list_calls, load_calls = 0, 0
+  doesFolderExist = function(d) return true end          -- folder present
+  Graphics.loadImage = function(p) load_calls = load_calls + 1; return 1 end
+  System.listDirectory = function(d)
+    list_calls = list_calls + 1
+    return { { name = "Present_COV.png", directory = false } }
+  end
+  cc:Clear()
+  -- 10 games whose covers are ABSENT from the listing
+  for i = 1, 10 do
+    cc:GetOrLoad("mass0:/ART/Missing" .. i .. "_COV.png")
+  end
+  local misses_loaded, listed_after_misses = load_calls, list_calls
+  -- and one that IS present
+  local hit = cc:GetOrLoad("mass0:/ART/Present_COV.png")
+  local loaded_after_hit, listed_after_hit = load_calls, list_calls
+  -- oversized folder must fall back instead of flattening (the EXP35 OOM guard)
+  cc:Clear()
+  System.listDirectory = function(d)
+    list_calls = list_calls + 1
+    local big = {}
+    for i = 1, (cc.dir_names_max + 1) do big[i] = { name = "x"..i..".png", directory = false } end
+    return big
+  end
+  load_calls = 0
+  cc:GetOrLoad("mass0:/ART/Whatever_COV.png")
+  local fallback_loads = load_calls
+  doesFolderExist, Graphics.loadImage, System.listDirectory = real_dfe, real_load, real_ls
+  cc:Clear()
+  if listed_after_misses ~= 1 then
+    return false, "folder should be listed ONCE for many games, got "..listed_after_misses
+  end
+  if misses_loaded ~= 0 then
+    return false, "known-absent covers must cost ZERO loadImage calls, got "..misses_loaded
+  end
+  if listed_after_hit ~= 1 then
+    return false, "listing must be memoized, re-listed: "..listed_after_hit
+  end
+  if hit == nil or loaded_after_hit ~= 1 then
+    return false, "a present cover must still load exactly once, calls="..loaded_after_hit
+  end
+  if fallback_loads ~= 1 then
+    return false, "an oversized folder must fall back to a per-file open, calls="..fallback_loads
+  end
+  return true
+end''')()
+check("T34 EXP44 cover folder listed once; absent covers cost zero opens", t34)
+
 # T16 the newly-wired "English holdout" draw sites (modal body/hints, busy overlay,
 # path-editor title, empty-states, share picker) must have their keys in the table so
 # PLDR.L() at those sites actually translates. A future table regen dropping any of

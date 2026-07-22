@@ -2,9 +2,34 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP43**. The check is simple: a version ending in **-EXP43** = this build; **-EXP42** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP44**. The check is simple: a version ending in **-EXP44** = this build; **-EXP43** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP44: cover art is fast again on MX4SIO
+
+**The report:** MX4SIO stutters when the list first appears and again on every title you move to, with cover art on. Turn cover art off and it is perfectly smooth. It never used to do this.
+
+**That is exactly right, and the cause was ours.**
+
+**What was happening.** Cover art used to live next to your game files, in the same `POPS` folder the loader had just read to build the list. Because it had just read that folder, finding a picture in it was almost free, and there was only ever **one** file to look for.
+
+When art moved to its own `ART` folder, that stopped being true. The loader now had to go read a **different** folder, and it did that **for every single game you moved to**. Worse, when a picture is *missing*, the console has to read the folder **all the way to the end** to be sure it is not there, while finding one lets it stop early. Multi-disc games looked twice. On an SD card over the memory card port, which is a slow connection, that adds up to exactly the stutter you described.
+
+Turning art off skipped all of it, which is why it looked fine, and that was the clue that settled it.
+
+**What changed.** The loader now reads the `ART` folder **once**, remembers what is in it, and after that every game is answered instantly from memory. Present or missing, there is no more folder reading while you navigate. Pictures that exist still load exactly as before.
+
+**Why this is not a repeat of an earlier attempt.** A few builds back we tried reading the folder once and it caused out-of-memory crashes, so it was pulled out. That crash was real, but the reason was that the folder reading built a large amount of temporary data with no limit on it. It comes back now with that limit in place, and the temporary data is thrown away immediately. If a folder is unusually large the loader simply goes back to the old behaviour instead, so it can never crash the way it did before.
+
+**What to test on EXP44:**
+- **MX4SIO with cover art ON:** browse your list and hold on titles. The stutter on first list and on each title should be gone.
+- **Your pictures still show.** Same folder, same names, nothing to change on your card.
+- **Games with no picture** should now be *instant*, showing the plain empty case with no pause at all. This was the slowest case before.
+- **Add a new cover while the loader is running,** then press **R1** to refresh: it should be picked up.
+- **USB, MMCE and the internal drive** should be unchanged.
 
 ---
 
