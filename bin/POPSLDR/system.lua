@@ -6108,7 +6108,13 @@ local function BuildMassRootIdentity(mode)
     usb = {},
     mx4sio = {},
     ata = {},
-    present_roots = {}
+    present_roots = {},
+    -- EXP41 diagnostics. `drivers` is the raw GET_DRIVERNAME string per mounted
+    -- root; `bdm_devices` is what the block layer says is connected. Together
+    -- they answer "the page is empty / wrong -- which half is lying?" without a
+    -- serial cable, which is the question that has cost the most test cycles.
+    drivers = {},
+    bdm_devices = {}
   }
 
   -- Not ready = do NOT sweep (NHDDL: never probe a class whose driver isn't
@@ -6137,44 +6143,63 @@ local function BuildMassRootIdentity(mode)
     end
   end
 
-  -- EXP36: resolve each mass slot DIRECTLY from the BDM device enumeration
-  -- (System.bdmList -> bdm_query.irx -> PS2SDK bdm_get_bd). Each connected block
-  -- device already carries its driver name AND its own mass unit (parId), so we
-  -- map driver->slot with ZERO per-slot devctl scan. This is the modern
-  -- SDK-blessed path (maintainer): the old "open every mass0..9 and
-  -- getMassMountDriver each" walk (a fileXioIoctl2 per slot) is what could stall
-  -- the carousel on a mid-bringup/flaky ATA slot, and devctl now survives ONLY in
-  -- the legacy-cwd normalizer (classify_mass_boot). We still doesFolderExist each
-  -- resolved root so a device that is enumerated-but-not-yet-mounted is skipped.
-  local used_bdm = false
-  if type(System) == "table" and type(System.bdmList) == "function" then
-    local ok, list = pcall(System.bdmList)
-    if ok and type(list) == "table" then
-      used_bdm = true
-      for i = 1, #list do
-        local d = list[i]
-        if type(d) == "table" and d.parId ~= nil then
-          local n = tonumber(d.parId)
-          if n ~= nil and n >= 0 then
-            local root = (n == 0) and "mass:/" or ("mass"..tostring(n)..":/")
-            local normalized = NormalizeMassRoot(root)
-            if normalized ~= nil and doesFolderExist(normalized) then
-              record(normalized, ClassifyMassRootDriver(d.name))
-            end
-          end
-        end
-      end
+  -- EXP41: `parId` IS NOT A MASS UNIT. EXP36 mapped each enumerated BDM device to
+  -- a slot with `mass<parId>:/`, on the stated premise that "each connected block
+  -- device already carries its own mass unit (parId)". That premise is false, and
+  -- it is the MX4SIO-page-shows-ATA-files bug.
+  --
+  -- What parId actually is, in ps2sdk:
+  --   ps2atad.c:361            g_ata_bd[i].parId  = 0x00   (whole disk)
+  --   usbmass_bd/scsi.c:336    g_scsi_bd[i].parId = 0x00   (whole disk)
+  --   IEEE1394_bd/scsi.c:354   g_scsi_bd[i].parId = 0x00   (whole disk)
+  --   mx4sio spi_sdcard_driver.c:56           0x00         (whole disk)
+  --   part_driver_mbr.c:126    parId = the MBR PARTITION-TYPE byte (0x07, 0x0B...)
+  --   part_driver_gpt.c:146    parId = 0
+  -- So parId is 0 for every whole-disk device and every GPT partition, and a
+  -- filesystem-type byte for MBR partitions. It is never an index.
+  --
+  -- The consequence was deterministic, not flaky: ATA and MX4SIO both report
+  -- parId 0, so BOTH resolved to "mass:/" and BOTH were recorded -- ATA into
+  -- identity.ata and MX4SIO into identity.mx4sio. mass:/ is slot 0, i.e. whatever
+  -- connected first. Boot from MC with the internal drive present and slot 0 is
+  -- ATA, so GetMX4SIOMassRootNow returned mass:/ and the MX4SIO page listed the
+  -- ATA drive's games. Re-scanning could never help: parId is 0 every time.
+  -- (On an MBR drive it also mapped a FAT32 partition to "mass12:/", which does
+  -- not exist, so that device silently vanished instead.)
+  --
+  -- There is NO correct BDM-device -> massN mapping available to us: bdm_get_bd
+  -- exposes BDM's own mount order, which mixes whole-disk devices with partition
+  -- pseudo-devices and is unrelated to bdmfs_fatfs's volume index. So we ask the
+  -- slot itself what it is, which is authoritative by construction.
+  --
+  -- EXP36's real goal -- don't stall the carousel on a mid-bringup ATA slot -- is
+  -- preserved by the doesFolderExist() gate below: an absent or not-yet-mounted
+  -- slot is skipped WITHOUT the ioctl, so we only pay a devctl for slots that are
+  -- actually mounted (a handful), never for the flaky/absent ones that caused the
+  -- stall. The BDM enumeration is kept, but only to record what the block layer
+  -- believes exists, for the diagnostic -- never to derive a slot number.
+  for slot = 0, 9 do
+    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+    local normalized = NormalizeMassRoot(root)
+    if normalized ~= nil and doesFolderExist(normalized) then
+      local driver = PLDR.GetMassMountDriver(normalized)
+      identity.drivers[normalized] = (type(driver) == "string" and driver ~= "") and driver or "(none)"
+      record(normalized, ClassifyMassRootDriver(driver))
     end
   end
 
-  -- Last-resort fallback ONLY when the BDM enumeration is unavailable (bdm_query
-  -- RPC down): the legacy per-slot devctl scan, so a page never hard-breaks.
-  if not used_bdm then
-    for slot = 0, 9 do
-      local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
-      local normalized = NormalizeMassRoot(root)
-      if normalized ~= nil and doesFolderExist(normalized) then
-        record(normalized, ClassifyMassRootDriver(PLDR.GetMassMountDriver(normalized)))
+  -- Diagnostic only: what the BDM layer says is connected, independent of which
+  -- mass slot each one landed on. A device that appears here but in no slot above
+  -- is enumerated-but-not-mounted, which is the single most useful thing to know
+  -- when a page comes up empty.
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local d = list[i]
+        if type(d) == "table" and d.name ~= nil then
+          table.insert(identity.bdm_devices, tostring(d.name))
+        end
       end
     end
   end

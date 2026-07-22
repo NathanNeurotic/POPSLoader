@@ -960,45 +960,63 @@ t28 = E('''function()
 end''')()
 check("T28 EXP34 config defaults: ART=art, HDD=BOTH, i.Link hidden, SMB/network block", t28)
 
-# T29 EXP36: mass slots resolve DIRECTLY from System.bdmList (each BDM device's own
-# parId -> massN:/), with NO per-slot devctl scan. ata on parId 0 -> mass:/, the
-# mx4sio (sdc) device on parId 1 -> mass1:/. PLDR.GetMassMountDriver is a tripwire:
-# if the direct path is taken it must never be consulted.
+# T29 EXP41 REGRESSION GUARD: a mass slot's identity comes from THAT SLOT's driver
+# name, never from the BDM device's parId.
+#
+# This test replaces the EXP36 test that asserted the opposite. That test passed only
+# because its fixture invented `parId = 1` for the MX4SIO device. Real ps2sdk block
+# drivers hardcode parId 0x00 for every whole-disk device (ps2atad.c:361,
+# usbmass_bd/scsi.c:336, IEEE1394_bd/scsi.c:354, mx4sio spi_sdcard_driver.c:56); the
+# partition drivers set the MBR partition-TYPE byte (part_driver_mbr.c:126) or 0
+# (part_driver_gpt.c:146). parId is NEVER an index -- so on real hardware ATA and
+# MX4SIO both mapped to mass:/ and the MX4SIO page listed the ATA drive's games.
+#
+# The fixture below therefore uses the REAL values: both devices report parId 0. If
+# anyone reintroduces a parId->slot mapping, ata_root and mx_root collide and this
+# fails. The per-slot driver name is the only authority.
 t29 = lua.execute(r'''
   System.initMX4SIO = function() return true end
   System.initATAAsync = function() return 2 end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
+  -- Both parId 0, exactly as the real drivers report them.
   System.bdmList = function()
     return {
       { name = "ata", parId = 0, devNr = 0 },
-      { name = "sdc", parId = 1, devNr = 1 },
+      { name = "sdc", parId = 0, devNr = 1 },
     }
   end
   doesFolderExist = function(p)
     if p == "mass:/" or p == "mass0:/" or p == "mass1:/" then return true end
     return real_dfe(p)
   end
-  local devctl_called = false
-  PLDR.GetMassMountDriver = function(root) devctl_called = true; return "usb" end
+  -- The slot itself is authoritative: slot 0 is the ATA volume (it connected
+  -- first, booting from MC with the internal drive present), slot 1 is the
+  -- hot-inserted SD. This is the user-reported repro.
+  PLDR.GetMassMountDriver = function(root)
+    if root == "mass:/" or root == "mass0:/" then return "ata" end
+    if root == "mass1:/" then return "sdc" end
+    return ""
+  end
   local ata_root, ata_status = PLDR.GetATAMassRootNow()
   local mx_root, mx_status = PLDR.GetMX4SIOMassRootNow()
   doesFolderExist = real_dfe
   PLDR.GetMassMountDriver = real_drv
   System.bdmList = nil
   if ata_root ~= "mass:/" or ata_status ~= "ready" then
-    return false, "ata direct: expected mass:/ ready, got "..tostring(ata_root).."/"..tostring(ata_status)
+    return false, "ata: expected mass:/ ready, got "..tostring(ata_root).."/"..tostring(ata_status)
   end
   if mx_root ~= "mass1:/" or mx_status ~= "ready" then
-    return false, "mx4sio direct: expected mass1:/ ready, got "..tostring(mx_root).."/"..tostring(mx_status)
+    return false, "mx4sio: expected mass1:/ ready, got "..tostring(mx_root).."/"..tostring(mx_status)
   end
-  if devctl_called then
-    return false, "getMassMountDriver was called -- the direct BDM path must not devctl-scan"
+  -- The actual bug, stated directly: the two pages must never share a root.
+  if mx_root == ata_root then
+    return false, "MX4SIO and ATA resolved to the SAME root ("..tostring(mx_root)..") -- parId regression"
   end
   return true
 ''')
-check("T29 EXP36 direct BDM slot resolution (parId->massN:/, no devctl scan)", t29)
+check("T29 EXP41 slot identity comes from the slot's driver name, not parId", t29)
 
 # T30 EXP37: the hardware-confirmed MX4SIO fix. When the cover's ART FOLDER is
 # absent, GetOrLoad must skip the per-game file open entirely (that slow failed

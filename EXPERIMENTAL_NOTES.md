@@ -2,9 +2,35 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP40**. The check is simple: a version ending in **-EXP40** = this build; **-EXP39** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP41**. The check is simple: a version ending in **-EXP41** = this build; **-EXP40** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP41: the MX4SIO page was showing the internal drive's games
+
+**One bug, one fix, nothing else changed.** This build deliberately contains a single change so there is only one variable to judge.
+
+**The report.** Boot POPSLoader from a memory card, open the internal exFAT page and it works, then plug in an MX4SIO card and open the MX4SIO page: it lists the **internal drive's** games, not the SD card's. Re-scanning does not help.
+
+**What was actually wrong.** When POPSLoader asks the system what storage is connected, each drive comes back with a small set of numbers attached. EXP36 (a few builds ago) started using one of those numbers as "which drive slot is this." That number is not a drive slot. It is a partition-type marker, and for a whole drive it is always **zero**, for every device, on every console.
+
+So the internal drive said zero, the SD card said zero, and both got filed as "slot 0". Slot 0 is whatever was plugged in first, which when you boot with the internal drive present is the internal drive. The MX4SIO page then faithfully listed slot 0, which was the HDD. It was not random or flaky: it was the same wrong answer every single time, which is exactly why re-scanning never helped.
+
+The same mistake had a second symptom worth mentioning: on a drive using the older MBR partition style, that number is the filesystem-type byte instead, so a drive could be filed as a slot that does not exist and **disappear from its page entirely**.
+
+**The fix.** POPSLoader now asks each drive slot directly what it is, which is the reliable answer and the one the loader used before EXP36. The reason EXP36 changed this was speed: the old method could stall the menu on a drive that was still waking up. That protection is kept, because slots that are not mounted yet are skipped before anything slow happens, so we only ask the slots that are genuinely ready.
+
+**A note on how this got through.** The automated test that was supposed to cover this made up numbers the real hardware never produces, so it passed while the real thing was broken. That test has been rewritten to use the real values, and it now fails if anyone reintroduces the mistake.
+
+**Honest status, please read this part.** This does **not** touch the internal exFAT freeze. EXP40's "phantom slave" fix is still the live theory there and is completely unchanged in this build. If your exFAT page froze on EXP40, expect it to behave exactly the same here. This build fixes which games show up on which page, nothing more.
+
+**What to test on EXP41:**
+- **The reported bug:** boot from your memory card, open the internal exFAT page, then plug in your MX4SIO card and open the MX4SIO page. It should now list the **SD card's** games. This is the one that matters.
+- **Every device is on its own page:** check USB, MX4SIO, MMCE and the internal drive each list their own games and nothing borrowed from another device.
+- **Nothing vanished:** if you have a drive that previously showed up, confirm it still does. This change moves how drives are matched to pages, so a device going missing is the failure mode to watch for.
+- **sAGA / internal exFAT:** unchanged from EXP40. If you get a chance, the EXP40 question still stands (does the exFAT page list games, or still freeze), but nothing in EXP41 was aimed at it.
 
 ---
 
