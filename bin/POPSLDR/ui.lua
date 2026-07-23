@@ -549,6 +549,34 @@ end
 -- Called once per game-list frame. Adopts a finished load, advances to the next
 -- candidate on a miss, and retries a request the worker was too busy to accept.
 -- Does no filesystem work of its own and never blocks.
+-- EXP58: settle the cover worker before handing the machine to another ELF.
+-- The worker can be mid-fopen when a launch happens, which leaves an IOP RPC
+-- outstanding across the SifIopReset the launch performs -- exactly the
+-- "polluted parent" state src/main.cpp:607 has to defend against at BOOT, except
+-- self-inflicted. DKWDRV is the sensitive case (maintainer: "its environment gets
+-- poisoned and its unable to do anything"), because it wants a clean IOP.
+--
+-- BOUNDED: a cover probe into a large ART/ folder can take ~0.5s, so wait up to
+-- ~2s and then give up rather than risk hanging a launch. Any texture that lands
+-- is freed -- we are leaving the scene, nothing will draw it.
+function CoverCache:Quiesce()
+  self.pending = nil
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then return end
+  for _ = 1, 120 do
+    local ok, token, ptr = pcall(Graphics.coverLoadPoll)
+    if not ok then return end
+    if token ~= nil then
+      if ptr ~= nil and type(Graphics.freeImage) == "function" then
+        pcall(Graphics.freeImage, ptr)
+      end
+      return   -- consumed; the slot is idle again
+    end
+    if type(Screen) == "table" and type(Screen.waitVblankStart) == "function" then
+      pcall(Screen.waitVblankStart)
+    end
+  end
+end
+
 function CoverCache:Pump()
   local p = self.pending
   if p == nil then return end

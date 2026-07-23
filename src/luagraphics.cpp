@@ -67,19 +67,61 @@ static char *coverLoadPath = NULL;
 // (that stack is one reason it was never trusted); OPL's IO worker uses 96 KiB.
 static u8 coverLoadStack[32768] __attribute__((aligned(16)));
 
+// EXP58: ONE long-lived worker, woken by a semaphore.
+//
+// EXP49-57 created a fresh EE thread for every cover request and let it delete
+// itself. That churns a thread per navigation, and if CreateThread ever fails the
+// request is refused -- which left the loader permanently pending until EXP57 bounded
+// the retry (sAGA's stuck "Loading ART..."). OPL has always used a single IO worker
+// (ioman.c) rather than one per request; this matches that.
+//
+// The thread is created LAZILY on the first cover request, never at boot, and never
+// exits. Semaphore pattern copied from the in-tree font lock (src/fntsys.cpp:350).
+static int coverLoadSema = -1;
+static int coverLoadThreadId = -1;
+
 static int coverLoadThread(void *arg)
 {
 	(void)arg;
-	char *path = coverLoadPath;
-	GSTEXTURE *tex = (path != NULL) ? load_image(path, true) : NULL;
-	if (path != NULL) {
-		free(path);
-		coverLoadPath = NULL;
+	for (;;) {
+		WaitSema(coverLoadSema);          // sleeps until a request arrives
+		char *path = coverLoadPath;
+		GSTEXTURE *tex = (path != NULL) ? load_image(path, true) : NULL;
+		if (path != NULL) {
+			free(path);
+			coverLoadPath = NULL;
+		}
+		coverLoadResult = tex;   // NULL is a legitimate result: the cover is absent
+		coverLoadState = COVER_LOAD_DONE;
 	}
-	coverLoadResult = tex;   // NULL is a legitimate result: the cover is absent
-	coverLoadState = COVER_LOAD_DONE;
-	ExitDeleteThread();
 	return 0;
+}
+
+// Returns 1 once the worker exists and is waiting. Idempotent.
+static int coverLoadEnsureWorker(void)
+{
+	if (coverLoadThreadId >= 0) return 1;
+
+	if (coverLoadSema < 0) {
+		ee_sema_t s;
+		s.init_count = 0;      // nothing queued yet
+		s.max_count  = 1;      // one request in flight, which is all we ever need
+		s.option     = 0;
+		coverLoadSema = CreateSema(&s);
+		if (coverLoadSema < 0) return 0;
+	}
+
+	ee_thread_t tp;
+	tp.gp_reg = &_gp;
+	tp.func = (void *)coverLoadThread;
+	tp.stack = (void *)coverLoadStack;
+	tp.stack_size = sizeof(coverLoadStack);
+	tp.initial_priority = 32;
+	int tid = CreateThread(&tp);
+	if (tid < 0) return 0;
+	StartThread(tid, NULL);
+	coverLoadThreadId = tid;
+	return 1;
 }
 
 static int lua_coverloadbegin(lua_State *L)
@@ -102,27 +144,17 @@ static int lua_coverloadbegin(lua_State *L)
 	}
 	memcpy(copy, path, len + 1);
 
+	if (!coverLoadEnsureWorker()) {
+		free(copy);
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+
 	coverLoadPath = copy;
 	coverLoadResult = NULL;
 	coverLoadToken = token;
 	coverLoadState = COVER_LOAD_BUSY;
-
-	ee_thread_t thread_param;
-	thread_param.gp_reg = &_gp;
-	thread_param.func = (void *)coverLoadThread;
-	thread_param.stack = (void *)coverLoadStack;
-	thread_param.stack_size = sizeof(coverLoadStack);
-	// Below the main thread so a decode can never starve the render loop.
-	thread_param.initial_priority = 32;
-	int thread = CreateThread(&thread_param);
-	if (thread < 0) {
-		free(copy);
-		coverLoadPath = NULL;
-		coverLoadState = COVER_LOAD_IDLE;
-		lua_pushboolean(L, 0);
-		return 1;
-	}
-	StartThread(thread, NULL);
+	SignalSema(coverLoadSema);   // hand it to the resident worker
 	lua_pushboolean(L, 1);
 	return 1;
 }

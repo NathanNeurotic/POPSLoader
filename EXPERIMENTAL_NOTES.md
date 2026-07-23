@@ -2,11 +2,47 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP57**. The check is simple: a version ending in **-EXP57** = this build; **-EXP56** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP58**. The check is simple: a version ending in **-EXP58** = this build; **-EXP57** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP54, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP58: one cover loader instead of one per game, and a clean handover
+
+**1. The cover loader is now a single resident helper.**
+
+Since EXP49 the loader started a brand-new background helper for **every game you moved**
+to, and threw it away afterwards. That is wasteful, and if the console ever refused to
+start one, every later cover request was refused too -- which is what left sAGA's
+"Loading ART..." stuck on screen. EXP57 stopped that turning into a permanent jam; this
+removes the cause. There is now **one** helper, started the first time a cover is needed
+(never during boot) and reused from then on. It is what OPL has always done.
+
+**2. Launching another program now waits for the cover loader to finish first.**
+
+This one is likely **the DKWDRV problem**. When POPSLoader hands the console over to
+another program, it resets the console's I/O processor so the new program gets a clean
+slate. If a cover was still being read from your card at that exact moment, that read was
+left dangling across the reset -- which is the precise situation that leaves the next
+program in a broken state. DKWDRV is the one that suffers most, because it needs a clean
+machine to do anything at all.
+
+Every handover (a game through POPSTARTER, DKWDRV, or exiting to BOOT.ELF) now settles the
+cover loader first, with a short bounded wait so it can never hang the launch.
+
+**Honest note:** this is a real fault and worth fixing regardless, but it is not confirmed
+to be *the* DKWDRV cause. If DKWDRV still misbehaves on EXP58, say so -- that rules this
+out cleanly and points elsewhere, which is worth knowing either way.
+
+**What to test on EXP58:**
+- **DKWDRV**: launch it and see whether it can actually do things now.
+- **Browsing with covers on** should be unchanged -- same speed, covers still appear.
+- **Launching a game** from any device should be unchanged.
+- **sAGA**: the internal-drive step-1 readout from EXP57 is unchanged here, so a photo
+  from either build is equally useful.
 
 ---
 

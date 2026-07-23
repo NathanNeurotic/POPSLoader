@@ -1840,7 +1840,18 @@ function PLDR.ParseHddExecMountAndRelpath(path)
   return ParseHddExecMountAndRelpath(path)
 end
 
+-- EXP58: never hand the machine over with a cover load still in flight -- see
+-- CoverCache:Quiesce. Both prep paths do it, so every external ELF launch
+-- (POPSTARTER, DKWDRV, BOOT.ELF) is covered by one call each.
+local function QuiesceCoverWorker()
+  if type(UI) == "table" and type(UI.CoverCache) == "table"
+     and type(UI.CoverCache.Quiesce) == "function" then
+    pcall(function() UI.CoverCache:Quiesce() end)
+  end
+end
+
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
+  QuiesceCoverWorker()
   return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
 end
 
@@ -1866,6 +1877,7 @@ function PLDR.BuildPartitionScopedExecPath(path)
 end
 
 function PLDR.PrepareForColdExternalELFLaunch()
+  QuiesceCoverWorker()
   return PrepareForColdExternalELFLaunch()
 end
 

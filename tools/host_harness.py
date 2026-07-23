@@ -1327,7 +1327,39 @@ t38 = E('''function()
   if #PLDR.GAMES ~= 0 then return false, "games not cleared" end
   return true
 end''')()
-check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
+check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
+
+# T39 EXP58: no cover load may still be in flight when we hand the machine to another
+# ELF. The worker can be mid-fopen at launch time, which leaves an IOP RPC outstanding
+# across the SifIopReset the launch performs -- the "polluted parent" state main.cpp
+# defends against at boot, except caused by us. DKWDRV is the sensitive consumer
+# (maintainer: its environment gets poisoned and it can do nothing). Assert both
+# external-launch prep paths drain it and free anything that lands.
+t39 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc.Quiesce) ~= "function" then return false, "CoverCache:Quiesce missing" end
+  local real_poll, real_free = Graphics.coverLoadPoll, Graphics.freeImage
+  local freed, polls = 0, 0
+  Graphics.freeImage = function(t) freed = freed + 1 end
+  -- a texture lands on the first poll and must be freed, not shown
+  Graphics.coverLoadPoll = function() polls = polls + 1; return 7, 4242 end
+  cc.pending = { key = "k", candidates = { "a" }, idx = 1, token = 7, started = true }
+  PLDR.PrepareForExternalELFLaunch("mc0:/BOOT/BOOT.ELF")
+  local after_warm = { pending = cc.pending, freed = freed }
+  -- cold path must drain too
+  freed = 0
+  cc.pending = { key = "k", candidates = { "a" }, idx = 1, token = 8, started = true }
+  PLDR.PrepareForColdExternalELFLaunch()
+  local after_cold = { pending = cc.pending, freed = freed }
+  Graphics.coverLoadPoll, Graphics.freeImage = real_poll, real_free
+  cc.pending = nil
+  if after_warm.pending ~= nil then return false, "warm launch left a pending cover load" end
+  if after_warm.freed ~= 1 then return false, "warm launch did not free the landed texture" end
+  if after_cold.pending ~= nil then return false, "cold launch left a pending cover load" end
+  if after_cold.freed ~= 1 then return false, "cold launch did not free the landed texture" end
+  return true
+end''')()
+check("T39 EXP58 external launches drain the cover worker first", t39)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an
