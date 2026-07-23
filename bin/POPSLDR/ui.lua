@@ -311,7 +311,8 @@ local CoverCache = {
   entries = {},
   order = {},
   failed = {},
-  dir_present = {},  -- EXP37: dir -> bool (does the cover FOLDER exist); checked once, memoized
+  pending = nil,     -- EXP49: in-flight async cover load {key,candidates,idx,token,started}
+  token = 0,         -- EXP49: request id, so a late result for an old selection is dropped
   last_key = nil,
   last_img = nil,
   last_desc = nil,
@@ -328,7 +329,7 @@ function CoverCache:Clear()
   end
   self.order = {}
   self.failed = {}
-  self.dir_present = {}  -- EXP37: re-check cover folders on R1 refresh / device switch
+  self.pending = nil     -- EXP49: abandon any in-flight load; its result will be dropped as stale
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
@@ -389,43 +390,17 @@ function CoverCache:GetOrLoad(path)
     self.failed[path] = true
     return nil
   end
-  -- EXP37: HARDWARE-CONFIRMED FIX for the MX4SIO per-navigation lag + "Enceladus
-  -- ERROR! not enough memory" crash. Turning cover art OFF (Square) made both
-  -- vanish, proving the cost is the per-game cover OPEN -- specifically the SLOW
-  -- failed open (a driver dir-walk) when the ART folder is absent, repeated for
-  -- every game as you scroll. Fix: check the cover's FOLDER once, bounded and
-  -- memoized per dir (a single doesFolderExist -- NOT the listDirectory walk that
-  -- EXP34 tried), and when it's absent skip EVERY cover open for that folder
-  -- instantly. An existing folder falls through to the single loadImage below.
-  local dir = string.match(path, "^(.*/)[^/]+$")
-  if dir ~= nil then
-    local present = self.dir_present[dir]
-    if present == nil then
-      present = true
-      if type(doesFolderExist) == "function" then
-        local ok, res = pcall(doesFolderExist, dir)
-        present = (ok and res == true)
-      end
-      self.dir_present[dir] = present
-    end
-    if present == false then
-      self.failed[path] = true
-      return nil
-    end
-    -- EXP45: NO directory listing here. EXP44 added one (list the ART folder once,
-    -- answer hits/misses from a name set) and it did NOT fix the MX4SIO lag -- the
-    -- maintainer reported it still "hanging like hell". That is the SECOND time
-    -- System.listDirectory on the cover folder has been implicated on this exact
-    -- hardware: EXP34 added it, EXP35 removed it for lag + "not enough memory",
-    -- EXP44 re-added it, EXP45 removes it again. It stays out.
-    --
-    -- What remains is deliberately the BETA-era shape, which was fast: a memoized
-    -- per-folder existence check (above) and then ONE bounded open per candidate
-    -- (below), with misses memoized in self.failed. Nothing per-frame, nothing
-    -- unbounded, no listing.
-  end
-  -- Folder present (or unverifiable): load straight through Graphics.loadImage
-  -- (fopen); it returns nil for a genuinely missing file, memoized in self.failed.
+  -- EXP49: the dir_present folder gate is GONE. It was added (EXP37) to dodge the
+  -- MX4SIO stutter and never could: it only short-circuits when the ART folder is
+  -- ABSENT, and the folder very much exists -- it is shared with OPL. OPL itself has
+  -- no folder-exists check, no readdir and no stat on this path; it does one open()
+  -- per game, exactly like the line below. With loads now off the render thread
+  -- (CoverCache:Pump / Poll) an absent folder costs nothing visible either, so the
+  -- gate has no remaining job. Same reason the EXP34/44/46 directory listings are
+  -- gone: probe COUNT was never the problem.
+  --
+  -- This synchronous path now runs ONLY as the fallback for builds/devices where the
+  -- async worker is unavailable. The game list never reaches it.
   local img = Graphics.loadImage(path)
   if img == nil then
     self.failed[path] = true
@@ -479,9 +454,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       --     we never force an opendir here ourselves)
       --   * memoize a miss in self.failed (keyed by the .txt path, which cannot
       --     collide with a .png key) so a revisit is free, exactly like covers
-      local desc_dir = string.match(desc_path, "^(.*/)[^/]+$")
-      local desc_dir_absent = (desc_dir ~= nil and self.dir_present[desc_dir] == false)
-      if desc_path ~= candidates[ci] and not self.failed[desc_path] and not desc_dir_absent then
+      if desc_path ~= candidates[ci] and not self.failed[desc_path] then
         local d = ReadGameDetailsText(desc_path)
         if d ~= nil then
           self.last_desc = d
@@ -521,16 +494,101 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       end
     end
   end
+  -- Anything already decoded, or already known absent, is answered with ZERO I/O.
+  local first_unknown = nil
   for i = 1, #candidates do
-    local img = self:GetOrLoad(candidates[i])
-    if img ~= nil then
-      self.last_img = img
-      return img
+    local p = candidates[i]
+    local cached = self.entries[p]
+    if cached ~= nil then
+      self.last_img = cached
+      return cached
+    end
+    if not self.failed[p] and first_unknown == nil then
+      first_unknown = i
     end
   end
-  -- No cover loaded. Nothing to remember: the list view used to print the first probed
-  -- path as a "No cover. Looked for: <path>" caption, and that caption is gone (EXP42).
+  if first_unknown == nil then
+    return nil   -- every candidate is a known miss: nothing to do, nothing to wait for
+  end
+  -- EXP49: hand the unknown candidate to the worker and RETURN IMMEDIATELY. The list
+  -- keeps drawing the placeholder; CoverCache:Pump adopts the texture when it lands.
+  -- This is the whole fix: the probe itself is unchanged (one open per game, same as
+  -- OPL) -- it simply stops happening on the thread that draws. A miss into a large
+  -- shared ART/ folder still costs ~0.3-0.6s on MX4SIO, but nothing waits for it now.
+  self:BeginLoad(key, candidates, first_unknown)
   return nil
+end
+
+-- Kick an async load for candidates[idx] of `key`. Falls back to the old synchronous
+-- load only when the worker is unavailable (older core), so behaviour degrades rather
+-- than breaks.
+function CoverCache:BeginLoad(key, candidates, idx)
+  local path = candidates[idx]
+  if path == nil then return end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function" then
+    local img = self:GetOrLoad(path)
+    if img ~= nil and self.last_key == key then self.last_img = img end
+    return
+  end
+  self.token = (self.token or 0) + 1
+  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token }
+  local ok, accepted = pcall(Graphics.coverLoadBegin, path, self.token)
+  if not ok or accepted ~= true then
+    -- Worker busy (or refused): Pump retries on a later frame. Never block here.
+    self.pending.started = false
+  else
+    self.pending.started = true
+  end
+end
+
+-- Called once per game-list frame. Adopts a finished load, advances to the next
+-- candidate on a miss, and retries a request the worker was too busy to accept.
+-- Does no filesystem work of its own and never blocks.
+function CoverCache:Pump()
+  local p = self.pending
+  if p == nil then return end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then
+    self.pending = nil
+    return
+  end
+  if p.started ~= true then
+    -- Earlier request was refused because the worker was mid-load; try again now.
+    local ok, accepted = pcall(Graphics.coverLoadBegin, p.candidates[p.idx], p.token)
+    p.started = (ok and accepted == true)
+    return
+  end
+  local ok, token, ptr = pcall(Graphics.coverLoadPoll)
+  if not ok or token == nil then return end   -- still working
+  local stale = (token ~= p.token) or (self.last_key ~= p.key)
+  if ptr ~= nil then
+    if stale then
+      -- The selection moved on while this was loading: drop it rather than show or
+      -- cache art for a game that is no longer selected.
+      if type(Graphics.freeImage) == "function" then pcall(Graphics.freeImage, ptr) end
+    else
+      if type(Graphics.setImageFilters) == "function" then
+        pcall(Graphics.setImageFilters, ptr, LINEAR)
+      end
+      self.entries[p.candidates[p.idx]] = ptr
+      table.insert(self.order, p.candidates[p.idx])
+      self:EvictIfNeeded()
+      self.last_img = ptr
+    end
+    self.pending = nil
+    return
+  end
+  -- Miss: remember it so this path is never probed again, then try the next candidate.
+  self.failed[p.candidates[p.idx]] = true
+  if stale then self.pending = nil; return end
+  local nxt = nil
+  for i = p.idx + 1, #p.candidates do
+    if not self.failed[p.candidates[i]] then nxt = i; break end
+  end
+  if nxt == nil then
+    self.pending = nil
+  else
+    self:BeginLoad(p.key, p.candidates, nxt)
+  end
 end
 
 local VIDEO_STANDARD_AUTO = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_AUTO) or "AUTO"
@@ -3205,6 +3263,10 @@ UI = {
         -- it; it now lives in Settings > Game List > "Cover art" (PLDR.COVER_ART),
         -- which persists. UI.SetCoverPreview is what that setting drives.
         if UI.CoverCache ~= nil then
+          -- EXP49: adopt a finished async cover (or advance past a miss). Pure bookkeeping:
+          -- no filesystem work, never blocks. Must run every frame, before the settle below,
+          -- so a texture that landed during the last frame is on screen immediately.
+          if type(UI.CoverCache.Pump) == "function" then UI.CoverCache:Pump() end
           -- Cover-load settle: DECODE the selection's cover only after the cursor has been
           -- STABLE for ~250ms, FRAME-COUNTED (Timer.getTime is microseconds, so the old
           -- CoverIdleMs=200 was sub-frame and re-decoded the cover on nearly every selection

@@ -25,8 +25,127 @@ uint32_t imgThreadSize = 0;
 
 static u8 imgThreadStack[4096] __attribute__((aligned(16)));
 
-// Extern symbol 
+// Extern symbol
 extern void *_gp;
+
+//---------------------------------------------------------------------------
+// EXP49: off-render-thread cover loading.
+//
+// The MX4SIO cover stutter was never probe COUNT -- it was that the probe runs on
+// the thread that draws. Graphics.loadImage -> load_image -> fopen blocks in
+// WaitSema until the IOP finishes a FatFs directory walk; on a large shared OPL
+// ART/ folder over bit-banged SPI a MISS is ~0.3-0.6s, and one per newly-selected
+// title is enough to freeze the list. OPL probes MORE than we do with the same
+// primitive and never stutters, purely because its probes run on an IO worker
+// while the render thread draws a placeholder (texcache.c / ioman.c).
+//
+// This is NOT the pre-existing Graphics.threadLoadImage. That one has never had a
+// single Lua caller in this fork, and it is unsafe as written: it passes the
+// Lua-owned string straight to the thread (it can be collected mid-load), has one
+// global slot with no association to WHICH request finished, and on decode failure
+// leaves imgThreadData holding a stale pointer that getLoadData will hand back.
+//
+// Contract, deliberately minimal (one request in flight, which is all we need --
+// only the selected game's cover is ever loaded):
+//   Graphics.coverLoadBegin(path, token) -> true if accepted, false if busy
+//   Graphics.coverLoadPoll()             -> nil while busy
+//                                        -> token, ptr|nil once done (consumes it)
+// `token` is an integer the caller uses to decide whether the answer is still
+// wanted; if the selection moved on, Lua frees the texture and drops it. The path
+// is COPIED here and freed by the worker, so Lua may collect its string freely.
+// load_image runs with delayed=true, so the gsKit VRAM upload stays on the main
+// thread at draw time and decoding off-thread is GS-safe.
+#define COVER_LOAD_IDLE 0
+#define COVER_LOAD_BUSY 1
+#define COVER_LOAD_DONE 2
+
+static volatile int coverLoadState = COVER_LOAD_IDLE;
+static volatile int coverLoadToken = 0;
+static GSTEXTURE *coverLoadResult = NULL;
+static char *coverLoadPath = NULL;
+// PNG decode needs far more headroom than the 4 KiB the legacy imgThread gets
+// (that stack is one reason it was never trusted); OPL's IO worker uses 96 KiB.
+static u8 coverLoadStack[32768] __attribute__((aligned(16)));
+
+static int coverLoadThread(void *arg)
+{
+	(void)arg;
+	char *path = coverLoadPath;
+	GSTEXTURE *tex = (path != NULL) ? load_image(path, true) : NULL;
+	if (path != NULL) {
+		free(path);
+		coverLoadPath = NULL;
+	}
+	coverLoadResult = tex;   // NULL is a legitimate result: the cover is absent
+	coverLoadState = COVER_LOAD_DONE;
+	ExitDeleteThread();
+	return 0;
+}
+
+static int lua_coverloadbegin(lua_State *L)
+{
+	if (lua_gettop(L) != 2)
+		return luaL_error(L, "Argument error: Graphics.coverLoadBegin(path, token) takes two arguments.");
+	const char *path = luaL_checkstring(L, 1);
+	int token = (int)luaL_checkinteger(L, 2);
+
+	if (coverLoadState != COVER_LOAD_IDLE) {
+		lua_pushboolean(L, 0);   // one in flight at a time; caller retries next frame
+		return 1;
+	}
+
+	size_t len = strlen(path);
+	char *copy = (char *)malloc(len + 1);
+	if (copy == NULL) {
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+	memcpy(copy, path, len + 1);
+
+	coverLoadPath = copy;
+	coverLoadResult = NULL;
+	coverLoadToken = token;
+	coverLoadState = COVER_LOAD_BUSY;
+
+	ee_thread_t thread_param;
+	thread_param.gp_reg = &_gp;
+	thread_param.func = (void *)coverLoadThread;
+	thread_param.stack = (void *)coverLoadStack;
+	thread_param.stack_size = sizeof(coverLoadStack);
+	// Below the main thread so a decode can never starve the render loop.
+	thread_param.initial_priority = 32;
+	int thread = CreateThread(&thread_param);
+	if (thread < 0) {
+		free(copy);
+		coverLoadPath = NULL;
+		coverLoadState = COVER_LOAD_IDLE;
+		lua_pushboolean(L, 0);
+		return 1;
+	}
+	StartThread(thread, NULL);
+	lua_pushboolean(L, 1);
+	return 1;
+}
+
+static int lua_coverloadpoll(lua_State *L)
+{
+	if (lua_gettop(L) != 0)
+		return luaL_error(L, "Argument error: Graphics.coverLoadPoll() takes no arguments.");
+	if (coverLoadState != COVER_LOAD_DONE) {
+		lua_pushnil(L);
+		return 1;
+	}
+	GSTEXTURE *tex = coverLoadResult;
+	int token = coverLoadToken;
+	coverLoadResult = NULL;
+	coverLoadState = COVER_LOAD_IDLE;   // consumed; the next request may start
+	lua_pushinteger(L, token);
+	if (tex != NULL)
+		lua_pushinteger(L, (uint32_t)tex);
+	else
+		lua_pushnil(L);
+	return 2;
+}
 
 static int imgThread(void* data)
 {
@@ -617,6 +736,8 @@ static const luaL_Reg Graphics_functions[] = {
     {"freeImage",           			lua_free},
 	{"getLoadState",            lua_getloadstate},
   	{"getLoadData",     	     lua_getloaddata},
+	{"coverLoadBegin",          lua_coverloadbegin},
+	{"coverLoadPoll",           lua_coverloadpoll},
   {0, 0}
 };
 
