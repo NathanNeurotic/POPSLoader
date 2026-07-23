@@ -1183,7 +1183,50 @@ t30 = E('''function()
   if stale_freed ~= 1 then return false, "a stale texture was not freed, freed="..stale_freed end
   return true
 end''')()
-check("T30 EXP49 cover loads are async; render path never blocks", t30)
+check("T30 EXP49 cover loads are async; render path never blocks", t30)
+
+# T35 EXP54: the FULL no-blocking-IO invariant for a list navigation. T30 pinned that
+# the COVER load is async; that was not enough -- EXP53 shipped with async covers and
+# the list still froze solid (screen static, scrolling text stopped) because the game
+# DETAILS .txt read was still synchronous on the render thread, 1-2 slow opens per
+# newly selected title into the same large ART/ folder. Four builds missed it because
+# every one of them only looked at the cover loader.
+#
+# So assert the invariant that actually matters: selecting a game performs NO blocking
+# file read at all -- no image open, no text open. Covers go to the worker; the .txt
+# rides a cover that already loaded (see CoverCache:Pump), so a game with no art costs
+# nothing.
+t35 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  local real_load, real_open = Graphics.loadImage, System.openFile
+  local real_begin, real_poll = Graphics.coverLoadBegin, Graphics.coverLoadPoll
+  local img_opens, txt_opens = 0, 0
+  Graphics.loadImage = function(p) img_opens = img_opens + 1; return 1 end
+  System.openFile = function(p, m) txt_opens = txt_opens + 1; return -1 end
+  Graphics.coverLoadBegin = function(path, token) return true end
+  Graphics.coverLoadPoll = function() return nil end
+  local saved_details = PLDR.SHOW_DETAILS
+  PLDR.SHOW_DETAILS = true          -- the setting that used to make it worse
+  cc:Clear()
+  cc:UpdateSelection("mass0:/POPS/GameA.VCD")
+  cc.last_key = nil
+  cc:UpdateSelection("mass0:/POPS/GameB.VCD")
+  cc.last_key = nil
+  cc:UpdateSelection("mass0:/POPS/GameC.VCD")
+  PLDR.SHOW_DETAILS = saved_details
+  Graphics.loadImage, System.openFile = real_load, real_open
+  Graphics.coverLoadBegin, Graphics.coverLoadPoll = real_begin, real_poll
+  cc:Clear()
+  if img_opens ~= 0 then
+    return false, "render path opened an IMAGE "..img_opens.." time(s) -- must be async"
+  end
+  if txt_opens ~= 0 then
+    return false, "render path opened a details .txt "..txt_opens.." time(s) -- this is the EXP53 freeze"
+  end
+  return true
+end''')()
+check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an

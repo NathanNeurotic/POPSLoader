@@ -2,11 +2,55 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP53**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP54**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** `POPSLOADER.ELF` in this build is **1,324,548 bytes**. EXP51, the build that would not boot, was 1,325,380. If the size on your card matches EXP51's, the file did not get replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP54: found the actual thing that was freezing the list
+
+**EXP53 moved cover loading into the background and the list still froze. This is why.**
+
+There were **two** things reading the card while you navigated, and I only moved one of them.
+The second was the per-game description file (the `.txt` that goes with a cover). It was still
+being read on the drawing thread, once or twice for every new title, in the same big `ART`
+folder -- and looking for a file that is not there is the slow case. That is the freeze.
+
+Your report is what pinned it: the screen was **completely static, even long titles stopped
+scrolling**. That means drawing itself was stopped, not just input -- so something was still
+blocking on that thread after the covers were moved off it. And it happened only on MX4SIO and
+USB, the two devices with a big `ART` folder, never on the internal drive, APA or SMB.
+
+**What changed.** The description file is no longer read while you navigate. It is now read
+only *after* a cover has actually loaded -- at which point that folder entry is already in hand
+and the read is cheap. A game with no cover never pays for it at all, so a card with no art
+(which is your case) now does **zero** card reads per title instead of two slow ones.
+
+**Nothing was added to do this.** It is one read removed from the drawing path.
+
+**A guard against this class of bug.** Four builds in a row missed this because every one of
+them only looked at the cover loader. There is now an automatic check that selecting a game
+performs **no** blocking card read of any kind -- not an image, not a text file. It was
+verified to fail against EXP53 (it caught three reads) and pass here, so this cannot silently
+come back.
+
+**What to test on EXP54:**
+- **MX4SIO and USB with cover art ON.** First page entry and moving between titles should no
+  longer freeze. This is the whole point.
+- If you have *Game details* switched on, try it both ways.
+- Drop in one correctly named cover (`<game name>_COV.png` in the device's top-level `ART/`)
+  and confirm it still appears after you settle on that game.
+
+**Honest caveat:** this fully explains the freeze if *Settings, Game List, Game details* is
+switched **On**. If you have it **Off**, that code was already being skipped and something
+else is blocking -- in which case the next build stops guessing and reports where the frame
+actually stalls.
+
+**Still not fixed:** MX4SIO reporting "no MX4SIO detected" after a rescan until you unplug and
+replug, and DKWDRV's exit option. Both are next.
 
 ---
 

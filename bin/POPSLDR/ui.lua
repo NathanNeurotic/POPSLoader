@@ -435,38 +435,20 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
-  if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
-    -- Try the .txt next to each cover candidate in order (disc-marker-stripped name
-    -- first, exact name as back-compat fallback). One <name>.txt serves all discs;
-    -- first existing read wins.
-    for ci = 1, #candidates do
-      -- EXP34: covers are now "<name>_COV.png" (OPL) or legacy "<name>.png"; the
-      -- details sidecar stays "<name>.txt" -- strip the _COV suffix before swapping.
-      local desc_path = string.gsub(candidates[ci], "_COV%.png$", ".png")
-      desc_path = string.gsub(desc_path, "%.png$", ".txt")
-      -- EXP48: this read used to consult NOTHING -- not self.failed, not
-      -- dir_present -- so with Game details ON it was 1-2 uncached blocking opens
-      -- into the same ART/ folder on EVERY navigation INCLUDING REVISITS, and it
-      -- runs BEFORE the cover loop. Every previous attempt at the MX4SIO stutter
-      -- (EXP37/44/46) only touched GetOrLoad, so none of them could ever have
-      -- helped this path. Same two gates the covers get, no new I/O:
-      --   * skip when the folder is already known absent (nil = not yet known, so
-      --     we never force an opendir here ourselves)
-      --   * memoize a miss in self.failed (keyed by the .txt path, which cannot
-      --     collide with a .png key) so a revisit is free, exactly like covers
-      if desc_path ~= candidates[ci] and not self.failed[desc_path] then
-        local d = ReadGameDetailsText(desc_path)
-        if d ~= nil then
-          self.last_desc = d
-          self.last_desc_lines = nil  -- re-wrap lazily for the new description
-          break
-        end
-        -- Remember the miss. Without this the same absent .txt was re-opened every
-        -- single time you landed on the game again, forever.
-        self.failed[desc_path] = true
-      end
-    end
-  end
+  -- EXP54: the details .txt is NO LONGER read here. This was the last blocking card
+  -- read left on the RENDER thread, and it is why EXP53 changed nothing: EXP49/53
+  -- moved the COVER off the thread but left this one on it, so the frame still
+  -- stalled on a slow miss into the same big ART/ folder -- 1-2 opens per newly
+  -- selected title. Confirmed by the field report: totally static screen, scrolling
+  -- text stopped (render blocked, not just input), on exactly the two devices with a
+  -- large ART/ folder (MX4SIO, USB) and never on ATA/APA/SMB.
+  --
+  -- It now rides the cover: the .txt is only read once a cover has actually LOADED
+  -- (see Pump), which means the file is known to exist in that folder and the read is
+  -- a cheap hit rather than a full-directory miss. If a game has no cover, its .txt
+  -- is not read at all -- so a card with no art (the reported case) does ZERO reads
+  -- per navigation instead of two slow ones.
+  self.pending_desc = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and candidates or nil
   -- HDD/PFS quirk: BuildCoverCandidates' HDD branch only returns candidates the
   -- partition resolver EXISTENCE-CONFIRMED, so with no cover .png the list is
   -- EMPTY -- which used to also skip the .txt (a Game.txt without a Game.png
@@ -586,6 +568,22 @@ function CoverCache:Pump()
       table.insert(self.order, p.candidates[p.idx])
       self:EvictIfNeeded()
       self.last_img = ptr
+      -- EXP54: the cover for THIS path just loaded, so its folder entry is warm and
+      -- the sibling .txt is a cheap hit if it exists. This is the only place the
+      -- details sidecar is read now; a game with no cover never pays for it.
+      if self.pending_desc ~= nil and self.last_desc == nil then
+        local dp = string.gsub(p.candidates[p.idx], "_COV%.png$", ".png")
+        dp = string.gsub(dp, "%.png$", ".txt")
+        if dp ~= p.candidates[p.idx] and not self.failed[dp] then
+          local d = ReadGameDetailsText(dp)
+          if d ~= nil then
+            self.last_desc = d
+            self.last_desc_lines = nil
+          else
+            self.failed[dp] = true
+          end
+        end
+      end
     end
     self.pending = nil
     return
