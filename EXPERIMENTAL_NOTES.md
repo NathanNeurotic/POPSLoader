@@ -4,7 +4,7 @@
 
 **How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP58**. The check is simple: a version ending in **-EXP58** = this build; **-EXP57** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP54, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP58, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
