@@ -1226,7 +1226,50 @@ t35 = E('''function()
   end
   return true
 end''')()
-check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
+check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
+
+# T36 EXP55: devices resolve by the SDK's TYPED name (mx4sio0:/ ata0:/ usb0:/), not by
+# a mass slot. fs_driver_resolve_volume's typed branch matches the MOUNTED device's
+# bd->path, so mx4sio0: can only ever be an MX4SIO volume; the legacy "mass" branch
+# returns the requested unit verbatim over indices handed out in raw connection order,
+# which is why the MX4SIO page could list the ATA drive. Assert (a) the typed name is
+# used when it exists, (b) the legacy mass walk is then SKIPPED entirely -- no devctl
+# per slot -- and (c) it still falls back when no typed device is present, so a card on
+# an older SDK is not stranded.
+t36 = E('''function()
+  local real_dfe, real_drv = doesFolderExist, PLDR.GetMassMountDriver
+  System.initMX4SIO = function() return true end
+  local devctl_calls = 0
+  PLDR.GetMassMountDriver = function(root) devctl_calls = devctl_calls + 1; return "ata" end
+  -- typed device present; mass slots ALSO present and backed by ATA (the bug setup)
+  doesFolderExist = function(p)
+    if p == "mx4sio0:/" then return true end
+    if p == "mass:/" or p == "mass0:/" or p == "mass1:/" then return true end
+    return false
+  end
+  local root, status = PLDR.GetMX4SIOMassRootNow()
+  local typed_devctls = devctl_calls
+  -- no typed device -> must still fall back to the legacy walk
+  doesFolderExist = function(p)
+    if p == "mass:/" or p == "mass0:/" then return true end
+    return false
+  end
+  PLDR.GetMassMountDriver = function(root) devctl_calls = devctl_calls + 1; return "sdc" end
+  local fb_root = PLDR.GetMX4SIOMassRootNow()
+  doesFolderExist, PLDR.GetMassMountDriver = real_dfe, real_drv
+  if root ~= "mx4sio0:/" then
+    return false, "expected the typed device mx4sio0:/, got "..tostring(root)
+  end
+  if status ~= "ready" then return false, "typed device should be ready, got "..tostring(status) end
+  if typed_devctls ~= 0 then
+    return false, "legacy mass walk still ran ("..typed_devctls.." devctls) after a typed hit"
+  end
+  if fb_root ~= "mass:/" then
+    return false, "fallback to the mass walk broke, got "..tostring(fb_root)
+  end
+  return true
+end''')()
+check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an

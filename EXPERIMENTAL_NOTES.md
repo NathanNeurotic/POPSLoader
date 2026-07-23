@@ -2,11 +2,48 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP54**. The check is simple: a version ending in **-EXP54** = this build; **-EXP53** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP55**. The check is simple: a version ending in **-EXP55** = this build; **-EXP54** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP54, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP55: devices are now asked for BY NAME
+
+**This is the fix the maintainer asked for at the very start, and it is the structural one.**
+
+**What was wrong.** POPSLoader identified your drives by *slot number* -- "device 0", "device
+1" and so on. Those numbers are handed out in the order things happen to connect, and they are
+shared by every kind of drive. So "the MX4SIO is device 1" could quietly stop being true, and
+the MX4SIO page would faithfully list whatever was actually sitting in that slot -- your
+internal drive.
+
+**What changed.** The PlayStation 2 SDK gives every drive a proper name: **`mx4sio0:`**,
+**`ata0:`**, **`usb0:`**. Ask for `mx4sio0:` and the system can only ever hand back an MX4SIO
+card -- it checks the drive's own identity, not its position in a queue. POPSLoader now asks by
+name. The old slot-number search is kept only as a fallback for the case where a named device
+has not appeared yet, and it is skipped entirely the moment a named one answers.
+
+These names have been available in the build the whole time. We simply were not using them.
+
+**This should also fix cover art.** Art is looked for in the `ART` folder *of the drive the game
+came from*. When the page resolved to the wrong drive, we searched the wrong drive's `ART`
+folder -- which is exactly why `Soul Blade_COV.png` did not load despite being correctly named
+and correctly placed. `mx4sio0:/POPS/` and `mx4sio0:/ART/` are guaranteed to be the same card.
+
+**What to test on EXP55:**
+- **MX4SIO must list the MX4SIO card**, never the internal drive. Same for USB and the internal
+  exFAT drive -- each page shows its own device only.
+- **Cover art:** with a correctly named cover such as `Soul Blade_COV.png` in the card's `ART`
+  folder, it should now appear.
+- **Rescan (R1) and leaving/re-entering a page** should keep working rather than reporting the
+  device missing. If the earlier "no MX4SIO detected" was the slot search losing track, this
+  removes the cause; if it persists, it is something else and worth saying.
+- Nothing should vanish: if a device listed before, it must still list.
+
+**Still open:** the brief pause when pressing START on a game list, and DKWDRV's exit option.
 
 ---
 

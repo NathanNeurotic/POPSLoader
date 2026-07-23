@@ -6160,6 +6160,47 @@ local function BuildMassRootIdentity(mode, report)
     end
   end
 
+  -- EXP55: ASK THE SDK FOR THE DEVICE BY NAME. This is the maintainer's original
+  -- proposal from the start of this work, and it is the structural fix.
+  --
+  -- ps2sdk gives every BDM block device a `path` prefix and bdmfs_fatfs registers a
+  -- real iomanX device per unique value: ata0:, usb0:, mx4sio0:, ilink0:
+  --   ps2atad.c:358 -> "ata"      usbmass_bd/scsi.c:303 -> "usb"
+  --   mx4sio spi_sdcard_driver.c:65 -> "mx4sio"   IEEE1394_bd/scsi.c:321 -> "ilink"
+  -- and fs_driver_resolve_volume's typed branch (fs_driver.c:255-264) matches the
+  -- MOUNTED bd's path, so mx4sio0: can only ever be an MX4SIO volume. The legacy
+  -- "mass" branch (fs_driver.c:249-253) returns the requested unit VERBATIM with no
+  -- mounted-device check, over indices handed out first-free across ALL device types
+  -- (fs_driver.c:131-134, :277) -- i.e. raw connection order. Every "MX4SIO page shows
+  -- the ATA drive" report traces to that. Typed names make it IMPOSSIBLE rather than
+  -- unlikely, and they are already live in the shipped ELF: the pinned CI image
+  -- ps2dev:v2.0.0 contains both 6ac0d1da (bd->path) and 5d64b0eb (typed registration).
+  --
+  -- Also fixes cover art by construction: the art folder is derived from the game
+  -- root's device prefix, so resolving to the wrong disk meant reading the wrong
+  -- ART/ folder. mx4sio0:/POPS/ and mx4sio0:/ART/ are guaranteed the same card.
+  --
+  -- The legacy mass walk below stays as a FALLBACK only: a typed device does not
+  -- exist in iomanX until the first device of its type has connected (fs_ensure_typed
+  -- _driver runs from connect_bd), so an absent one is "not here yet", never fatal.
+  -- Unit numbers are a per-path ORDINAL recomputed on every call, so they are
+  -- resolved fresh here and never persisted.
+  local TYPED_PREFIX = { mx4sio = "mx4sio", ata = "ata", usb = "usb" }
+  local typed = TYPED_PREFIX[mode]
+  local typed_found = false
+  if typed ~= nil then
+    for unit = 0, 3 do
+      local troot = typed..tostring(unit)..":/"
+      step("checking "..troot)
+      local ok_t, present = pcall(doesFolderExist, troot)
+      if ok_t and present == true then
+        identity.drivers[troot] = typed.." (typed)"
+        record(troot, mode)
+        typed_found = true
+      end
+    end
+  end
+
   -- EXP41: `parId` IS NOT A MASS UNIT. EXP36 mapped each enumerated BDM device to
   -- a slot with `mass<parId>:/`, on the stated premise that "each connected block
   -- device already carries its own mass unit (parId)". That premise is false, and
@@ -6195,7 +6236,9 @@ local function BuildMassRootIdentity(mode, report)
   -- actually mounted (a handful), never for the flaky/absent ones that caused the
   -- stall. The BDM enumeration is kept, but only to record what the block layer
   -- believes exists, for the diagnostic -- never to derive a slot number.
-  for slot = 0, 9 do
+  -- Legacy fallback ONLY. Skipped entirely once a typed device answered, so a
+  -- correctly-registered card never touches the connection-ordered mass namespace.
+  for slot = 0, (typed_found and -1 or 9) do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
     -- Painted before the dopen: a slot backed by a wedged drive hangs HERE, and
