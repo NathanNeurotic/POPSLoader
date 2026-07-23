@@ -6030,7 +6030,11 @@ end
 -- resident, mx4sio_bd loads on first engagement (quick, detection async on
 -- its own IOP thread), and ata loads only on its worker (do_boot_init kicks
 -- it for exFAT installs; page entry is a bounded status poll, never a load).
-local function EnsureMassBackendsReady(mode)
+-- `step(msg)` is the EXP43 freeze channel, now threaded in so the ATA bring-up can
+-- narrate itself. sAGA's EXP55 screen sat on "exFAT step 1: starting the drive" and
+-- timed out, which told us WHERE but not WHY -- one message covered the whole poll.
+local function EnsureMassBackendsReady(mode, step)
+  if type(step) ~= "function" then step = function() end end
   if mode == "mx4sio" then
     -- CASCADE BOUND: the ata worker loads its modules through the SAME IOP
     -- module loader a page-entry initMX4SIO uses. If that load is in flight
@@ -6084,20 +6088,44 @@ local function EnsureMassBackendsReady(mode)
        or type(S.initATAStatus) ~= "function" then
       return false
     end
+    -- EXP57: report the IOP memory headroom BEFORE the load. If the storage layer
+    -- cannot get its buffer this is where a 4TB drive dies, and it is OUR module
+    -- footprint at fault, not the drive. Cheap, and it is the leading unrefuted
+    -- theory now that phantom-slave and the 48-bit capacity clamp are both dead.
+    local heap = "?"
+    if type(S.iopHeapProbe) == "function" then
+      local ok_h, h = pcall(S.iopHeapProbe)
+      if ok_h and type(h) == "table" then
+        heap = h.can_alloc_128k and "ok" or ("NO("..tostring(h.largest or "?")..")")
+      end
+    end
+    step("exFAT 1a: loading the driver [iop128k="..heap.."]")
     local st = -1
     pcall(function() st = S.initATAAsync() end)
+    step("exFAT 1b: driver returned "..tostring(st).." [iop128k="..heap.."]")
     -- st: -1 spawn-failed, 1 running, 2 done-ok (a done-fail re-spawns inside
     -- initATAAsync, so a bad early probe stays retryable -- RiptOPL's rule).
     if st == 2 then return true end
     if type(st) ~= "number" or st < 0 then return false end
+    local frames = 0
     for _ = 1, (10 * 60) do
       PaceScanFrame()
+      frames = frames + 1
+      -- Repaint once a second with the LIVE status code and elapsed time. A frozen
+      -- screen then shows the last second it reached, and a slow-but-working drive
+      -- is visibly different from a wedged one.
+      if (frames % 60) == 0 then
+        step("exFAT 1c: waiting, status "..tostring(st)..", "..tostring(frames / 60).."s")
+      end
       local ok2, s2 = pcall(S.initATAStatus)
       if ok2 and type(s2) == "number" then
         st = s2
         if st ~= 1 then break end
       end
     end
+    -- Final verdict on screen: the code it ended on and how long it took. 2 = ok,
+    -- 1 = still running at the budget, -1 = the worker never spawned.
+    step("exFAT 1d: gave up at status "..tostring(st).." after "..tostring(frames / 60).."s [iop128k="..heap.."]")
     return st == 2
   end
 
@@ -6127,7 +6155,7 @@ local function BuildMassRootIdentity(mode, report)
     if type(report) == "function" then pcall(report, msg) end
   end
   step("exFAT step 1: starting the drive")
-  local ready = EnsureMassBackendsReady(mode)
+  local ready = EnsureMassBackendsReady(mode, step)
 
   local identity = {
     usb = {},
@@ -7782,6 +7810,14 @@ end
 function PLDR.CleanupGameList()
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+  -- EXP57: clear the hidden map too. It used to survive here, so hidden state LEAKED
+  -- across scans and across devices: every fresh scan re-saved whatever was already in
+  -- PLDR.HIDDEN into that device's .gamecache. sAGA found the evidence -- an `H` line
+  -- for a game with no .hide file next to it. ApplyGameListCache already resets it
+  -- (PLDR.HIDDEN = {} before repopulating from the cache); the fresh-scan path never
+  -- did, and every scan calls through here first. A genuinely hidden game is re-found
+  -- from its .hide sidecar during the scan that follows, so nothing is lost.
+  PLDR.HIDDEN = {}
 end
 
 -- ============================================================================

@@ -557,7 +557,20 @@ function CoverCache:Pump()
     return
   end
   if p.started ~= true then
-    -- Earlier request was refused because the worker was mid-load; try again now.
+    -- EXP57: BOUNDED retry. This used to retry forever, so a request that could never
+    -- start left the loader pending permanently -- sAGA reported the "Loading ART..."
+    -- line stuck on screen, and after EXP56 removed that line the same state simply
+    -- went silent and covers stopped appearing for the rest of the session. The cause
+    -- is that coverLoadBegin creates a NEW EE thread per request (luagraphics.cpp:117,
+    -- OPL uses one long-lived worker instead), so a failed CreateThread refuses every
+    -- later call. Give up after ~1s and treat it as a miss: worst case one cover does
+    -- not appear, never a wedged loader. The proper fix is a single persistent worker.
+    p.retries = (p.retries or 0) + 1
+    if p.retries > 60 then
+      self.failed[p.candidates[p.idx]] = true
+      self.pending = nil
+      return
+    end
     local ok, accepted = pcall(Graphics.coverLoadBegin, p.candidates[p.idx], p.token)
     p.started = (ok and accepted == true)
     return

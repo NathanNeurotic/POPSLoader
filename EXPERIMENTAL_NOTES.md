@@ -2,11 +2,63 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP56**. The check is simple: a version ending in **-EXP56** = this build; **-EXP55** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP57**. The check is simple: a version ending in **-EXP57** = this build; **-EXP56** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP54, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP57: three fixes from testing (sAGA + maintainer)
+
+**1. The internal drive now explains itself properly (sAGA).**
+
+EXP55 got us as far as *"exFAT step 1: starting the drive"* and then a timeout. That told us
+WHERE it stops -- the driver start-up, not the game scan -- but not why. Step 1 was still one
+message covering the whole thing.
+
+It now reports, on screen, as it goes:
+- **1a** -- about to load the driver, and whether the console has the memory the storage
+  layer needs (`iop128k=ok` or `NO`)
+- **1b** -- what the driver returned
+- **1c** -- a live countdown while waiting, with the current status code and seconds elapsed
+- **1d** -- the final code it gave up on, and how long it took
+
+So instead of "it timed out", the screen will say something like *"gave up at status 1 after
+10s, iop128k=NO"*. **sAGA: one boot, photograph whatever it ends on.** That should be enough
+to name the cause.
+
+Two theories are already dead and worth not chasing: the "phantom slave" fix from EXP40 did
+not help his drive, and the 4TB-capacity idea is refuted -- our driver handles capacity
+identically to the official SDK, so a large drive is not inherently the problem.
+
+**2. Cover loading could get stuck forever (sAGA).**
+
+sAGA saw *"Loading ART..."* freeze permanently when covers were on and his `_COV.png` files
+were not under `/ART`. A cover that cannot be found should give up in a moment. Instead, if a
+request failed to start it retried **forever**, so the loader stayed stuck -- and once that
+happened, no further covers would load for the rest of the session. EXP56 removed the message
+but not the cause, so it simply became invisible. It now gives up after about a second and
+moves on.
+
+**3. Games could be marked hidden on the wrong device (sAGA).**
+
+sAGA opened his `.gamecache` and found a game recorded as hidden with **no `.hide` file next
+to it**. He was right that this made no sense. Clearing the game list did not clear the
+hidden-games list, so hidden marks carried over from one scan to the next -- and from one
+device to another -- and were then written into that device's cache. Fixed; a genuinely
+hidden game is still found from its own `.hide` file during the scan.
+
+**If you have used the game-list cache, delete `.gamecache` from your devices once** so any
+already-written wrong entries go away.
+
+**What to test on EXP57:**
+- **sAGA:** internal exFAT page, one boot, photograph the final step-1 message.
+- Covers: with art present they load; with art missing the box just stays empty and browsing
+  stays smooth. Nothing should stick.
+- Hide a game with L3, then visit another device and come back: only the game you hid should
+  be marked, and only on its own device.
 
 ---
 

@@ -1307,7 +1307,27 @@ t37 = E('''function()
   if bad ~= nil then return false, bad end
   return true
 end''')()
-check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
+check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
+
+# T38 EXP57: hidden state must NOT leak between scans or devices. CleanupGameList
+# cleared PLDR.GAMES but left PLDR.HIDDEN standing, and every fresh scan calls through
+# it before rebuilding -- so a game hidden on one device was still in the map when the
+# NEXT device's list was saved, and SaveGameListCache wrote an `H` line for it into that
+# device's .gamecache. sAGA found it: an H entry for a game with no .hide sidecar.
+# ApplyGameListCache always reset the map; only the fresh-scan path did not.
+t38 = E('''function()
+  PLDR.HIDDEN = { ["usb0:/POPS/|Some Other Game.VCD"] = true }
+  PLDR.GAMES = { "a", "b" }
+  PLDR.CleanupGameList()
+  local leaked = nil
+  for k in pairs(PLDR.HIDDEN) do leaked = k break end
+  if leaked ~= nil then
+    return false, "hidden state survived CleanupGameList: "..tostring(leaked)
+  end
+  if #PLDR.GAMES ~= 0 then return false, "games not cleared" end
+  return true
+end''')()
+check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an
