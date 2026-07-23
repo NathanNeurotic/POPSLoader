@@ -89,8 +89,29 @@ static int lua_coverloadbegin(lua_State *L)
 	const char *path = luaL_checkstring(L, 1);
 	int token = (int)luaL_checkinteger(L, 2);
 
+	// EXP51: self-heal an UNCONSUMED result. Pump() only runs on the game-list scene,
+	// so leaving the page (START -> Settings, a launch, a back-out) while a load is in
+	// flight leaves the slot in DONE with nobody to poll it. Without this the slot
+	// stays DONE forever and every future request is refused -- covers silently stop
+	// working for the rest of the session. Drop the orphaned texture and carry on.
+	if (coverLoadState == COVER_LOAD_DONE) {
+		if (coverLoadResult != NULL) {
+			UnloadTexture(coverLoadResult);
+			if (coverLoadResult->Mem != NULL) {
+				free(coverLoadResult->Mem);
+				coverLoadResult->Mem = NULL;
+			}
+			if (coverLoadResult->Clut != NULL) {
+				free(coverLoadResult->Clut);
+				coverLoadResult->Clut = NULL;
+			}
+			free(coverLoadResult);
+			coverLoadResult = NULL;
+		}
+		coverLoadState = COVER_LOAD_IDLE;
+	}
 	if (coverLoadState != COVER_LOAD_IDLE) {
-		lua_pushboolean(L, 0);   // one in flight at a time; caller retries next frame
+		lua_pushboolean(L, 0);   // genuinely still working; caller retries next frame
 		return 1;
 	}
 
