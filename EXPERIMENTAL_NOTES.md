@@ -2,11 +2,51 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP58**. The check is simple: a version ending in **-EXP58** = this build; **-EXP57** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP59**. The check is simple: a version ending in **-EXP59** = this build; **-EXP58** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP58, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP59, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP59: put the memory readout where sAGA can actually see it
+
+**sAGA's EXP57 photo did its job.** The screen read:
+
+```
+exFAT 1c: waiting, status 1, 10.0s
+```
+
+That is a real result, not another dead end. **Status 1 means the driver is still
+running** -- for the whole ten seconds, never finishing. So his drive does not fail
+or get rejected; the start-up simply never returns. That is much narrower than "the
+page hangs", and it rules out everything after start-up.
+
+**What EXP59 changes:** one line. The memory readout (`iop128k=ok` or `NO`) was only
+printed on the first and last messages, and his screen ends on the middle one -- so
+the single most useful number scrolled past unseen. It is now on the waiting line
+too, which is the line that stays on screen.
+
+**sAGA, same test as before, one boot.** Open the internal exFAT page and photograph
+the screen. It will now read something like:
+
+```
+exFAT 1c: status 1, 10.0s [iop128k=NO(...)]
+```
+
+If it says **`iop128k=NO`**, we have the cause: the console has run out of the
+specific memory the storage layer needs, and that is **our** fault for loading too
+much, not your drive's. If it says **`ok`**, that theory dies too and the problem is
+inside the driver itself.
+
+**One more thing worth knowing, and it costs you nothing to check:** the message says
+"open this page again in a moment" for a reason -- the driver keeps working in the
+background after the page gives up. **Does entering the page a second time work?**
+If yes, the drive is merely slow and we can wait longer for it. If no, it is properly
+stuck. Those need completely different fixes, and that answer is free.
+
+Nothing else changed in this build.
 
 ---
 

@@ -6127,7 +6127,10 @@ local function EnsureMassBackendsReady(mode, step)
       -- screen then shows the last second it reached, and a slow-but-working drive
       -- is visibly different from a wedged one.
       if (frames % 60) == 0 then
-        step("exFAT 1c: waiting, status "..tostring(st)..", "..tostring(frames / 60).."s")
+        -- EXP59: carry iop128k on THIS line too. sAGA's EXP57 photo ended on 1c, so the
+        -- memory readout (only on 1a/1d) flashed past unseen -- and it is the leading
+        -- unrefuted theory. The line the screen freezes on must carry the evidence.
+        step("exFAT 1c: status "..tostring(st)..", "..tostring(frames / 60).."s [iop128k="..heap.."]")
       end
       local ok2, s2 = pcall(S.initATAStatus)
       if ok2 and type(s2) == "number" then
