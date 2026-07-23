@@ -2,9 +2,40 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP48**. The check is simple: a version ending in **-EXP48** = this build; **-EXP47** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP52**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+
+**File size check:** `POPSLOADER.ELF` in this build is **1,324,548 bytes**. EXP51, the build that would not boot, was 1,325,380. If the size on your card matches EXP51's, the file did not get replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## EXP52: EXP49 and EXP51 are removed -- EXP51 would not boot
+
+**EXP51 black-screened on boot. Both it and EXP49 are completely gone from this build.**
+
+EXP49 introduced background cover loading, which is the right fix for the MX4SIO stutter and
+is how OPL stays instant with a shared `ART` folder. EXP51 added a small follow-up to it.
+EXP51 does not boot, so both are out until the fault is found and fixed properly.
+
+**EXP52 is EXP48's code exactly** -- every source file is byte-identical; only the version
+stamp differs. EXP48 is a build that boots.
+
+**What this means for you right now:**
+- Booting is restored.
+- The **MX4SIO cover stutter is back**, because the fix for it was in EXP49. If you want a
+  smooth list today, set *Settings, Game List, Cover art* to **Off**.
+- Everything else still works: the MX4SIO page fix (EXP41), the cover-art setting (EXP42),
+  the exFAT freeze messages (EXP43), and the game-details fix (EXP48).
+
+**The goal has not changed:** covers in a shared `ART` folder, loading instantly, exactly as
+OPL does it. That needs the background loading from EXP49, done correctly. Two faults in that
+code have already been identified: the worker's memory was reserved as a fixed block that
+grows the program image, and its priority was set higher than the main program rather than
+lower. Both are fixable without changing the approach.
+
+**What to test on EXP52:** only that it boots and behaves like EXP48. That confirms the fault
+was in EXP49/EXP51 and nothing older, which is what decides where to look next.
 
 ---
 
