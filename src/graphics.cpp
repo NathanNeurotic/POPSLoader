@@ -102,15 +102,24 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	if (bit_depth == 16) png_set_strip_16(png_ptr);
 	if (color_type == PNG_COLOR_TYPE_GRAY || bit_depth < 4) png_set_expand(png_ptr);
 	if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS)) png_set_tRNS_to_alpha(png_ptr);
+	/* Promote grayscale (and grayscale+alpha) to RGB(A) -- the same fix OPL ported
+	   from wOPL for its issue #225 ("gray PNGs were rejected"). Without this, 8-bit
+	   GRAY/GRAY_ALPHA covers survived png_set_expand (which only ups bit depth) and
+	   fell into the unsupported-color-type reject below, so grayscale cover art
+	   (common from scrapers/batch optimizers) silently never appeared. */
+	if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png_ptr);
 
 	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
 	png_read_update_info(png_ptr, info_ptr);
 
-	// Reject zero/oversized dimensions before allocating from them (matches the
-	// JPEG dimension cap). png_uint_32 width/height are attacker-controlled IHDR
-	// fields; an absurd value would drive a huge alloc and an int-cast row loop.
-	// (Codex F3 2026-06-20)
-	if (width == 0 || height == 0 || width > 8192u || height > 8192u) {
+	// Reject zero/oversized dimensions before allocating from them. OPL's rule
+	// (textures.c texSizeValidate): each dimension <= 1024 AND the decoded buffer
+	// no larger than 720*512*4 bytes (CT32 worst case here, since the PSM is not
+	// chosen yet). Beyond rejecting absurd attacker-controlled IHDR fields, this
+	// keeps covers inside what free VRAM can hold -- a too-large texture makes
+	// gsKit's TexManager eviction loop never terminate (UI freeze at draw time).
+	if (width == 0 || height == 0 || width > 1024u || height > 1024u ||
+		gsKit_texture_size_ee((int)width, (int)height, GS_PSM_CT32) > 720 * 512 * 4) {
 		DPRINTF("PNG: rejecting out-of-range dimensions %ux%u\n", (unsigned)width, (unsigned)height);
 		longjmp(png_jmpbuf(png_ptr), 1);
 	}
@@ -171,7 +180,11 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		struct pixel3 *Pixels = (struct pixel3 *) tex->Mem;
 		for (i = 0; i < tex->Height; i++) {
 			for (j = 0; j < tex->Width; j++) {
-				memcpy(&Pixels[k++], &row_pointers[i][3 * j], 3);
+				/* Stride is 4, not 3: png_set_filler above pads every 8-bit RGB
+				   row to 4 bytes/px (color_type still reports RGB). Reading at
+				   3*j skewed every channel after pixel 0 -- OPL's texReadPixels24Row
+				   reads 3 of each 4 filler-padded bytes, same as this. */
+				memcpy(&Pixels[k++], &row_pointers[i][4 * j], 3);
 			}
 		}
 

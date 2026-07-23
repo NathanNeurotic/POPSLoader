@@ -373,8 +373,9 @@ end
 -- backed by self.dir_listing) was REMOVED -- it ran System.listDirectory
 -- (opendir/readdir) on the cover folder, which on the MX4SIO bdmfs_fatfs backend
 -- correlated with a per-navigation lag ending in "not enough memory" (2026-07-22).
--- Cover existence is a single bounded Graphics.loadImage (fopen) again; misses are
--- memoized in self.failed. See CoverCache:GetOrLoad.
+-- Cover existence is a single bounded Graphics.loadImage (fopen) again; genuine
+-- absences are memoized in self.failed (decode failures stay retryable -- EXP59).
+-- See CoverCache:MemoizeMiss / :GetOrLoad.
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
@@ -386,6 +387,18 @@ function CoverCache:EvictIfNeeded()
       self.entries[evict_key] = nil
     end
   end
+end
+-- EXP59 (OPL parity): only GENUINE ABSENCE is memoized. OPL distinguishes
+-- ERR_BAD_FILE (memoized) from decode/IO errors (retried next visit); we used
+-- to memoize ANY nil, so one transient failure (a busy cover worker, EE-RAM
+-- pressure mid-decode, an IOP RPC hiccup on slow media) became a cover that
+-- silently never appeared until R1. A present-but-undecodable file stays
+-- retryable; a truly absent file stays memoized (its re-probe is a full FAT
+-- dir-chain walk on SD-over-SIO2 / USB 1.1 -- that stall protection stands).
+function CoverCache:MemoizeMiss(path)
+  local ok, exists = pcall(doesFileExist, path)
+  if ok and exists == true then return end
+  self.failed[path] = true
 end
 function CoverCache:GetOrLoad(path)
   if path == nil or path == "" then return nil end
@@ -413,7 +426,7 @@ function CoverCache:GetOrLoad(path)
   -- async worker is unavailable. The game list never reaches it.
   local img = Graphics.loadImage(path)
   if img == nil then
-    self.failed[path] = true
+    self:MemoizeMiss(path)
     return nil
   end
   if type(Graphics.setImageFilters) == "function" then
@@ -595,7 +608,9 @@ function CoverCache:Pump()
     -- not appear, never a wedged loader. The proper fix is a single persistent worker.
     p.retries = (p.retries or 0) + 1
     if p.retries > 60 then
-      self.failed[p.candidates[p.idx]] = true
+      -- Give up on THIS request, but do NOT memoize: a worker that never
+      -- accepted is transient by definition (thread creation / busy worker),
+      -- so the next selection visit must be allowed to re-try (EXP59).
       self.pending = nil
       return
     end
@@ -639,8 +654,9 @@ function CoverCache:Pump()
     self.pending = nil
     return
   end
-  -- Miss: remember it so this path is never probed again, then try the next candidate.
-  self.failed[p.candidates[p.idx]] = true
+  -- Miss: memoize ONLY when the file is genuinely absent (EXP59, OPL parity --
+  -- a decode failure on a present file stays retryable), then try the next candidate.
+  self:MemoizeMiss(p.candidates[p.idx])
   if stale then self.pending = nil; return end
   local nxt = nil
   for i = p.idx + 1, #p.candidates do
