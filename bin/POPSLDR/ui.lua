@@ -469,13 +469,28 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       -- details sidecar stays "<name>.txt" -- strip the _COV suffix before swapping.
       local desc_path = string.gsub(candidates[ci], "_COV%.png$", ".png")
       desc_path = string.gsub(desc_path, "%.png$", ".txt")
-      if desc_path ~= candidates[ci] then
+      -- EXP48: this read used to consult NOTHING -- not self.failed, not
+      -- dir_present -- so with Game details ON it was 1-2 uncached blocking opens
+      -- into the same ART/ folder on EVERY navigation INCLUDING REVISITS, and it
+      -- runs BEFORE the cover loop. Every previous attempt at the MX4SIO stutter
+      -- (EXP37/44/46) only touched GetOrLoad, so none of them could ever have
+      -- helped this path. Same two gates the covers get, no new I/O:
+      --   * skip when the folder is already known absent (nil = not yet known, so
+      --     we never force an opendir here ourselves)
+      --   * memoize a miss in self.failed (keyed by the .txt path, which cannot
+      --     collide with a .png key) so a revisit is free, exactly like covers
+      local desc_dir = string.match(desc_path, "^(.*/)[^/]+$")
+      local desc_dir_absent = (desc_dir ~= nil and self.dir_present[desc_dir] == false)
+      if desc_path ~= candidates[ci] and not self.failed[desc_path] and not desc_dir_absent then
         local d = ReadGameDetailsText(desc_path)
         if d ~= nil then
           self.last_desc = d
           self.last_desc_lines = nil  -- re-wrap lazily for the new description
           break
         end
+        -- Remember the miss. Without this the same absent .txt was re-opened every
+        -- single time you landed on the game again, forever.
+        self.failed[desc_path] = true
       end
     end
   end

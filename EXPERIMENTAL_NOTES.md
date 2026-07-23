@@ -2,9 +2,36 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP47**. The check is simple: a version ending in **-EXP47** = this build; **-EXP46** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP48**. The check is simple: a version ending in **-EXP48** = this build; **-EXP47** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP48: one more thing was reading your card on every single move
+
+**If you have *Game details* turned ON, read this.** Separate from the cover picture, the
+loader also looks for a `.txt` description file next to it. That lookup was checking
+**nothing** first -- it did not remember folders it already knew were missing, and it did not
+remember files it had already failed to find. So it went to the card **every time you landed
+on a game, including games you had already visited**, which the cover lookup never did.
+
+It also ran *before* the cover lookup, which is why none of the last three attempts touched
+it: they all only changed the cover code.
+
+It now uses the same two rules the covers use: skip a folder already known to be missing, and
+remember a file that was not there so it is never asked for twice. **This adds no new reading
+of your card, it only removes reading.**
+
+**If you have *Game details* set to Off** (the default), this changes nothing for you, because
+that whole path was already skipped.
+
+**This still does not fix the main stutter.** That fix is the background-loading change
+described under EXP47 below, and it is being built properly rather than rushed.
+
+**What to test on EXP48:** if you use *Game details*, moving around the list should be
+noticeably less heavy, especially going back to games you already looked at. If you do not
+use it, just confirm nothing got worse.
 
 ---
 
