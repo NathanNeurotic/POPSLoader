@@ -318,15 +318,18 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
 
-# ata_bd.irx is pulled from $PS2SDK via the generic %.irx rule + vpath (the
-# same source as bdm/bdmfs_fatfs/usbmass_bd/mx4sio_bd), per El_isra's fix for
-# the 4TB-GPT ATA issue -- the EXP40 vendored build from iop/ata_bd_fast is no
-# longer embedded. The iop/ata_bd_fast source and its build rule below are
-# kept but unused; iop/embed/ has no ata_bd.irx, so the SDK copy always wins.
+# ata_bd.irx is PINNED to the repository copy iop/embed/ata_bd.irx -- R3Z v4.70's
+# ata_bd with the "atad: fix device probing" fix (SHA-256 16c5d9f0...f742f4,
+# pinned since e69d9ba/EXP17). This exact binary was embedded when internal
+# exFAT on a 4TB GPT drive was HW-confirmed (2026-07-20 storage wave, 806b789);
+# the pinned ps2dev:v2.0.0 SDK snapshot predates the probing fix, so the SDK
+# copy must NOT win here. CI validates the checksum on every build (see the
+# workflows) so the pin cannot silently drift. The iop/ata_bd_fast vendored
+# source and its build rule below are kept but unused.
 iop/ata_bd_fast/ata_bd.irx: iop/ata_bd_fast
 	$(MAKE) -C $<
 
-$(EE_ASM_DIR)ata_bd.c: ata_bd.irx | $(EE_ASM_DIR)
+$(EE_ASM_DIR)ata_bd.c: iop/embed/ata_bd.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ata_bd_irx
 
 # mx4sio_bd.irx now resolves via the generic %.irx rule + vpath, i.e. from the
