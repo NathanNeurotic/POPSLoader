@@ -2,11 +2,54 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP55**. The check is simple: a version ending in **-EXP55** = this build; **-EXP54** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP56**. The check is simple: a version ending in **-EXP56** = this build; **-EXP55** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP54, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP56: cover art finally loads (and it was MX4SIO-only)
+
+**Three changes, all from the maintainer's testing.**
+
+**1. Cover art now loads.** The rule is, and always was:
+
+```
+device:/POPS/Soul Blade.VCD    ->    device:/ART/Soul Blade_COV.png
+```
+
+The code worked out the `device:` part with a rule that could not cope with a device whose
+**name contains a digit** -- and `mx4sio0:` is exactly that. It handled `mass0:`, `ata0:` and
+`usb0:` correctly, so nothing looked wrong until EXP55 started addressing drives by their
+proper names. From then on, on MX4SIO only, we searched `device:/POPS/ART/` instead of
+`device:/ART/`. A correctly named, correctly placed cover could never be found.
+
+That is why `Soul Blade_COV.png` did not load. Every device name is now handled, and there is
+an automatic check covering all of them so it cannot come back.
+
+APA/PFS is unchanged and remains the one exception: `__common/POPS/ART/<game>_COV.png`.
+
+**2. The "Loading art..." line is gone.** It was added when a fetch could stall the screen.
+Now that loading happens in the background it resolves fast enough that the text only
+flickered. Removed.
+
+**3. Hide UI Text now defaults ON** (graphics team). Existing installs are untouched -- your
+saved setting still wins; this only changes what a fresh install starts with. You can still
+switch it in *Settings, Display, Hide UI Text*.
+
+**What to test on EXP56:**
+- **Cover art on MX4SIO.** `Soul Blade_COV.png` in the card's top-level `ART` folder should
+  now appear. This is the main thing.
+- Covers on USB and the internal exFAT drive should be unaffected.
+- Each device page still lists its own device only (EXP55).
+- A fresh install starts with UI text hidden; an existing one keeps whatever you had.
+
+**Confirmed still broken, and next:** entering the **exFAT (ATA)** page and then going to the
+**APA** page reports the drive as not connected. Entering APA first works. The exFAT page
+takes ownership of the drive in a way the APA page cannot recover from. Also still open: the
+brief pause when pressing START on a game list, and DKWDRV's exit option.
 
 ---
 

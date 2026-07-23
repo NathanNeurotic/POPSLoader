@@ -5192,11 +5192,14 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
   PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
+  -- EXP56: Hide UI Text now defaults ON (graphics team). It is a DEFAULT-ON boolean,
+  -- so an absent HIDE_TEXT= line must mean ON -- see the parse site, which only
+  -- applies the sidecar value when the key is actually present.
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
-      UI.SetHideTextMode(false, false)
+      UI.SetHideTextMode(true, false)
     else
-      UI.HideTextMode = false
+      UI.HideTextMode = true
     end
   end
   -- Resolve actual settings source: prefer per-device sidecar
@@ -5445,11 +5448,16 @@ function PLDR.LoadSettingsNonFatal()
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(UI) == "table" then
+    -- Only override the default when the sidecar actually carries the key. The old
+    -- `== true` collapsed a MISSING key to false, which would have silently forced
+    -- the new default back off for every existing install.
     local hide_text_enabled = ParseBooleanSetting(hide_text)
-    if type(UI.SetHideTextMode) == "function" then
-      UI.SetHideTextMode(hide_text_enabled == true, false)
-    else
-      UI.HideTextMode = (hide_text_enabled == true)
+    if hide_text_enabled ~= nil then
+      if type(UI.SetHideTextMode) == "function" then
+        UI.SetHideTextMode(hide_text_enabled == true, false)
+      else
+        UI.HideTextMode = (hide_text_enabled == true)
+      end
     end
     if type(UI.SetCoverPreview) == "function" then
       UI.SetCoverPreview(PLDR.COVER_ART ~= false)

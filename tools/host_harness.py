@@ -1269,7 +1269,45 @@ t36 = E('''function()
   end
   return true
 end''')()
-check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
+check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
+
+# T37 EXP56: the cover-art layout, pinned to the maintainer's spec:
+#     device:/POPS/<game>.VCD   ->   device:/ART/<game>_COV.png
+# The old device-prefix pattern was `%a+%d*:` which CANNOT match a device whose NAME
+# contains a digit -- mx4sio0: is exactly that. It matched mass0:, ata0: and usb0:, so
+# the fault only surfaced once EXP55 began resolving devices by typed name, and only on
+# MX4SIO: the prefix fell through to the whole directory and we searched
+# device:/POPS/ART/ instead of device:/ART/. A correctly named, correctly placed cover
+# never loaded. Pin every device name, including the one with the embedded digit.
+t37 = E('''function()
+  local cc = UI.CoverCache
+  local real_begin, real_dfe = Graphics.coverLoadBegin, doesFolderExist
+  local asked = nil
+  Graphics.coverLoadBegin = function(path, token) asked = path; return true end
+  doesFolderExist = function(p) return true end
+  local cases = {
+    { "mass0:/POPS/Soul Blade.VCD",    "mass0:/ART/Soul Blade_COV.png" },
+    { "mass:/POPS/Soul Blade.VCD",     "mass:/ART/Soul Blade_COV.png" },
+    { "mx4sio0:/POPS/Soul Blade.VCD",  "mx4sio0:/ART/Soul Blade_COV.png" },
+    { "ata0:/POPS/Soul Blade.VCD",     "ata0:/ART/Soul Blade_COV.png" },
+    { "usb0:/POPS/Soul Blade.VCD",     "usb0:/ART/Soul Blade_COV.png" },
+  }
+  local bad = nil
+  for i = 1, #cases do
+    cc:Clear()
+    asked = nil
+    cc:UpdateSelection(cases[i][1])
+    if asked ~= cases[i][2] then
+      bad = cases[i][1].." -> "..tostring(asked).." (expected "..cases[i][2]..")"
+      break
+    end
+  end
+  Graphics.coverLoadBegin, doesFolderExist = real_begin, real_dfe
+  cc:Clear()
+  if bad ~= nil then return false, bad end
+  return true
+end''')()
+check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an

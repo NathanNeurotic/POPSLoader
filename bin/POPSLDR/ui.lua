@@ -240,7 +240,17 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
   local has_stripped = (stripped ~= "" and stripped ~= name)
-  local artdir = (string.match(dir, "^(%a+%d*:/)") or dir).."ART/"
+  -- EXP56: `%a+%d*:` cannot match a device whose NAME contains a digit, and mx4sio0:
+  -- is exactly that ("mx4sio" = letters, digit, letters). It matched mass0:, ata0:
+  -- and usb0: fine, so the fault only appeared once EXP55 started resolving devices
+  -- by typed name -- and only on MX4SIO. The prefix then fell through to the whole
+  -- directory, so we looked in <device>:/POPS/ART/ instead of <device>:/ART/, which
+  -- is why a correctly named, correctly placed Soul Blade_COV.png never loaded.
+  -- %w+ accepts letters and digits in any order and still stops at the colon.
+  -- Layout (maintainer): device:/POPS/<game>.VCD  ->  device:/ART/<game>_COV.png
+  -- APA/PFS is the one exception and is handled in the use_hdd_common_art branch
+  -- above: hdd0:__common/POPS/ART/<game>_COV.png
+  local artdir = (string.match(dir, "^(%w+:/)") or dir).."ART/"
   local out, seen = {}, {}
   local function add_variant(bn)
     local p = artdir..bn.."_COV.png"
@@ -3148,16 +3158,9 @@ UI = {
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
           end
-          -- EXP53: say WHY the box is empty while a cover is still being fetched. A
-          -- silent placeholder for a second reads as broken (maintainer: "users think
-          -- things break and then they don't wait"). Shown ONLY while a load is genuinely
-          -- in flight, so it never lingers on a game that simply has no art, and it hides
-          -- with the rest of the UI text under Hide-UI-Text.
-          if cover_enabled and cover_img == nil and UI.HideTextMode ~= true
-             and UI.CoverCache ~= nil and UI.CoverCache.pending ~= nil then
-            Font.ftPrint(SFONT, draw_x, draw_y + art_h + 8, 0, draw_w, 14,
-                         PLDR.L("Loading art..."), UI.CCOL.GREY)
-          end
+          -- (EXP56: the "Loading art..." line is REMOVED. It was added when a fetch
+          -- could stall the frame; with loads off the render thread it resolves fast
+          -- enough that the text only flickered. Maintainer: "unnecessary now.")
           -- EXP42: the "No cover. Looked for: <path>" caption is REMOVED (maintainer:
           -- "totally useless"). It shipped as a tester self-check aid back when cover
           -- paths were user-selectable; EXP35 hard-locked the location, so it only ever
@@ -4141,8 +4144,8 @@ UI = {
             UI.VideoStandardIndex = default_video_index
             UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end
-          if UI.HideTextMode then
-            UI.SetHideTextMode(false, false)
+          if UI.HideTextMode ~= true then   -- EXP56: default ON (graphics team)
+            UI.SetHideTextMode(true, false)
             UI.ProfileDirty = true
           end
           -- "ABC" = the same default a genuine fresh install gets (LoadSettingsNonFatal
