@@ -2,9 +2,9 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP54**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP54**. The check is simple: a version ending in **-EXP54** = this build; **-EXP53** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** `POPSLOADER.ELF` in this build is **1,324,548 bytes**. EXP51, the build that would not boot, was 1,325,380. If the size on your card matches EXP51's, the file did not get replaced.
+**File size check:** if *About* does not show EXP54, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
