@@ -1112,78 +1112,35 @@ t29 = lua.execute(r'''
 ''')
 check("T29 EXP41 slot identity comes from the slot's driver name, not parId", t29)
 
-# T30 EXP49: THE invariant that this whole saga turned on. The game-list cover path
-# must NEVER call a blocking image load -- the probe itself was always fine (one open
-# per game, same as OPL); doing it on the thread that draws is what froze the list for
-# ~0.3-0.6s per title on a large shared ART/ folder over SIO2. Four fixes (EXP37, 44,
-# 46, and the EXP34/35 pair before them) all attacked probe COUNT and none of them
-# moved it. If anyone reintroduces a synchronous load on this path, this fails loudly.
-#
-# Also pins the async contract: a finished load is adopted, a MISS is memoized so it is
-# never probed twice, and a result that arrives after the selection moved is DROPPED
-# and freed rather than shown on the wrong game.
-t30 = E('''function()
+# T30 EXP37: the hardware-confirmed MX4SIO fix. When the cover's ART FOLDER is
+# absent, GetOrLoad must skip the per-game file open entirely (that slow failed
+# open, repeated per navigation, is the lag that OOMs on MX4SIO). A present folder
+# still loads. Graphics.loadImage is a call-counter tripwire.
+t30 = lua.execute(r'''
   local cc = UI.CoverCache
   if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
-  if type(cc.Pump) ~= "function" then return false, "CoverCache:Pump missing -- async path gone" end
-  local real_load, real_free = Graphics.loadImage, Graphics.freeImage
-  local real_begin, real_poll = Graphics.coverLoadBegin, Graphics.coverLoadPoll
-  local sync_loads, freed = 0, 0
-  local begun, done = {}, nil
-  Graphics.loadImage = function(p) sync_loads = sync_loads + 1; return 1 end
-  Graphics.freeImage = function(t) freed = freed + 1 end
-  Graphics.coverLoadBegin = function(path, token)
-    begun[#begun + 1] = { path = path, token = token }
-    return true
-  end
-  Graphics.coverLoadPoll = function() return done and done[1] or nil, done and done[2] or nil end
-
+  local real_dfe = doesFolderExist
+  local real_load = Graphics.loadImage
+  local load_calls = 0
+  Graphics.loadImage = function(p) load_calls = load_calls + 1; return 1 end
   cc:Clear()
-  cc:UpdateSelection("mass0:/POPS/Game.VCD")
-  local loads_after_select, requested = sync_loads, #begun
-  -- a cover that lands for the CURRENT selection is adopted
-  done = { begun[1].token, 1234 }
-  cc:Pump()
-  local adopted = cc.last_img
-  done = nil
-
-  -- a MISS must be memoized: re-selecting the same game must not re-request it
-  cc:Clear(); begun = {}
-  cc:UpdateSelection("mass0:/POPS/Game.VCD")
-  local first_req = #begun
-  done = { begun[1].token, nil }
-  cc:Pump()          -- miss on candidate 1
-  while cc.pending ~= nil do done = { cc.pending.token, nil }; cc:Pump() end
-  local reqs_after_all_missed = #begun
-  cc.last_key = nil
-  cc:UpdateSelection("mass0:/POPS/Game.VCD")
-  local reqs_after_revisit = #begun
-
-  -- a result arriving after the selection moved is dropped, not shown
-  cc:Clear(); begun = {}; freed = 0
-  cc:UpdateSelection("mass0:/POPS/Game.VCD")
-  cc.last_key = "something-else-entirely"
-  done = { begun[1].token, 5678 }
-  cc:Pump()
-  local stale_img, stale_freed = cc.last_img, freed
-
-  Graphics.loadImage, Graphics.freeImage = real_load, real_free
-  Graphics.coverLoadBegin, Graphics.coverLoadPoll = real_begin, real_poll
+  doesFolderExist = function(d) return false end          -- folder absent
+  local a = cc:GetOrLoad("mass:/ART/Game_COV.png")
+  local calls_absent = load_calls
   cc:Clear()
-
-  if loads_after_select ~= 0 then
-    return false, "render path called a BLOCKING load "..loads_after_select.." time(s) -- the whole bug"
-  end
-  if requested ~= 1 then return false, "expected exactly 1 async request, got "..requested end
-  if adopted ~= 1234 then return false, "finished cover not adopted, last_img="..tostring(adopted) end
-  if reqs_after_revisit ~= reqs_after_all_missed then
-    return false, "a known-absent cover was re-requested on revisit ("..reqs_after_all_missed.." -> "..reqs_after_revisit..")"
-  end
-  if stale_img ~= nil then return false, "a stale result was shown on the wrong game" end
-  if stale_freed ~= 1 then return false, "a stale texture was not freed, freed="..stale_freed end
+  doesFolderExist = function(d) return true end           -- folder present
+  local b = cc:GetOrLoad("mass:/ART/Game2_COV.png")
+  local calls_present = load_calls
+  doesFolderExist = real_dfe
+  Graphics.loadImage = real_load
+  cc:Clear()
+  if a ~= nil then return false, "absent-folder cover must be nil, got "..tostring(a) end
+  if calls_absent ~= 0 then return false, "absent folder must NOT open any file, loadImage calls="..calls_absent end
+  if b == nil then return false, "present-folder cover should load" end
+  if calls_present ~= 1 then return false, "present folder should loadImage once, calls="..calls_present end
   return true
-end''')()
-check("T30 EXP49 cover loads are async; render path never blocks", t30)
+''')
+check("T30 EXP37 cover folder-gate: absent ART folder skips the per-game file open", t30)
 
 # T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
 # boot-load ATA -- it only controls which HDD pages the carousel shows. Only an

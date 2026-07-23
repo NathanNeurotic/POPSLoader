@@ -2,86 +2,9 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP51**. The check is simple: a version ending in **-EXP51** = this build; **-EXP50** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP48**. The check is simple: a version ending in **-EXP48** = this build; **-EXP47** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
-
----
-
-## New in EXP51: covers could stop appearing after leaving a game list
-
-### READ THIS FIRST: turn cover art back ON
-
-If you turned **Settings, Game List, Cover art** to **Off** while we were narrowing down the
-stutter, it is still Off and saved. **No covers will appear anywhere until you set it back to
-On.** That setting lives in the **Game List** section, between *Game details* and *Game list
-cache*. Testing the list with it Off tells us nothing, because Off was always smooth.
-
-### The bug fixed here
-
-EXP49 moved cover loading into the background. The part that finishes a load only runs while
-you are on a game list. So if you left the page while a cover was still loading -- pressing
-START for Settings, launching a game, backing out -- the finished result was left sitting
-there with nobody to collect it, and **every later cover request was refused**. Covers would
-quietly stop appearing for the rest of the session.
-
-It now cleans up an uncollected result by itself and carries on.
-
-### About that pause when you pressed START
-
-That one is real and expected, and it is not a bug we can remove entirely. The console can
-only talk to the memory-card slot about one thing at a time, so if a cover lookup is in
-progress, anything else that needs to read the card waits for it. Opening Settings does. The
-wait is now bounded by a single lookup instead of happening on every title, but on your
-shared `ART` folder a single lookup is still around half a second.
-
-### What to test on EXP51 -- this is the real test of the background loading
-
-**Cover art must be ON for any of this to mean anything.**
-- Browse MX4SIO with your shared `ART` folder. Moving between titles should stay smooth.
-- Games that have a cover: it should appear shortly after you stop on them.
-- Games with no cover: no pause.
-- **The one that matters for this build:** move onto a game, immediately press **START**, come
-  back out, then keep browsing. Covers must still appear. Before this fix they would have
-  stopped for good.
-- Move quickly through titles and stop: the cover shown must belong to the game you are on.
-
----
-
-## New in EXP49: cover art no longer makes the list wait
-
-**This is the actual fix for the MX4SIO stutter.**
-
-**What was wrong.** Looking for a cover was never the problem, and neither was how often we
-looked. The problem was **where** we looked from: the lookup ran on the same thread that
-draws the screen. So while the console was asking your card "is this picture here?", the
-picture on your TV was frozen. On your `ART` folder -- shared with OPL, thousands of files --
-a single question that comes back **no** takes around half a second, because the card has to
-be read to the end before it can answer. One of those per title is all it takes.
-
-**OPL has the same folder on the same hardware and does not stutter.** It actually looks up
-*more* pictures than we do. The only difference is that it does the looking in the
-background and draws a placeholder until the picture arrives. That is now what we do.
-
-**This made the code smaller, not bigger.** Three things existed only to work around the
-freezing, and all three are deleted: the check for whether the `ART` folder exists (added to
-dodge this bug, and useless once the folder does exist -- which yours does), and two separate
-guards that held the lookup back during screen transitions and while you were scrolling.
-None of them are needed once nothing is waiting.
-
-**What you should see:** moving through the list stays smooth no matter how slow the card is.
-Covers appear a moment after you settle on a game. Games with no cover cost you nothing at
-all any more -- the lookup still takes its half second, but it happens where nothing is
-waiting for it.
-
-**What to test on EXP49 (MX4SIO, cover art ON, your shared `ART` folder):**
-- Scroll and move between titles. It should stay smooth. This is the whole point.
-- Games that have a cover: it should appear shortly after you stop on them.
-- Games with no cover: no pause at all, just the plain empty case.
-- Move quickly through several titles and stop. The cover that appears must be the one for
-  the game you are actually on, never a leftover from a game you passed.
-- Watch for any crash or "not enough memory". Decoding now happens on a second thread, so
-  this is the one genuinely new risk in the build and worth a specific look.
 
 ---
 
