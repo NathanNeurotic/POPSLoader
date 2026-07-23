@@ -2,11 +2,53 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP52**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP53**. The check is simple: a version ending in **-EXP52** = this build; **-EXP51** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** `POPSLOADER.ELF` in this build is **1,324,548 bytes**. EXP51, the build that would not boot, was 1,325,380. If the size on your card matches EXP51's, the file did not get replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP53: background cover loading, second attempt
+
+**The art stutter is the target. This is the fix, rebuilt carefully after the last attempt would not boot.**
+
+**What was wrong.** Looking for a cover happens on the same thread that draws the screen, so
+while the console asks the card "is this picture here?", the screen is frozen. On a folder
+shared with OPL, holding thousands of files, a lookup that comes back **no** is the slowest
+possible answer, because the card has to be read to the end to be sure. That is the hang.
+
+**What changed.** Cover lookups now happen in the background. The list draws immediately and
+never waits. This is what OPL does, and it is why OPL is instant with the same folder.
+
+**Why this should boot when the last attempt did not.** EXP49 introduced this and **booted**.
+EXP51 added one small follow-up written in C, and that build black-screened. The program code
+in EXP53 is **byte-for-byte the same as EXP49** -- the follow-up has been rewritten in the
+script layer instead, where it cannot affect startup.
+
+**Also added: a "Loading art..." line.** While a cover is being fetched, the box says so.
+A silent empty box for a second reads as broken, and a user who thinks it is broken stops
+waiting. It only appears while a fetch is actually in progress.
+
+**The bug it also fixes.** Leaving a game list mid-fetch (pressing START, launching, backing
+out) used to leave the loader jammed, and **covers would stop appearing for the rest of the
+session**. It now clears itself.
+
+**What to test on EXP53:**
+- **Does it boot?** That is the first and most important question. If it black-screens, stop
+  and go back to EXP52; that tells us the background loading itself is at fault, not the C
+  follow-up, and it is the last thing I need to know.
+- **USB with cover art ON:** first page entry and moving between titles should no longer hang.
+- **MX4SIO with cover art ON:** same.
+- Drop in one correctly named cover (`<game name>_COV.png` in the device's top-level `ART/`
+  folder) and confirm it appears shortly after you stop on that game.
+- Move onto a game, press **START** immediately, come back, keep browsing: covers must still
+  appear.
+
+**Known and NOT fixed here:** after a rescan (R1) or leaving and re-entering the MX4SIO page,
+the card can report "no MX4SIO detected" until it is physically unplugged and replugged.
+That is a separate device bug with a clean reproduction, and it is next.
 
 ---
 
