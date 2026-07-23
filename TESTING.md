@@ -18,7 +18,7 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
   - [ ] **HDD-resident POPSTARTER → HDD game (D-10):** on an HDD install where `POPSTARTER.ELF` lives on the HDD, launch an HDD game. No black screen.
   - [ ] ⭐⭐ **Normal internal HDD (PFS) still fully works** — boot from a normal internal PS2 hard drive → reach the menu, your **settings load and save**, and you can **scan + launch** a PS1 game from the **HDD (PFS)** list with no black screen. *(A behind-the-scenes change unified the internal-HDD and exFAT paths onto one shared ATA driver. Source analysis says normal HDD is unaffected — it's the same config OPL/NHDDL ship — but this is the single confirmation that closes it out. If a normal HDD game ever fails to launch or settings stop saving, say so.)*
   - [ ] **Launched-from-MC/USB (U-10 family):** boot POPSLoader from a memory card / USB via a launcher (OSD-XMB, wLaunchELF), then open the HDD page and launch.
-  - [ ] **DKWDRV / Disc → exit to memory card:** no hang on the picture.
+  - [x] ~~**DKWDRV / Disc → exit to memory card:** no hang on the picture.~~ *(Closed 2026-07-23: the exit hang is DKWDRV-side, not POPSLoader — not ours to fix.)*
 - [ ] **START-held recovery** — hold **START** during boot → boots to a safe state; with `-page`/`-game` args it suppresses auto-launch so you can recover.
 
 ## 🟧 P1 — New features this cycle
@@ -233,4 +233,4 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 
 - **"Failed to load HDD" when POPSLoader is launched from a non-HDD device** via a launcher (config-specific, seen by Nuno) — most setups list the HDD fine. **If you hit it, post your exact boot config**; it now shows the real reason on a second line. Workaround: boot from the HDD, or open the HDD page a few seconds after the menu.
 - **PAL console still showing PAL when NTSC is selected** (#495) — known, being chased; the "actual output" reading helps.
-- **DKWDRV exit back to memory card "hangs on the pic"** — known open follow-on.
+- ~~**DKWDRV exit back to memory card "hangs on the pic"**~~ — closed 2026-07-23: DKWDRV-side behavior, not a POPSLoader defect.
