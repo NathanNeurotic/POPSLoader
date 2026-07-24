@@ -2,11 +2,31 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP61**. The check is simple: a version ending in **-EXP61** = this build; **-EXP60** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP62**. The check is simple: a version ending in **-EXP62** = this build; **-EXP61** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP61, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP62, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP62: boot again (fix the EXP61 black screen)
+
+**EXP61 fixed the wrong half of the problem.** It moved the HDD driver load back
+to boot (the right window), but let it run *at the same time* as the controller
+and sound drivers loading on the main thread. Two parts of the console talking
+to the co-processor at once is not allowed -- on sAGA's console the boot itself
+jammed: drive spins up, one flash, then a permanent black screen.
+
+**What EXP62 changes:** startup now *finishes* the HDD driver load (with an
+8-second safety cap) before loading anything else -- exactly the order the
+working 07.18 build always used, just with a timeout so a stuck load can never
+black the console again. If the cap ever trips, the HDD page simply says "The
+internal drive is still starting" instead of freezing.
+
+**sAGA, the usual test, one boot:** it should reach the menu. If the HDD page
+opens and lists your games, the two-month saga is really over. If anything
+still sticks, photograph the screen -- the boot now narrates each step.
 
 ---
 

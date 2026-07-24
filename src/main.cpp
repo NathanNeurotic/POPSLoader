@@ -86,6 +86,9 @@ extern int g_usbd_load_ret;
 extern bool EnsureUsbMass(void);
 // Defined in luasystem.cpp; kicks the async ata_bd bring-up worker (idempotent).
 extern int KickAtaAsyncBoot(void);
+// Defined in luasystem.cpp; bounded join for the boot kick (EXP62): final worker
+// state (2 ok / 3 fail / 1 still running on timeout), never waits forever.
+extern int WaitAtaAsyncBootBounded(int max_ms);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -651,21 +654,28 @@ int main(int argc, char * argv[])
      * wedge ("exFAT 1c: status 1", worker never finishes) was never the driver
      * bytes (identical md5 in both builds): it was the load landing MID-SESSION
      * on a full IOP (freesio2/freepad, ds34, audsrv, mcman, USB stack), the one
-     * configuration no working launcher uses. Spawning the worker here puts the
-     * probe back on the leanest IOP this build ever sees, while staying ASYNC
-     * so the EXP24 verdict holds: no 5-6s serial "ata bdm stack" boot cost --
-     * the probe runs behind the remaining boot work and is long done by page
-     * entry, so the exFAT page's bounded poll becomes a formality.
+     * configuration no working launcher uses.
      *
-     * Safe on a driveless console: ata_bd's _start exits immediately when SPD
-     * reports no ATA device ("HDD is not connected, exiting"), and the resident
-     * dev9/bdm/bdmfs footprint is the same one rr0718 shipped unconditionally.
+     * EXP61 fired the worker and RACED AHEAD into the ds34usb/ds34bt/audsrv
+     * loads below -- two EE threads inside SifExecModuleBuffer at once, on a
+     * SIF RPC client that is not thread-safe. On sAGA's console that wedged
+     * the boot itself: HDD spins up (worker loading dev9/ata_bd), a flash
+     * (initGraphics), then steady black (a corrupted SIF call never returns).
+     * EXP62 therefore JOINS the kick, bounded, BEFORE any further module load:
+     * serial like the rr0718-proven window, but capped (8s) so a wedged load
+     * costs the exFAT page's "still starting" report instead of the console.
+     * The probe keeps the lean-IOP window; the main thread simply waits for it
+     * instead of competing with it. Driveless consoles pay only the worker's
+     * two 1s settle sleeps (ata_bd self-exits fast on no ATA device).
      * hdd0:/APA boots are unaffected: boot.lua -> HDD.Initialize still goes
      * through the synchronous EnsureAtaBdm, which the native sema serializes
      * behind (or short-circuits after) this worker -- load-once via the same
      * g_ata_bd_loaded, whichever path finishes first. MX4SIO/MMCE untouched. */
     KickAtaAsyncBoot();
-    BootStamp("ata async kick");  // worker spawn only, no wait -- keep the label short for the Credits line
+    {
+        int st = WaitAtaAsyncBootBounded(8000);
+        BootStamp(st == 1 ? "ata join timeout" : "ata join done"); // bounded wait only, never forever
+    }
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);

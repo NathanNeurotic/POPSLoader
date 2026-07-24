@@ -1572,6 +1572,29 @@ void EnsureAtaBdmSemaInit()
 	}
 }
 
+// EXP62 worker-completion semaphore: the ata worker signals it ONCE as it
+// exits (success OR fail), so the boot path can JOIN the bring-up BOUNDED
+// (WaitAtaAsyncBootBounded) instead of racing the main thread's own module
+// loads -- EXP61 fired the worker at boot and raced ahead, putting two EE
+// threads in SifExecModuleBuffer at once (worker: dev9/bdm/bdmfs/ata_bd;
+// main: ds34usb/ds34bt/audsrv) on a SIF RPC client that is not thread-safe.
+// On sAGA's SCPH-30004 that wedged the boot: HDD spins up (worker loading),
+// flash (initGraphics), steady black (a corrupted SIF call never returns).
+// Created alongside the bring-up sema so it always exists before the worker
+// spawns; KickAtaAsyncBoot drains any stale token before a (re)spawn.
+static int g_ata_async_done_sema = -1;
+static void AtaAsyncDoneSemaInit()
+{
+	if (g_ata_async_done_sema < 0) {
+		ee_sema_t s;
+		s.init_count = 0;
+		s.max_count = 1;
+		s.attr = 0;
+		s.option = 0;
+		g_ata_async_done_sema = CreateSema(&s);
+	}
+}
+
 static bool EnsureAtaBdmInner()
 {
 	if (!EnsureDev9()) {
@@ -1689,6 +1712,8 @@ static int ata_async_thread(void *arg)
 	(void)arg;
 	bool ok = EnsureAtaBdm();
 	g_ata_async_state = ok ? 2 : 3;
+	if (g_ata_async_done_sema >= 0)
+		SignalSema(g_ata_async_done_sema); // wake a bounded boot join (EXP62)
 	ExitDeleteThread();
 	return 0;
 }
@@ -1721,6 +1746,9 @@ int KickAtaAsyncBoot(void)
 	// EnsureAtaBdm and any concurrent main-thread EnsureAtaBdm serialize on the
 	// same sema (the caller is single-threaded w.r.t. the worker right here).
 	EnsureAtaBdmSemaInit();
+	AtaAsyncDoneSemaInit();
+	if (g_ata_async_done_sema >= 0)
+		PollSema(g_ata_async_done_sema); // drain any stale token from a previous (re)spawn (EXP62)
 	g_ata_async_state = 1;
 	ee_thread_t th;
 	th.attr = 0;
@@ -1737,6 +1765,31 @@ int KickAtaAsyncBoot(void)
 	}
 	StartThread(tid, NULL);
 	return 1;
+}
+
+// WaitAtaAsyncBootBounded(): join the boot kick, BOUNDED (EXP62). Returns the
+// final g_ata_async_state: 2 done-ok, 3 done-fail, 1 still running (timed out).
+// A timeout is NOT a boot failure: the page-entry path keeps polling state 1
+// and reports "The internal drive is still starting" (EXP61). This is what
+// removes EXP61's unprotected concurrency at boot -- the main thread waits
+// HERE (before its own ds34usb/ds34bt/audsrv loads) instead of issuing
+// SifExecModuleBuffer concurrently with the worker's dev9/bdm/bdmfs/ata_bd
+// chain on a SIF RPC client that is not thread-safe. Serial, like the
+// rr0718-proven window, but capped so a wedged load can never black the boot.
+int WaitAtaAsyncBootBounded(int max_ms)
+{
+	AtaAsyncDoneSemaInit();
+	if (g_ata_async_state != 1)
+		return g_ata_async_state;
+	clock_t start = clock();
+	while (g_ata_async_state == 1) {
+		if (g_ata_async_done_sema >= 0 && PollSema(g_ata_async_done_sema) >= 0)
+			break;
+		if (max_ms >= 0 && ((clock() - start) / 1000) >= (clock_t)max_ms)
+			break;
+		usleep(10000); // 10 ms poll steps; EE clock() is microseconds
+	}
+	return g_ata_async_state;
 }
 
 // System.initATAAsync(): Lua binding over KickAtaAsyncBoot (page-entry kick /

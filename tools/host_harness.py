@@ -1183,8 +1183,10 @@ t30 = E('''function()
   if stale_freed ~= 1 then return false, "a stale texture was not freed, freed="..stale_freed end
   return true
 end''')()
-check("T30 EXP49 cover loads are async; render path never blocks", t30)
-
+check("T30 EXP49 cover loads are async; render path never blocks", t30)
+
+
+
 # T35 EXP54: the FULL no-blocking-IO invariant for a list navigation. T30 pinned that
 # the COVER load is async; that was not enough -- EXP53 shipped with async covers and
 # the list still froze solid (screen static, scrolling text stopped) because the game
@@ -1226,8 +1228,10 @@ t35 = E('''function()
   end
   return true
 end''')()
-check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
-
+check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
+
+
+
 # T36 EXP55: devices resolve by the SDK's TYPED name (mx4sio0:/ ata0:/ usb0:/), not by
 # a mass slot. fs_driver_resolve_volume's typed branch matches the MOUNTED device's
 # bd->path, so mx4sio0: can only ever be an MX4SIO volume; the legacy "mass" branch
@@ -1269,8 +1273,10 @@ t36 = E('''function()
   end
   return true
 end''')()
-check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
-
+check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
+
+
+
 # T37 EXP56: the cover-art layout, pinned to the maintainer's spec:
 #     device:/POPS/<game>.VCD   ->   device:/ART/<game>_COV.png
 # The old device-prefix pattern was `%a+%d*:` which CANNOT match a device whose NAME
@@ -1307,8 +1313,10 @@ t37 = E('''function()
   if bad ~= nil then return false, bad end
   return true
 end''')()
-check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
-
+check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
+
+
+
 # T38 EXP57: hidden state must NOT leak between scans or devices. CleanupGameList
 # cleared PLDR.GAMES but left PLDR.HIDDEN standing, and every fresh scan calls through
 # it before rebuilding -- so a game hidden on one device was still in the map when the
@@ -1327,8 +1335,10 @@ t38 = E('''function()
   if #PLDR.GAMES ~= 0 then return false, "games not cleared" end
   return true
 end''')()
-check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
-
+check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
+
+
+
 # T39 EXP58: no cover load may still be in flight when we hand the machine to another
 # ELF. The worker can be mid-fopen at launch time, which leaves an IOP RPC outstanding
 # across the SifIopReset the launch performs -- the "polluted parent" state main.cpp
@@ -1364,8 +1374,8 @@ check("T39 EXP58 external launches drain the cover worker first", t39)
 # T31 EXP40/EXP61: the LUA-side boot-ATA gate. EXP40 made the internal-HDD
 # visibility setting (EXFAT/BOTH) stop boot-loading ATA -- it only controls which
 # HDD pages the carousel shows; only an EXPLICIT request (-page=ata/-page=exfat)
-# warms ATA from Lua. EXP61 note: main.cpp now kicks the async ATA worker at boot
-# UNCONDITIONALLY (KickAtaAsyncBoot), so this gate no longer decides whether ATA
+# warms ATA from Lua. EXP61/62 note: main.cpp now kicks the async ATA worker at boot
+# UNCONDITIONALLY (KickAtaAsyncBoot, joined bounded -- EXP62), so this gate no longer decides whether ATA
 # warms at boot -- only whether the Lua-side extra kick fires (almost always a
 # no-op now). The gate's semantics are unchanged and still pinned here.
 t31 = lua.execute(r'''
