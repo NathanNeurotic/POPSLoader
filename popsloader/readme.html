@@ -152,8 +152,8 @@ Game compatibility and drive loading performance may vary depending on your spec
 <td style="text-align: left;">Your PS1 game image (can also use partitions <code>__.POPS0</code> through <code>__.POPS9</code>)</td>
 </tr>
 <tr>
-<td style="text-align: left;"><code>hdd:/__common/POPS/ART/GameName.png</code></td>
-<td style="text-align: left;">Cover art folder</td>
+<td style="text-align: left;"><code>&lt;device&gt;:/ART/GameName_COV.png</code> (HDD: <code>hdd0:__common/POPS/ART/GameName_COV.png</code>)</td>
+<td style="text-align: left;">Cover art (OPL naming, fixed location)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>hdd:/__common/POPS/IOPRP252.IMG</code></td>
@@ -231,7 +231,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Square (□)</strong></td>
-<td style="text-align: left;">Toggle cover-art preview on / off (in the game list)</td>
+<td style="text-align: left;"><em>Unbound on the game lists.</em> Cover art is now a saved setting: <em>Settings → Game List → Cover art</em> (default On)</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Right Analog Stick (up / down)</strong></td>
@@ -397,10 +397,9 @@ Game compatibility and drive loading performance may vary depending on your spec
 </ul>
 <h3 id="cover-art-is-not-showing-up">Cover art is not showing up</h3>
 <ul>
-<li>Check that the cover image is in <code>.png</code> format.</li>
-<li>The PNG filename must match the <code>.VCD</code> game filename exactly (e.g. <code>Crash Bandicoot.VCD</code> requires <code>Crash Bandicoot.png</code>).</li>
-<li>Ensure the cover art is placed in the same folder as the VCD (or <code>__common/POPS/ART/</code> on HDD).</li>
-<li>Confirm cover-art preview is enabled — press <strong>Square (□)</strong> in the game list to toggle it.</li>
+<li>Check that the cover image is in <code>.png</code> format (grayscale PNGs are supported).</li>
+<li>The cover location and naming are fixed (OPL standard): <code>&lt;device&gt;:/ART/&lt;game&gt;_COV.png</code> — e.g. <code>Crash Bandicoot.VCD</code> needs <code>usb0:/ART/Crash Bandicoot_COV.png</code>. On the internal HDD (PFS) the folder is <code>hdd0:__common/POPS/ART/</code> instead. The file must sit in that <code>ART</code> folder — a PNG beside the VCD is no longer read.</li>
+<li>Confirm cover art is enabled: <em>Settings → Game List → Cover art</em> (it is On by default and saved across reboots). Square no longer toggles it.</li>
 <li>For best compatibility and performance, use 200x200 pixel images.</li>
 </ul>
 <h3 id="bootelf-exit-option-fails-or-hangs">BOOT.ELF exit option fails or hangs</h3>

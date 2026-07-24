@@ -114,7 +114,7 @@
 </ul>
 <h3 id="2-artasset-behavior">2) Art/asset behavior</h3>
 <ul>
-<li>Keep current cover behavior stable: sidecar PNG beside the selected <code>.VCD</code>, plus <code>hdd0:__common/POPS/ART/&lt;title&gt;.png</code> for HDD titles.</li>
+<li>Keep current cover behavior stable: <code>&lt;device&gt;:/ART/&lt;title&gt;_COV.png</code> (OPL standard), plus <code>hdd0:__common/POPS/ART/&lt;title&gt;_COV.png</code> for HDD titles.</li>
 <li>The no-cover / preview-off cover box now draws the layered <code>cover_default.png</code> base (+ <code>cover_missing.png</code> overlay when a game has no cover); <code>MISSING.png</code> was <strong>removed</strong> and is no longer a fallback anywhere; <code>default.png</code> stays an optional legacy cover override. The canonical detail (asset layering, the embed-mechanism's 3 coordinated edit sites, the ELF-size delta) lives in <strong>STATE.md &gt; Cover art</strong> — don't re-enumerate it here.</li>
 </ul>
 <h3 id="3-installbuild-clarity">3) Install/build clarity</h3>

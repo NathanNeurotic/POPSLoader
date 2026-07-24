@@ -304,8 +304,8 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   frames (ui.lua:2684-2687), with the "Description scroll speed" setting in<br />
   SECONDS — slow 0.9 (default) / medium 0.3 / fast 0.15 (ui.lua:2680-2682).</li>
 <li>Cover-art LRU <code>CoverCache</code> (ui.lua:257-343), candidate builder<br />
-<code>BuildCoverCandidates</code> (ui.lua:175): non-HDD = <code>base.png</code> beside the VCD<br />
-  (ui.lua:196-198), HDD = <code>hdd0:__common/POPS/ART/&lt;basename&gt;.png</code> (ui.lua:185).</li>
+<code>BuildCoverCandidates</code> (ui.lua): non-HDD = <code>&lt;device&gt;:/ART/&lt;basename&gt;_COV.png</code><br />
+  (OPL standard first, legacy families additive), HDD = <code>hdd0:__common/POPS/ART/&lt;basename&gt;_COV.png</code>.</li>
 <li>WRITE-GUARD GOTCHA: <code>__newindex</code> metatables on <code>UI.MainMenu</code> and <code>UI</code><br />
   (ui.lua:4957 &amp; 4979) silently DROP writes to <code>UI.MainMenu.OPT</code> (unless<br />
 <code>Carousel.allowOptWrite</code>, ui.lua:4960) and <code>UI.CURSCENE</code> (unless<br />

@@ -411,7 +411,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>D-11</td>
 <td>HDD common art path</td>
-<td><code>hdd0:__common/POPS/ART/&lt;title&gt;.png</code> present</td>
+<td><code>hdd0:__common/POPS/ART/&lt;title&gt;_COV.png</code> present</td>
 <td>Browse HDD title list</td>
 <td>cover art appears and launch still succeeds</td>
 </tr>
@@ -487,8 +487,8 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>U-04</td>
-<td>Cover sidecar missing</td>
-<td>Remove sidecar PNG</td>
+<td>Cover file missing</td>
+<td>Remove the <code>_COV.png</code> from <code>ART/</code></td>
 <td>Move selection repeatedly</td>
 <td>No notification spam; UI remains responsive</td>
 </tr>
@@ -572,9 +572,9 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>U-16</td>
 <td>Cover placeholder layering</td>
-<td>Browse the game list with cover preview ON (Square enabled) and OFF; include a game with no cover art</td>
+<td>Browse the game list with cover preview ON and OFF (the saved <em>Settings → Game List → Cover art</em> toggle); include a game with no cover art</td>
 <td>Highlight games and toggle cover preview</td>
-<td>Preview OFF (Square) draws <code>IMG.cover_default</code> only — no "Cover disabled" text label (removed). Preview ON but no cover art -&gt; <code>cover_default.png</code> with <code>cover_missing.png</code> overlaid. A live cover draws unchanged. Default, overlay, and <code>frame.png</code> share the frame's aspect-corrected right-anchored rect so they register with the jewel-case window on NTSC + PAL</td>
+<td>Preview OFF (setting) draws <code>IMG.cover_default</code> only — no "Cover disabled" text label (removed). Preview ON but no cover art -&gt; <code>cover_default.png</code> with <code>cover_missing.png</code> overlaid. A live cover draws unchanged. Default, overlay, and <code>frame.png</code> share the frame's aspect-corrected right-anchored rect so they register with the jewel-case window on NTSC + PAL</td>
 </tr>
 </tbody>
 </table>

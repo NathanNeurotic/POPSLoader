@@ -134,8 +134,13 @@ This is the structured "what to test" companion to <strong><a href="rolling-note
 <h2 id="p4-cosmetic-polish"> P4 — Cosmetic / polish</h2>
 <ul>
 <li>[ ] List a touch <strong>wider</strong>; device name (e.g. "USB") no longer overlaps the <strong>top row</strong>; "Building…" overlay calmer.</li>
+<<<<<<< HEAD
 <li>[ ] <strong>Cover placeholder art</strong>  <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
 <li>[ ] <strong>Cover-art preview</strong> toggles with <strong>Square</strong> — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.</li>
+=======
+<li>[ ] <strong>Cover placeholder art</strong> ⭐ <strong>NEW assets, needs an eyeball on NTSC + PAL.</strong> No live cover now draws a layered jewel-case placeholder (<code>cover_default.png</code>), with a <code>cover_missing.png</code> overlay <strong>only</strong> when the preview is <strong>ON</strong> but the game has no cover. <em>(The old "Cover disabled" </em><em>text</em><em> label is gone.)</em> Confirm the default cover, the missing overlay, and <code>frame.png</code> all <strong>register</strong> with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.</li>
+<li>[ ] <strong>Cover-art preview</strong> toggles via <em>Settings → Game List → Cover art</em> (saved; Square is unbound) — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.</li>
+>>>>>>> 695e928 (site: sync cover-art facts with current POPSLoader behavior)
 <li>[ ] <strong>Scroll position kept</strong> returning from Settings (cursor doesn't snap to row 1).</li>
 <li>[ ] <strong>On-screen keyboard feedback</strong> (editing a POPSTARTER / DKWDRV path) — pressing a key now <strong>flashes it</strong> briefly, and the text caret <strong>blinks</strong> at a normal rate. <em>(Both were broken by a microsecond-vs-millisecond timer bug — the flash expired before the next frame so it never showed, and the caret blinked ~1000× too fast; purely cosmetic, no input behavior change.)</em></li>
 </ul>
