@@ -384,20 +384,11 @@ launches via <code>PLDR.RunPOPStarterGame</code> on CONFIRM. On <code>GHDD</code
 <h3 id="cover-art-separate-from-the-icon-atlas">Cover art (separate from the icon atlas)</h3>
 <p><code>UI.CoverCache</code> (<code>ui.lua:257</code>, <code>max = 3</code>) is a 3-entry LRU of loaded box-art<br />
 images, refreshed after a navigation settles via <code>CoverCache:UpdateSelection</code><br />
-<<<<<<< HEAD
 (<code>ui.lua:326</code>). The refresh is <strong>frame-counted</strong>: the cover decodes only after the cursor has been<br />
 stable for ~250 ms (<code>COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)</code>, <code>cover_fps</code> = 50<br />
 PAL / 60 NTSC, <code>ui.lua</code>); a per-frame counter resets while the selection keeps<br />
-changing, so the cover loads only once navigation settles. Non-HDD covers are <code>base.png</code> beside the<br />
-VCD; HDD covers resolve <code>POPS/ART/&lt;basename&gt;.png</code> on the <code>hdd0:__common</code><br />
-=======
-(<code>ui.lua:326</code>). The refresh is gated by <code>UI.GameList.CoverIdleMs = 200</code><br />
-(<code>ui.lua:2331</code>) compared against a <code>Timer.getTime</code> value — which is<br />
-<strong>microseconds</strong> (see Layer 4 › nav timing), so this "200 ms" idle is actually<br />
-~200 µs and effectively fires next frame; it is one of the parked µs-as-ms<br />
-timers awaiting an <code>os.clock()</code> sweep. Non-HDD covers are <code>&lt;device&gt;:/ART/&lt;basename&gt;_COV.png</code>;<br />
+changing, so the cover loads only once navigation settles. Non-HDD covers are <code>&lt;device&gt;:/ART/&lt;basename&gt;_COV.png</code>;<br />
 HDD covers resolve <code>POPS/ART/&lt;basename&gt;_COV.png</code> on the <code>hdd0:__common</code><br />
->>>>>>> 695e928 (site: sync cover-art facts with current POPSLoader behavior)
 partition via <code>PLDR.ResolveHddPartitionReadablePath</code> (<code>BuildCoverCandidates</code>,<br />
 <code>ui.lua:175</code>). When a <code>&lt;base&gt;.png</code> cover loads it gets its own <code>COVER_W</code> inset<br />
 (<code>ui.lua:575</code>, value <code>232</code>).</p>
