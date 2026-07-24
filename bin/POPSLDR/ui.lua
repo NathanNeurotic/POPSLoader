@@ -211,16 +211,23 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
       -- One art file serves all discs: disc-marker-stripped name first, then the
-      -- exact per-disc name. EXP34: the OPL standard "<name>_COV.png" is the ONLY
-      -- accepted name (maintainer: enforce one standard, no legacy fallback). The
-      -- resolver existence-confirms each, so only present files are returned.
+      -- exact per-disc name, within each naming family. Families: the OPL-standard
+      -- "<name>_COV.png" first, then the legacy plain "<name>.png" (restored
+      -- 2026-07-23 per the isolation report -- lookup-contract loss hid art that
+      -- older builds showed; additive, OPL standard still wins). The resolver
+      -- existence-confirms each, so only present files are returned.
       local out = {}
-      local function add_hdd(bn)
-        local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn.."_COV.png")
+      local names = {}
+      if stripped_basename ~= "" and stripped_basename ~= basename then names[1] = stripped_basename end
+      names[#names + 1] = basename
+      local function add_hdd(bn, suffix)
+        local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..bn..suffix)
         if rc ~= nil then out[#out + 1] = rc end
       end
-      if stripped_basename ~= "" and stripped_basename ~= basename then add_hdd(stripped_basename) end
-      add_hdd(basename)
+      for fi = 1, 2 do
+        local suffix = (fi == 1) and "_COV.png" or ".png"
+        for ni = 1, #names do add_hdd(names[ni], suffix) end
+      end
       return out
     end
     return {}
@@ -229,13 +236,20 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- EXP35: cover location is HARD-LOCKED to <device-root>/ART/<name>_COV.png on
-  -- removable devices (OPL standard, maintainer decision -- no ART_LOCATION choice
-  -- anymore). ONE folder (the device root's ART/), ONE name (the OPL "_COV.png"),
-  -- so at most one bounded fopen per game. A multi-disc game falls back to the
-  -- disc-marker-stripped name so one cover serves every disc. The <name>.txt
-  -- details sidecar rides the same folder. (HDD/PFS keeps its fixed
-  -- __common/POPS/ART/ layout -- handled in the use_hdd_common_art branch above.)
+  -- EXP35 hard-locked covers to <device-root>/ART/<name>_COV.png (OPL standard).
+  -- 2026-07-23: legacy lookup families are restored ADDITIVELY per the isolation
+  -- report -- the lock was a lookup-contract loss that hid art older builds showed
+  -- (plain "<name>.png", POPS/ART/, beside-the-VCD). The OPL-standard candidate
+  -- stays FIRST so the standard still wins when both exist. Candidate order:
+  --   1. <device>:/ART/<name>_COV.png   (OPL standard)
+  --   2. <device>:/ART/<name>.png       (legacy plain name)
+  --   3. <device>:/POPS/ART/<name>.png  (legacy POPS subfolder)
+  --   4. <game-folder>/<name>.png       (beside the VCD)
+  -- Within each family the disc-marker-stripped name precedes the exact per-disc
+  -- name so one cover can serve every disc. Paths are deduplicated; probes stay
+  -- bounded single fopens off the render thread, misses memoize on absence only.
+  -- (HDD/PFS keeps its fixed __common/POPS/ART/ layout -- handled in the
+  -- use_hdd_common_art branch above.)
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
   local stripped = StripDiscMarker(name)
@@ -247,17 +261,22 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   -- directory, so we looked in <device>:/POPS/ART/ instead of <device>:/ART/, which
   -- is why a correctly named, correctly placed Soul Blade_COV.png never loaded.
   -- %w+ accepts letters and digits in any order and still stops at the colon.
-  -- Layout (maintainer): device:/POPS/<game>.VCD  ->  device:/ART/<game>_COV.png
-  -- APA/PFS is the one exception and is handled in the use_hdd_common_art branch
-  -- above: hdd0:__common/POPS/ART/<game>_COV.png
-  local artdir = (string.match(dir, "^(%w+:/)") or dir).."ART/"
+  local devroot = string.match(dir, "^(%w+:/)")
+  local artdir = (devroot or dir).."ART/"
+  local popsdir = devroot ~= nil and (devroot.."POPS/ART/") or nil
+  local names = {}
+  if has_stripped then names[1] = stripped end
+  names[#names + 1] = name
   local out, seen = {}, {}
-  local function add_variant(bn)
-    local p = artdir..bn.."_COV.png"
-    if not seen[p] then seen[p] = true; out[#out + 1] = p end
+  local function add_path(p)
+    if p ~= nil and not seen[p] then seen[p] = true; out[#out + 1] = p end
   end
-  if has_stripped then add_variant(stripped) end
-  add_variant(name)
+  for ni = 1, #names do add_path(artdir..names[ni].."_COV.png") end
+  for ni = 1, #names do add_path(artdir..names[ni]..".png") end
+  if popsdir ~= nil then
+    for ni = 1, #names do add_path(popsdir..names[ni]..".png") end
+  end
+  for ni = 1, #names do add_path(dir..names[ni]..".png") end
   return out
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
