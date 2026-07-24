@@ -1618,9 +1618,36 @@ static bool EnsureAtaBdmInner()
 		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
 			return false;
 		}
-		g_ata_bd_loaded = true;
 		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
 		sleep(1);
+	}
+	// Drive-readiness verification, EVERY call including retries (EXP63, SMS-proven):
+	// a slow drive is NOT ready when ata_bd's _start returns -- SMS (Simple-Media-System,
+	// SMS_IOPStartATA) waits ~10s of post-load delay before scanning, and the 0718
+	// build's ~15s boot worked on sAGA's 4TB precisely because it bought the drive that
+	// time. Poll the BDM mass slots for the "ata" unit to actually appear (the same
+	// GET_DRIVERNAME ioctl the mass-root classifier uses; exact "ata" match), early-exit
+	// on first sight (a ready drive pays ~1s), bounded at ~10s. A no-show is a REAL
+	// failure: clear the loaded flag so the page-entry retry re-runs the full bring-up
+	// -- a self-exited ata_bd ("HDD is not connected") re-probes the now-spun-up drive
+	// on the fresh instance, and per LoadIrxCheckedBuffer a still-resident copy fails
+	// the reload without running _start again (no double bus reset in practice).
+	{
+		bool saw_ata = false;
+		for (int t = 0; t < 20 && !saw_ata; t++) {
+			for (int slot = 0; slot < 4 && !saw_ata; slot++) {
+				const char *drv = GetMassMountDriverNameBySlot(slot);
+				if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
+					saw_ata = true;
+			}
+			if (!saw_ata)
+				usleep(500000); // 500 ms poll steps
+		}
+		if (!saw_ata) {
+			g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
+			return false;
+		}
+		g_ata_bd_loaded = true;
 	}
 	return true;
 }

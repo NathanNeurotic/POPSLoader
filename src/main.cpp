@@ -673,7 +673,10 @@ int main(int argc, char * argv[])
      * g_ata_bd_loaded, whichever path finishes first. MX4SIO/MMCE untouched. */
     KickAtaAsyncBoot();
     {
-        int st = WaitAtaAsyncBootBounded(8000);
+        // Cap is 20s so the EXP63 drive-readiness verification fits inside it: the worker
+        // can legitimately need dev9/bdm/bdmfs + 2x1s settles + up to ~10s of spin-up
+        // polling on a slow drive (SMS/rr0718-proven window) before answering done.
+        int st = WaitAtaAsyncBootBounded(20000);
         BootStamp(st == 1 ? "ata join timeout" : "ata join done"); // bounded wait only, never forever
     }
 

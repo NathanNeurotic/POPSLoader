@@ -2,11 +2,32 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP62**. The check is simple: a version ending in **-EXP62** = this build; **-EXP61** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP63**. The check is simple: a version ending in **-EXP63** = this build; **-EXP62** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP62, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP63, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP63: wait for the drive, not just the driver (sAGA's clue)
+
+**sAGA spotted it himself:** the build that works (07.18) boots *slowly* --
+about 15 seconds. That is not a flaw in that build, it is the point: his 4TB
+drive needs that time to spin up before anyone asks it questions. Fast boots
+asked too early, got no answer, and gave up. SMS (Simple Media System) does
+the same thing on purpose: load the driver, then wait ~10 seconds before
+looking for the drive.
+
+**What EXP63 changes:** after the driver loads, the launcher now watches for
+the drive to actually appear (up to ~10 seconds, checking twice a second,
+instant when the drive is quick) instead of waiting a fixed 1 second and
+hoping. If the drive never appears, the HDD page can retry later instead of
+inheriting a wrong "all good". The boot wait cap was raised to match.
+
+**sAGA, the usual test:** boot (give it up to ~25 seconds of black on the
+first one -- the drive is spinning up), open the HDD page. If your games
+list, this is the one.
 
 ---
 
