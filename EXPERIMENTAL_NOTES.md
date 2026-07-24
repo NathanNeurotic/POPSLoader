@@ -2,11 +2,46 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP59**. The check is simple: a version ending in **-EXP59** = this build; **-EXP58** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP61**. The check is simple: a version ending in **-EXP61** = this build; **-EXP60** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP59, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP61, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP61: load the HDD driver at boot, like the build that worked
+
+**We finally diffed the right thing.** sAGA sent the one build his console has
+always liked -- the rolling release from 07.18, still running without problems.
+We compared its source against the current one file by file. The HDD driver
+itself is **byte-for-byte identical** in both. So the driver was never the
+problem, and every build that changed the driver was changing the wrong thing.
+
+What actually differs is **when** the driver loads:
+
+- **The build that works** loads it once, at boot, while the console is still
+  "empty".
+- **EXP33 through EXP60** load it later, when you open the HDD page, while the
+  console is already busy (controllers, sound, memory cards, USB all running).
+  On his console the load starts and never comes back -- that is the
+  `status 1` line that sits at 10 seconds on every photo he sent.
+
+**What EXP61 changes:** the driver loads at boot again, exactly where the
+working build loads it -- but in the background, so startup stays fast and
+nobody pays the old 5-second black screen we removed back at EXP24. USB,
+MX4SIO, MMCE, and memory-card handling are **untouched**.
+
+One safety net is included too: if the drive is still starting when you open
+the HDD (PFS) page, the page now says so and lets you back out, instead of
+freezing the whole menu.
+
+**sAGA, one boot, the usual test.** Internal exFAT HDD, open the HDD page.
+It should just open -- no 44%, no "still starting". And please check the USB
+SSD and a memory-card boot too, so we know nothing else moved.
+
+If it STILL sticks, photograph the screen again -- the fallback (a short wait
+under the boot splash) is ready, but we only reach for it if this fails.
 
 ---
 

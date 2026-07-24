@@ -1693,27 +1693,33 @@ static int ata_async_thread(void *arg)
 	return 0;
 }
 
-// System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
-// return immediately with the state int. If ata_bd is already loaded (e.g. an
-// APA-HDD boot brought it up) it reports done-ok (2) without spawning. A
-// prior done-fail (3) re-spawns -- failure is retryable by design (RiptOPL's
-// SCPH-30004 rule). Returns -1 if the thread could not be created; the Lua
-// caller reports "no drive" -- it must NEVER load synchronously on the UI
-// thread (that was the freezing configuration).
-static int lua_ata_init_async(lua_State *L)
+// KickAtaAsyncBoot(): kick the ata_bd bring-up onto a worker thread and return
+// immediately with the state int. If ata_bd is already loaded (e.g. an APA-HDD
+// boot brought it up) it reports done-ok (2) without spawning. A prior
+// done-fail (3) re-spawns -- failure is retryable by design (RiptOPL's
+// SCPH-30004 rule). Returns -1 if the thread could not be created; callers
+// must NEVER fall back to a synchronous load on the UI thread (that was the
+// freezing configuration).
+//
+// EXP61: main.cpp now calls this AT BOOT, right after EnsureUsbMass() -- the
+// exact spot rr0718/EXP22 did the synchronous load, the only configuration
+// hardware-proven on sAGA's SCPH-30004. The byte-identical ata_bd wedge at
+// "exFAT 1c: status 1" (EXP55-60) was never the driver: it was the load
+// landing mid-session on a full IOP. Spawning here puts the probe back on the
+// leanest IOP this build ever has, while the async worker keeps the EXP24
+// verdict intact (no 5-6s serial boot cost).
+int KickAtaAsyncBoot(void)
 {
 	if (g_ata_bd_loaded) {
 		g_ata_async_state = 2;
-		lua_pushinteger(L, 2);
-		return 1;
+		return 2;
 	}
 	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
-		lua_pushinteger(L, 1);
 		return 1;
 	}
 	// Create the EnsureAtaBdm mutex BEFORE the worker exists, so the worker's
 	// EnsureAtaBdm and any concurrent main-thread EnsureAtaBdm serialize on the
-	// same sema (main thread is single-threaded w.r.t. the worker right here).
+	// same sema (the caller is single-threaded w.r.t. the worker right here).
 	EnsureAtaBdmSemaInit();
 	g_ata_async_state = 1;
 	ee_thread_t th;
@@ -1726,12 +1732,18 @@ static int lua_ata_init_async(lua_State *L)
 	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
 	int tid = CreateThread(&th);
 	if (tid < 0) {
-		g_ata_async_state = 0;   // spawn failed -> caller uses sync fallback
-		lua_pushinteger(L, -1);
-		return 1;
+		g_ata_async_state = 0;   // spawn failed -> caller must NOT sync-load on the UI thread
+		return -1;
 	}
 	StartThread(tid, NULL);
-	lua_pushinteger(L, 1);
+	return 1;
+}
+
+// System.initATAAsync(): Lua binding over KickAtaAsyncBoot (page-entry kick /
+// retry; the boot kick comes from main.cpp directly).
+static int lua_ata_init_async(lua_State *L)
+{
+	lua_pushinteger(L, KickAtaAsyncBoot());
 	return 1;
 }
 

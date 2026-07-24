@@ -6040,8 +6040,8 @@ end
 -- were one of the wedge channels). No branch here loads a module on the UI
 -- thread, ever, beyond the LAZY first-engagement load: usbmass_bd is boot-
 -- resident, mx4sio_bd loads on first engagement (quick, detection async on
--- its own IOP thread), and ata loads only on its worker (do_boot_init kicks
--- it for exFAT installs; page entry is a bounded status poll, never a load).
+-- its own IOP thread), and ata loads only on its worker (main.cpp kicks it at
+-- boot, EXP61; page entry is a bounded status poll, never a load).
 -- `step(msg)` is the EXP43 freeze channel, now threaded in so the ATA bring-up can
 -- narrate itself. sAGA's EXP55 screen sat on "exFAT step 1: starting the drive" and
 -- timed out, which told us WHERE but not WHY -- one message covered the whole poll.
@@ -6085,8 +6085,9 @@ local function EnsureMassBackendsReady(mode, step)
   end
 
   if mode == "ata" then
-    -- ata_bd loads on the EE worker, kicked at BOOT by do_boot_init when the
-    -- Internal-HDD setting includes exFAT -- into the same near-empty IOP as
+    -- ata_bd loads on the EE worker, kicked at BOOT by main.cpp (EXP61,
+    -- unconditional -- the async worker, not the rejected 5-6s serial load)
+    -- into the same near-empty IOP as
     -- the EXP22 build, the only arrangement hardware-proven on the SCPH-30004
     -- class (identical bytes wedged when loaded mid-session onto a full IOP).
     -- Entering the page before the worker finishes (or when the boot kick was
@@ -7346,7 +7347,7 @@ end
 function PLDR.InitATAPopsRoot(report)
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
   -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). EXP32: the
-  -- worker is kicked in the BOOT window (do_boot_init) for exFAT installs;
+  -- worker is kicked in the BOOT window (main.cpp, unconditional since EXP61);
   -- page entry polls it BOUNDED (EnsureMassBackendsReady "ata", 10s max,
   -- screen alive, never a synchronous load) and then runs the bounded sweep.
   -- Second return: "notready" while the drive is still starting, "nodevice"
@@ -7764,11 +7765,11 @@ function PLDR.HDD.BuildGameList(on_progress)
 end
 
 function PLDR.LoadHDDModules()
-  -- EXP33 cascade bound: the boot-time ata worker (do_boot_init's initATAAsync
-  -- kick, fired every boot where Internal HDD includes exFAT) and this APA path
-  -- BOTH call the native EnsureAtaBdm. Before EXP33 they raced the load-once
-  -- latches -> double ata_bd load, whose 2nd _start re-resets the live ATA bus
-  -- (CosmicScale APA-Jail 42% class; a leading suspect for the fresh-boot
+  -- EXP33 cascade bound: the boot-time ata worker (main.cpp's KickAtaAsyncBoot,
+  -- fired every boot since EXP61; previously do_boot_init's gated kick) and this
+  -- APA path BOTH call the native EnsureAtaBdm. Before EXP33 they raced the
+  -- load-once latches -> double ata_bd load, whose 2nd _start re-resets the live
+  -- ATA bus (CosmicScale APA-Jail 42% class; a leading suspect for the fresh-boot
   -- "APA lists no games" report). Wait screen-alive for the worker to finish so
   -- HDD.Initialize's EnsureAtaBdm runs AFTER it (then it's a latched no-op). A
   -- native mutex (EnsureAtaBdm sema) backs this up if the wait ever times out.
@@ -7779,6 +7780,17 @@ function PLDR.LoadHDDModules()
         PaceScanFrame()
         local ok2, s2 = pcall(System.initATAStatus)
         if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+      end
+      -- EXP61: still running after the bound means the worker is wedged inside
+      -- the IOP module-load RPC. Falling through into HDD.Initialize here would
+      -- block forever on the EnsureAtaBdm sema the worker holds -> full UI
+      -- freeze (the exFAT page's wedge used to become the APA page's freeze).
+      -- Report not-ready instead; a later re-entry finds the latch or retries.
+      local ok3, s3 = pcall(System.initATAStatus)
+      if ok3 and s3 == 1 then
+        PLDR.HDD.LOADSTATE = -1
+        UI.Notif_queue.add("The internal drive is still starting\nopen this page again in a moment")
+        return
       end
     end
   end

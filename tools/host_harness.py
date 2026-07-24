@@ -1361,11 +1361,13 @@ t39 = E('''function()
 end''')()
 check("T39 EXP58 external launches drain the cover worker first", t39)
 
-# T31 EXP40: RESTORE LAZY. The internal-HDD visibility setting (EXFAT/BOTH) must NOT
-# boot-load ATA -- it only controls which HDD pages the carousel shows. Only an
-# EXPLICIT request (-page=ata / -page=exfat) warms ATA at boot; a normal MC/USB boot
-# with the exFAT page merely visible goes lazy (ATA loads when the page is opened).
-# EXP38 broke this by warming on EXFAT/BOTH; pin the gate so it stays explicit-only.
+# T31 EXP40/EXP61: the LUA-side boot-ATA gate. EXP40 made the internal-HDD
+# visibility setting (EXFAT/BOTH) stop boot-loading ATA -- it only controls which
+# HDD pages the carousel shows; only an EXPLICIT request (-page=ata/-page=exfat)
+# warms ATA from Lua. EXP61 note: main.cpp now kicks the async ATA worker at boot
+# UNCONDITIONALLY (KickAtaAsyncBoot), so this gate no longer decides whether ATA
+# warms at boot -- only whether the Lua-side extra kick fires (almost always a
+# no-op now). The gate's semantics are unchanged and still pinned here.
 t31 = lua.execute(r'''
   if type(PLDR.WantExfatBootBringup) ~= "function" then
     return false, "PLDR.WantExfatBootBringup missing"
@@ -1399,7 +1401,7 @@ t31 = lua.execute(r'''
   PLDR.HDD_FS, PLDR.LAUNCH_ARGS = saved_fs, saved_args
   return true
 ''')
-check("T31 EXP40 boot ATA gate: explicit -page=ata/exfat warms; EXFAT/BOTH/PFS stay lazy", t31)
+check("T31 EXP40/61 Lua boot-ATA gate: explicit -page=ata/exfat warms; settings stay visibility-only", t31)
 
 print()
 fails = [r for r in results if not r[1]]
