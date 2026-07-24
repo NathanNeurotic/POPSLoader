@@ -2,11 +2,24 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP63**. The check is simple: a version ending in **-EXP63** = this build; **-EXP62** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP64**. The check is simple: a version ending in **-EXP64** = this build; **-EXP63** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP63, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP64, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP64: the wait now hides behind the intro
+
+EXP63's slow-drive wait worked but sat on the black screen. EXP64 splits the
+startup in two: only the short driver load (~3-4 seconds) still happens before
+the intro; the long "is the drive awake yet?" watch now runs *behind* the
+splash animation, so a slow drive costs you nothing you can see.
+
+**sAGA + everyone with an internal drive:** boot should feel normal again --
+intro plays right away, and by the time you open the HDD page the drive is
+either listed or says "still starting" (then just re-enter).
 
 ---
 

@@ -1595,7 +1595,7 @@ static void AtaAsyncDoneSemaInit()
 	}
 }
 
-static bool EnsureAtaBdmInner()
+static bool EnsureAtaBdmModulesInner()
 {
 	if (!EnsureDev9()) {
 		return false;
@@ -1621,35 +1621,49 @@ static bool EnsureAtaBdmInner()
 		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
 		sleep(1);
 	}
-	// Drive-readiness verification, EVERY call including retries (EXP63, SMS-proven):
-	// a slow drive is NOT ready when ata_bd's _start returns -- SMS (Simple-Media-System,
-	// SMS_IOPStartATA) waits ~10s of post-load delay before scanning, and the 0718
-	// build's ~15s boot worked on sAGA's 4TB precisely because it bought the drive that
-	// time. Poll the BDM mass slots for the "ata" unit to actually appear (the same
-	// GET_DRIVERNAME ioctl the mass-root classifier uses; exact "ata" match), early-exit
-	// on first sight (a ready drive pays ~1s), bounded at ~10s. A no-show is a REAL
-	// failure: clear the loaded flag so the page-entry retry re-runs the full bring-up
-	// -- a self-exited ata_bd ("HDD is not connected") re-probes the now-spun-up drive
-	// on the fresh instance, and per LoadIrxCheckedBuffer a still-resident copy fails
-	// the reload without running _start again (no double bus reset in practice).
-	{
-		bool saw_ata = false;
-		for (int t = 0; t < 20 && !saw_ata; t++) {
-			for (int slot = 0; slot < 4 && !saw_ata; slot++) {
-				const char *drv = GetMassMountDriverNameBySlot(slot);
-				if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
-					saw_ata = true;
-			}
-			if (!saw_ata)
-				usleep(500000); // 500 ms poll steps
-		}
-		if (!saw_ata) {
-			g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
-			return false;
-		}
-		g_ata_bd_loaded = true;
-	}
 	return true;
+}
+
+// Drive-readiness verification (EXP63, SMS-proven): a slow drive is NOT ready
+// when ata_bd's _start returns -- SMS (Simple-Media-System, SMS_IOPStartATA)
+// waits ~10s of post-load delay before scanning, and the 0718 build's ~15s
+// boot worked on sAGA's 4TB precisely because it bought the drive that time.
+// Poll the BDM mass slots for the "ata" unit to actually appear (the same
+// GET_DRIVERNAME ioctl the mass-root classifier uses; exact "ata" match),
+// early-exit on first sight (a ready drive pays ~1s), bounded at ~10s. A
+// no-show is a REAL failure: clear the loaded flag so the page-entry retry
+// re-runs the full bring-up -- a self-exited ata_bd ("HDD is not connected")
+// re-probes the now-spun-up drive on the fresh instance, and per
+// LoadIrxCheckedBuffer a still-resident copy fails the reload without running
+// _start again (no double bus reset in practice). Contains NO module loads,
+// so the boot worker may run it CONCURRENTLY with the splash (EXP64) -- only
+// SifExecModuleBuffer needed the serial window.
+static bool VerifyAtaDriveReady()
+{
+	bool saw_ata = false;
+	for (int t = 0; t < 20 && !saw_ata; t++) {
+		for (int slot = 0; slot < 4 && !saw_ata; slot++) {
+			const char *drv = GetMassMountDriverNameBySlot(slot);
+			if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
+				saw_ata = true;
+		}
+		if (!saw_ata)
+			usleep(500000); // 500 ms poll steps
+	}
+	if (!saw_ata) {
+		g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
+		return false;
+	}
+	g_ata_bd_loaded = true;
+	return true;
+}
+
+static bool EnsureAtaBdmInner()
+{
+	if (!EnsureAtaBdmModulesInner()) {
+		return false;
+	}
+	return VerifyAtaDriveReady();
 }
 
 // Locking wrapper (see EnsureAtaBdmSemaInit above). Double-checked: a caller
@@ -1734,13 +1748,41 @@ extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
 static volatile int g_ata_async_state = 0;
 static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
 
+// EXP64: the worker's MODULE phase (dev9 -> bdm -> bdmfs -> ata_bd) signals this
+// sema the moment the chain is done, so the boot path joins ONLY the part that
+// must be serial (SifExecModuleBuffer cannot race the main thread's ds34/audsrv
+// loads). The EXP63 drive-readiness verification that follows is pure fileXio
+// polling (no module loads) and runs CONCURRENTLY with the splash/intro -- the
+// ~10s slow-drive window now hides behind the animation instead of extending
+// the black screen (maintainer feedback, EXP63 boot too long).
+static int g_ata_async_modules_sema = -1;
+static void AtaAsyncModulesSemaInit()
+{
+	if (g_ata_async_modules_sema < 0) {
+		ee_sema_t s;
+		s.init_count = 0;
+		s.max_count = 1;
+		s.attr = 0;
+		s.option = 0;
+		g_ata_async_modules_sema = CreateSema(&s);
+	}
+}
+
 static int ata_async_thread(void *arg)
 {
 	(void)arg;
-	bool ok = EnsureAtaBdm();
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0)
+		WaitSema(g_ata_bdm_sema);
+	bool mods = EnsureAtaBdmModulesInner();
+	if (g_ata_bdm_sema >= 0)
+		SignalSema(g_ata_bdm_sema);
+	if (g_ata_async_modules_sema >= 0)
+		SignalSema(g_ata_async_modules_sema); // boot join waits for THIS (EXP64)
+	bool ok = mods && VerifyAtaDriveReady(); // no module loads -> splash-safe
 	g_ata_async_state = ok ? 2 : 3;
 	if (g_ata_async_done_sema >= 0)
-		SignalSema(g_ata_async_done_sema); // wake a bounded boot join (EXP62)
+		SignalSema(g_ata_async_done_sema); // full completion (page-side waits)
 	ExitDeleteThread();
 	return 0;
 }
@@ -1774,8 +1816,11 @@ int KickAtaAsyncBoot(void)
 	// same sema (the caller is single-threaded w.r.t. the worker right here).
 	EnsureAtaBdmSemaInit();
 	AtaAsyncDoneSemaInit();
+	AtaAsyncModulesSemaInit();
 	if (g_ata_async_done_sema >= 0)
 		PollSema(g_ata_async_done_sema); // drain any stale token from a previous (re)spawn (EXP62)
+	if (g_ata_async_modules_sema >= 0)
+		PollSema(g_ata_async_modules_sema); // same for the EXP64 module-phase token
 	g_ata_async_state = 1;
 	ee_thread_t th;
 	th.attr = 0;
@@ -1794,24 +1839,27 @@ int KickAtaAsyncBoot(void)
 	return 1;
 }
 
-// WaitAtaAsyncBootBounded(): join the boot kick, BOUNDED (EXP62). Returns the
-// final g_ata_async_state: 2 done-ok, 3 done-fail, 1 still running (timed out).
-// A timeout is NOT a boot failure: the page-entry path keeps polling state 1
-// and reports "The internal drive is still starting" (EXP61). This is what
-// removes EXP61's unprotected concurrency at boot -- the main thread waits
-// HERE (before its own ds34usb/ds34bt/audsrv loads) instead of issuing
-// SifExecModuleBuffer concurrently with the worker's dev9/bdm/bdmfs/ata_bd
-// chain on a SIF RPC client that is not thread-safe. Serial, like the
-// rr0718-proven window, but capped so a wedged load can never black the boot.
+// WaitAtaAsyncBootBounded(): join the boot kick's MODULE phase, BOUNDED. EXP64:
+// the join covers only the part that must stay serial (dev9/bdm/bdmfs/ata_bd --
+// SifExecModuleBuffer cannot race the main thread's ds34/audsrv loads, the
+// EXP61 black screen). The EXP63 drive-readiness verification that follows is
+// pure fileXio polling and runs concurrently with the splash/intro, so the
+// slow-drive window no longer extends the black screen. Returns 2 if the
+// worker already finished entirely, 3 on module-phase failure, 1 if still
+// running (timed out -- NOT a boot failure; the page-entry path keeps polling
+// and reports "The internal drive is still starting").
 int WaitAtaAsyncBootBounded(int max_ms)
 {
 	AtaAsyncDoneSemaInit();
+	AtaAsyncModulesSemaInit();
 	if (g_ata_async_state != 1)
 		return g_ata_async_state;
 	clock_t start = clock();
-	while (g_ata_async_state == 1) {
-		if (g_ata_async_done_sema >= 0 && PollSema(g_ata_async_done_sema) >= 0)
-			break;
+	for (;;) {
+		if (g_ata_async_modules_sema >= 0 && PollSema(g_ata_async_modules_sema) >= 0)
+			break; // module chain done -> main may proceed to its own loads
+		if (g_ata_async_state != 1)
+			break; // worker finished entirely before the modules token was seen
 		if (max_ms >= 0 && ((clock() - start) / 1000) >= (clock_t)max_ms)
 			break;
 		usleep(10000); // 10 ms poll steps; EE clock() is microseconds

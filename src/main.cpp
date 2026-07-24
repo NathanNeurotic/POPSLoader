@@ -650,34 +650,25 @@ int main(int argc, char * argv[])
 
     /* Kick the internal-drive (ata_bd) bring-up HERE, on a worker, at the exact
      * boot point rr0718/EXP22 loaded it synchronously -- the only configuration
-     * hardware-proven on sAGA's SCPH-30004 internal exFAT HDD. The EXP55-60
-     * wedge ("exFAT 1c: status 1", worker never finishes) was never the driver
-     * bytes (identical md5 in both builds): it was the load landing MID-SESSION
-     * on a full IOP (freesio2/freepad, ds34, audsrv, mcman, USB stack), the one
-     * configuration no working launcher uses.
+     * hardware-proven on sAGA's SCPH-30004 internal exFAT HDD.
      *
      * EXP61 fired the worker and RACED AHEAD into the ds34usb/ds34bt/audsrv
      * loads below -- two EE threads inside SifExecModuleBuffer at once, on a
-     * SIF RPC client that is not thread-safe. On sAGA's console that wedged
-     * the boot itself: HDD spins up (worker loading dev9/ata_bd), a flash
-     * (initGraphics), then steady black (a corrupted SIF call never returns).
-     * EXP62 therefore JOINS the kick, bounded, BEFORE any further module load:
-     * serial like the rr0718-proven window, but capped (8s) so a wedged load
-     * costs the exFAT page's "still starting" report instead of the console.
-     * The probe keeps the lean-IOP window; the main thread simply waits for it
-     * instead of competing with it. Driveless consoles pay only the worker's
-     * two 1s settle sleeps (ata_bd self-exits fast on no ATA device).
-     * hdd0:/APA boots are unaffected: boot.lua -> HDD.Initialize still goes
-     * through the synchronous EnsureAtaBdm, which the native sema serializes
-     * behind (or short-circuits after) this worker -- load-once via the same
-     * g_ata_bd_loaded, whichever path finishes first. MX4SIO/MMCE untouched. */
+     * SIF RPC client that is not thread-safe (sAGA's EXP61 black screen).
+     * EXP62 joined the whole bring-up, which put the EXP63 slow-drive spin-up
+     * window (~10s of fileXio polling) on the BLACK screen. EXP64 splits it:
+     * the join below covers ONLY the module chain (dev9/bdm/bdmfs/ata_bd --
+     * the part that cannot race), ~3-5s worst case; the drive-readiness
+     * verification that follows contains NO module loads, so it finishes
+     * CONCURRENTLY with the splash/intro -- the long wait hides behind the
+     * animation. A module-phase timeout/failure is not fatal: the exFAT page
+     * keeps polling and reports "still starting" (EXP61 not-ready path).
+     * hdd0:/APA boots are unaffected (luaHDD's synchronous EnsureAtaBdm
+     * serializes on the same sema + g_ata_bd_loaded). MX4SIO/MMCE untouched. */
     KickAtaAsyncBoot();
     {
-        // Cap is 20s so the EXP63 drive-readiness verification fits inside it: the worker
-        // can legitimately need dev9/bdm/bdmfs + 2x1s settles + up to ~10s of spin-up
-        // polling on a slow drive (SMS/rr0718-proven window) before answering done.
-        int st = WaitAtaAsyncBootBounded(20000);
-        BootStamp(st == 1 ? "ata join timeout" : "ata join done"); // bounded wait only, never forever
+        int st = WaitAtaAsyncBootBounded(8000); // MODULE phase only (EXP64)
+        BootStamp(st == 3 ? "ata load fail" : "ata mods done"); // verification continues under the splash
     }
 
     int ds3pads = 1;
