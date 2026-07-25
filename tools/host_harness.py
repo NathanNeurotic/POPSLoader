@@ -280,14 +280,15 @@ t5 = E('''function()
   local b = f(nil, "MX4SIO") == "MX4SIO"
   local c = f(nil, "MMCE") == "MMCE"
   local d = f(nil, "SMB/MMCE") == "MMCE"
-  local e = f(nil, "USB") == "FAT32"              -- saved MMCE: USB drive is FAT32
+  local e = f(nil, "USB") == "USBEXFAT"           -- saved MMCE: USB still gets USBEXFAT
   PLDR.BDMA_MODE_KEY = "USBEXFAT"
-  local g2 = f(nil, "USB") == "USBEXFAT"          -- saved exFAT preference honored
-  local h = f(nil, "HDD") == nil and f(nil, "SMB") == nil and f(nil, "unknown") == nil
+  local g2 = f(nil, "USB") == "USBEXFAT"
   PLDR.BDMA_MODE_KEY = "FAT32"
-  return a and b and c and d and e and g2 and h
+  local e2 = f(nil, "USB") == "USBEXFAT"          -- even a saved FAT32 mode (manual-only now)
+  local h = f(nil, "HDD") == nil and f(nil, "SMB") == nil and f(nil, "unknown") == nil
+  return a and b and c and d and e and g2 and e2 and h
 end''')()
-check("T5 adaptive-BDMA target matrix (incl. USB saved-preference rule)", t5)
+check("T5 adaptive-BDMA target matrix (USB always USBEXFAT under Adaptive)", t5)
 
 # T6 equipped check against the fake card
 t6 = E('''function()
@@ -334,12 +335,17 @@ t10 = E('''function()
   EMBEDDED["usbd.irx.mmce"] = nil
   local ok2 = PLDR.MaybeApplyAdaptiveBdma(nil, "MMCE")
   local intact = FAKEFS.files[root.."/usbd.irx"] == "FAKE-USBD-MMCE"
-  -- FAT32 arm removes the modules
-  local ok3 = PLDR.MaybeApplyAdaptiveBdma(nil, "USB")   -- saved FAT32 -> remove
-  local removed = FAKEFS.files[root.."/usbd.irx"] == nil and FAKEFS.files[root.."/bdma_mode.txt"] == "FAT32"
-  return ok == true and staged and no_toast and eq and ok2 == true and intact and ok3 == true and removed
+  -- USB arm now STAGES usbexfat under Adaptive (any saved mode; FAT32 is manual-only)
+  EMBEDDED["usbd.irx.usbexfat"] = "FAKE-USBD-USBEXFAT"
+  EMBEDDED["usbhdfsd.irx.usbexfat"] = "FAKE-HDFSD-USBEXFAT"
+  PLDR.BDMA_MODE_KEY = "FAT32"
+  local ok3 = PLDR.MaybeApplyAdaptiveBdma(nil, "USB")
+  local usb_staged = FAKEFS.files[root.."/usbd.irx"] == "FAKE-USBD-USBEXFAT"
+                 and FAKEFS.files[root.."/usbhdfsd.irx"] == "FAKE-HDFSD-USBEXFAT"
+                 and FAKEFS.files[root.."/bdma_mode.txt"] == "USBEXFAT"
+  return ok == true and staged and no_toast and eq and ok2 == true and intact and ok3 == true and usb_staged
 end''')()
-check("T10 adaptive staging cycle (stage -> skip-when-equipped -> FAT32 removal)", t10)
+check("T10 adaptive staging cycle (stage -> skip-when-equipped -> USB always usbexfat)", t10)
 
 # T11 staging FAILURE cancels (returns false) + visible warn queued
 t11 = E('''function()

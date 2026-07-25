@@ -6834,15 +6834,13 @@ function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if device_page == "MX4SIO" then return "MX4SIO" end
   if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
   if device_page == "USB" then
-    -- FAT32-vs-exFAT USB is not detectable from here (identical driver name),
-    -- so honor the user's saved USB-family preference: a user whose drive needs
-    -- the exFAT modules has BDMA Mode = exFAT-USB saved (it never worked any
-    -- other way). Any other saved mode says their USB drive is FAT32 -> remove
-    -- the modules so POPStarter's built-in USB stack takes over.
-    if NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) == "USBEXFAT" then
-      return "USBEXFAT"
-    end
-    return "FAT32"
+    -- AUTO (Adaptive) ALWAYS stages USBEXFAT for USB (maintainer directive
+    -- 2026-07-25): the exFAT BDMA pair reads FAT32 too, so ONE variant plays
+    -- every USB stick and nobody has to guess the filesystem. FAT32/no-BDMA
+    -- (POPStarter's built-in USB stack) is a MANUAL-only choice now -- BDMA
+    -- Mode = FAT32 with Adaptive OFF. The old saved-preference gate is gone:
+    -- a saved FAT32 mode no longer strips the modules under Adaptive.
+    return "USBEXFAT"
   end
   -- HDD (PFS), net-SMB, DKWDRV, unknown: POPStarter doesn't consume the BDMA
   -- pair for these; leave whatever is staged alone.
