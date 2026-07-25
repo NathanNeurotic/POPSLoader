@@ -456,6 +456,27 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- is not read at all -- so a card with no art (the reported case) does ZERO reads
   -- per navigation instead of two slow ones.
   self.pending_desc = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and candidates or nil
+  -- Mass devices: compute the details-.txt path for the WORKER-side companion
+  -- read (EXP72, sAGA: details never showed without a cover). NO io here --
+  -- T35's zero-blocking-IO invariant: the resident cover worker opens the file
+  -- on its own thread (Graphics.coverLoadTextPath + coverLoadText), even when
+  -- there is no cover to load at all (a text-only job below). Exact game
+  -- filename only (EXP71 rule); misses memoize in self.failed.
+  self.pending_desc_path = nil
+  if use_hdd_common_art ~= true and type(PLDR) == "table"
+     and PLDR.SHOW_DETAILS == true and self.last_desc == nil
+     and type(Graphics) == "table" and type(Graphics.coverLoadTextPath) == "function" then
+    local base = StripExtension(vcd_path or "")
+    local dir, name = string.match(base, "^(.*/)([^/]+)$")
+    if dir == nil then dir, name = "", base end
+    local devroot = string.match(dir, "^(%w+:/)")
+    if devroot ~= nil and name ~= "" then
+      local dp = devroot.."ART/"..name..".txt"
+      if not self.failed[dp] then
+        self.pending_desc_path = dp
+      end
+    end
+  end
   -- HDD/PFS quirk: BuildCoverCandidates' HDD branch only returns candidates the
   -- partition resolver EXISTENCE-CONFIRMED, so with no cover .png the list is
   -- EMPTY -- which used to also skip the .txt (a Game.txt without a Game.png
@@ -497,7 +518,16 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     end
   end
   if first_unknown == nil then
-    return nil   -- every candidate is a known miss: nothing to do, nothing to wait for
+    -- every cover candidate is a known miss. The DETAILS text may still exist:
+    -- give the worker a text-only job (empty image path) so cover-less games
+    -- show their description without any render-thread io (EXP72).
+    if self.pending_desc_path ~= nil and type(Graphics.coverLoadBegin) == "function" then
+      local dp = self.pending_desc_path
+      self.pending_desc_path = nil
+      pcall(Graphics.coverLoadTextPath, dp)
+      pcall(Graphics.coverLoadBegin, "", self.token)
+    end
+    return nil   -- nothing to do for the cover itself
   end
   -- EXP49: hand the unknown candidate to the worker and RETURN IMMEDIATELY. The list
   -- keeps drawing the placeholder; CoverCache:Pump adopts the texture when it lands.
@@ -598,6 +628,9 @@ function CoverCache:Pump()
       self.pending = nil
       return
     end
+    if self.pending_desc_path ~= nil then
+      pcall(Graphics.coverLoadTextPath, self.pending_desc_path)
+    end
     local ok, accepted = pcall(Graphics.coverLoadBegin, p.candidates[p.idx], p.token)
     p.started = (ok and accepted == true)
     return
@@ -618,24 +651,33 @@ function CoverCache:Pump()
       table.insert(self.order, p.candidates[p.idx])
       self:EvictIfNeeded()
       self.last_img = ptr
-      -- EXP54: the cover for THIS path just loaded, so its folder entry is warm and
-      -- the sibling .txt is a cheap hit if it exists. This is the only place the
-      -- details sidecar is read now; a game with no cover never pays for it.
-      if self.pending_desc ~= nil and self.last_desc == nil then
-        local dp = string.gsub(p.candidates[p.idx], "_COV%.png$", ".png")
-        dp = string.gsub(dp, "%.png$", ".txt")
-        if dp ~= p.candidates[p.idx] and not self.failed[dp] then
-          local d = ReadGameDetailsText(dp)
-          if d ~= nil then
-            self.last_desc = d
-            self.last_desc_lines = nil
-          else
-            self.failed[dp] = true
-          end
+      -- EXP72: the details sidecar now arrives from the WORKER (read on its
+      -- thread alongside the cover attempt), so this collect is a cheap local
+      -- call -- zero io on the render path even for cover-less games.
+      if type(Graphics.coverLoadText) == "function" and self.last_desc == nil then
+        local dp = self.pending_desc_path or ""
+        local dtxt = Graphics.coverLoadText()
+        if type(dtxt) == "string" and dtxt ~= "" then
+          self.last_desc = dtxt
+          self.last_desc_lines = nil
+        elseif dtxt == false and dp ~= "" then
+          self.failed[dp] = true
         end
       end
+      self.pending_desc_path = nil
     end
     self.pending = nil
+    if type(Graphics.coverLoadText) == "function" and self.last_desc == nil then
+      local dp = self.pending_desc_path or ""
+      local dtxt = Graphics.coverLoadText()
+      if type(dtxt) == "string" and dtxt ~= "" then
+        self.last_desc = dtxt
+        self.last_desc_lines = nil
+      elseif dtxt == false and dp ~= "" then
+        self.failed[dp] = true
+      end
+    end
+    self.pending_desc_path = nil
     return
   end
   -- Miss: memoize ONLY when the file is genuinely absent (EXP59, OPL parity --
@@ -2361,7 +2403,7 @@ UI = {
         -- for DISPLAY while the raw key string stays the input-logic identifier
         -- (sAGA #538: BACK/DONE could not be translated). Single-character keys are
         -- never translated. Falls back to the English word if untranslated.
-        if key == "SPACE" or key == "BACK" or key == "DONE" then
+        if key == "SPACE" or key == "BACK" or key == "DONE" or key == "DEL" or key == "CLR" then
           if type(PLDR) == "table" and type(PLDR.L) == "function" then
             return PLDR.L(key)
           end
