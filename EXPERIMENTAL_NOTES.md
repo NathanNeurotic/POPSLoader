@@ -2,11 +2,121 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP61**. The check is simple: a version ending in **-EXP61** = this build; **-EXP60** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP67**. The check is simple: a version ending in **-EXP67** = this build; **-EXP66** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP61, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP67, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP67: APA (internal HDD) works again + both USB drives list
+
+Two fixes from the maintainer's EXP66 test:
+
+- **APA (PFS) HDD was not detected.** A check added for the exFAT path demanded
+  a FAT-visible "ata" unit, which an APA-formatted drive never has -- so every
+  APA bring-up failed. The check now lives only where it belongs (the exFAT
+  page sweep); the APA path is back to its pre-EXP63 behavior.
+- **Only one of two USB drives listed.** The USB probe stopped at the first
+  drive it found, so a second stick that mounted a beat later never made the
+  list. It now keeps looking while new drives are still appearing (single-drive
+  users pay one extra second at most).
+
+---
+
+## New in EXP66: boot is instant again; the worker is gone
+
+EXP65 still black-screened: the boot's 8-second cap let the startup continue
+while the HDD driver was still loading in the background -- same race, shorter
+window. So the experiment is over and the answer is simple: **no background
+storage work at all, anywhere.** That's how SMS (Simple Media System) does it,
+and SMS runs ATA + MX4SIO + MMCE side by side without any of this.
+
+**What EXP66 changes:** boot does zero HDD work -- the background worker is
+deleted outright. The HDD (exFAT) page brings the driver up itself, in the
+foreground, telling you what it's doing ("loading the driver", then up to 10
+"retrying" passes while a slow drive spins up). If the drive still isn't
+there, the next page entry tries fresh.
+
+**Everyone:** boot should be instant and boring again, on every device.
+**sAGA:** the HDD page does the waiting now, out loud. If the page opens and
+lists your games after the retries, the saga is over.
+
+---
+
+## New in EXP65: boot fixed, drive check moved to the HDD page
+
+**EXP64 broke the boot (sorry).** The drive check I moved under the splash was
+constantly poking the storage devices at boot -- on the maintainer's own
+console that meant a black screen with the MX4SIO light stuck on. The lesson
+(from the SMS project, which runs ATA+MX4SIO+MMCE side by side without
+issues): do storage work one thing at a time, on the main thread, where the
+screen can say what's happening.
+
+**What EXP65 changes:** boot no longer probes any storage -- the HDD driver
+loads (short, capped) and that's it. The "is the drive awake?" check moved to
+the HDD (exFAT) page itself, where it shows "retrying (pass N of 10)" while a
+slow drive spins up. Fast rigs see nothing new; slow-drive rigs get a narrated
+wait on a page instead of a long black boot.
+
+**Everyone:** boot should be instant and normal again (MC, USB, MX4SIO,
+MMCE). **sAGA:** open the HDD page -- the retry lines should walk up to your
+drive appearing.
+
+---
+
+## New in EXP64: the wait now hides behind the intro
+
+EXP63's slow-drive wait worked but sat on the black screen. EXP64 splits the
+startup in two: only the short driver load (~3-4 seconds) still happens before
+the intro; the long "is the drive awake yet?" watch now runs *behind* the
+splash animation, so a slow drive costs you nothing you can see.
+
+**sAGA + everyone with an internal drive:** boot should feel normal again --
+intro plays right away, and by the time you open the HDD page the drive is
+either listed or says "still starting" (then just re-enter).
+
+---
+
+## New in EXP63: wait for the drive, not just the driver (sAGA's clue)
+
+**sAGA spotted it himself:** the build that works (07.18) boots *slowly* --
+about 15 seconds. That is not a flaw in that build, it is the point: his 4TB
+drive needs that time to spin up before anyone asks it questions. Fast boots
+asked too early, got no answer, and gave up. SMS (Simple Media System) does
+the same thing on purpose: load the driver, then wait ~10 seconds before
+looking for the drive.
+
+**What EXP63 changes:** after the driver loads, the launcher now watches for
+the drive to actually appear (up to ~10 seconds, checking twice a second,
+instant when the drive is quick) instead of waiting a fixed 1 second and
+hoping. If the drive never appears, the HDD page can retry later instead of
+inheriting a wrong "all good". The boot wait cap was raised to match.
+
+**sAGA, the usual test:** boot (give it up to ~25 seconds of black on the
+first one -- the drive is spinning up), open the HDD page. If your games
+list, this is the one.
+
+---
+
+## New in EXP62: boot again (fix the EXP61 black screen)
+
+**EXP61 fixed the wrong half of the problem.** It moved the HDD driver load back
+to boot (the right window), but let it run *at the same time* as the controller
+and sound drivers loading on the main thread. Two parts of the console talking
+to the co-processor at once is not allowed -- on sAGA's console the boot itself
+jammed: drive spins up, one flash, then a permanent black screen.
+
+**What EXP62 changes:** startup now *finishes* the HDD driver load (with an
+8-second safety cap) before loading anything else -- exactly the order the
+working 07.18 build always used, just with a timeout so a stuck load can never
+black the console again. If the cap ever trips, the HDD page simply says "The
+internal drive is still starting" instead of freezing.
+
+**sAGA, the usual test, one boot:** it should reach the menu. If the HDD page
+opens and lists your games, the two-month saga is really over. If anything
+still sticks, photograph the screen -- the boot now narrates each step.
 
 ---
 
