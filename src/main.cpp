@@ -84,10 +84,8 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-// Defined in luasystem.cpp; kicks the ata module-chain worker at boot (EXP68).
-extern int KickAtaAsyncBoot(void);
-// Defined in luasystem.cpp; bounded join for the module phase (never forever).
-extern int WaitAtaAsyncBootBounded(int max_ms);
+// Defined in luasystem.cpp; loads ps2dev9 once (idempotent).
+bool EnsureDev9();
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -629,6 +627,15 @@ int main(int argc, char * argv[])
     // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
     // normal connect callback because usbmass_bd's driver is registered before the
     // device is ever seen.
+    // dev9 FIRST, before usbmass_bd starts polling (EXP69 -- the winners' load
+    // order: SMS/OPL/R3Z all have dev9 resident EARLY). dev9 drives the SPEED
+    // chip the USB block stack also lives on; loading it LATE (mid-session,
+    // EXP66/67's page-time chain) into a live USB stack is the wedge class
+    // behind the "exFAT 1a" hang on sAGA's rig. Costs ~100ms, no drive probing
+    // (probing is atad/ata_bd's job, and that stays LAZY at page entry).
+    EnsureDev9();
+    BootStamp("dev9");
+
     // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
     // USB-page entry becomes a no-op rather than a second load.
     // Costs boot time (this is why the EXP6 boot profile landed first).
@@ -647,24 +654,16 @@ int main(int argc, char * argv[])
      * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
      * recorded R3Z3N tradeoff). */
 
-    /* Kick the internal-drive module chain (dev9/bdm/bdmfs/ata_bd) HERE, on a
-     * worker, JOINED BOUNDED before the ds34 loads below (EXP68). The whole
-     * saga's evidence, final form: on sAGA's SCPH-30004 the chain COMPLETES
-     * when loaded at boot (rr0718, HW-proven, 15s boot) and HANGS when loaded
-     * mid-session -- EXP67 proved the mid-session wedge is not a race at all
-     * (its page load is fully serial on the main thread and still never
-     * returns from SifExecModuleBuffer). So the load WINDOW is the variable:
-     * lean-IOP-at-boot works, full-IOP-mid-session hangs, same bytes.
-     * The join is capped at 20s: a wedged chain costs a not-ready HDD page
-     * (which then reports and retries serially, narrated) instead of the
-     * console. The worker ONLY loads modules -- drive readiness stays with the
-     * exFAT page sweep (EXP65-67). */
-    KickAtaAsyncBoot();
-    {
-        int st = WaitAtaAsyncBootBounded(20000);
-        BootStamp(st == 3 ? "ata mods FAIL" : "ata mods done");
-    }
-
+    /* NO ata_bd at boot (EXP69). The winners' split, finally correct: dev9 +
+     * bdm + bdmfs_fatfs are resident EARLY (fast, no drive probing -- above and
+     * in EnsureUsbMass), and ata_bd -- the only piece that touches the spinning
+     * drive -- loads LAZILY at exFAT/APA page entry, serially on the main
+     * thread (System.initATAModules; resident parts short-circuit). That is
+     * EXACTLY what SMS does (SMS_IOPStartATA: dev9 long-resident, ata_bd on
+     * engagement + post-load settle), and it boots instantly like EXP66/67
+     * without EXP67's mid-session dev9 wedge. The EXP68 bounded-join worker
+     * stays dormant (no callers); initATAStatus keeps answering for the
+     * cascade bounds. */
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);

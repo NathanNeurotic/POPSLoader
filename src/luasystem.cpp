@@ -69,7 +69,9 @@ extern int pad_reinit();
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
-static bool EnsureDev9();   // defined below (with the SMB block); load-once via g_dev9_loaded
+// dev9 loader, load-once via g_dev9_loaded. Non-static since EXP69 (main.cpp loads
+// it early at boot -- the winners' load order).
+bool EnsureDev9();
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
@@ -1846,7 +1848,7 @@ static bool net_irx_loaded = false;
 static bool smb_irx_loaded = false;
 static char SMB_IFNAME[] = "sm0";   // mutable: ps2ip_getconfig takes char*, not const char*
 
-static bool EnsureDev9()
+bool EnsureDev9()
 {
 	if (g_dev9_loaded) {
 		return true;
