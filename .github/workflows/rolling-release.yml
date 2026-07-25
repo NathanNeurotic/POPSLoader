@@ -64,6 +64,15 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify pinned ata_bd.irx checksum
+        shell: sh
+        run: |
+          set -eu
+          # The embedded ata_bd is pinned to R3Z v4.70's probe-fixed binary
+          # (HW-proven on 4TB GPT internal exFAT, 2026-07-20); the SDK copy
+          # must not silently replace it. See the Makefile ata_bd rule.
+          echo "16c5d9f00d64be5ea4848b53da89bb5f89a54004957bae47d01dee3c354742f4  iop/embed/ata_bd.irx" | sha256sum -c -
+
       - name: Generate build info
         shell: sh
         run: |

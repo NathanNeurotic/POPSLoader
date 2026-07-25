@@ -66,9 +66,7 @@ Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentés
 Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
 Couldn't update hidden state	A rejtett állapotot nem sikerült frissíteni
 Couldn't write .hide to the HDD	Nem sikerült a .hide fájlt a HDD-re írni
-Cover Art	Borítókép
-Cover Art disabled	Borítóképek letiltva
-Cover Art enabled	Borítóképek engedélyezve
+Cover art	Borítókép
 Cover/details folder	Borító/Részletek mappa
 Credits	Közreműködők
 Cursor: L1 / R1	Kurzor: L1 / R1
@@ -167,7 +165,6 @@ NetBIOS name	NetBIOS name
 Netmask	Netmask
 No	Nem
 No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	Nincs '__.POPS' partíció a hdd0-on:\nHozzon létre egyet __.POPS / __.POPS0...9 néven
-No cover. Looked for:	Nincs borító. Itt keresve:
 No DKWDRV found at this path	Ezen az elérési úton nincs DKWDRV
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok

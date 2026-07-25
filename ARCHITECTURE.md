@@ -1,4 +1,4 @@
-Last updated: 2026-06-22 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active/rolling branch is now **`BETA-13-PLAY`** (`BETA-12-PLAY` is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — this doc points there instead of restating them.
+Last updated: 2026-06-22 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active/rolling branch is now **`BETA-13-PLAY`** (`BETA-12-PLAY` is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — including its **Experimental channel (EXP32–EXP42)** section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.
 
 # ARCHITECTURE
 
@@ -350,8 +350,10 @@ pre-probe and lets `Graphics.loadImage` (`fopen`) open the file directly. In ps2
 `open()` and `fopen()` share the same libcglue `_open`, so this is a redundant-syscall
 cleanup, NOT a fix: nested subfolder reads work on the BDM/FAT drivers (OPL reads
 `mass:/ART/` the same way), so a missing `POPS/ART` cover is a filename/location issue.
-When no cover loads, the list view prints a "No cover. Looked for: <path>" caption so a
-tester can self-check the name/folder without a hardware round-trip.
+The "No cover. Looked for: <path>" caption that used to print here was REMOVED (EXP42)
+together with its `last_cover_probe` state: a missing cover now just draws the
+placeholder. Whether covers draw at all is the persisted `COVER_ART` setting
+(*Settings > Game List > Cover art*, default ON), which replaced the Square toggle.
 
 **Layered placeholder (no `MISSING.png`).** When there is no live cover the box
 draws two embedded assets instead of a single combined image (the old "Cover

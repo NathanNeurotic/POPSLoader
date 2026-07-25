@@ -84,6 +84,8 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
+// Defined in luasystem.cpp; loads ps2dev9 once (idempotent).
+bool EnsureDev9();
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -315,7 +317,7 @@ typedef struct {
 static boot_stage_t g_boot_stages[BOOT_STAGE_MAX];
 static int g_boot_stage_count = 0;
 
-static void BootStamp(const char *stage)
+extern "C" void BootStamp(const char *stage) // EXP68: shared with luasystem.cpp (per-module ata stamps)
 {
     unsigned int ms = boot_ms();
     if (g_boot_stage_count < BOOT_STAGE_MAX) {
@@ -625,22 +627,43 @@ int main(int argc, char * argv[])
     // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
     // normal connect callback because usbmass_bd's driver is registered before the
     // device is ever seen.
+    // dev9 FIRST, before usbmass_bd starts polling (EXP69 -- the winners' load
+    // order: SMS/OPL/R3Z all have dev9 resident EARLY). dev9 drives the SPEED
+    // chip the USB block stack also lives on; loading it LATE (mid-session,
+    // EXP66/67's page-time chain) into a live USB stack is the wedge class
+    // behind the "exFAT 1a" hang on sAGA's rig. Costs ~100ms, no drive probing
+    // (probing is atad/ata_bd's job, and that stays LAZY at page entry).
+    EnsureDev9();
+    BootStamp("dev9");
+
     // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
     // USB-page entry becomes a no-op rather than a second load.
     // Costs boot time (this is why the EXP6 boot profile landed first).
     EnsureUsbMass();
     BootStamp("usb mass stack");  // bdm+bdmfs_fatfs+usbmass_bd -- keep the label short: it must fit the Credits line
 
-    /* NO internal-drive (ata) load at boot -- maintainer's EXP24 verdict: the
-     * ~5-6s "ata bdm stack" black-screen cost is unacceptable. The exFAT page
-     * brings the stack up LAZILY on a background EE worker (System.initATAAsync
-     * in luasystem.cpp) -- the same arrangement OPL uses: OPL's "ps2atad_irx" is
-     * actually the SDK's ata_bd.irx blob loaded mid-session on its IO worker
-     * thread, and that works on the same consoles that froze our old
-     * synchronous page-time load. hdd0:/APA boots still bring atad up via
-     * boot.lua -> HDD.Initialize -> the synchronous EnsureAtaBdm (pfs1: needs
-     * it before settings mount), exactly as they always have. */
+    /* NO mx4sio_bd at boot (maintainer, EXP32 revision): storage stacks load
+     * LAZILY when their device is engaged -- cwd/boot-device determines what
+     * boot needs (boot.lua's mx4sio: branch loads it on an mx4sio boot, the
+     * legacy-mass sidecar heal in system.lua escalates usb -> mx4sio -> ata
+     * when a mass* cwd doesn't resolve as USB), and the MX4SIO page loads it
+     * on first entry. Matches wLaunchELF_R3Z (stacks on engagement) and OPL
+     * (transports at first BDM init). mmceman and mx4sio_bd COEXIST when both
+     * get engaged -- official OPL runs both resident in the field on the same
+     * freesio2 bus manager we carry (EXP31); no gate (maintainer call,
+     * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
+     * recorded R3Z3N tradeoff). */
 
+    /* NO ata_bd at boot (EXP69). The winners' split, finally correct: dev9 +
+     * bdm + bdmfs_fatfs are resident EARLY (fast, no drive probing -- above and
+     * in EnsureUsbMass), and ata_bd -- the only piece that touches the spinning
+     * drive -- loads LAZILY at exFAT/APA page entry, serially on the main
+     * thread (System.initATAModules; resident parts short-circuit). That is
+     * EXACTLY what SMS does (SMS_IOPStartATA: dev9 long-resident, ata_bd on
+     * engagement + post-load settle), and it boots instantly like EXP66/67
+     * without EXP67's mid-session dev9 wedge. The EXP68 bounded-join worker
+     * stays dormant (no callers); initATAStatus keeps answering for the
+     * cascade bounds. */
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
