@@ -2,11 +2,31 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP68**. The check is simple: a version ending in **-EXP68** = this build; **-EXP67** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP69**. The check is simple: a version ending in **-EXP69** = this build; **-EXP68** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP68, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP69, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP69: the winners' recipe, properly this time
+
+EXP68's answer (load everything at boot, wait) was crude -- and the maintainer
+called it. The launchers that read this drive fine (SMS, wLaunchELF-R3Z, OPL,
+NHDDL) don't do that. What they actually do: **the chip driver (dev9) and the
+filesystem layers load early and fast, and only the drive-probing driver
+(ata_bd) loads later, when you ask for it.** The drive probe was never the
+boot problem -- loading dev9 *late*, on top of a running USB stack, was the
+hang.
+
+**What EXP69 changes:** dev9 now loads at boot (~0.1s, you'll never notice),
+ata_bd still loads only when you open the HDD page. Boot stays instant like
+EXP66/67, and the page load mirrors SMS exactly -- the one arrangement none
+of the fast launchers ever had trouble with.
+
+**sAGA:** instant boot, then open the HDD page. If your games list, this is
+finally it.
 
 ---
 
