@@ -280,14 +280,15 @@ t5 = E('''function()
   local b = f(nil, "MX4SIO") == "MX4SIO"
   local c = f(nil, "MMCE") == "MMCE"
   local d = f(nil, "SMB/MMCE") == "MMCE"
-  local e = f(nil, "USB") == "FAT32"              -- saved MMCE: USB drive is FAT32
+  local e = f(nil, "USB") == "USBEXFAT"           -- saved MMCE: USB still gets USBEXFAT
   PLDR.BDMA_MODE_KEY = "USBEXFAT"
-  local g2 = f(nil, "USB") == "USBEXFAT"          -- saved exFAT preference honored
-  local h = f(nil, "HDD") == nil and f(nil, "SMB") == nil and f(nil, "unknown") == nil
+  local g2 = f(nil, "USB") == "USBEXFAT"
   PLDR.BDMA_MODE_KEY = "FAT32"
-  return a and b and c and d and e and g2 and h
+  local e2 = f(nil, "USB") == "USBEXFAT"          -- even a saved FAT32 mode (manual-only now)
+  local h = f(nil, "HDD") == nil and f(nil, "SMB") == nil and f(nil, "unknown") == nil
+  return a and b and c and d and e and g2 and e2 and h
 end''')()
-check("T5 adaptive-BDMA target matrix (incl. USB saved-preference rule)", t5)
+check("T5 adaptive-BDMA target matrix (USB always USBEXFAT under Adaptive)", t5)
 
 # T6 equipped check against the fake card
 t6 = E('''function()
@@ -334,12 +335,17 @@ t10 = E('''function()
   EMBEDDED["usbd.irx.mmce"] = nil
   local ok2 = PLDR.MaybeApplyAdaptiveBdma(nil, "MMCE")
   local intact = FAKEFS.files[root.."/usbd.irx"] == "FAKE-USBD-MMCE"
-  -- FAT32 arm removes the modules
-  local ok3 = PLDR.MaybeApplyAdaptiveBdma(nil, "USB")   -- saved FAT32 -> remove
-  local removed = FAKEFS.files[root.."/usbd.irx"] == nil and FAKEFS.files[root.."/bdma_mode.txt"] == "FAT32"
-  return ok == true and staged and no_toast and eq and ok2 == true and intact and ok3 == true and removed
+  -- USB arm now STAGES usbexfat under Adaptive (any saved mode; FAT32 is manual-only)
+  EMBEDDED["usbd.irx.usbexfat"] = "FAKE-USBD-USBEXFAT"
+  EMBEDDED["usbhdfsd.irx.usbexfat"] = "FAKE-HDFSD-USBEXFAT"
+  PLDR.BDMA_MODE_KEY = "FAT32"
+  local ok3 = PLDR.MaybeApplyAdaptiveBdma(nil, "USB")
+  local usb_staged = FAKEFS.files[root.."/usbd.irx"] == "FAKE-USBD-USBEXFAT"
+                 and FAKEFS.files[root.."/usbhdfsd.irx"] == "FAKE-HDFSD-USBEXFAT"
+                 and FAKEFS.files[root.."/bdma_mode.txt"] == "USBEXFAT"
+  return ok == true and staged and no_toast and eq and ok2 == true and intact and ok3 == true and usb_staged
 end''')()
-check("T10 adaptive staging cycle (stage -> skip-when-equipped -> FAT32 removal)", t10)
+check("T10 adaptive staging cycle (stage -> skip-when-equipped -> USB always usbexfat)", t10)
 
 # T11 staging FAILURE cancels (returns false) + visible warn queued
 t11 = E('''function()
@@ -558,7 +564,7 @@ check("T32 EXP42 COVER_ART persists, defaults ON, and drives the live cover box"
 t33 = E('''function()
   local seen = {}
   local rep = function(msg) seen[#seen + 1] = tostring(msg) end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
@@ -868,8 +874,8 @@ t21 = lua.execute(r'''
 check("T21 mx4sio not-ready: no sweep + truthful 'notready' status", t21)
 
 t22 = lua.execute(r'''
-  -- (b) ata worker still running: bounded poll expires -> "notready", no sweep.
-  System.initATAAsync = function() return 1 end
+  -- (b) boot kick still running (STILL_STARTING): gate declines -> "notready", no sweep.
+  System.initATAModules = function() return false, "STILL_STARTING" end
   System.initATAStatus = function() return 1 end
   local swept = false
   local real_dfe = doesFolderExist
@@ -880,7 +886,7 @@ t22 = lua.execute(r'''
   if status ~= "notready" then return false, "expected notready, got "..tostring(status) end
   if swept then return false, "swept while worker still running" end
   -- (c) worker done-ok but no ata device mounted: clean "nodevice".
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local root2, status2 = PLDR.GetATAMassRootNow()
   if root2 ~= nil then return false, "expected nil root for empty sweep" end
@@ -892,7 +898,7 @@ check("T22 ata worker states: bounded 'notready' poll + clean 'nodevice' sweep",
 t23 = lua.execute(r'''
   -- (d) happy paths: ready transports enumerate by driver-name classification.
   System.initMX4SIO = function() return true end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
@@ -1070,7 +1076,7 @@ check("T28 EXP34 config defaults: ART=art, HDD=BOTH, i.Link hidden, SMB/network 
 # fails. The per-slot driver name is the only authority.
 t29 = lua.execute(r'''
   System.initMX4SIO = function() return true end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
@@ -1183,8 +1189,10 @@ t30 = E('''function()
   if stale_freed ~= 1 then return false, "a stale texture was not freed, freed="..stale_freed end
   return true
 end''')()
-check("T30 EXP49 cover loads are async; render path never blocks", t30)
-
+check("T30 EXP49 cover loads are async; render path never blocks", t30)
+
+
+
 # T35 EXP54: the FULL no-blocking-IO invariant for a list navigation. T30 pinned that
 # the COVER load is async; that was not enough -- EXP53 shipped with async covers and
 # the list still froze solid (screen static, scrolling text stopped) because the game
@@ -1226,8 +1234,10 @@ t35 = E('''function()
   end
   return true
 end''')()
-check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
-
+check("T35 EXP54 selecting a game does ZERO blocking file reads", t35)
+
+
+
 # T36 EXP55: devices resolve by the SDK's TYPED name (mx4sio0:/ ata0:/ usb0:/), not by
 # a mass slot. fs_driver_resolve_volume's typed branch matches the MOUNTED device's
 # bd->path, so mx4sio0: can only ever be an MX4SIO volume; the legacy "mass" branch
@@ -1269,8 +1279,10 @@ t36 = E('''function()
   end
   return true
 end''')()
-check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
-
+check("T36 EXP55 devices resolve by typed SDK name; mass walk is fallback only", t36)
+
+
+
 # T37 EXP56: the cover-art layout, pinned to the maintainer's spec:
 #     device:/POPS/<game>.VCD   ->   device:/ART/<game>_COV.png
 # The old device-prefix pattern was `%a+%d*:` which CANNOT match a device whose NAME
@@ -1307,8 +1319,10 @@ t37 = E('''function()
   if bad ~= nil then return false, bad end
   return true
 end''')()
-check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
-
+check("T37 EXP56 cover path is device:/ART/<game>_COV.png for every device name", t37)
+
+
+
 # T38 EXP57: hidden state must NOT leak between scans or devices. CleanupGameList
 # cleared PLDR.GAMES but left PLDR.HIDDEN standing, and every fresh scan calls through
 # it before rebuilding -- so a game hidden on one device was still in the map when the
@@ -1327,8 +1341,10 @@ t38 = E('''function()
   if #PLDR.GAMES ~= 0 then return false, "games not cleared" end
   return true
 end''')()
-check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
-
+check("T38 EXP57 CleanupGameList clears hidden state so it cannot leak between devices", t38)
+
+
+
 # T39 EXP58: no cover load may still be in flight when we hand the machine to another
 # ELF. The worker can be mid-fopen at launch time, which leaves an IOP RPC outstanding
 # across the SifIopReset the launch performs -- the "polluted parent" state main.cpp
@@ -1364,8 +1380,8 @@ check("T39 EXP58 external launches drain the cover worker first", t39)
 # T31 EXP40/EXP61: the LUA-side boot-ATA gate. EXP40 made the internal-HDD
 # visibility setting (EXFAT/BOTH) stop boot-loading ATA -- it only controls which
 # HDD pages the carousel shows; only an EXPLICIT request (-page=ata/-page=exfat)
-# warms ATA from Lua. EXP61 note: main.cpp now kicks the async ATA worker at boot
-# UNCONDITIONALLY (KickAtaAsyncBoot), so this gate no longer decides whether ATA
+# warms ATA from Lua. EXP61/62 note: main.cpp now kicks the async ATA worker at boot
+# UNCONDITIONALLY (KickAtaAsyncBoot, joined bounded -- EXP62), so this gate no longer decides whether ATA
 # warms at boot -- only whether the Lua-side extra kick fires (almost always a
 # no-op now). The gate's semantics are unchanged and still pinned here.
 t31 = lua.execute(r'''

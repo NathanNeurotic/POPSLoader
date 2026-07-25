@@ -84,8 +84,8 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-// Defined in luasystem.cpp; kicks the async ata_bd bring-up worker (idempotent).
-extern int KickAtaAsyncBoot(void);
+// Defined in luasystem.cpp; loads ps2dev9 once (idempotent).
+bool EnsureDev9();
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -317,7 +317,7 @@ typedef struct {
 static boot_stage_t g_boot_stages[BOOT_STAGE_MAX];
 static int g_boot_stage_count = 0;
 
-static void BootStamp(const char *stage)
+extern "C" void BootStamp(const char *stage) // EXP68: shared with luasystem.cpp (per-module ata stamps)
 {
     unsigned int ms = boot_ms();
     if (g_boot_stage_count < BOOT_STAGE_MAX) {
@@ -627,6 +627,15 @@ int main(int argc, char * argv[])
     // that was ALREADY enumerated at boot. On OPL/R3Z the drive is matched by the
     // normal connect callback because usbmass_bd's driver is registered before the
     // device is ever seen.
+    // dev9 FIRST, before usbmass_bd starts polling (EXP69 -- the winners' load
+    // order: SMS/OPL/R3Z all have dev9 resident EARLY). dev9 drives the SPEED
+    // chip the USB block stack also lives on; loading it LATE (mid-session,
+    // EXP66/67's page-time chain) into a live USB stack is the wedge class
+    // behind the "exFAT 1a" hang on sAGA's rig. Costs ~100ms, no drive probing
+    // (probing is atad/ata_bd's job, and that stays LAZY at page entry).
+    EnsureDev9();
+    BootStamp("dev9");
+
     // Idempotent: EnsureUsbMass latches on success, so the lazy Lua-side call on
     // USB-page entry becomes a no-op rather than a second load.
     // Costs boot time (this is why the EXP6 boot profile landed first).
@@ -645,28 +654,16 @@ int main(int argc, char * argv[])
      * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
      * recorded R3Z3N tradeoff). */
 
-    /* Kick the internal-drive (ata_bd) bring-up HERE, on a worker, at the exact
-     * boot point rr0718/EXP22 loaded it synchronously -- the only configuration
-     * hardware-proven on sAGA's SCPH-30004 internal exFAT HDD. The EXP55-60
-     * wedge ("exFAT 1c: status 1", worker never finishes) was never the driver
-     * bytes (identical md5 in both builds): it was the load landing MID-SESSION
-     * on a full IOP (freesio2/freepad, ds34, audsrv, mcman, USB stack), the one
-     * configuration no working launcher uses. Spawning the worker here puts the
-     * probe back on the leanest IOP this build ever sees, while staying ASYNC
-     * so the EXP24 verdict holds: no 5-6s serial "ata bdm stack" boot cost --
-     * the probe runs behind the remaining boot work and is long done by page
-     * entry, so the exFAT page's bounded poll becomes a formality.
-     *
-     * Safe on a driveless console: ata_bd's _start exits immediately when SPD
-     * reports no ATA device ("HDD is not connected, exiting"), and the resident
-     * dev9/bdm/bdmfs footprint is the same one rr0718 shipped unconditionally.
-     * hdd0:/APA boots are unaffected: boot.lua -> HDD.Initialize still goes
-     * through the synchronous EnsureAtaBdm, which the native sema serializes
-     * behind (or short-circuits after) this worker -- load-once via the same
-     * g_ata_bd_loaded, whichever path finishes first. MX4SIO/MMCE untouched. */
-    KickAtaAsyncBoot();
-    BootStamp("ata async kick");  // worker spawn only, no wait -- keep the label short for the Credits line
-
+    /* NO ata_bd at boot (EXP69). The winners' split, finally correct: dev9 +
+     * bdm + bdmfs_fatfs are resident EARLY (fast, no drive probing -- above and
+     * in EnsureUsbMass), and ata_bd -- the only piece that touches the spinning
+     * drive -- loads LAZILY at exFAT/APA page entry, serially on the main
+     * thread (System.initATAModules; resident parts short-circuit). That is
+     * EXACTLY what SMS does (SMS_IOPStartATA: dev9 long-resident, ata_bd on
+     * engagement + post-load settle), and it boots instantly like EXP66/67
+     * without EXP67's mid-session dev9 wedge. The EXP68 bounded-join worker
+     * stays dormant (no callers); initATAStatus keeps answering for the
+     * cascade bounds. */
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
     LOAD_IRX(ds34bt_irx, 4, (char *)&ds3pads);
