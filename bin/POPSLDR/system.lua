@@ -6442,16 +6442,26 @@ end
 local USB_PROBE_ATTEMPTS = 3
 
 local function BuildUsbIdentityDeferred(progress)
+  -- EXP67: "found one" is NOT "found all". A second USB stick mounts LATER than
+  -- the first, and the old early-return on ANY non-empty pass handed back just
+  -- the first drive -- dual-USB setups listed one drive's games (maintainer).
+  -- Keep probing while the root set is still growing (or empty); settle when a
+  -- pass adds nothing new (single-drive users pay one extra settle second).
   local attempts = 0
-  local identity = nil
-  while attempts < USB_PROBE_ATTEMPTS do
+  local best_identity = nil
+  local best_count = 0
+  local prev_count = -1
+  local settled = false
+  while attempts < USB_PROBE_ATTEMPTS and not settled do
     attempts = attempts + 1
     -- BuildMassRootIdentity -> EnsureMassBackendsReady("usb") -> EnsureUsbMassReadyOnce
     -- re-attempts the module load every pass. EnsureUsbMass only latches on
     -- SUCCESS, so a failed load is retried here the way R3Z retries it.
-    identity = BuildMassRootIdentity("usb")
-    if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
-      return identity
+    local identity = BuildMassRootIdentity("usb")
+    local count = (type(identity) == "table" and type(identity.usb) == "table") and #identity.usb or 0
+    if count > best_count then
+      best_count = count
+      best_identity = identity
     end
     local hook = progress
     if type(hook) ~= "function" and type(PLDR.UsbProbeProgress) == "function" then
@@ -6461,11 +6471,19 @@ local function BuildUsbIdentityDeferred(progress)
       pcall(hook, attempts, USB_PROBE_ATTEMPTS)
     end
     WaitMassProbeRetry(attempts, USB_PROBE_ATTEMPTS)
-    if attempts < USB_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
+    if attempts < USB_PROBE_ATTEMPTS then
+      if best_count == 0 or count > prev_count then
+        -- still looking (nothing yet, or the set just grew): give a late stick a beat
+        if type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, 1)
+        end
+      else
+        settled = true
+      end
     end
+    prev_count = count
   end
-  return identity or BuildMassRootIdentity("usb")
+  return best_identity or BuildMassRootIdentity("usb")
 end
 
 -- EXP32: ONE bounded deferred builder for the lazily-loaded transports

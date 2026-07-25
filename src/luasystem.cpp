@@ -1602,49 +1602,16 @@ static bool EnsureAtaBdmModulesInner()
 	return true;
 }
 
-// Single readiness pass (EXP65): one GET_DRIVERNAME sweep of the BDM mass slots
-// for the "ata" unit. NO sleep, NO module load -- safe to call every frame from
-// the main thread (the exFAT page's paced poll loop).
-static bool VerifyAtaDriveReadyOnce()
-{
-	for (int slot = 0; slot < 4; slot++) {
-		const char *drv = GetMassMountDriverNameBySlot(slot);
-		if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
-			return true;
-	}
-	return false;
-}
-
-// Drive-readiness verification (EXP63, SMS-proven): a slow drive is NOT ready
-// when ata_bd's _start returns -- SMS (Simple-Media-System, SMS_IOPStartATA)
-// waits ~10s of post-load delay before scanning, and the 0718 build's ~15s
-// boot worked on sAGA's 4TB precisely because it bought the drive that time.
-// Bounded ~10s, early-exit on first sight. A no-show is a REAL failure: clear
-// the loaded flag so the page-entry retry re-runs the full bring-up -- a
-// self-exited ata_bd ("HDD is not connected") re-probes the now-spun-up drive
-// on the fresh instance, and per LoadIrxCheckedBuffer a still-resident copy
-// fails the reload without running _start again (no double bus reset in
-// practice). For SYNC callers only (APA/PFS path via EnsureAtaBdm) -- the boot
-// worker and the exFAT page use the frame-paced Once variant instead (EXP65).
-static bool VerifyAtaDriveReady()
-{
-	for (int t = 0; t < 20; t++) {
-		if (VerifyAtaDriveReadyOnce()) {
-			g_ata_bd_loaded = true;
-			return true;
-		}
-		usleep(500000); // 500 ms poll steps
-	}
-	g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
-	return false;
-}
-
+// Sync bring-up (APA/PFS path via luaHDD, plus the explicit-ATA-session warm):
+// MODULES ONLY. EXP63's VerifyAtaDriveReady requirement was wrong here -- it
+// demands a bdmfs-visible "ata" mass unit, which an APA/PFS-only drive NEVER
+// publishes (PFS is not fatfs), so every APA bring-up failed after EXP63/64
+// (maintainer: APA HDD not detected, error toasts). Drive-readiness for the
+// exFAT mass path is checked by the page sweep (BuildBoundedIdentityDeferred
+// probes the slots itself), not in the shared module bring-up.
 static bool EnsureAtaBdmInner()
 {
-	if (!EnsureAtaBdmModulesInner()) {
-		return false;
-	}
-	return VerifyAtaDriveReady();
+	return EnsureAtaBdmModulesInner();
 }
 
 // Locking wrapper (see EnsureAtaBdmSemaInit above). Double-checked: a caller

@@ -2,11 +2,26 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP66**. The check is simple: a version ending in **-EXP66** = this build; **-EXP65** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP67**. The check is simple: a version ending in **-EXP67** = this build; **-EXP66** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP66, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP67, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP67: APA (internal HDD) works again + both USB drives list
+
+Two fixes from the maintainer's EXP66 test:
+
+- **APA (PFS) HDD was not detected.** A check added for the exFAT path demanded
+  a FAT-visible "ata" unit, which an APA-formatted drive never has -- so every
+  APA bring-up failed. The check now lives only where it belongs (the exFAT
+  page sweep); the APA path is back to its pre-EXP63 behavior.
+- **Only one of two USB drives listed.** The USB probe stopped at the first
+  drive it found, so a second stick that mounted a beat later never made the
+  list. It now keeps looking while new drives are still appearing (single-drive
+  users pay one extra second at most).
 
 ---
 
