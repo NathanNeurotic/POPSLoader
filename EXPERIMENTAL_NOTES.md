@@ -2,11 +2,33 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP67**. The check is simple: a version ending in **-EXP67** = this build; **-EXP66** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP68**. The check is simple: a version ending in **-EXP68** = this build; **-EXP67** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP67, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP68, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP68: the driver loads at boot again -- this time we know why
+
+sAGA's EXP67 photos were the breakthrough, not another failure. The boot is
+now instant (2 seconds!), and the HDD page narrates its steps -- but the
+driver load hung *there*, on a fully serial main thread. That finally proves
+the load was never about threads or races: **his console only completes this
+driver load at boot time** (the 07.18 build proved it all along). Mid-session,
+same bytes, it hangs. We stopped fighting that and moved the load back.
+
+**What EXP68 changes:** the HDD driver chain loads at boot again (serial,
+capped at 20 seconds so it can never hang the console), exactly the window
+that always worked on his machine. Boot stamps now name each module (dev9,
+bdm, bdmfs, ata_bd) so if anything ever sticks, one photo says which one.
+The page keeps its EXP67 narration and retries; the APA and dual-USB fixes
+from EXP67 are untouched.
+
+**sAGA:** boot will take a few seconds longer than EXP67 (the driver load is
+back -- that is the point). Then the HDD page should just open. This is the
+configuration your console has always said yes to.
 
 ---
 

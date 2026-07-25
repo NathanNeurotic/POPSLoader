@@ -84,6 +84,10 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
+// Defined in luasystem.cpp; kicks the ata module-chain worker at boot (EXP68).
+extern int KickAtaAsyncBoot(void);
+// Defined in luasystem.cpp; bounded join for the module phase (never forever).
+extern int WaitAtaAsyncBootBounded(int max_ms);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -315,7 +319,7 @@ typedef struct {
 static boot_stage_t g_boot_stages[BOOT_STAGE_MAX];
 static int g_boot_stage_count = 0;
 
-static void BootStamp(const char *stage)
+extern "C" void BootStamp(const char *stage) // EXP68: shared with luasystem.cpp (per-module ata stamps)
 {
     unsigned int ms = boot_ms();
     if (g_boot_stage_count < BOOT_STAGE_MAX) {
@@ -643,19 +647,23 @@ int main(int argc, char * argv[])
      * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
      * recorded R3Z3N tradeoff). */
 
-    /* NO internal-drive (ata) work at boot at all (EXP66). Every async variant
-     * raced the main thread's SIF traffic and wedged on hardware: EXP61 (worker
-     * modload vs ds34/audsrv modload -- black screen), EXP64 (worker fileXio
-     * verify vs boot traffic -- black screen + MX4SIO light stuck), EXP65
-     * (8s module join released main into the still-loading worker -- black
-     * screen again, this tree). SMS (Simple-Media-System) is the proof of the
-     * correct shape: ata_bd loads LAZILY, SERIALLY, on the main thread, with
-     * ATA+MX4SIO+MMCE coexisting -- the driver was never the problem, concurrent
-     * SIF use was. The whole bring-up now happens at exFAT PAGE ENTRY via
-     * System.initATAModules (sync, main thread, step()-narrated), exactly the
-     * SMS model; the async worker is DELETED. Boot cost: zero for everyone.
-     * hdd0:/APA boots unchanged (luaHDD's synchronous EnsureAtaBdm).
-     * MX4SIO/MMCE untouched. */
+    /* Kick the internal-drive module chain (dev9/bdm/bdmfs/ata_bd) HERE, on a
+     * worker, JOINED BOUNDED before the ds34 loads below (EXP68). The whole
+     * saga's evidence, final form: on sAGA's SCPH-30004 the chain COMPLETES
+     * when loaded at boot (rr0718, HW-proven, 15s boot) and HANGS when loaded
+     * mid-session -- EXP67 proved the mid-session wedge is not a race at all
+     * (its page load is fully serial on the main thread and still never
+     * returns from SifExecModuleBuffer). So the load WINDOW is the variable:
+     * lean-IOP-at-boot works, full-IOP-mid-session hangs, same bytes.
+     * The join is capped at 20s: a wedged chain costs a not-ready HDD page
+     * (which then reports and retries serially, narrated) instead of the
+     * console. The worker ONLY loads modules -- drive readiness stays with the
+     * exFAT page sweep (EXP65-67). */
+    KickAtaAsyncBoot();
+    {
+        int st = WaitAtaAsyncBootBounded(20000);
+        BootStamp(st == 3 ? "ata mods FAIL" : "ata mods done");
+    }
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
