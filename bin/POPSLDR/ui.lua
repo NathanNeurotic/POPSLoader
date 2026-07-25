@@ -205,26 +205,19 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     if basename == "" then
       basename = BasenameWithoutExtension(vcd_path)
     end
-    local stripped_basename = StripDiscMarker(basename)
     if basename == "" then
       return {}
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
-      -- One art file serves all discs: disc-marker-stripped name first, then the
-      -- exact per-disc name. ONE family only (maintainer directive, EXP64):
-      -- "<name>_COV.png" under __common/POPS/ART/ -- the legacy plain "<name>.png"
-      -- family is gone again (the 2026-07-23 additive restore made every miss walk
-      -- up to 8 candidates; on a large ART folder that is seconds per cover).
-      -- Fast hit or graceful skip. The resolver existence-confirms each.
-      local out = {}
-      local names = {}
-      if stripped_basename ~= "" and stripped_basename ~= basename then names[1] = stripped_basename end
-      names[#names + 1] = basename
-      for ni = 1, #names do
-        local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..names[ni].."_COV.png")
-        if rc ~= nil then out[#out + 1] = rc end
-      end
-      return out
+      -- EXACT game filename ONLY (maintainer directive, EXP71): APA/Partition art
+      -- lives ONLY at hdd0:__common/POPS/ART/<gamefilename>_COV.png. No
+      -- disc-marker-stripped family name, no legacy variants -- a stripped
+      -- candidate could shadow the exact per-disc art, and every extra probe is
+      -- a full dir walk on a big ART folder. Fast hit, or graceful skip. The
+      -- resolver existence-confirms the file.
+      local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename.."_COV.png")
+      if rc ~= nil then return { rc } end
+      return {}
     end
     return {}
   end
@@ -232,32 +225,24 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- ONE directory (maintainer directive, EXP64): <device-root>/ART/<name>_COV.png,
-  -- OPL standard. The 2026-07-23 additive legacy families (plain "<name>.png",
-  -- POPS/ART/, beside-the-VCD) are gone again: every cover miss walked up to 8
-  -- candidates, and a single fopen miss on a large FAT/exFAT ART folder walks the
-  -- whole dir chain (~0.3-0.6s) -- that was the "covers load one at a time and
-  -- take forever" report. Now: fast hit, or graceful skip (the memo + placeholder
-  -- path already handles absence). Disc-marker-stripped name first so one cover
-  -- serves every disc, then the exact per-disc name. Paths deduplicated; probes
-  -- stay bounded single fopens off the render thread, misses memoize on absence
-  -- only. (HDD/PFS keeps its fixed __common/POPS/ART/ layout -- handled in the
-  -- use_hdd_common_art branch above.)
+  -- ONE directory, EXACT filename (maintainer directive, EXP71): art is read
+  -- ONLY from <device>:/ART/<gamefilename>_COV.png (APA/PFS:
+  -- hdd0:__common/POPS/ART/<gamefilename>_COV.png, branch above). The
+  -- 2026-07-23 additive legacy families and the disc-marker-stripped family
+  -- name are all gone: every extra candidate is a full dir-chain walk on a
+  -- large ART folder, and the stripped name could shadow exact per-disc art.
+  -- Fast hit, or graceful skip (the memo + placeholder path handles absence);
+  -- probes stay bounded single fopens off the render thread.
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
-  local stripped = StripDiscMarker(name)
-  local has_stripped = (stripped ~= "" and stripped ~= name)
   -- %w+ accepts letters and digits in any order and still stops at the colon
   -- (mx4sio0: has a digit in the NAME; the old %a+%d*: matched nothing there).
   local devroot = string.match(dir, "^(%w+:/)")
   local artdir = (devroot or dir).."ART/"
-  local out, seen = {}, {}
-  local function add_path(p)
-    if p ~= nil and not seen[p] then seen[p] = true; out[#out + 1] = p end
-  end
-  if has_stripped then add_path(artdir..stripped.."_COV.png") end
-  add_path(artdir..name.."_COV.png")
-  return out
+  -- EXACT game filename ONLY (maintainer directive, EXP71): <device>:/ART/
+  -- <gamefilename>_COV.png. The disc-marker-stripped family name is GONE --
+  -- tried first, it could shadow the exact per-disc art.
+  return { artdir..name.."_COV.png" }
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
