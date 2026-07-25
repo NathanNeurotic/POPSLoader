@@ -2,11 +2,31 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP65**. The check is simple: a version ending in **-EXP65** = this build; **-EXP64** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP66**. The check is simple: a version ending in **-EXP66** = this build; **-EXP65** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP65, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP66, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP66: boot is instant again; the worker is gone
+
+EXP65 still black-screened: the boot's 8-second cap let the startup continue
+while the HDD driver was still loading in the background -- same race, shorter
+window. So the experiment is over and the answer is simple: **no background
+storage work at all, anywhere.** That's how SMS (Simple Media System) does it,
+and SMS runs ATA + MX4SIO + MMCE side by side without any of this.
+
+**What EXP66 changes:** boot does zero HDD work -- the background worker is
+deleted outright. The HDD (exFAT) page brings the driver up itself, in the
+foreground, telling you what it's doing ("loading the driver", then up to 10
+"retrying" passes while a slow drive spins up). If the drive still isn't
+there, the next page entry tries fresh.
+
+**Everyone:** boot should be instant and boring again, on every device.
+**sAGA:** the HDD page does the waiting now, out loud. If the page opens and
+lists your games after the retries, the saga is over.
 
 ---
 

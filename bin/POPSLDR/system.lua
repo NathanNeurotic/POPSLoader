@@ -6514,6 +6514,14 @@ local function BuildBoundedIdentityDeferred(mode, report)
   end
   -- Return the LAST attempt's result -- re-sweeping here would be a redundant
   -- extra pass of the same probes (review finding on the EXP32 PR).
+  -- EXP66: an exhausted ata sweep with no unit found resets the resident latch,
+  -- so the next page entry RELOADS ata_bd and re-probes the (now more spun-up)
+  -- drive instead of trusting a stale "loaded" flag from a self-exited driver.
+  if mode == "ata" and type(identity) == "table"
+     and (type(identity.ata) ~= "table" or #identity.ata == 0)
+     and type(System) == "table" and type(System.clearATA) == "function" then
+    pcall(System.clearATA)
+  end
   return identity, ready
 end
 

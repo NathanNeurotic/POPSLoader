@@ -1572,29 +1572,6 @@ void EnsureAtaBdmSemaInit()
 	}
 }
 
-// EXP62 worker-completion semaphore: the ata worker signals it ONCE as it
-// exits (success OR fail), so the boot path can JOIN the bring-up BOUNDED
-// (WaitAtaAsyncBootBounded) instead of racing the main thread's own module
-// loads -- EXP61 fired the worker at boot and raced ahead, putting two EE
-// threads in SifExecModuleBuffer at once (worker: dev9/bdm/bdmfs/ata_bd;
-// main: ds34usb/ds34bt/audsrv) on a SIF RPC client that is not thread-safe.
-// On sAGA's SCPH-30004 that wedged the boot: HDD spins up (worker loading),
-// flash (initGraphics), steady black (a corrupted SIF call never returns).
-// Created alongside the bring-up sema so it always exists before the worker
-// spawns; KickAtaAsyncBoot drains any stale token before a (re)spawn.
-static int g_ata_async_done_sema = -1;
-static void AtaAsyncDoneSemaInit()
-{
-	if (g_ata_async_done_sema < 0) {
-		ee_sema_t s;
-		s.init_count = 0;
-		s.max_count = 1;
-		s.attr = 0;
-		s.option = 0;
-		g_ata_async_done_sema = CreateSema(&s);
-	}
-}
-
 static bool EnsureAtaBdmModulesInner()
 {
 	if (!EnsureDev9()) {
@@ -1747,151 +1724,13 @@ static int lua_ata_ready(lua_State *L)
 // ============================================================================
 extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
 
-// 0=idle 1=running 2=done-ok 3=done-fail. Written by the worker thread, polled
-// from Lua on the main thread; volatile so the poll re-reads it each frame.
-static volatile int g_ata_async_state = 0;
-static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
-
-// EXP64: the worker's MODULE phase (dev9 -> bdm -> bdmfs -> ata_bd) signals this
-// sema the moment the chain is done, so the boot path joins ONLY the part that
-// must be serial (SifExecModuleBuffer cannot race the main thread's ds34/audsrv
-// loads). The EXP63 drive-readiness verification that follows is pure fileXio
-// polling (no module loads) and runs CONCURRENTLY with the splash/intro -- the
-// ~10s slow-drive window now hides behind the animation instead of extending
-// the black screen (maintainer feedback, EXP63 boot too long).
-static int g_ata_async_modules_sema = -1;
-static void AtaAsyncModulesSemaInit()
-{
-	if (g_ata_async_modules_sema < 0) {
-		ee_sema_t s;
-		s.init_count = 0;
-		s.max_count = 1;
-		s.attr = 0;
-		s.option = 0;
-		g_ata_async_modules_sema = CreateSema(&s);
-	}
-}
-
-static int ata_async_thread(void *arg)
-{
-	(void)arg;
-	EnsureAtaBdmSemaInit();
-	if (g_ata_bdm_sema >= 0)
-		WaitSema(g_ata_bdm_sema);
-	bool mods = EnsureAtaBdmModulesInner();
-	if (g_ata_bdm_sema >= 0)
-		SignalSema(g_ata_bdm_sema);
-	// EXP65: the worker is MODULES ONLY. EXP64 let it run the EXP63 drive-
-	// readiness verification too -- a continuous fileXio massN: sweep that raced
-	// the main thread's ds34/audsrv module loads and Lua boot traffic (same SIF
-	// race class as EXP61, one level down): maintainer's MC boot went black
-	// forever with the MX4SIO activity light stuck ON (the poll). Drive readiness
-	// is now verified ONLY on the main thread: the exFAT page polls
-	// System.verifyATAOnce() frame-paced inside its own busy loop (narrated,
-	// zero boot-time storage probing), and the APA/PFS path uses the bounded
-	// sync VerifyAtaDriveReady via EnsureAtaBdm.
-	g_ata_async_state = mods ? 2 : 3; // 2 = modules up (drive readiness not yet verified)
-	if (g_ata_async_modules_sema >= 0)
-		SignalSema(g_ata_async_modules_sema); // boot join waits for THIS (EXP64)
-	if (g_ata_async_done_sema >= 0)
-		SignalSema(g_ata_async_done_sema); // full completion (page-side waits)
-	ExitDeleteThread();
-	return 0;
-}
-
-// KickAtaAsyncBoot(): kick the ata_bd bring-up onto a worker thread and return
-// immediately with the state int. If ata_bd is already loaded (e.g. an APA-HDD
-// boot brought it up) it reports done-ok (2) without spawning. A prior
-// done-fail (3) re-spawns -- failure is retryable by design (RiptOPL's
-// SCPH-30004 rule). Returns -1 if the thread could not be created; callers
-// must NEVER fall back to a synchronous load on the UI thread (that was the
-// freezing configuration).
-//
-// EXP61: main.cpp now calls this AT BOOT, right after EnsureUsbMass() -- the
-// exact spot rr0718/EXP22 did the synchronous load, the only configuration
-// hardware-proven on sAGA's SCPH-30004. The byte-identical ata_bd wedge at
-// "exFAT 1c: status 1" (EXP55-60) was never the driver: it was the load
-// landing mid-session on a full IOP. Spawning here puts the probe back on the
-// leanest IOP this build ever has, while the async worker keeps the EXP24
-// verdict intact (no 5-6s serial boot cost).
-int KickAtaAsyncBoot(void)
-{
-	if (g_ata_bd_loaded) {
-		g_ata_async_state = 2;
-		return 2;
-	}
-	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
-		return 1;
-	}
-	// Create the EnsureAtaBdm mutex BEFORE the worker exists, so the worker's
-	// EnsureAtaBdm and any concurrent main-thread EnsureAtaBdm serialize on the
-	// same sema (the caller is single-threaded w.r.t. the worker right here).
-	EnsureAtaBdmSemaInit();
-	AtaAsyncDoneSemaInit();
-	AtaAsyncModulesSemaInit();
-	if (g_ata_async_done_sema >= 0)
-		PollSema(g_ata_async_done_sema); // drain any stale token from a previous (re)spawn (EXP62)
-	if (g_ata_async_modules_sema >= 0)
-		PollSema(g_ata_async_modules_sema); // same for the EXP64 module-phase token
-	g_ata_async_state = 1;
-	ee_thread_t th;
-	th.attr = 0;
-	th.option = 0;
-	th.func = (void *)ata_async_thread;
-	th.stack = (void *)g_ata_async_stack;
-	th.stack_size = sizeof(g_ata_async_stack);
-	th.gp_reg = &_gp;
-	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
-	int tid = CreateThread(&th);
-	if (tid < 0) {
-		g_ata_async_state = 0;   // spawn failed -> caller must NOT sync-load on the UI thread
-		return -1;
-	}
-	StartThread(tid, NULL);
-	return 1;
-}
-
-// WaitAtaAsyncBootBounded(): join the boot kick's MODULE phase, BOUNDED. EXP64:
-// the join covers only the part that must stay serial (dev9/bdm/bdmfs/ata_bd --
-// SifExecModuleBuffer cannot race the main thread's ds34/audsrv loads, the
-// EXP61 black screen). The EXP63 drive-readiness verification that follows is
-// pure fileXio polling and runs concurrently with the splash/intro, so the
-// slow-drive window no longer extends the black screen. Returns 2 if the
-// worker already finished entirely, 3 on module-phase failure, 1 if still
-// running (timed out -- NOT a boot failure; the page-entry path keeps polling
-// and reports "The internal drive is still starting").
-int WaitAtaAsyncBootBounded(int max_ms)
-{
-	AtaAsyncDoneSemaInit();
-	AtaAsyncModulesSemaInit();
-	if (g_ata_async_state != 1)
-		return g_ata_async_state;
-	clock_t start = clock();
-	for (;;) {
-		if (g_ata_async_modules_sema >= 0 && PollSema(g_ata_async_modules_sema) >= 0)
-			break; // module chain done -> main may proceed to its own loads
-		if (g_ata_async_state != 1)
-			break; // worker finished entirely before the modules token was seen
-		if (max_ms >= 0 && ((clock() - start) / 1000) >= (clock_t)max_ms)
-			break;
-		usleep(10000); // 10 ms poll steps; EE clock() is microseconds
-	}
-	return g_ata_async_state;
-}
-
 // System.initATAModules(): SYNCHRONOUS main-thread module bring-up (EXP65,
 // the SMS shape -- SMS loads ata_bd lazily on its UI thread with ATA/MX4SIO/
 // MMCE coexisting; every worker-based variant here raced main-thread SIF
-// traffic and wedged: EXP32-60 page freeze, EXP61 + EXP64 boot black). If the
-// boot worker is still running, refuse with STILL_STARTING instead of queueing
-// behind it (page shows the EXP61 not-ready report; re-entry usually wins).
+// traffic and wedged: EXP32-60 page freeze, EXP61 + EXP64 boot black). EXP66
+// deleted the async worker entirely -- this is the ONLY ata module path left.
 static int lua_ata_init_modules(lua_State *L)
 {
-	if (g_ata_async_state == 1) {
-		lua_pushboolean(L, 0);
-		lua_pushstring(L, "STILL_STARTING");
-		return 2;
-	}
 	EnsureAtaBdmSemaInit();
 	if (g_ata_bdm_sema >= 0)
 		WaitSema(g_ata_bdm_sema);
@@ -1899,29 +1738,6 @@ static int lua_ata_init_modules(lua_State *L)
 	if (g_ata_bdm_sema >= 0)
 		SignalSema(g_ata_bdm_sema);
 	lua_pushboolean(L, ok);
-	return 1;
-}
-
-// System.initATAAsync(): Lua binding over KickAtaAsyncBoot (page-entry kick /
-// retry; the boot kick comes from main.cpp directly). EXP65: the page now
-// uses the SYNCHRONOUS initATAModules main-thread path (SMS-proven shape);
-// this binding stays for the boot-kick contract.
-static int lua_ata_init_async(lua_State *L)
-{
-	lua_pushinteger(L, KickAtaAsyncBoot());
-	return 1;
-}
-
-
-// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
-// ALSO read by the Lua-side cascade bound: the ata worker's module loads go
-// through the same IOP module loader a page-entry initMX4SIO uses, so while
-// state==1 the MX4SIO page waits BOUNDED (screen alive) instead of queueing a
-// synchronous load behind a possibly-wedged loader, then reports not-ready.
-static int lua_ata_init_status(lua_State *L)
-{
-	(void)L;
-	lua_pushinteger(L, g_ata_async_state);
 	return 1;
 }
 
@@ -2322,6 +2138,18 @@ static int lua_smb_disconnect(lua_State *L)
 	return 1;
 }
 
+// System.clearATA(): reset the "module resident" latch (EXP66). The exFAT page
+// calls this when its bounded sweep found NO ata unit -- a self-exited ata_bd
+// ("HDD is not connected") must be re-loadable on the next page entry, so a
+// slow drive that was still spinning up gets a fresh probe instead of a stale
+// latch (RiptOPL's retryable rule).
+static int lua_ata_clear(lua_State *L)
+{
+	(void)L;
+	g_ata_bd_loaded = false;
+	return 0;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -2367,9 +2195,8 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
 	{"ataReady",               lua_ata_ready},
-	{"initATAAsync",           lua_ata_init_async},
-	{"initATAStatus",          lua_ata_init_status},
 	{"initATAModules",         lua_ata_init_modules},
+	{"clearATA",               lua_ata_clear},
 	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},

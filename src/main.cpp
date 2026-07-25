@@ -84,11 +84,6 @@ extern int g_usbd_load_id;
 extern int g_usbd_load_ret;
 // Defined in luasystem.cpp; brings up bdm + bdmfs_fatfs + usbmass_bd (idempotent).
 extern bool EnsureUsbMass(void);
-// Defined in luasystem.cpp; kicks the async ata_bd bring-up worker (idempotent).
-extern int KickAtaAsyncBoot(void);
-// Defined in luasystem.cpp; bounded join for the boot kick (EXP62): final worker
-// state (2 ok / 3 fail / 1 still running on timeout), never waits forever.
-extern int WaitAtaAsyncBootBounded(int max_ms);
 
 extern unsigned char audsrv_irx;
 extern unsigned int size_audsrv_irx;
@@ -648,28 +643,19 @@ int main(int argc, char * argv[])
      * 2026-07-21 -- see EnsureMassBackendsReady in system.lua for the
      * recorded R3Z3N tradeoff). */
 
-    /* Kick the internal-drive (ata_bd) bring-up HERE, on a worker, at the exact
-     * boot point rr0718/EXP22 loaded it synchronously -- the only configuration
-     * hardware-proven on sAGA's SCPH-30004 internal exFAT HDD.
-     *
-     * EXP61 fired the worker and RACED AHEAD into the ds34usb/ds34bt/audsrv
-     * loads below -- two EE threads inside SifExecModuleBuffer at once, on a
-     * SIF RPC client that is not thread-safe (sAGA's EXP61 black screen).
-     * EXP62 joined the whole bring-up, which put the EXP63 slow-drive spin-up
-     * window (~10s of fileXio polling) on the BLACK screen. EXP64 splits it:
-     * the join below covers ONLY the module chain (dev9/bdm/bdmfs/ata_bd --
-     * the part that cannot race), ~3-5s worst case; the drive-readiness
-     * verification that follows contains NO module loads, so it finishes
-     * CONCURRENTLY with the splash/intro -- the long wait hides behind the
-     * animation. A module-phase timeout/failure is not fatal: the exFAT page
-     * keeps polling and reports "still starting" (EXP61 not-ready path).
-     * hdd0:/APA boots are unaffected (luaHDD's synchronous EnsureAtaBdm
-     * serializes on the same sema + g_ata_bd_loaded). MX4SIO/MMCE untouched. */
-    KickAtaAsyncBoot();
-    {
-        int st = WaitAtaAsyncBootBounded(8000); // MODULE phase only (EXP64)
-        BootStamp(st == 3 ? "ata load fail" : "ata mods done"); // verification continues under the splash
-    }
+    /* NO internal-drive (ata) work at boot at all (EXP66). Every async variant
+     * raced the main thread's SIF traffic and wedged on hardware: EXP61 (worker
+     * modload vs ds34/audsrv modload -- black screen), EXP64 (worker fileXio
+     * verify vs boot traffic -- black screen + MX4SIO light stuck), EXP65
+     * (8s module join released main into the still-loading worker -- black
+     * screen again, this tree). SMS (Simple-Media-System) is the proof of the
+     * correct shape: ata_bd loads LAZILY, SERIALLY, on the main thread, with
+     * ATA+MX4SIO+MMCE coexisting -- the driver was never the problem, concurrent
+     * SIF use was. The whole bring-up now happens at exFAT PAGE ENTRY via
+     * System.initATAModules (sync, main thread, step()-narrated), exactly the
+     * SMS model; the async worker is DELETED. Boot cost: zero for everyone.
+     * hdd0:/APA boots unchanged (luaHDD's synchronous EnsureAtaBdm).
+     * MX4SIO/MMCE untouched. */
 
     int ds3pads = 1;
     LOAD_IRX(ds34usb_irx, 4, (char *)&ds3pads);
