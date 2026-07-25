@@ -1618,44 +1618,48 @@ static bool EnsureAtaBdmModulesInner()
 		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
 			return false;
 		}
+		g_ata_bd_loaded = true; // module resident; drive READINESS is verified separately (EXP65)
 		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
 		sleep(1);
 	}
 	return true;
 }
 
+// Single readiness pass (EXP65): one GET_DRIVERNAME sweep of the BDM mass slots
+// for the "ata" unit. NO sleep, NO module load -- safe to call every frame from
+// the main thread (the exFAT page's paced poll loop).
+static bool VerifyAtaDriveReadyOnce()
+{
+	for (int slot = 0; slot < 4; slot++) {
+		const char *drv = GetMassMountDriverNameBySlot(slot);
+		if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
+			return true;
+	}
+	return false;
+}
+
 // Drive-readiness verification (EXP63, SMS-proven): a slow drive is NOT ready
 // when ata_bd's _start returns -- SMS (Simple-Media-System, SMS_IOPStartATA)
 // waits ~10s of post-load delay before scanning, and the 0718 build's ~15s
 // boot worked on sAGA's 4TB precisely because it bought the drive that time.
-// Poll the BDM mass slots for the "ata" unit to actually appear (the same
-// GET_DRIVERNAME ioctl the mass-root classifier uses; exact "ata" match),
-// early-exit on first sight (a ready drive pays ~1s), bounded at ~10s. A
-// no-show is a REAL failure: clear the loaded flag so the page-entry retry
-// re-runs the full bring-up -- a self-exited ata_bd ("HDD is not connected")
-// re-probes the now-spun-up drive on the fresh instance, and per
-// LoadIrxCheckedBuffer a still-resident copy fails the reload without running
-// _start again (no double bus reset in practice). Contains NO module loads,
-// so the boot worker may run it CONCURRENTLY with the splash (EXP64) -- only
-// SifExecModuleBuffer needed the serial window.
+// Bounded ~10s, early-exit on first sight. A no-show is a REAL failure: clear
+// the loaded flag so the page-entry retry re-runs the full bring-up -- a
+// self-exited ata_bd ("HDD is not connected") re-probes the now-spun-up drive
+// on the fresh instance, and per LoadIrxCheckedBuffer a still-resident copy
+// fails the reload without running _start again (no double bus reset in
+// practice). For SYNC callers only (APA/PFS path via EnsureAtaBdm) -- the boot
+// worker and the exFAT page use the frame-paced Once variant instead (EXP65).
 static bool VerifyAtaDriveReady()
 {
-	bool saw_ata = false;
-	for (int t = 0; t < 20 && !saw_ata; t++) {
-		for (int slot = 0; slot < 4 && !saw_ata; slot++) {
-			const char *drv = GetMassMountDriverNameBySlot(slot);
-			if (drv != NULL && strcmp(drv, "ata") == 0 && strlen(drv) == 3)
-				saw_ata = true;
+	for (int t = 0; t < 20; t++) {
+		if (VerifyAtaDriveReadyOnce()) {
+			g_ata_bd_loaded = true;
+			return true;
 		}
-		if (!saw_ata)
-			usleep(500000); // 500 ms poll steps
+		usleep(500000); // 500 ms poll steps
 	}
-	if (!saw_ata) {
-		g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
-		return false;
-	}
-	g_ata_bd_loaded = true;
-	return true;
+	g_ata_bd_loaded = false; // retry must re-probe, not inherit a false "up"
+	return false;
 }
 
 static bool EnsureAtaBdmInner()
@@ -1777,10 +1781,18 @@ static int ata_async_thread(void *arg)
 	bool mods = EnsureAtaBdmModulesInner();
 	if (g_ata_bdm_sema >= 0)
 		SignalSema(g_ata_bdm_sema);
+	// EXP65: the worker is MODULES ONLY. EXP64 let it run the EXP63 drive-
+	// readiness verification too -- a continuous fileXio massN: sweep that raced
+	// the main thread's ds34/audsrv module loads and Lua boot traffic (same SIF
+	// race class as EXP61, one level down): maintainer's MC boot went black
+	// forever with the MX4SIO activity light stuck ON (the poll). Drive readiness
+	// is now verified ONLY on the main thread: the exFAT page polls
+	// System.verifyATAOnce() frame-paced inside its own busy loop (narrated,
+	// zero boot-time storage probing), and the APA/PFS path uses the bounded
+	// sync VerifyAtaDriveReady via EnsureAtaBdm.
+	g_ata_async_state = mods ? 2 : 3; // 2 = modules up (drive readiness not yet verified)
 	if (g_ata_async_modules_sema >= 0)
 		SignalSema(g_ata_async_modules_sema); // boot join waits for THIS (EXP64)
-	bool ok = mods && VerifyAtaDriveReady(); // no module loads -> splash-safe
-	g_ata_async_state = ok ? 2 : 3;
 	if (g_ata_async_done_sema >= 0)
 		SignalSema(g_ata_async_done_sema); // full completion (page-side waits)
 	ExitDeleteThread();
@@ -1867,13 +1879,39 @@ int WaitAtaAsyncBootBounded(int max_ms)
 	return g_ata_async_state;
 }
 
+// System.initATAModules(): SYNCHRONOUS main-thread module bring-up (EXP65,
+// the SMS shape -- SMS loads ata_bd lazily on its UI thread with ATA/MX4SIO/
+// MMCE coexisting; every worker-based variant here raced main-thread SIF
+// traffic and wedged: EXP32-60 page freeze, EXP61 + EXP64 boot black). If the
+// boot worker is still running, refuse with STILL_STARTING instead of queueing
+// behind it (page shows the EXP61 not-ready report; re-entry usually wins).
+static int lua_ata_init_modules(lua_State *L)
+{
+	if (g_ata_async_state == 1) {
+		lua_pushboolean(L, 0);
+		lua_pushstring(L, "STILL_STARTING");
+		return 2;
+	}
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0)
+		WaitSema(g_ata_bdm_sema);
+	bool ok = EnsureAtaBdmModulesInner();
+	if (g_ata_bdm_sema >= 0)
+		SignalSema(g_ata_bdm_sema);
+	lua_pushboolean(L, ok);
+	return 1;
+}
+
 // System.initATAAsync(): Lua binding over KickAtaAsyncBoot (page-entry kick /
-// retry; the boot kick comes from main.cpp directly).
+// retry; the boot kick comes from main.cpp directly). EXP65: the page now
+// uses the SYNCHRONOUS initATAModules main-thread path (SMS-proven shape);
+// this binding stays for the boot-kick contract.
 static int lua_ata_init_async(lua_State *L)
 {
 	lua_pushinteger(L, KickAtaAsyncBoot());
 	return 1;
 }
+
 
 // System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
 // ALSO read by the Lua-side cascade bound: the ata worker's module loads go
@@ -2331,6 +2369,7 @@ static const luaL_Reg System_functions[] = {
 	{"ataReady",               lua_ata_ready},
 	{"initATAAsync",           lua_ata_init_async},
 	{"initATAStatus",          lua_ata_init_status},
+	{"initATAModules",         lua_ata_init_modules},
 	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
 	{"smbNetUp",               lua_smb_netup},

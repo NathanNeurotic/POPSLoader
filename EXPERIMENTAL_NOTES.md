@@ -2,11 +2,32 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP64**. The check is simple: a version ending in **-EXP64** = this build; **-EXP63** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP65**. The check is simple: a version ending in **-EXP65** = this build; **-EXP64** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP64, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP65, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
+
+---
+
+## New in EXP65: boot fixed, drive check moved to the HDD page
+
+**EXP64 broke the boot (sorry).** The drive check I moved under the splash was
+constantly poking the storage devices at boot -- on the maintainer's own
+console that meant a black screen with the MX4SIO light stuck on. The lesson
+(from the SMS project, which runs ATA+MX4SIO+MMCE side by side without
+issues): do storage work one thing at a time, on the main thread, where the
+screen can say what's happening.
+
+**What EXP65 changes:** boot no longer probes any storage -- the HDD driver
+loads (short, capped) and that's it. The "is the drive awake?" check moved to
+the HDD (exFAT) page itself, where it shows "retrying (pass N of 10)" while a
+slow drive spins up. Fast rigs see nothing new; slow-drive rigs get a narrated
+wait on a page instead of a long black boot.
+
+**Everyone:** boot should be instant and normal again (MC, USB, MX4SIO,
+MMCE). **sAGA:** open the HDD page -- the retry lines should walk up to your
+drive appearing.
 
 ---
 

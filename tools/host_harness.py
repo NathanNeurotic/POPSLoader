@@ -558,7 +558,7 @@ check("T32 EXP42 COVER_ART persists, defaults ON, and drives the live cover box"
 t33 = E('''function()
   local seen = {}
   local rep = function(msg) seen[#seen + 1] = tostring(msg) end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
@@ -868,8 +868,8 @@ t21 = lua.execute(r'''
 check("T21 mx4sio not-ready: no sweep + truthful 'notready' status", t21)
 
 t22 = lua.execute(r'''
-  -- (b) ata worker still running: bounded poll expires -> "notready", no sweep.
-  System.initATAAsync = function() return 1 end
+  -- (b) boot kick still running (STILL_STARTING): gate declines -> "notready", no sweep.
+  System.initATAModules = function() return false, "STILL_STARTING" end
   System.initATAStatus = function() return 1 end
   local swept = false
   local real_dfe = doesFolderExist
@@ -880,7 +880,7 @@ t22 = lua.execute(r'''
   if status ~= "notready" then return false, "expected notready, got "..tostring(status) end
   if swept then return false, "swept while worker still running" end
   -- (c) worker done-ok but no ata device mounted: clean "nodevice".
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local root2, status2 = PLDR.GetATAMassRootNow()
   if root2 ~= nil then return false, "expected nil root for empty sweep" end
@@ -892,7 +892,7 @@ check("T22 ata worker states: bounded 'notready' poll + clean 'nodevice' sweep",
 t23 = lua.execute(r'''
   -- (d) happy paths: ready transports enumerate by driver-name classification.
   System.initMX4SIO = function() return true end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver
@@ -1070,7 +1070,7 @@ check("T28 EXP34 config defaults: ART=art, HDD=BOTH, i.Link hidden, SMB/network 
 # fails. The per-slot driver name is the only authority.
 t29 = lua.execute(r'''
   System.initMX4SIO = function() return true end
-  System.initATAAsync = function() return 2 end
+  System.initATAModules = function() return true end
   System.initATAStatus = function() return 2 end
   local real_dfe = doesFolderExist
   local real_drv = PLDR.GetMassMountDriver

@@ -6085,26 +6085,24 @@ local function EnsureMassBackendsReady(mode, step)
   end
 
   if mode == "ata" then
-    -- ata_bd loads on the EE worker, kicked at BOOT by main.cpp (EXP61,
-    -- unconditional -- the async worker, not the rejected 5-6s serial load)
-    -- into the same near-empty IOP as
-    -- the EXP22 build, the only arrangement hardware-proven on the SCPH-30004
-    -- class (identical bytes wedged when loaded mid-session onto a full IOP).
-    -- Entering the page before the worker finishes (or when the boot kick was
-    -- skipped -- setting just changed this session) polls BOUNDED and ONCE:
-    -- OPL's 10s ATA budget, screen alive. Still running after that -> report
-    -- not-ready; the worker keeps going and the next page entry usually finds
-    -- it done. NEVER a synchronous load here -- the old sync fallback was the
-    -- historically-freezing configuration.
+    -- EXP65: SMS-proven shape -- module bring-up runs on the MAIN thread,
+    -- serial (SMS_IOPStartATA loads ata_bd lazily the same way, with
+    -- ATA/MX4SIO/MMCE coexisting). Every worker-based variant raced main-thread
+    -- SIF traffic and wedged: EXP32-60 page freeze ("status 1" forever), EXP61
+    -- boot black (modload vs modload), EXP64 boot black + MX4SIO light stuck
+    -- (worker fileXio verification vs boot traffic). NEVER spawn the worker
+    -- here: initATAModules loads serially (or short-circuits when the boot
+    -- kick already brought the modules up). Drive-readiness then comes from
+    -- the sweep below (BuildMassRootIdentity probes the ata unit by driver
+    -- name) under the EXP63/BuildBoundedIdentityDeferred retry budget, whose
+    -- per-pass "retrying" reports narrate the slow-drive wait.
     local S = System
-    if type(S) ~= "table" or type(S.initATAAsync) ~= "function"
-       or type(S.initATAStatus) ~= "function" then
+    if type(S) ~= "table" or type(S.initATAModules) ~= "function" then
       return false
     end
     -- EXP57: report the IOP memory headroom BEFORE the load. If the storage layer
     -- cannot get its buffer this is where a 4TB drive dies, and it is OUR module
-    -- footprint at fault, not the drive. Cheap, and it is the leading unrefuted
-    -- theory now that phantom-slave and the 48-bit capacity clamp are both dead.
+    -- footprint at fault, not the drive.
     local heap = "?"
     if type(S.iopHeapProbe) == "function" then
       local ok_h, h = pcall(S.iopHeapProbe)
@@ -6113,36 +6111,15 @@ local function EnsureMassBackendsReady(mode, step)
       end
     end
     step("exFAT 1a: loading the driver [iop128k="..heap.."]")
-    local st = -1
-    pcall(function() st = S.initATAAsync() end)
-    step("exFAT 1b: driver returned "..tostring(st).." [iop128k="..heap.."]")
-    -- st: -1 spawn-failed, 1 running, 2 done-ok (a done-fail re-spawns inside
-    -- initATAAsync, so a bad early probe stays retryable -- RiptOPL's rule).
-    if st == 2 then return true end
-    if type(st) ~= "number" or st < 0 then return false end
-    local frames = 0
-    for _ = 1, (10 * 60) do
-      PaceScanFrame()
-      frames = frames + 1
-      -- Repaint once a second with the LIVE status code and elapsed time. A frozen
-      -- screen then shows the last second it reached, and a slow-but-working drive
-      -- is visibly different from a wedged one.
-      if (frames % 60) == 0 then
-        -- EXP59: carry iop128k on THIS line too. sAGA's EXP57 photo ended on 1c, so the
-        -- memory readout (only on 1a/1d) flashed past unseen -- and it is the leading
-        -- unrefuted theory. The line the screen freezes on must carry the evidence.
-        step("exFAT 1c: status "..tostring(st)..", "..tostring(frames / 60).."s [iop128k="..heap.."]")
-      end
-      local ok2, s2 = pcall(S.initATAStatus)
-      if ok2 and type(s2) == "number" then
-        st = s2
-        if st ~= 1 then break end
-      end
+    local ok_m, res_m, why_m = pcall(S.initATAModules)
+    if not (ok_m and res_m == true) then
+      -- STILL_STARTING: the boot kick is mid-flight -- report not-ready; the next
+      -- page entry usually finds the modules already resident.
+      step("exFAT 1b: driver not ready ("..tostring(why_m or res_m)..") [iop128k="..heap.."]")
+      return false
     end
-    -- Final verdict on screen: the code it ended on and how long it took. 2 = ok,
-    -- 1 = still running at the budget, -1 = the worker never spawned.
-    step("exFAT 1d: gave up at status "..tostring(st).." after "..tostring(frames / 60).."s [iop128k="..heap.."]")
-    return st == 2
+    step("exFAT 1b: driver loaded, checking for the drive [iop128k="..heap.."]")
+    return true
   end
 
   if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
@@ -6511,9 +6488,12 @@ local function BuildBoundedIdentityDeferred(mode, report)
   -- MX4SIO detected in a long time"). The settle exists because mx4sio_bd
   -- self-detects the card on its own IOP thread AFTER the IRX loads; an
   -- immediate sweep races the still-mounting volume (the old two-entries-to-
-  -- see-the-card quirk). ata keeps 3: its worker completes detection before
-  -- enumeration is allowed at all, so passes only cover FS-mount lag.
-  local budget = (mode == "mx4sio") and 6 or 3
+  -- see-the-card quirk). ata gets 10 (EXP65): the sweep itself IS the
+  -- drive-readiness verification now -- a slow drive (sAGA's 4TB) is not
+  -- ready when ata_bd's _start returns (SMS waits ~10s post-load before
+  -- scanning; rr0718's ~15s boot bought the same time), so the retry passes
+  -- double as the spin-up window, each narrated by the "retrying" report.
+  local budget = (mode == "mx4sio") and 6 or (mode == "ata") and 10 or 3
   local identity, ready
   local attempts = 0
   while attempts < budget do
