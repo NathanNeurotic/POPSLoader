@@ -1419,6 +1419,154 @@ t31 = lua.execute(r'''
 ''')
 check("T31 EXP40/61 Lua boot-ATA gate: explicit -page=ata/exfat warms; settings stay visibility-only", t31)
 
+
+
+# T40 EXP73: the game-details sidecar must actually REACH THE SCREEN.
+#
+# T30 pins that covers load asynchronously and T35 pins that selecting a game does zero
+# blocking reads -- and EXP72 passed both while showing no details at all, because code
+# that reads nothing passes a "did you read nothing?" test trivially. Nobody ever
+# asserted the positive: that last_desc gets populated. sAGA reported "Game Details
+# does not appear on the game list" and the fix that claimed to close it shipped broken
+# to two branches with 39/39 green.
+#
+# So assert the OUTCOME, against a faithful model of the C worker (one slot,
+# IDLE/BUSY/DONE, begin refused unless IDLE, text channel consumed on read, text path
+# refused while BUSY). Details must appear WITH a cover (EXP72 regressed this -- it
+# deleted the EXP54 read that served it), WITHOUT a cover on both the first visit and
+# the revisit (the reported bug), and behind an already-cached cover. They must NOT
+# appear when there is no .txt, and never show the WRONG game's text.
+t40 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  if type(cc.Pump) ~= "function" then return false, "CoverCache:Pump missing -- async path gone" end
+  local real_begin, real_poll = Graphics.coverLoadBegin, Graphics.coverLoadPoll
+  local real_tpath, real_text = Graphics.coverLoadTextPath, Graphics.coverLoadText
+  local real_free, real_filters = Graphics.freeImage, Graphics.setImageFilters
+
+  local IDLE, BUSY, DONE = 0, 1, 2
+  local st, tok, res, tpath, tlen, tbuf = IDLE, 0, nil, nil, -2, nil
+  local covers, texts = {}, {}
+  local text_reads = 0
+
+  Graphics.coverLoadTextPath = function(p)
+    if st == BUSY then return false end       -- the use-after-free guard
+    tpath = (p ~= nil and p ~= "") and p or nil
+    return true
+  end
+  Graphics.coverLoadBegin = function(path, token)
+    if st ~= IDLE then return false end       -- one job in flight at a time
+    st, tok = BUSY, token
+    res = (path ~= nil and path ~= "") and covers[path] or nil
+    if tpath ~= nil then
+      text_reads = text_reads + 1
+      local t = texts[tpath]
+      if t ~= nil then tlen, tbuf = #t, t else tlen, tbuf = -1, nil end
+      tpath = nil
+    else
+      tlen, tbuf = -2, nil                    -- "no text requested this job"
+    end
+    st = DONE
+    return true
+  end
+  Graphics.coverLoadPoll = function()
+    if st ~= DONE then return nil end
+    local t, r = tok, res
+    res, st = nil, IDLE
+    return t, r
+  end
+  Graphics.coverLoadText = function()
+    local n, b = tlen, tbuf
+    tlen, tbuf = -2, nil                      -- consumed on read
+    if n == -2 then return nil end
+    if n < 0 then return false end
+    return b
+  end
+  Graphics.freeImage = function(t) end
+  Graphics.setImageFilters = function(t, f) end
+
+  local saved = PLDR.SHOW_DETAILS
+  PLDR.SHOW_DETAILS = true
+
+  local function visit(path)
+    cc.last_key = nil
+    cc:UpdateSelection(path)
+    for _ = 1, 12 do
+      if cc.pending == nil then break end
+      cc:Pump()
+    end
+    return cc.last_desc
+  end
+
+  -- (i) cover AND .txt -- worked before EXP72, silently lost in it
+  cc:Clear()
+  covers = { ["mass0:/ART/GameA_COV.png"] = 111 }
+  texts  = { ["mass0:/ART/GameA.txt"] = "TEXT-A" }
+  local desc_with_cover = visit("mass0:/POPS/GameA.VCD")
+  local img_with_cover = cc.last_img
+
+  -- (ii) .txt only, NO cover -- sAGA's exact report, both visits
+  cc:Clear()
+  covers = {}
+  texts  = { ["mass0:/ART/GameB.txt"] = "TEXT-B" }
+  local desc_first = visit("mass0:/POPS/GameB.VCD")
+  local desc_revisit = visit("mass0:/POPS/GameB.VCD")
+
+  -- (iii) an already-cached cover must not short-circuit the details job
+  cc:Clear()
+  covers = { ["mass0:/ART/GameD_COV.png"] = 444 }
+  texts  = { ["mass0:/ART/GameD.txt"] = "TEXT-D" }
+  visit("mass0:/POPS/GameD.VCD")
+  local desc_cached = visit("mass0:/POPS/GameD.VCD")
+
+  -- (iv) neither cover nor .txt
+  cc:Clear()
+  covers, texts = {}, {}
+  local desc_none = visit("mass0:/POPS/GameE.VCD")
+
+  -- (v) no cross-contamination: two cover-less games with their own text, then a
+  -- covered game with its own. EXP72 put game two's blurb on game three.
+  cc:Clear()
+  covers = { ["mass0:/ART/Three_COV.png"] = 333 }
+  texts  = { ["mass0:/ART/One.txt"] = "TEXT-ONE",
+             ["mass0:/ART/Two.txt"] = "TEXT-TWO",
+             ["mass0:/ART/Three.txt"] = "TEXT-THREE" }
+  visit("mass0:/POPS/One.VCD"); visit("mass0:/POPS/One.VCD")
+  visit("mass0:/POPS/Two.VCD"); visit("mass0:/POPS/Two.VCD")
+  local desc_three = visit("mass0:/POPS/Three.VCD")
+
+  PLDR.SHOW_DETAILS = saved
+  Graphics.coverLoadBegin, Graphics.coverLoadPoll = real_begin, real_poll
+  Graphics.coverLoadTextPath, Graphics.coverLoadText = real_tpath, real_text
+  Graphics.freeImage, Graphics.setImageFilters = real_free, real_filters
+  cc:Clear()
+
+  if desc_with_cover ~= "TEXT-A" then
+    return false, "game WITH a cover shows no details (the EXP72 regression), last_desc="..tostring(desc_with_cover)
+  end
+  if img_with_cover ~= 111 then
+    return false, "cover no longer adopted, last_img="..tostring(img_with_cover)
+  end
+  if desc_first ~= "TEXT-B" then
+    return false, "cover-less game shows no details on the FIRST visit, last_desc="..tostring(desc_first)
+  end
+  if desc_revisit ~= "TEXT-B" then
+    return false, "cover-less game shows no details on REVISIT (the reported bug), last_desc="..tostring(desc_revisit)
+  end
+  if desc_cached ~= "TEXT-D" then
+    return false, "an already-cached cover skipped the details job, last_desc="..tostring(desc_cached)
+  end
+  if desc_none ~= nil then
+    return false, "details appeared for a game with no .txt, last_desc="..tostring(desc_none)
+  end
+  if desc_three ~= "TEXT-THREE" then
+    return false, "WRONG game's details shown: expected TEXT-THREE, got "..tostring(desc_three)
+  end
+  if text_reads < 1 then return false, "the worker was never asked to read a sidecar at all" end
+  return true
+end''')()
+check("T40 EXP73 game details (.txt) reach the screen with AND without a cover", t40)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
