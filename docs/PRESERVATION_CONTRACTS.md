@@ -1,8 +1,9 @@
 # POPSLoader Preservation Contracts
 
-Date: 2026-06-22 (re-synced to BETA-13-PLAY HEAD 3d89631; the `2735229` audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua — treat the cited function/symbol as the unit of truth where a line drifted. BETA-12 released 2026-06-18 per STATE.md)
-Branch documented: `BETA-13-PLAY` (the active rolling-candidate branch; BETA-12-PLAY
-is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)
+Date: 2026-06-22, header re-synced 2026-07-27. Originally cut against `BETA-13-PLAY` HEAD `3d89631`; that branch was **renamed to `dev`** after the 1.0.0 cut and no longer exists. The `2735229` audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua, and the EXP32-EXP73 work has moved them again — **treat the cited function/symbol as the unit of truth, never the line number**. Public release is **1.1.0** (2026-07-21); rolling is `1.1.1-dev`, experimental `1.1.1-dev-EXP73`. See [STATE.md](../STATE.md) for current status.
+Branch documented: `dev` (the active development branch — `BETA-13-PLAY` was
+renamed to `dev` after the 1.0.0 cut and no longer exists on origin;
+`BETA-12-PLAY` is ARCHIVAL/frozen). `rolling-release.yml` publishes from `dev`.
 
 Purpose: regression armor for the launch / ELF-handoff layer (the four launch
 contracts below) **and** for the load-bearing UI / render / embed invariants that
@@ -568,7 +569,7 @@ HW/CRT-eyeballed — keep as pending verification, not broken.
 
 **The contract:** the game-list cover-preview box draws a **layered** placeholder
 from two embedded assets — `cover_default.png` (base) + `cover_missing.png`
-(overlay) — in `bin/POPSLDR/ui.lua:2572-2591`. Preview OFF (Square) → just
+(overlay). Preview OFF (the persisted `COVER_ART` setting, *Settings > Game List > Cover art*, default ON — the Square toggle was removed in EXP42) → just
 `cover_default.png`; preview ON but the game has no cover → `cover_default.png`
 with `cover_missing.png` overlaid; a LIVE cover uses its own right-anchored
 `COVER_W` inset (`ui.lua:2573-2576`). **The default, the missing overlay, and

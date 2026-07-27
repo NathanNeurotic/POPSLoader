@@ -1,4 +1,4 @@
-Last updated: 2026-06-22 (BETA-13 in progress)
+Last updated: 2026-07-27 (rolling `dev` = `v1.1.1-dev`; released line 1.1.0)
 
 # CONTRIBUTING
 
@@ -47,7 +47,7 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - Avoid adding runtime logging unless requested.
 
 ## Packaging Rules
-- CI packaging contract must stay synchronized with docs. The strict-verified `compilation.yml` zip (`POPSLOADER.zip`) is an **exact** set — two top dirs only (`PS1_POPSLOADER/` and `POPS/`), no root files, and any mismatch fails the build:
+- CI packaging contract must stay synchronized with docs. The strict-verified `compilation.yml` zip (`POPSLOADER.zip`) is an **exact** set — three top dirs only (`PS1_POPSLOADER/`, `POPS/` and `POPSTARTER VERSIONS/`), no root files, and any mismatch fails the build:
   - `PS1_POPSLOADER/`: `POPSLOADER.ELF`, `POPSTARTER.ELF`, `BUILD_INFO.txt` (so hardware can confirm the exact GitHub-built artifact), `APPINFO.PBT`, `title.cfg`, `icon.sys`, `list.icn`, `copy.icn`, `del.icn`.
   - `POPS/`: `PATCH_5.BIN` and `POPSTARTER.ELF`.
   - `POPSTARTER.ELF` is the only redistributable launcher binary and ships in **both** the `PS1_POPSLOADER/` install dir and `POPS/`. The POPS engine binaries are NOT redistributable and are never bundled — hardware supplies its own.

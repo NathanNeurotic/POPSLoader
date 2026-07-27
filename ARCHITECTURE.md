@@ -1,4 +1,4 @@
-Last updated: 2026-06-22 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active/rolling branch is now **`BETA-13-PLAY`** (`BETA-12-PLAY` is archival; public release is still BETA-12). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — including its **Experimental channel (EXP32–EXP42)** section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.
+Last updated: 2026-06-22 (BETA-13 session; frame-count nav + `Timer.getTime`-is-microseconds reality + layered `cover_default`/`cover_missing` art with `MISSING.png` dropped + OPL-style overscan render-inset + `Pads.getMode` binding). Active development + rolling branch is now **`dev`** (`BETA-13-PLAY` was renamed to `dev` after the 1.0.0 cut and no longer exists; `BETA-12-PLAY` is archival). Public release is **1.1.0**; rolling is stamped `1.1.1-dev` and experimental is `1.1.1-dev-EXP73`. For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — including its **Experimental channel (EXP32–EXP42)** section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.
 
 # ARCHITECTURE
 
@@ -333,17 +333,19 @@ stable for ~250 ms (`COVER_IDLE_FRAMES = ceil(cover_fps * 0.25)`, `cover_fps` = 
 PAL / 60 NTSC, `ui.lua`); a per-frame counter resets while the selection keeps
 changing, so the cover loads only once navigation settles. Cover-art seeking is
 **device-aware** (`BuildCoverCandidates`, `ui.lua:190`). On **removable** devices the
-lookup folder is **user-selectable** (*Settings > Game List > Cover/details folder*,
-`PLDR.ART_LOCATION`, default `pops_art`): `POPS/ART` tries
-`<device>:/POPS/ART/<game>.png` first, `POPS` uses the game's own `POPS/` folder
-beside the `.vcd`, and `ART` tries a top-level `<device>:/ART/<game>.png`; the game's
-own `POPS/` folder is **always also appended** as a final fallback so art beside the
-`.vcd` never stops showing. For HDD/PFS the path is fixed to `hdd0:__common`'s
-`POPS/ART/<game>.png`, mounted from the `__common` partition via
-`PLDR.ResolveHddPartitionReadablePath`. In each folder the **disc-marker-stripped**
-name is tried first (so ONE art file serves every disc of a multi-disc game), then
-the exact per-disc `<full-name>.png` for back-compat. The matching `<name>.txt`
-details sidecar rides the **same** candidate list (each `.png` -> `.txt`). When a
+lookup is **one path, exact filename** (EXP71): `BuildCoverCandidates` returns a
+SINGLE candidate, `<device-root>/ART/<gamefilename>_COV.png` (`ui.lua:236-245`).
+The *Cover/details folder* setting was removed in EXP35 — `PLDR.ART_LOCATION`
+still parses for back-compat but is INERT — and there is no `POPS/ART` variant,
+no beside-the-`.vcd` fallback, and no disc-marker-stripped family name, so a
+multi-disc game needs one art file **per disc**. For HDD/PFS the single path is
+`hdd0:__common/POPS/ART/<gamefilename>_COV.png`, existence-confirmed through
+`PLDR.ResolveHddPartitionReadablePath` (`ui.lua:211-221`). The `<name>.txt`
+details sidecar does NOT ride the cover candidate list: on removable devices it
+is a separately-computed `<device-root>/ART/<gamefilename>.txt` (no `_COV`)
+handed to the resident cover worker via `Graphics.coverLoadTextPath`
+(`ui.lua:466-480`), and on HDD it is resolved independently (`ui.lua:486-507`).
+When a
 `<base>.png` cover loads it gets its own `COVER_W` inset (`ui.lua:624`, value `232`).
 `CoverCache:GetOrLoad` (`ui.lua:344`) drops the `doesFileExist`/`open()` existence
 pre-probe and lets `Graphics.loadImage` (`fopen`) open the file directly. In ps2sdk
@@ -388,9 +390,13 @@ Backends that are not eagerly loaded at boot are pulled in on demand:
   (2026-05-28): MX4SIO needs the USB drivers first; USB never needs MX4SIO.
 - MMCE: `EnsureMmceman` (`src/luasystem.cpp:142`) loads `mmceman.irx` on demand
   and `MarkMmcemanLoaded()` syncs the tracker.
-- HDD: `Load_HDD_IRX` (`src/luaHDD.cpp:99`) loads `ps2dev9` -> `ps2atad` ->
-  `ps2hdd_osd` (args `-o 4 -n 20`) -> `ps2fs` (args `-m 4 -o 10 -n 40`),
-  strictly in sequence, aborting on any `id<0`/`ret==1`.
+- HDD: `Load_HDD_IRX` (`src/luaHDD.cpp`) calls `EnsureAtaBdm()` — dev9 -> bdm ->
+  bdmfs_fatfs -> `ata_bd` (which IS ps2atad built with `ATA_ENABLE_BDM=1`, so ONE
+  atad instance serves both APA/PFS and exFAT) — then `ps2hdd_osd` (args
+  `-o 4 -n 20`) -> `ps2fs` (args `-m 4 -o 10 -n 40`), aborting on any
+  `id<0`/`ret==1`. Plain `ps2atad` is no longer loaded: two atad copies re-initing
+  the live ATA bus was the 42% scan-freeze class. `EnsureAtaBdm` is serialised by a
+  binary semaphore because the boot worker and the main thread can both enter it.
 
 ---
 
@@ -451,13 +457,11 @@ configured-path targets, classifies them, and fires only the needed warm-ups:
 (MX4SIO), `DetectMMCESlot` (MMCE), `LoadHDDModules` + `EnsureBootHddMountReady`
 (HDD).
 
-> **Divergence from MEMORY.md (intentional, do not "fix" here):** this
-> BETA-13-PLAY state still has **no cold-dev9 settle** between the lazy HDD IRX
-> loads. `Load_HDD_IRX` (`src/luaHDD.cpp:120-169`) and `PLDR.LoadHDDModules`
-> (`system.lua:4754-4782`) load `dev9/atad/hdd/fs` back-to-back. The only
-> HDD-related delay present is `System.sleep(2)` on the HDD-boot branch
-> (`etc/boot.lua:47`). The "missing cold-dev9 settle" fix for "fail to load
-> HDD" ships on a separate rolling branch and is **not** merged here.
+> **Settles now exist (this superseded an older "no cold-dev9 settle" note).**
+> `Load_HDD_IRX` (`src/luaHDD.cpp`) routes through `EnsureAtaBdm()`, whose
+> `EnsureAtaBdmModulesInner` (`src/luasystem.cpp`) applies a 1-second settle
+> before loading `ata_bd` and another after it, before `ps2hdd_osd`/`ps2fs` touch
+> the bus. The HDD-boot branch also still sleeps 2s (`etc/boot.lua:47`).
 
 ---
 
@@ -736,9 +740,12 @@ Two build workflows duplicate most logic inline:
   embedded-Lua syntax gate (`luac5.4 -p`, see below), builds, and packages
   `POPSLOADER.zip` as an artifact (no GitHub release).
 - `rolling-release.yml` — runs on push to `dev` (the active rolling
-  branch; repiped from `BETA-12-PLAY`) and PR events; bundles the ELF + full
-  git-tracked source and force-updates a single `rolling-release` prerelease via
-  the GitHub API.
+  branch; repiped `BETA-12-PLAY` -> `BETA-13-PLAY` -> `dev`) and on PR events.
+  On a push to `dev` it bundles the ELF + full git-tracked source and
+  force-updates the single `rolling-release` prerelease via the GitHub API. **PR
+  runs build and harness-gate only — they do NOT publish** (the publish step is
+  gated `github.event_name == 'push'`, rolling-release.yml:287, since PR #511);
+  the old "any same-repo PR republishes rolling" hazard is closed.
 - `opencode.yml` — an `/oc` comment bot (DeepSeek), outside the build/launch
   path.
 

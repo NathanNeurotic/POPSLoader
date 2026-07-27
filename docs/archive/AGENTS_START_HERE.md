@@ -12,14 +12,14 @@ It is intentionally informational. It describes the current preservation contrac
 
 | File | What's there |
 |---|---|
-| [STATE.md](STATE.md) | Current code and hardware status. Repo-verified runtime state. Reported hardware table. Post-release PR work. |
-| [ROADMAP.md](ROADMAP.md) | Prioritized backlog. Immediate priorities, pragmatically-accepted-broken items, secondary work. |
+| [STATE.md](../../STATE.md) | Current code and hardware status. Repo-verified runtime state. Reported hardware table. Post-release PR work. |
+| [ROADMAP.md](../../ROADMAP.md) | Prioritized backlog. Immediate priorities, pragmatically-accepted-broken items, secondary work. |
 | [TRUTHSHEET.md](TRUTHSHEET.md) | Non-negotiable behavioral invariants. Preservation contracts. |
-| [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md) | Authoritative hardware/CI ledger with per-artifact run history. |
-| [DECISIONS.md](DECISIONS.md) | Decision log with rationale and evidence. Recent entries cover post-release PRs (#470/#472/#473/#471). |
-| [docs/LAUNCH_HYGIENE.md](docs/LAUNCH_HYGIENE.md) | Launch-path architecture, V2 mimicry rationale, Layer A/B/C definitions. |
-| [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md) | U-10 BOOT.ELF-from-HDD-boot hypothesis catalog. U-10 is accepted broken; the catalog is preserved for any future revisit. |
-| [docs/DOCUMENTATION_FOLLOWUP_AUDIT.md](docs/DOCUMENTATION_FOLLOWUP_AUDIT.md) | Post-release doc cleanup plan (the doc you may be working from now). |
+| [QA_REGRESSION_MATRIX.md](../../QA_REGRESSION_MATRIX.md) | Authoritative hardware/CI ledger with per-artifact run history. |
+| [DECISIONS.md](../../DECISIONS.md) | Decision log with rationale and evidence. Recent entries cover post-release PRs (#470/#472/#473/#471). |
+| [docs/LAUNCH_HYGIENE.md](LAUNCH_HYGIENE.md) | Launch-path architecture, V2 mimicry rationale, Layer A/B/C definitions. |
+| [docs/U10_INVESTIGATION.md](U10_INVESTIGATION.md) | U-10 BOOT.ELF-from-HDD-boot hypothesis catalog. U-10 is accepted broken; the catalog is preserved for any future revisit. |
+| [docs/DOCUMENTATION_FOLLOWUP_AUDIT.md](DOCUMENTATION_FOLLOWUP_AUDIT.md) | Post-release doc cleanup plan (the doc you may be working from now). |
 
 ## Hard Constraints (Preservation Contracts)
 
@@ -37,7 +37,7 @@ These are hardware-confirmed in BETA-10-5 and must not be broken by any new work
 
 - **"Failed to load HDD" from a non-HDD boot** (config-specific; Nuno 2026-06-14) — POPSLoader starts and most setups list the HDD fine, but a specific configuration still fails. Workaround: boot POPSLoader from the HDD, or open the HDD page a few seconds after the menu appears. Under investigation.
 
-**Resolved since BETA-10-5 (hardware-confirmed) — removed from known-broken 2026-06-15:** DKWDRV from a custom HDD path (#486/#487), U-10 BOOT.ELF-from-HDD-boot (#479, `reboot_iop=0`), and HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader (maintainer-confirmed 2026-06-15; mechanism not pinned). U-10 history preserved in [docs/U10_INVESTIGATION.md](docs/U10_INVESTIGATION.md).
+**Resolved since BETA-10-5 (hardware-confirmed) — removed from known-broken 2026-06-15:** DKWDRV from a custom HDD path (#486/#487), U-10 BOOT.ELF-from-HDD-boot (#479, `reboot_iop=0`), and HOSDmenu / specific wLaunchELF builds failing to launch POPSLoader (maintainer-confirmed 2026-06-15; mechanism not pinned). U-10 history preserved in [docs/U10_INVESTIGATION.md](U10_INVESTIGATION.md).
 
 ## Post-release work in flight
 

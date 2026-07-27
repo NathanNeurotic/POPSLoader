@@ -4,7 +4,7 @@
 **Trigger (maintainer report):** "Some settings are contradictory, some need cwd defaults, some settings don't work, smb fails to connect even when I put in the right settings, and there are likely many other issues."
 **Method:** a settings-inventory mapping pass, then 9 dimension finders (settings plumbing, setting-vs-setting contradictions, SMB C side vs OPL reference, SMB Lua/UI side, cwd defaults, UI rows end-to-end, boot-order, scripted runtime-trap sweeps, docs-vs-code) plus 4 critic-directed gap finders. 107 raw findings were deduplicated to **62 unique issues**, and every finding was adversarially verified against source (critical/high items by two independent verifiers). Verification outcome across the 107: **101 confirmed, 4 refuted, 2 disputed**. Refuted items are retained in the list (marked REFUTED) so they are not re-reported by future audits.
 
-This is a REPORT with proposed solutions; no fixes have been applied. Every solution was checked against the preservation contracts (D-10/D-14/D-15 launch routes, `EnsureBootPartitionWritable`, BOOT.ELF/DKWDRV exit routes, embedded loader handoff, `reboot_iop` values) and none of the proposed fixes touch them.
+This was a REPORT with proposed solutions; no fixes had been applied **at the time of writing (2026-07-07, against `BETA-13-PLAY` @ `be0647c`)**. Many findings have since been fixed (e.g. U19 CRLF sidecar parsing, U16 keyboard-layout default). **Check `STATE.md` before treating any entry below as open.** Every solution was checked against the preservation contracts (D-10/D-14/D-15 launch routes, `EnsureBootPartitionWritable`, BOOT.ELF/DKWDRV exit routes, embedded loader handoff, `reboot_iop` values) and none of the proposed fixes touch them.
 
 ---
 

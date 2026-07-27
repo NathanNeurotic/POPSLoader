@@ -1,4 +1,4 @@
-Last updated: 2026-06-30 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); the BOOT_SOUND/OVERSCAN keys plus the new `ART_LOCATION` (selectable cover/details folder) bring documented EncodeSettings coverage to 22 keys + the appended SMB block, and `CoverCache:GetOrLoad` dropped its redundant `open()` existence pre-probe (ps2sdk routes `open` and `fopen` through the same libcglue `_open`, so it was a duplicate, not a cover fix; a workflow settled this against newlib/ps2sdk/OPL source). Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under `mass:` classified by the EXACT ioctl driver-name `ata`, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps `-page`/`-mode=ata*`→EXFAT (opt 3) and `=hdd`/`apa`/`pfs*`→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the `MIN_ACTION_MS` action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — including its **Experimental channel (EXP32–EXP42)** section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.
+Last updated: 2026-06-30 (BETA-13 rolling candidate; HEAD = `dev` (renamed from BETA-13-PLAY after the 1.0.0 cut); 1.1.0 is the public release at 2270cec, and BETA-12-PLAY is ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new `Pads.getMode()` C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (`Screen.setOverscan`/`getOverscan` + `OVX`/`OVY`); the game-list cover box now layers `cover_default.png` + `cover_missing.png` and `MISSING.png` was removed (−62 KB ELF); the BOOT_SOUND/OVERSCAN keys plus the new `ART_LOCATION` (selectable cover/details folder) brought documented EncodeSettings coverage to 23 keys (`ART_LOCATION`'s Settings row was later removed in EXP35 and the key is now inert) + the appended SMB block, and `CoverCache:GetOrLoad` dropped its redundant `open()` existence pre-probe (ps2sdk routes `open` and `fopen` through the same libcglue `_open`, so it was a duplicate, not a cover fix; a workflow settled this against newlib/ps2sdk/OPL source). Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under `mass:` classified by the EXACT ioctl driver-name `ata`, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps `-page`/`-mode=ata*`→EXFAT (opt 3) and `=hdd`/`apa`/`pfs*`→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the `MIN_ACTION_MS` action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see **`STATE.md`** (canonical) — including its **Experimental channel (EXP32–EXP42)** section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.
 
 # COMPONENTS
 
@@ -113,9 +113,12 @@ technical claim below cites `path:line` against this worktree.
 
 ### `src/luaHDD.cpp` — HDD (dev9) IRX stack and PFS mounting
 - `Load_HDD_IRX` (luaHDD.cpp:120, exposed as `HDD.Initialize` at luaHDD.cpp:173)
-  loads ps2dev9 -> ps2atad -> ps2hdd-osd -> ps2fs back-to-back (luaHDD.cpp:142-161),
-  with HDD args `-o 4 -n 20` and PFS args `-m 4 -o 10 -n 40` (luaHDD.cpp:136-139).
-  This BETA-13-PLAY state has NO inter-module cold-dev9 settle delay here.
+  calls `EnsureAtaBdm()` (dev9 -> bdm -> bdmfs_fatfs -> `ata_bd`, i.e. ps2atad
+  built with `ATA_ENABLE_BDM=1` so one atad instance serves APA/PFS and exFAT),
+  then ps2hdd-osd -> ps2fs, with HDD args `-o 4 -n 20` and PFS args
+  `-m 4 -o 10 -n 40`. Plain `ps2atad` is no longer loaded. There ARE settles now:
+  `sleep(1)` before the `ata_bd` load and `sleep(1)` after it
+  (`luasystem.cpp` `EnsureAtaBdmModulesInner`), matching NHDDL/wLaunchELF ordering.
 - `GetHDDStatus` via `HDIOC_STATUS` (luaHDD.cpp:93-96); on-demand mount
   `MountPart`/`mnt` (luaHDD.cpp:21-92) producing `pfs%d:/` mount points.
   `HDD.MountPartition` returns `(ok, rc)` — the second value is the raw
@@ -311,17 +314,18 @@ copies are not read at runtime. Editing them requires a rebuild.
   lines/sec; the Fast/Medium/Slow "Description scroll speed" setting was removed).
 - Cover-art LRU `CoverCache` (ui.lua:305-374), candidate builder
   `BuildCoverCandidates` (ui.lua:190). On **removable** devices the cover
-  (`<name>.png`) and its matching `<name>.txt` details sidecar lookup folder is
-  **user-selectable** (`PLDR.ART_LOCATION`, *Settings > Game List > Cover/details
-  folder*, default `pops_art`): `pops_art` -> `<device>:/POPS/ART/<game>.png`,
-  `pops` -> the game's own `POPS/` folder beside the `.vcd`, `art` ->
-  `<device>:/ART/<game>.png` (ui.lua:226-247); the game's own `POPS/` folder is
-  ALWAYS appended as a final fallback (ui.lua:246). HDD/PFS is fixed:
-  `hdd0:__common/POPS/ART/<game>.png` from the `__common` partition
-  (ui.lua:200-211). Within each folder the disc-marker-stripped name is tried
-  FIRST (so ONE art/details file serves every disc of a multi-disc game) then the
-  exact per-disc `<full-name>.png` (back-compat). The `.txt` details sidecar rides
-  the same candidate list (each `.png` -> `.txt`). `GetOrLoad` (ui.lua:344) loads
+  is ONE path with an EXACT filename (EXP71): `BuildCoverCandidates` returns a
+  single candidate `<device-root>/ART/<gamefilename>_COV.png`. The
+  *Cover/details folder* setting was removed in EXP35 (`PLDR.ART_LOCATION` still
+  parses but is INERT), there is no `POPS/ART` mode, no beside-the-`.vcd`
+  fallback, and no disc-marker-stripped family name — so multi-disc games need
+  art per disc. HDD/PFS is fixed to
+  `hdd0:__common/POPS/ART/<gamefilename>_COV.png` via
+  `PLDR.ResolveHddPartitionReadablePath`. The `.txt` details sidecar does NOT
+  ride the cover candidates: removable devices compute
+  `<device-root>/ART/<gamefilename>.txt` (no `_COV`) and hand it to the resident
+  cover worker (`Graphics.coverLoadTextPath`), and HDD resolves it separately.
+  `GetOrLoad` loads
   via `Graphics.loadImage`/`fopen` directly with NO `doesFileExist`/`open()`
   pre-probe -- a redundant-syscall cleanup, since ps2sdk routes `open` and `fopen`
   through the same libcglue `_open` (nested reads work; OPL reads `mass:/ART/` the
@@ -508,10 +512,11 @@ Dispatch in the MainMenu `Play` handler (ui.lua:3997), OPT switch ~ui.lua:4227-4
   (Supersedes the old HDD-to-MC exception.) See `STATE.md > Preservation Contracts`
   and `STATE.md > Settings (single-device parity)`.
 
-> Divergence note (per project memory): this BETA-13-PLAY worktree's
-> `PLDR.LoadHDDModules` (system.lua:4754) and `Load_HDD_IRX` (luaHDD.cpp:120) have
-> NO cold-dev9 settle between HDD IRX loads. The "fail to load HDD" cold-dev9
-> settle fix lives on a separate rolling branch and is NOT merged here.
+> Settle note: `Load_HDD_IRX` routes through `EnsureAtaBdm()`, which applies a
+> 1-second settle before loading `ata_bd` and another after it (see
+> `EnsureAtaBdmModulesInner` in `src/luasystem.cpp`). The older "no cold-dev9
+> settle / fix lives on a separate branch" note is superseded — rolling publishes
+> from `dev`, which is this branch.
 
 ## Primary Change Entry Points
 - Settings persistence/apply: `bin/POPSLDR/system.lua`, `bin/POPSLDR/ui.lua`.
