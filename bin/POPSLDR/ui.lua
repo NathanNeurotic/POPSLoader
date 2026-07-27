@@ -3692,13 +3692,17 @@ UI = {
                 diag = string.format("\n%d part, %d files, %d VCD",
                          tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                 if (tonumber(d.hidden) or 0) > 0 then
-                  diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                  diag = diag..string.format(PLDR.L(" (%d hidden -- Global Hide is on)"), tonumber(d.hidden) or 0)
                 elseif (tonumber(d.collapsed) or 0) > 0 then
-                  diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                  diag = diag..string.format(PLDR.L(" (%d multi-disc collapsed)"), tonumber(d.collapsed) or 0)
                 end
               end
             end
-            UI.Notif_queue.add("HDD list refreshed (no games found)"..diag, "warn")
+            -- Translate the sentence, THEN append the diagnostic. Concatenating
+            -- first defeats add()'s exact-key lookup and threw away the translation
+            -- this string already has in all six languages. The diag tail stays
+            -- English on purpose: raw mount rc codes and counters (README rule 3).
+            UI.Notif_queue.add(PLDR.L("HDD list refreshed (no games found)")..diag, "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
@@ -4134,10 +4138,14 @@ UI = {
             -- diagnostic. (nil return = not an HDD boot -> no toast.)
             if type(PLDR.ProbeHddSettingsWrite) == "function" then
               local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
+              -- Formattable keys, not concatenation: this fires on EVERY Settings
+              -- save with the HDD loaded, so it is one of the most-seen toasts on
+              -- an HDD rig -- and built by `..` it could never match a table key.
+              -- The %s is only ever "__.POPS" or "__.POPS0".."9", so it stays as-is.
               if hdd_w_ok == true then
-                UI.Notif_queue.add("__.POPS partition "..tostring(hdd_w_info).." accepts writes (game-partition RW test)", "ok")
+                UI.Notif_queue.add(string.format(PLDR.L("__.POPS partition %s accepts writes (game-partition RW test)"), tostring(hdd_w_info)), "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add("HDD game-partition write test FAILED ("..tostring(hdd_w_info)..")", "warn")
+                UI.Notif_queue.add(string.format(PLDR.L("HDD game-partition write test FAILED (%s)"), tostring(hdd_w_info)), "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
@@ -4175,7 +4183,12 @@ UI = {
             elseif reason == "smb_apply_failed" then
               UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
-              UI.Notif_queue.add(PLDR.L("Couldn't save settings").."\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              -- One formattable key for the whole sentence rather than a translated
+              -- head with a bare English " may be read-only" welded on: Hungarian
+              -- needs to put the path somewhere other than in front of the predicate,
+              -- and a dangling suffix fragment cannot express that. The mx4sio probe
+              -- tail stays English (technical diagnostic, README rule 3).
+              UI.Notif_queue.add(string.format(PLDR.L("Couldn't save settings\n%s may be read-only"), tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs"))..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -5729,13 +5742,17 @@ UI = {
                       diag = string.format("\n%d part, %d files, %d VCD",
                                tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                       if (tonumber(d.hidden) or 0) > 0 then
-                        diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                        diag = diag..string.format(PLDR.L(" (%d hidden -- Global Hide is on)"), tonumber(d.hidden) or 0)
                       elseif (tonumber(d.collapsed) or 0) > 0 then
-                        diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                        diag = diag..string.format(PLDR.L(" (%d multi-disc collapsed)"), tonumber(d.collapsed) or 0)
                       end
                     end
                   end
-                  UI.Notif_queue.add("No games found on hdd0:"..diag, "warn")
+                  -- Translate the sentence, THEN append the diagnostic (README rule
+                  -- 3 keeps rc codes and counters English). EXP33 swapped the static
+                  -- second line for this runtime diag and orphaned the six-language
+                  -- translation of the old two-line key; the key is now the sentence.
+                  UI.Notif_queue.add(PLDR.L("No games found on hdd0:")..diag, "warn")
                 end
               else
                 UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")

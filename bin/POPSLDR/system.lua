@@ -2582,7 +2582,7 @@ PLDR.I18N = {
     ["No USB backend detected\nreseat the drive and try again"] = "Aucun backend USB détecté\nreconnectez le lecteur et réessayez",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Aucun HDD exFAT détecté\nformatez le disque interne en exFAT (Mode BDMA = ATA)",
     ["No games found"] = "Aucun jeu trouvé",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Aucun jeu trouvé sur hdd0:\n(partitions __.POPS vides)",
+    ["No games found on hdd0:"] = "Aucun jeu trouvé sur hdd0:",
     ["No games found on this device"] = "Aucun jeu trouvé sur cet appareil",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Aucun lien réseau\nvérifiez le câble / l'adaptateur Ethernet",
     ["Not implemented yet"] = "Pas encore implémenté",
@@ -2813,7 +2813,7 @@ PLDR.I18N = {
     ["No USB backend detected\nreseat the drive and try again"] = "Kein USB-Backend erkannt\nLaufwerk neu einstecken und erneut versuchen",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Keine exFAT-HDD erkannt\ninternes Laufwerk als exFAT formatieren (BDMA-Modus = ATA)",
     ["No games found"] = "Keine Spiele gefunden",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Keine Spiele auf hdd0: gefunden\n(__.POPS-Partitionen sind leer)",
+    ["No games found on hdd0:"] = "Keine Spiele auf hdd0: gefunden",
     ["No games found on this device"] = "Keine Spiele auf diesem Gerät gefunden",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Keine Netzwerkverbindung\nEthernet-Kabel / Adapter prüfen",
     ["Not implemented yet"] = "Noch nicht implementiert",
@@ -3042,7 +3042,7 @@ PLDR.I18N = {
     ["No USB backend detected\nreseat the drive and try again"] = "Nenhum backend USB detectado\nreconecte o drive e tente novamente",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)",
     ["No games found"] = "Nenhum jogo encontrado",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nenhum jogo encontrado em hdd0:\n(partições __.POPS estão vazias)",
+    ["No games found on hdd0:"] = "Nenhum jogo encontrado em hdd0:",
     ["No games found on this device"] = "Nenhum jogo encontrado neste dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Sem link de rede\nverifique o cabo / adaptador Ethernet",
     ["Not implemented yet"] = "Ainda não implementado",
@@ -3277,7 +3277,7 @@ PLDR.I18N = {
     ["No USB backend detected\nreseat the drive and try again"] = "No se detectó backend USB\nreconecta la unidad e inténtalo de nuevo",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "No se detectó HDD exFAT\nformatea la unidad interna en exFAT (Modo BDMA = ATA)",
     ["No games found"] = "No se encontraron juegos",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "No se encontraron juegos en hdd0:\n(las particiones __.POPS están vacías)",
+    ["No games found on hdd0:"] = "No se encontraron juegos en hdd0:",
     ["No games found on this device"] = "No se encontraron juegos en este dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Sin enlace de red\nrevisa el cable / adaptador Ethernet",
     ["Not implemented yet"] = "Aún no implementado",
@@ -3506,7 +3506,7 @@ PLDR.I18N = {
     ["No USB backend detected\nreseat the drive and try again"] = "Nessun backend USB rilevato\nreinserisci l'unità e riprova",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nessun HDD exFAT rilevato\nformatta l'unità interna in exFAT (Modalità BDMA = ATA)",
     ["No games found"] = "Nessun gioco trovato",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nessun gioco trovato su hdd0:\n(le partizioni __.POPS sono vuote)",
+    ["No games found on hdd0:"] = "Nessun gioco trovato su hdd0:",
     ["No games found on this device"] = "Nessun gioco trovato su questo dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Nessun collegamento di rete\ncontrolla il cavo / adattatore Ethernet",
     ["Not implemented yet"] = "Non ancora implementato",
@@ -3740,7 +3740,7 @@ PLDR.I18N = {
     ["Keep"] = "Megtart",
     ["Keep this display mode?"] = "Megtartja ezt a megjelenítési módot?",
     ["Keyboard Layout"] = "Billentyűzetkiosztás",
-    ["L3 on the game list"] = "L3 a játéklistán",
+    ["L3 on the game list"] = "L3 a játéklistában",
     ["Launch"] = "Indítás",
     ["Launch DKWDRV?"] = "Elindítja a DKWDRV-t?",
     ["Left aligned"] = "Balra igazítva",
@@ -3767,7 +3767,7 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Ezen az elérési úton nincs DKWDRV",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)",
     ["No games found"] = "Nincsenek játékok",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)",
+    ["No games found on hdd0:"] = "Nincsenek játékok a hdd0-n:",
     ["No games found on this device"] = "Az eszközön nem találhatóak játékok",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:",
     ["No MX4SIO device detected"] = "Nem észlelhető MX4SIO eszköz",
@@ -3776,7 +3776,7 @@ PLDR.I18N = {
     ["No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"] = "Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:",
     ["No Share selected"] = "Nincs kiválasztott megosztás",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Az SMB-beállításokban nincs megadva megosztás\n(a szerver nem adott vissza megosztásokat)",
-    ["No USB backend detected\nreseat the drive and try again"] = "Nem észlelhető USB-háttérrendszer\nHelyezze be ismételten a meghajtót, majd próbálja újra",
+    ["No USB backend detected\nreseat the drive and try again"] = "Nem észlelhető USB-háttérrendszer\nHelyezze be újból a meghajtót, majd próbálja újra",
     ["Not implemented yet"] = "Jelenleg nincs megvalósítva",
     ["Not installed"] = "Nincs telepítve",
     ["Off"] = "Ki",
@@ -3829,7 +3829,7 @@ PLDR.I18N = {
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "A szerver elutasította az SMBv1-et\nEngedélyezze az SMBv1 támogatást a gazdagépen",
     ["Settings"] = "Beállítások",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)",
-    ["Show all discs"] = "Összes lemez",
+    ["Show all discs"] = "Összes lemez látható",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők",
     ["Shown"] = "Megjelenítés",
     ["Slot:"] = "Nyílás:",
@@ -3866,20 +3866,20 @@ PLDR.I18N = {
     -- EXP72: SMB settings labels + keyboard word-keys + the Language row (sAGA:
     -- these screens stayed English under Magyar).
     ["Language"] = "Nyelv",
-    ["IP assignment"] = "IP-hozzárendelés",
+    ["IP assignment"] = "IP-cím hozzárendelése",
     ["PS2 IP"] = "PS2 IP-cím",
-    ["Netmask"] = "Hálózati maszk",
+    ["Netmask"] = "Netmaszk",
     ["Gateway"] = "Átjáró",
     ["DNS"] = "DNS",
-    ["Link mode"] = "Kapcsolat módja",
+    ["Link mode"] = "Link mód",
     ["Address type"] = "Cím típusa",
-    ["NetBIOS name"] = "NetBIOS-név",
-    ["Server IP"] = "Szerver IP-cím",
+    ["NetBIOS name"] = "NetBIOS név",
+    ["Server IP"] = "Szerver IP",
     ["Port"] = "Port",
     ["Share"] = "Megosztás",
     ["User"] = "Felhasználó",
     ["Password"] = "Jelszó",
-    ["Games path (folder holding POPS)"] = "Játékok útvonala (POPS mappa)",
+    ["Games path (folder holding POPS)"] = "A játékok elérési útvonala (a POPS fájlokat tartalmazó mappa)",
     ["SPACE"] = "SZÓKÖZ",
     ["DEL"] = "TÖRLÉS",
     ["CLR"] = "ÜRÍTÉS",
@@ -3887,8 +3887,8 @@ PLDR.I18N = {
     ["DONE"] = "KÉSZ",
     -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
     ["Edit %s"] = "%s szerkesztése",
-    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt már láthatók (halványítva)\nKapcsolja be a \"Rejtett játékok elrejtése\" opciót a Beállításokban a szűréshez",
-    ["Resolved:"] = "Feloldva:",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a \"Rejtett játékok elrejtése\" opciót, hogy kiszűrje őket",
+    ["Resolved:"] = "Megoldva:",
     ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy pillanat múlva",
   },
 }
@@ -8138,7 +8138,14 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
       -- never sees it -- it has to be surfaced HERE or it stays undebuggable.
       local detail = tostring(err)
       if #detail > 180 then detail = string.sub(detail, 1, 180).."..." end
-      UI.Notif_queue.add("Failed to load HDD ["..tostring(where).."]\n"..detail, "error")
+      -- Translate the TITLE before appending the diagnostic. UI.Notif_queue.add
+      -- runs PLDR.L on the whole string it receives, and PLDR.L is an exact-key
+      -- lookup, so concatenating first means the "Failed to load HDD" translation
+      -- that ships in all six languages is never reached. Same fix ui.lua's
+      -- RunBusyTask already carries; it was never swept to this reporter, which is
+      -- the one the user actually sees (EnsureGameList pcalls the scan itself, so
+      -- RunBusyTask's own failure path never fires for this fault).
+      UI.Notif_queue.add(PLDR.L("Failed to load HDD").." ["..tostring(where).."]\n"..detail, "error")
     end
     PLDR.HDD.LIST_BUILT = false
   end
@@ -8482,7 +8489,7 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   local boot_label_disp = (context and type(context.boot_device_label) == "string" and context.boot_device_label ~= "")
     and context.boot_device_label or "?"
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDev:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s",
     tostring(rc),
     tostring(device_page),
     tostring(launch_route or "default"),
@@ -8507,9 +8514,20 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(game_path),
     diag_block
   )
+  -- The "press this to continue" line is the only translatable prose in the body,
+  -- and it hardcoded X/O -- wrong on a Japanese-ROM console, where confirm/back are
+  -- swapped. Append it as its own key (so a translator never has to reproduce the
+  -- 20-placeholder diagnostic template, where one dropped %s would raise an error on
+  -- exactly the failure path this screen exists to report) and fill the glyphs from
+  -- the ROM-aware helpers. The rc=/Dev:/Cfg:/Exec:/Arg0: dump above stays English on
+  -- purpose: field labels, paths and return codes (README rule 3).
+  local confirm_letter = (type(UI.ConfirmGlyphLetter) == "function") and UI.ConfirmGlyphLetter() or "X"
+  local back_letter = (type(UI.BackGlyphLetter) == "function") and UI.BackGlyphLetter() or "O"
+  local ok_hint, hint = pcall(string.format, PLDR.L("Press %s/%s to continue."), confirm_letter, back_letter)
+  body = body.."\n"..((ok_hint and hint) or "Press X/O to continue.")
   while true do
     UI.BottomDraw.Play()
-    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
+    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, PLDR.L("LAUNCH FAILED"), UI.CCOL.YELLOW)
     Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 170, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
     Input_GetEvent()
     if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then

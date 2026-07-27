@@ -1,11 +1,10 @@
 English (do not edit)	Hungarian (put your translation here)
+ (%d hidden -- Global Hide is on)	 (%d hidden -- Global Hide is on)
+ (%d multi-disc collapsed)	 (%d multi-disc collapsed)
 (could NOT save -- reverts on reboot)	(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)
 (not set)	(nincs beállítva)
 (share root)	(gyökérkönyvtár megosztása)
-(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)
 (the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)
 (the usual settings location wasn't writable)	(a beállítások szokásos helye nem volt írható)
 (unknown)	(ismeretlen)
 -- launch cancelled	-- az indítás megszakítva
@@ -13,18 +12,19 @@ English (do not edit)	Hungarian (put your translation here)
 100M Half	100M Half
 10M Full	10M Full
 10M Half	10M Half
+__.POPS partition %s accepts writes (game-partition RW test)	__.POPS partition %s accepts writes (game-partition RW test)
 About	Névjegy
 Actual output	Aktuális kimenet
 Adaptive BDMA	Adaptív BDMA
 Adaptive BDMA couldn't stage	Az adaptív BDMA nem tudott szakaszosan működni
 Address type	Address type
 adjusted -- using	kiigazítva -- a következővel
-Another device	Másik eszköz
 APA / PFS (default)	APA / PFS (alapértelmezett)
 Applying BDMA mode	BDMA mód alkalmazása
 Applying SMB modules	SMB modulok alkalmazása
 ART (at root)	ART (a főkönyvtárban)
 At least one device must stay on the carousel	Legalább egy eszköznek meg kell maradnia
+Auto	Auto
 Auto (console region)	Automatikus (a konzol régiója)
 Automatic	Automatikus
 Back	Vissza
@@ -38,6 +38,7 @@ Boot sound	Starthang
 BOOT.ELF failed to launch	A BOOT.ELF elindítása sikertelen volt
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	A BOOT.ELF fájl nem található\nEllenőrizve: mc0:/BOOT és mc1:/BOOT
 Booted from:	Boot eszköz:
+Both	Both
 Bringing up network...	Hálózat felépítése...
 Building HDD game list...	HDD játéklista összeállítása...
 Building USB game list...	USB játéklista összeállítása...
@@ -55,6 +56,7 @@ Center aligned	Középre igazítva
 check the memory card, or turn Adaptive BDMA off	ellenőrizze a memóriakártyát, vagy kapcsolja ki az Adaptive BDMA funkciót
 Checking POPSTARTER...	POPSTARTER ellenőrzése...
 Checking the game file...	A játékfájl ellenőrzése...
+CLR	ÜRÍTÉS
 Code by El_isra	Kódolás: El_isra
 Confirm	Megerősítés
 Connecting to SMB...	Csatlakozás az SMB-hez...
@@ -64,6 +66,7 @@ Couldn't restore BDMA mode	Nem sikerült visszaállítani a BDMA módot
 Couldn't save settings	A beállítások mentése nem sikerült
 Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került törlésre
 Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
+Couldn't save settings\n%s may be read-only	Couldn't save settings\n%s may be read-only
 Couldn't update hidden state	A rejtett állapotot nem sikerült frissíteni
 Couldn't write .hide to the HDD	Nem sikerült a .hide fájlt a HDD-re írni
 Cover art	Borítókép
@@ -71,9 +74,9 @@ Cover/details folder	Borító/Részletek mappa
 Credits	Közreműködők
 Cursor: L1 / R1	Kurzor: L1 / R1
 Defaults restored	Alapértelmezések visszaállítva
+DEL	TÖRLÉS
 Delete the POPSTARTER folder from the memory card?	Törli a POPSTARTER mappát a memóriakártyáról?
 Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Tervezés: Berion\nSzkriptek: nuno6573 és Ripto\nBázis: Daniel Santos 'Enceladus' című munkája\nTesztelés: P4NCHOL1NO, VizoR, provato,\nnuno6573, sAGA/oldman63, saildot4k és a közösség\n\nKülön köszönet:\nkrHACKennek a POPStarter elkészítéséért\nuyjuliannek, fjtrujy-nak, HWC-nek és másoknak a folyamatos segítségért\n\nEz a program ingyenes és nyílt forráskódú\nHa megvásárolta, akkor átverték\n\nKompatibilitási problémák? Látogasson el ide:\nyoutube.com/@hugopocked6695
-Device conflict	Eszközök közötti ütközés
 Device List	Eszközlista
 DHCP (automatic)	DHCP (automatikus)
 DHCP failed\nset a static IP in SMB settings	A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban
@@ -86,6 +89,7 @@ DKWDRV Path	DKWDRV útvonal
 DNS	DNS
 Don't Save	Ne mentse el
 DONE	KÉSZ
+Done	Done
 Edit	Szerkesztés
 Edit %s	%s szerkesztése
 Edit DKWDRV Path	DKWDRV útvonal szerkesztése
@@ -113,8 +117,10 @@ Game shown	Játék megjelenítve
 Games path (folder holding POPS)	A játékok elérési útvonala (a POPS fájlokat tartalmazó mappa)
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	A játékok elérési útvonala kizárólag a böngészést érinti:\nA POPStarter csak a <share>/POPS mappából indíthat játékokat
 Gateway	Átjáró
+HDD Alt	HDD Alt
 HDD Alt mode needs POPSTARTER on HDD	A HDD Alt módhoz POPSTARTER szükséges a HDD-n
 HDD dir read failed:	A HDD könyvtár olvasása sikertelen:
+HDD game-partition write test FAILED (%s)	HDD game-partition write test FAILED (%s)
 HDD list loaded from cache (R1 rescans)	A HDD-lista betöltődött a gyorsítótárból (R1 - lista frissítése)
 HDD list refreshed	A HDD-lista frissült
 HDD list refreshed (no games found)	A HDD-lista frissült (nincs játék)
@@ -132,13 +138,14 @@ Installed	Telepített
 Internal HDD	Belső HDD
 IP address	IP cím
 IP assignment	IP-cím hozzárendelése
-is active -- restart POPSLoader to browse	aktív – a böngészéshez indítsa újra a POPSLoader programot
 Keep	Megtart
 Keep this display mode?	Megtartja ezt a megjelenítési módot?
 Keyboard Layout	Billentyűzetkiosztás
 L3 on the game list	L3 a játéklistában
+Language	Nyelv
 Launch	Indítás
 Launch DKWDRV?	Elindítja a DKWDRV-t?
+LAUNCH FAILED	LAUNCH FAILED
 Left aligned	Balra igazítva
 Link mode	Link mód
 List refreshed	Lista frissítve
@@ -157,9 +164,7 @@ Missing BDMA source (tried):	Hiányzó BDMA forrás (megpróbálva):
 Missing BDMA UI source (tried):	Hiányzó BDMA UI forrás (megpróbálva):
 Missing SMB module (tried):	Hiányzó SMB modul (megpróbálva):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	Az MMCE-n nincs POPS mappa\nelvárás az mmce0:/POPS/ mappa
-MMCE was used this session -- restart to browse MX4SIO
 Multi-disc games	Többlemezes játékok
-MX4SIO was used this session -- restart to browse MMCE
 NetBIOS isn't supported\nset Address type = IP + a Server IP	A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe
 NetBIOS name	NetBIOS név
 Netmask	Netmaszk
@@ -168,7 +173,7 @@ No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	Nincs '
 No DKWDRV found at this path	Ezen az elérési úton nincs DKWDRV
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)
 No games found	Nincsenek játékok
-No games found on hdd0:\n(__.POPS partitions are empty)	Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)
+No games found on hdd0:	Nincsenek játékok a hdd0-n:
 No games found on this device	Az eszközön nem találhatóak játékok
 No MMCE device detected\nchecked mmce0: and mmce1:	Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:
 No MX4SIO device detected	Nem észlelhető MX4SIO eszköz
@@ -197,6 +202,7 @@ POPSTARTER folder deleted from the memory card	A POPSTARTER mappa törölve lett
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	A POPSTARTER mappa visszaállítva a memóriakártyán\n(állítsa be a BDMA módot az exFAT/SMB modulok újbóli hozzáadásához)
 POPSTARTER Path	POPSTARTER útvonal
 Port	Port
+Press %s/%s to continue.	Press %s/%s to continue.
 Press CIRCLE again to discard what you typed	Nyomja meg újra a KÖR gombot, hogy törölje a beírt szöveget
 Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
 Profile	Profil
@@ -210,8 +216,6 @@ Rescanning HDD partitions...	A HDD partíciók újraszkennelése...
 Reset	Visszaállítás
 Reset Defaults	Alapértelmezések visszaállítása
 Resolved:	Megoldva:
-Restart	Újraindítás
-Restart failed -- power cycle to switch device	Az újraindítás nem sikerült – kapcsolja ki/be az eszközt
 Retrying USB scan...	Az USB-ellenőrzés újraindítása...
 return code:	válaszkód:
 Return to OSDSYS?	Kilépés az OSDSYS-be?
@@ -259,6 +263,7 @@ Startup	Indítás
 Static (manual)	Statikus (manuális)
 status:	státusz:
 Storage	Tároló
+The internal drive is still starting\nopen this page again in a moment	A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy pillanat múlva
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
 This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.
 Triangle	Háromszög
@@ -266,6 +271,7 @@ UI text hidden	UI szövegek elrejtve
 UI text shown	UI szövegek megjelenítve
 Unknown BDMA mode:	Ismeretlen BDMA mód:
 User	Felhasználó
+Version	Version
 Video Standard	Videó szabvány
 Visible	Látható
 Visible (manage)	Láthatóak (kezelhetők)
