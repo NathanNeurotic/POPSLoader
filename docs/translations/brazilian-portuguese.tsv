@@ -1,11 +1,9 @@
 English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
+ (%d hidden -- Global Hide is on)	 (%d hidden -- Global Hide is on)
+ (%d multi-disc collapsed)	 (%d multi-disc collapsed)
 (could NOT save -- reverts on reboot)	(could NOT save -- reverts on reboot)
 (not set)	(não definido)
 (share root)	(raiz do share)
-(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)
-(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)
 (the usual settings location wasn't writable)	(the usual settings location wasn't writable)
 (unknown)	(desconhecido)
 -- launch cancelled	-- launch cancelled
@@ -13,17 +11,18 @@ English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
 100M Half	100M Half
 10M Full	10M Full
 10M Half	10M Half
+__.POPS partition %s accepts writes (game-partition RW test)	__.POPS partition %s accepts writes (game-partition RW test)
 Actual output	Saída real
 Adaptive BDMA	BDMA Adaptativo
 Adaptive BDMA couldn't stage	Adaptive BDMA couldn't stage
 Address type	Address type
 adjusted -- using	adjusted -- using
-Another device	Another device
 APA / PFS (default)	APA / PFS (padrão)
 Applying BDMA mode	Aplicando modo BDMA
 Applying SMB modules	Applying SMB modules
 ART (at root)	ART (na raiz)
 At least one device must stay on the carousel	Ao menos um dispositivo deve ficar no carrossel
+Auto	Auto
 Auto (console region)	Auto (região do console)
 Back	Voltar
 BACK	BACK
@@ -36,6 +35,7 @@ Boot Page	Página de inicialização
 Boot sound	Som de inicialização
 BOOT.ELF failed to launch	BOOT.ELF failed to launch
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	BOOT.ELF não encontrado\nverificado mc0:/BOOT e mc1:/BOOT
+Both	Both
 Bringing up network...	Ativando a rede...
 Building HDD game list...	Montando lista de jogos do HDD...
 Building USB game list...	Montando lista de jogos do USB...
@@ -51,6 +51,7 @@ Case/Symbols: lower  (R2)	Case/Symbols: lower  (R2)
 Case/Symbols: UPPER  (R2)	Case/Symbols: UPPER  (R2)
 Center aligned	Alinhado ao centro
 check the memory card, or turn Adaptive BDMA off	check the memory card, or turn Adaptive BDMA off
+CLR	CLR
 Code by El_isra	Código por El_isra
 Confirm	Confirmar
 Connecting to SMB...	Conectando ao SMB...
@@ -60,15 +61,16 @@ Couldn't restore BDMA mode	Couldn't restore BDMA mode
 Couldn't save settings	Couldn't save settings
 Couldn't save settings -- POPSTARTER folder NOT deleted	Não foi possível salvar -- pasta POPSTARTER NÃO excluída
 Couldn't save settings -- POPSTARTER folder NOT restored	Não foi possível salvar -- pasta POPSTARTER NÃO restaurada
+Couldn't save settings\n%s may be read-only	Couldn't save settings\n%s may be read-only
 Couldn't update hidden state	Couldn't update hidden state
 Couldn't write .hide to the HDD	Couldn't write .hide to the HDD
 Cover art	Capa
 Cover/details folder	Pasta de capas/detalhes
 Credits	Créditos
 Cursor: L1 / R1	Cursor: L1 / R1
+DEL	DEL
 Delete the POPSTARTER folder from the memory card?	Excluir a pasta POPSTARTER do cartão de memória?
 Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695
-Device conflict	Device conflict
 DHCP (automatic)	DHCP (automático)
 DHCP failed\nset a static IP in SMB settings	DHCP falhou\ndefina um IP estático nas configurações SMB
 Disc (DKWDRV)	Disco (DKWDRV)
@@ -80,6 +82,7 @@ DKWDRV Path	Caminho do DKWDRV
 DNS	DNS
 Don't Save	Não salvar
 DONE	DONE
+Done	Done
 Edit	Edit
 Edit %s	Edit %s
 Edit DKWDRV Path	Editar caminho do DKWDRV
@@ -107,8 +110,10 @@ Game shown	Jogo exibido
 Games path (folder holding POPS)	Games path (folder holding POPS)
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	O caminho de jogos afeta só a navegação:\nPOPStarter só inicia jogos de <share>/POPS
 Gateway	Gateway
+HDD Alt	HDD Alt
 HDD Alt mode needs POPSTARTER on HDD	Modo HDD Alt precisa do POPSTARTER no HDD
 HDD dir read failed:	HDD dir read failed:
+HDD game-partition write test FAILED (%s)	HDD game-partition write test FAILED (%s)
 HDD list loaded from cache (R1 rescans)	Lista do HDD carregada do cache (R1 rescaneia)
 HDD list refreshed	Lista do HDD atualizada
 HDD list refreshed (no games found)	Lista do HDD atualizada (nenhum jogo encontrado)
@@ -124,11 +129,12 @@ Installed	Instalado
 Internal HDD	HDD interno
 IP address	IP address
 IP assignment	IP assignment
-is active -- restart POPSLoader to browse	is active -- restart POPSLoader to browse
 Keep this display mode?	Manter este modo de tela?
 Keyboard Layout	Layout do teclado
+Language	Language
 Launch	Iniciar
 Launch DKWDRV?	Iniciar DKWDRV?
+LAUNCH FAILED	LAUNCH FAILED
 Left aligned	Alinhado à esquerda
 Link mode	Link mode
 List refreshed	Lista atualizada
@@ -147,9 +153,7 @@ Missing BDMA source (tried):	Missing BDMA source (tried):
 Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
 Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE não tem pasta POPS\nesperado mmce0:/POPS/
-MMCE was used this session -- restart to browse MX4SIO
 Multi-disc games	Jogos multi-disco
-MX4SIO was used this session -- restart to browse MMCE
 NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor
 NetBIOS name	NetBIOS name
 Netmask	Netmask
@@ -157,7 +161,7 @@ No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	No '__.
 No DKWDRV found at this path	No DKWDRV found at this path
 No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)
 No games found	Nenhum jogo encontrado
-No games found on hdd0:\n(__.POPS partitions are empty)	Nenhum jogo encontrado em hdd0:\n(partições __.POPS estão vazias)
+No games found on hdd0:	Nenhum jogo encontrado em hdd0:
 No games found on this device	Nenhum jogo encontrado neste dispositivo
 No MMCE device detected\nchecked mmce0: and mmce1:	Nenhum dispositivo MMCE detectado\nverificado mmce0: e mmce1:
 No MX4SIO device detected	Nenhum dispositivo MX4SIO detectado
@@ -184,6 +188,7 @@ POPSTARTER folder deleted from the memory card	Pasta POPSTARTER excluída do car
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)
 POPSTARTER Path	Caminho do POPSTARTER
 Port	Port
+Press %s/%s to continue.	Press %s/%s to continue.
 Press CIRCLE again to discard what you typed	Pressione CIRCLE novamente para descartar o que digitou
 Profile	Perfil
 Profile defaults restored	Padrões do perfil restaurados
@@ -196,8 +201,6 @@ Rescanning HDD partitions...	Rescaneando partições do HDD...
 Reset	Redefinir
 Reset Defaults	Restaurar padrões
 Resolved:	Resolved:
-Restart	Restart
-Restart failed -- power cycle to switch device	Restart failed -- power cycle to switch device
 Retrying USB scan...	Tentando escanear USB novamente...
 return code:	return code:
 Return to OSDSYS?	Voltar ao OSDSYS?
@@ -242,12 +245,14 @@ Startup	Inicialização
 Static (manual)	Estático (manual)
 status:	status:
 Storage	Armazenamento
+The internal drive is still starting\nopen this page again in a moment	A unidade interna ainda está iniciando\nabra esta página novamente em instantes
 This backend isn't implemented yet	Este backend ainda não foi implementado
 This removes the POPSTARTER pack -- including the	Isso remove o pacote POPSTARTER -- incluindo os
 UI text hidden	Texto da interface ocultado
 UI text shown	Texto da interface exibido
 Unknown BDMA mode:	Unknown BDMA mode:
 User	User
+Version	Version
 Video Standard	Padrão de vídeo
 Visible	Visível
 Visible (manage)	Visível (gerenciar)
