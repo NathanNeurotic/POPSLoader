@@ -1567,6 +1567,51 @@ t40 = E('''function()
 end''')()
 check("T40 EXP73 game details (.txt) reach the screen with AND without a cover", t40)
 
+
+
+# T41: PLDR.LFmt -- translate the TEMPLATE, then fill it.
+#
+# The inverse, PLDR.L(string.format(t, ...)), hands PLDR.L a string with runtime values
+# already substituted, so the exact-key lookup can never hit. That inversion is why
+# several toasts rendered English despite shipping a translation.
+#
+# And because the placeholders now live in text a volunteer edits, a dropped or
+# reordered %s must NOT raise inside the toast that is reporting the original problem.
+# Assert the fallback: a malformed translation degrades to the English template.
+t41 = E('''function()
+  if type(PLDR.LFmt) ~= "function" then return false, "PLDR.LFmt missing" end
+  local saved_lang, saved_tbl = PLDR.LANGUAGE, PLDR.I18N.HU
+  local KEY = "unit test %s and %d"
+  PLDR.I18N.HU = {
+    [KEY] = "teszt %s meg %d",
+    ["broken %s"] = "elrontott",          -- translator dropped the placeholder
+    ["toomany %s"] = "%s %s %s",          -- translator added placeholders
+  }
+  PLDR.LANGUAGE = "HU"
+  local translated = PLDR.LFmt(KEY, "A", 7)
+  local dropped = PLDR.LFmt("broken %s", "X")
+  local extra = PLDR.LFmt("toomany %s", "Y")
+  PLDR.LANGUAGE = "EN"
+  local passthrough = PLDR.LFmt(KEY, "B", 9)
+  PLDR.LANGUAGE, PLDR.I18N.HU = saved_lang, saved_tbl
+
+  if translated ~= "teszt A meg 7" then
+    return false, "template not translated before formatting, got "..tostring(translated)
+  end
+  if passthrough ~= "unit test B and 9" then
+    return false, "EN passthrough broken, got "..tostring(passthrough)
+  end
+  -- a translation that drops the placeholder simply loses it; it must not raise
+  if type(dropped) ~= "string" then return false, "dropped-placeholder case did not return a string" end
+  -- a translation with MORE placeholders than arguments would raise inside
+  -- string.format; it must fall back to the English template, filled, not error out
+  if extra ~= "toomany Y" then
+    return false, "extra-placeholder case should fall back to the filled English template, got "..tostring(extra)
+  end
+  return true
+end''')()
+check("T41 PLDR.LFmt translates the template and survives a malformed translation", t41)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

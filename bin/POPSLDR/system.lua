@@ -3904,6 +3904,25 @@ function PLDR.L(s)
   return s
 end
 
+-- Translate a FORMAT TEMPLATE, then fill it -- string.format(PLDR.L(t), ...), never
+-- PLDR.L(string.format(t, ...)): the latter hands PLDR.L a string with runtime values
+-- already substituted, which can never match a table key. That inversion is why
+-- several toasts rendered English even though their translation shipped.
+--
+-- Protected, because the placeholders now live in translator-editable text: a
+-- volunteer who drops or reorders a %s would otherwise raise a Lua error inside the
+-- very toast (or the launch-failure screen) that is reporting the original problem.
+-- On a bad translation we fall back to the English template, which is always well
+-- formed, rather than taking the app down.
+function PLDR.LFmt(template, ...)
+  local translated = PLDR.L(template)
+  local ok, out = pcall(string.format, translated, ...)
+  if ok then return out end
+  local ok_en, out_en = pcall(string.format, template, ...)
+  if ok_en then return out_en end
+  return tostring(template)
+end
+
 local function BuildVideoStandardSpec(standard)
   local key = NormalizeVideoStandard(standard)
   if key == PLDR.VIDEO_STANDARD_PAL then
@@ -8523,8 +8542,7 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   -- purpose: field labels, paths and return codes (README rule 3).
   local confirm_letter = (type(UI.ConfirmGlyphLetter) == "function") and UI.ConfirmGlyphLetter() or "X"
   local back_letter = (type(UI.BackGlyphLetter) == "function") and UI.BackGlyphLetter() or "O"
-  local ok_hint, hint = pcall(string.format, PLDR.L("Press %s/%s to continue."), confirm_letter, back_letter)
-  body = body.."\n"..((ok_hint and hint) or "Press X/O to continue.")
+  body = body.."\n"..PLDR.LFmt("Press %s/%s to continue.", confirm_letter, back_letter)
   while true do
     UI.BottomDraw.Play()
     Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, PLDR.L("LAUNCH FAILED"), UI.CCOL.YELLOW)

@@ -3692,9 +3692,9 @@ UI = {
                 diag = string.format("\n%d part, %d files, %d VCD",
                          tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                 if (tonumber(d.hidden) or 0) > 0 then
-                  diag = diag..string.format(PLDR.L(" (%d hidden -- Global Hide is on)"), tonumber(d.hidden) or 0)
+                  diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
                 elseif (tonumber(d.collapsed) or 0) > 0 then
-                  diag = diag..string.format(PLDR.L(" (%d multi-disc collapsed)"), tonumber(d.collapsed) or 0)
+                  diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
                 end
               end
             end
@@ -4143,9 +4143,9 @@ UI = {
               -- an HDD rig -- and built by `..` it could never match a table key.
               -- The %s is only ever "__.POPS" or "__.POPS0".."9", so it stays as-is.
               if hdd_w_ok == true then
-                UI.Notif_queue.add(string.format(PLDR.L("__.POPS partition %s accepts writes (game-partition RW test)"), tostring(hdd_w_info)), "ok")
+                UI.Notif_queue.add(PLDR.LFmt("__.POPS partition %s accepts writes (game-partition RW test)", tostring(hdd_w_info)), "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add(string.format(PLDR.L("HDD game-partition write test FAILED (%s)"), tostring(hdd_w_info)), "warn")
+                UI.Notif_queue.add(PLDR.LFmt("HDD game-partition write test FAILED (%s)", tostring(hdd_w_info)), "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
@@ -4188,7 +4188,7 @@ UI = {
               -- needs to put the path somewhere other than in front of the predicate,
               -- and a dangling suffix fragment cannot express that. The mx4sio probe
               -- tail stays English (technical diagnostic, README rule 3).
-              UI.Notif_queue.add(string.format(PLDR.L("Couldn't save settings\n%s may be read-only"), tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs"))..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              UI.Notif_queue.add(PLDR.LFmt("Couldn't save settings\n%s may be read-only", tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs"))..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -5742,9 +5742,9 @@ UI = {
                       diag = string.format("\n%d part, %d files, %d VCD",
                                tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                       if (tonumber(d.hidden) or 0) > 0 then
-                        diag = diag..string.format(PLDR.L(" (%d hidden -- Global Hide is on)"), tonumber(d.hidden) or 0)
+                        diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
                       elseif (tonumber(d.collapsed) or 0) > 0 then
-                        diag = diag..string.format(PLDR.L(" (%d multi-disc collapsed)"), tonumber(d.collapsed) or 0)
+                        diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
                       end
                     end
                   end
