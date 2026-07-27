@@ -628,7 +628,7 @@ to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Lin
 remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **22 keys** (`EncodeSettings`, `system.lua`; the
+Plain KEY=VALUE text with **23 keys** (`EncodeSettings`, `system.lua`; the
 loader normalizes CRLF before parsing, and `usb:`/`smb:`-prefixed boots fall back
 to the MC settings path since those filesystems aren't live in-app),
 then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
@@ -636,9 +636,12 @@ then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:
 (per-launch BDMA variant staging, default off; see STATE.md), `DKWDRV_PATH`,
 `STRICT_HDD_PREEXEC_GATE`, `VIDEO_STANDARD`, `HIDE_TEXT`, `KEYBOARD_LAYOUT`,
 `LANGUAGE`, `BOOT_PAGE`, `MULTIDISC_COLLAPSE`, `GLOBAL_HIDE`, `POPSTARTER_MC_FOLDER`,
-`HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `ART_LOCATION` (removable
-cover/details folder: `pops_art` default / `pops` / `art`), `HDD_FS` (`PFS` or
-`EXFAT`), `GAMELIST_CACHE`, `BOOT_SOUND`
+`HIDDEN_DEVICES`, `SHOW_DETAILS`, `DETAILS_ALIGN`, `ART_LOCATION` (`pops` /
+`pops_art` / `art`, **default `art`**; its Settings row was removed in EXP35 and
+since EXP71 the cover path is hard-locked, so the key is now INERT and kept only
+so older sidecars still parse), `HDD_FS` (`PFS` / `EXFAT` / `BOTH`, **default
+`BOTH`**), `COVER_ART` (default on; whether covers draw at all, replaced the
+session-only Square toggle in EXP42), `GAMELIST_CACHE`, `BOOT_SOUND`
 (default on; gates the splash ADPCM chime), `OVERSCAN` (CRT inset permille,
 default `0`; see the overscan note below), `SMB_MODULES`. The legacy
 `PROFILE=`/`POPSTARTER_MODE=` keys are no longer written; on load a legacy

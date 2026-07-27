@@ -115,7 +115,6 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Circle (O)** | Go back to the Main Menu / Cancel (Cross on a Japanese-ROM console) |
 | **Start** | Open Settings |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art). Works on the device list and the game lists; on the Settings page use *Display → Hide UI Text* instead. |
-| **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
 | **R3 (right stick click)** | Reveal / re-hide this device's hidden games — a **temporary view for this session only**. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Nothing is saved: the persisted setting lives in *Settings → Game List → Hidden games* and comes back in force when you leave the page or reboot. |
