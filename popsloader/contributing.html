@@ -44,7 +44,7 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Contributing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/CONTRIBUTING.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-22 (BETA-13 in progress)</p>
+  <main class="content"><h1>Contributing</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/CONTRIBUTING.md">view on GitHub ↗</a></p><p>Last updated: 2026-07-27 (rolling <code>dev</code> = <code>v1.1.1-dev</code>; released line 1.1.0)</p>
 <h1 id="contributing">CONTRIBUTING</h1>
 <h2 id="purpose">Purpose</h2>
 <p>Practical contributor workflow for POPSLoader changes.</p>
@@ -91,7 +91,7 @@
 - Avoid adding runtime logging unless requested.</p>
 <h2 id="packaging-rules">Packaging Rules</h2>
 <ul>
-<li>CI packaging contract must stay synchronized with docs. The strict-verified <code>compilation.yml</code> zip (<code>POPSLOADER.zip</code>) is an <strong>exact</strong> set — two top dirs only (<code>PS1_POPSLOADER/</code> and <code>POPS/</code>), no root files, and any mismatch fails the build:</li>
+<li>CI packaging contract must stay synchronized with docs. The strict-verified <code>compilation.yml</code> zip (<code>POPSLOADER.zip</code>) is an <strong>exact</strong> set — three top dirs only (<code>PS1_POPSLOADER/</code>, <code>POPS/</code> and <code>POPSTARTER VERSIONS/</code>), no root files, and any mismatch fails the build:</li>
 <li><code>PS1_POPSLOADER/</code>: <code>POPSLOADER.ELF</code>, <code>POPSTARTER.ELF</code>, <code>BUILD_INFO.txt</code> (so hardware can confirm the exact GitHub-built artifact), <code>APPINFO.PBT</code>, <code>title.cfg</code>, <code>icon.sys</code>, <code>list.icn</code>, <code>copy.icn</code>, <code>del.icn</code>.</li>
 <li><code>POPS/</code>: <code>PATCH_5.BIN</code> and <code>POPSTARTER.ELF</code>.</li>
 <li><code>POPSTARTER.ELF</code> is the only redistributable launcher binary and ships in <strong>both</strong> the <code>PS1_POPSLOADER/</code> install dir and <code>POPS/</code>. The POPS engine binaries are NOT redistributable and are never bundled — hardware supplies its own.</li>
@@ -99,7 +99,7 @@
 <li>The <code>rolling-release.yml</code> zip is the loose dev bundle (different layout from the strict install zip): <code>POPSLOADER.ELF</code> + <code>POPSTARTER.ELF</code> at the zip root, a <code>POPS/</code> folder (<code>PATCH_5.BIN</code> + <code>POPSTARTER.ELF</code>), a <code>POPSTARTER/</code> pack folder (BDMA / SMB modules), and a <code>source/</code> tree. It is not strict-verified.</li>
 <li>CI build is gated on embedded build-identity markers (<code>Exec path:</code>, <code>PrepareForColdExternalELFLaunch</code>, <code>BOOT.ELF launch failed</code>) being present in <code>bin/enceladus.elf</code>, plus an embedded-loader blob staleness check.</li>
 <li>The <code>ps2dev/ps2dev</code> container image is pinned to <code>v2.0.0</code>.</li>
-<li>The rolling-release workflow publishes a single canonical asset on push-to-<code>BETA-13-PLAY</code> (the active rolling branch; <code>BETA-12-PLAY</code> is archival/frozen) and on PR events (last-write-wins on the shared asset).</li>
+<li>The rolling-release workflow publishes a single canonical asset on <strong>push-to-<code>dev</code> only</strong> (the active rolling branch; <code>BETA-12-PLAY</code> is archival/frozen). It still RUNS on PR events, so a PR gets the harness + build gate, but the publish step carries <code>if: success() &amp;&amp; github.event_name == 'push'</code> and is skipped there. Before PR #511 (merged 2026-07-16) it had no event gate, and any same-repo PR silently republished the rolling channel from its synthetic merge commit.</li>
 <li><strong>The embedded-Lua syntax gate is now LIVE</strong> (<code>luac5.4 -p</code> on the embedded Lua; the workflows <code>apk add lua5.4</code> and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no <code>luac</code>. It catches <strong>SYNTAX only</strong> — runtime nil-global / type / <strong>load-order</strong> errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the <code>d4b04be</code> load-order boot brick was exactly such a case).</li>
 </ul>
 <h2 id="embedded-assets-adding-removing-one">Embedded Assets (adding / removing one)</h2>
@@ -146,7 +146,7 @@
 <li>The old "HDD-install settings save to <code>mc0:/POPSTARTER/.pldrs</code>" preservation contract is <strong>obsolete</strong>: HDD installs now persist on the HDD boot partition via the RW take-over (single-device parity, no <code>mc0:</code> fallback). See <strong>STATE.md &gt; Settings</strong> and <strong>STATE.md &gt; Preservation Contracts</strong>.</li>
 <li><strong>Resolved</strong> (no longer "known broken accepted" — do not document as regressions): <code>U-10</code> BOOT.ELF from HDD-booted POPSLoader (PR #479), DKWDRV from a custom HDD path (PRs #486/#487), and the Class-A HOSDmenu / some-wLE start failures. See <strong>STATE.md &gt; Known Issues</strong>.</li>
 <li>For the current open / in-testing items (e.g. "Failed to load HDD" from a non-HDD boot, and the in-testing HDD/PAL/BDMA-folder features), see <strong>STATE.md &gt; Known Issues</strong> — do not re-derive a cause from source.</li>
-<li>The rolling-release workflow publishes to a single canonical URL. Pushing to your PR branch triggers a build that overwrites the asset (last-write-wins). Coordinate with the maintainer if testers are mid-cycle.</li>
+<li>The rolling-release workflow publishes to a single canonical URL, and <strong>only a push to <code>dev</code> publishes</strong>. Pushing to a PR branch builds and runs the gates but does NOT overwrite the released asset (gated since PR #511, 2026-07-16). A merge to <code>dev</code> does republish it, so coordinate with the maintainer if testers are mid-cycle.</li>
 </ul>
 <h2 id="good-bug-reports">Good Bug Reports</h2>
 <p>Include:<br />

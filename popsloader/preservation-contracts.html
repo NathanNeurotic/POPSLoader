@@ -44,9 +44,10 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Preservation contracts</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/PRESERVATION_CONTRACTS.md">view on GitHub ↗</a></p><p>Date: 2026-06-22 (re-synced to BETA-13-PLAY HEAD 3d89631; the <code>2735229</code> audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua — treat the cited function/symbol as the unit of truth where a line drifted. BETA-12 released 2026-06-18 per STATE.md)<br />
-Branch documented: <code>BETA-13-PLAY</code> (the active rolling-candidate branch; BETA-12-PLAY<br />
-is now ARCHIVAL/frozen and rolling-release.yml publishes from BETA-13-PLAY)</p>
+  <main class="content"><h1>Preservation contracts</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/PRESERVATION_CONTRACTS.md">view on GitHub ↗</a></p><p>Date: 2026-06-22, header re-synced 2026-07-27. Originally cut against <code>BETA-13-PLAY</code> HEAD <code>3d89631</code>; that branch was <strong>renamed to <code>dev</code></strong> after the 1.0.0 cut and no longer exists. The <code>2735229</code> audit cleanup shifted line numbers in luasystem.cpp / ui.lua / system.lua, and the EXP32-EXP73 work has moved them again — <strong>treat the cited function/symbol as the unit of truth, never the line number</strong>. Public release is <strong>1.1.0</strong> (2026-07-21); rolling is <code>1.1.1-dev</code>, experimental <code>1.1.1-dev-EXP73</code>. See <a href="state.html">STATE.md</a> for current status.<br />
+Branch documented: <code>dev</code> (the active development branch — <code>BETA-13-PLAY</code> was<br />
+renamed to <code>dev</code> after the 1.0.0 cut and no longer exists on origin;<br />
+<code>BETA-12-PLAY</code> is ARCHIVAL/frozen). <code>rolling-release.yml</code> publishes from <code>dev</code>.</p>
 <p>Purpose: regression armor for the launch / ELF-handoff layer (the four launch<br />
 contracts below) <strong>and</strong> for the load-bearing UI / render / embed invariants that<br />
 a code-quality pass could plausibly "clean up" into a regression (the UI &amp;<br />
@@ -562,7 +563,7 @@ HW/CRT-eyeballed — keep as pending verification, not broken.</p>
 <h3 id="render-cover-art-placeholder-layers-share-the-frames-anchored-rect">Render — cover-art placeholder layers share the frame's anchored rect</h3>
 <p><strong>The contract:</strong> the game-list cover-preview box draws a <strong>layered</strong> placeholder<br />
 from two embedded assets — <code>cover_default.png</code> (base) + <code>cover_missing.png</code><br />
-(overlay) — in <code>bin/POPSLDR/ui.lua:2572-2591</code>. Preview OFF (Square) → just<br />
+(overlay). Preview OFF (the persisted <code>COVER_ART</code> setting, <em>Settings &gt; Game List &gt; Cover art</em>, default ON — the Square toggle was removed in EXP42) → just<br />
 <code>cover_default.png</code>; preview ON but the game has no cover → <code>cover_default.png</code><br />
 with <code>cover_missing.png</code> overlaid; a LIVE cover uses its own right-anchored<br />
 <code>COVER_W</code> inset (<code>ui.lua:2573-2576</code>). <strong>The default, the missing overlay, and<br />

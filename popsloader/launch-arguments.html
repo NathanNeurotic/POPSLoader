@@ -44,7 +44,7 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Launch arguments</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/docs/LAUNCH_ARGUMENTS.md">view on GitHub ↗</a></p><p>POPSLoader accepts NHDDL-style launch arguments so a front-end (OSDMenu /<br />
+  <main class="content"><h1>Launch arguments</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/LAUNCH_ARGUMENTS.md">view on GitHub ↗</a></p><p>POPSLoader accepts NHDDL-style launch arguments so a front-end (OSDMenu /<br />
 HOSDMenu, wLaunchELF, a forwarder, etc.) can boot it straight to a device<br />
 page or auto-launch a specific game. Arguments are parsed in<br />
 <code>src/main.cpp</code> <code>parseLaunchArgs()</code>, exposed to Lua via<br />
@@ -98,7 +98,7 @@ page:</p>
 <tbody>
 <tr>
 <td><strong>HDD (exFAT)</strong> (BDMA ATA)</td>
-<td><code>ata</code>, <code>ata0</code>, <code>ataN</code></td>
+<td><code>exfat</code>, <code>ata</code>, <code>ata0</code>, <code>ataN</code></td>
 </tr>
 <tr>
 <td><strong>HDD (PFS)</strong> (APA)</td>
@@ -141,12 +141,15 @@ you'd reach by scrolling to that page and pressing <strong>X</strong>) — it lo
 device and switches to its list automatically. Combine with <code>-game=</code> to go<br />
 one step further and auto-launch a specific title (see below); <code>-page=</code><br />
 alone just opens the list so you can pick.</p>
-<p>Enterable pages: <strong>MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB.</strong> <code>-page=ata</code><br />
-targets the implemented <strong>exFAT</strong> (BDMA-ATA) page (scene <code>GBDMHDD</code>);<br />
-<code>-page=hdd</code> / <code>-page=pfs</code> targets the classic <strong>PFS</strong> page. The bare <code>bdma</code><br />
-literal and the i.Link page are intentionally <strong>not</strong> wired, so <code>-page=bdma</code><br />
-is accepted but has no effect. An unrecognized value is ignored and the<br />
-carousel starts on its default page (MMCE) with no auto-entry.</p>
+<p>Enterable pages: <strong>MMCE, MX4SIO, HDD (exFAT), HDD (PFS), USB, SMB.</strong><br />
+<code>-page=ata</code> targets the implemented <strong>exFAT</strong> (BDMA-ATA) page (scene<br />
+<code>GBDMHDD</code>); <code>-page=hdd</code> / <code>-page=pfs</code> targets the classic <strong>PFS</strong> page.<br />
+<code>-page=smb</code> opens the <strong>SMB (v1)</strong> network page (scene <code>GSMBNET</code>), which<br />
+connects to the configured share lazily on entry (implemented, CI + Rolling<br />
+green, validating on hardware). The bare <code>bdma</code> literal and the i.Link page<br />
+are intentionally <strong>not</strong> wired, so <code>-page=bdma</code> is accepted but has no<br />
+effect. An unrecognized value is ignored and the carousel starts on its<br />
+default page (MMCE) with no auto-entry.</p>
 <h3 id="-game-auto-launch"><code>-game=</code> (auto-launch)</h3>
 <p>Boots straight into launching a game. Requires <strong>both</strong> <code>-page=</code> and<br />
 <code>-game=</code>. Auto-launch is wired for these pages:</p>
@@ -178,15 +181,21 @@ carousel starts on its default page (MMCE) with no auto-entry.</p>
 <td>HDD (exFAT)</td>
 <td><code>&lt;FILE&gt;</code> relative to <code>mass:/POPS</code> (use <code>-page=ata</code>)</td>
 </tr>
+<tr>
+<td>SMB</td>
+<td><strong>not wired</strong> — <code>-page=smb</code> opens the SMB page for browsing, but there is no SMB branch in <code>PLDR.AutoLaunchFromLaunchArgs</code>; <code>-game=</code> on the SMB page toasts "Auto-launch page not supported: SMB" (<code>system.lua:9368-9372</code>) and falls back to the main menu</td>
+</tr>
 </tbody>
 </table>
 <p>If auto-launch fails (game not found, etc.) POPSLoader does <strong>not</strong> hang —<br />
 it falls back to the normal welcome screen + main menu and shows an error<br />
-toast describing what happened. <strong>SMB:</strong> SMB (v1) is an unimplemented stub.<br />
-<code>-page=smb</code> positions the carousel on the SMB page, but auto-entering it<br />
-shows a "This backend isn't implemented yet" toast (no list opens).<br />
-<code>-page=smb -game=...</code> shows an "Auto-launch page not supported: SMB" toast.<br />
-Both leave you on the main menu.</p>
+toast describing what happened. <strong>SMB:</strong> SMB (v1) network browsing is<br />
+implemented (CI + Rolling green, validating on hardware). <code>-page=smb</code> opens<br />
+the SMB page (scene <code>GSMBNET</code>), which brings up the network stack lazily and<br />
+opens the configured share before scanning its POPS folder for VCD games.<br />
+<code>-page=smb -game=...</code> is <strong>not</strong> implemented: auto-launch has no SMB branch<br />
+(<code>system.lua:9368-9372</code>), so it toasts "Auto-launch page not supported: SMB"<br />
+and drops to the main menu. Use <code>-page=smb</code> and pick the game manually.</p>
 <h3 id="-debug"><code>-debug</code></h3>
 <p>Queues an on-screen info toast on the first main-menu frame listing:</p>
 <pre><code>[debug] boot context

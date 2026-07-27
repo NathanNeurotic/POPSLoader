@@ -44,16 +44,16 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>QA regression matrix</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/QA_REGRESSION_MATRIX.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate in progress)<br />
-Released line: <strong>BETA-12</strong> (af983d7, 2026-06-18; BETA-11 2026-06-15). BETA-10-5 release tag: <code>9a0ebe2</code>, hardware-confirmed clean 2026-05-28 (Nuno). <strong>BETA-13 is the in-progress rolling candidate (not yet cut).</strong><br />
-Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>; <strong><code>BETA-12-PLAY</code> is now ARCHIVAL/frozen</strong>). <code>.github/workflows/rolling-release.yml</code> publishes from <code>BETA-13-PLAY</code> (repiped @<code>8c78296</code>). The development tip moves every push — see <code>git log</code> for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but <code>Unknown (verify on hardware)</code> unless explicitly recorded below.</p>
+  <main class="content"><h1>QA regression matrix</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/QA_REGRESSION_MATRIX.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-21 (BETA-13 rolling candidate in progress)<br />
+Released line: <strong>1.1.0</strong> (2026-07-21; previously 1.0.1 2026-07-13, 1.0.0 2026-07-10, BETA-12 af983d7 2026-06-18). Rolling is stamped <code>1.1.1-dev</code>; experimental is <code>1.1.1-dev-EXP73</code>. BETA-10-5 release tag: <code>9a0ebe2</code>, hardware-confirmed clean 2026-05-28 (Nuno).<br />
+Active dev branch is now <strong><code>dev</code></strong> (created off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>; <strong><code>BETA-12-PLAY</code> is now ARCHIVAL/frozen</strong>). <code>.github/workflows/rolling-release.yml</code> publishes from <code>dev</code> (repiped @<code>8c78296</code>). The development tip moves every push — see <code>git log</code> for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but <code>Unknown (verify on hardware)</code> unless explicitly recorded below.</p>
 <blockquote>
 <p>This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see <strong><code>STATE.md</code></strong>; those shared blocks are not restated here.</p>
 </blockquote>
 <h2 id="scope">Scope</h2>
 <p>This matrix tracks current behavior across:<br />
 - settings load/save/apply transaction flow,<br />
-- persisted UI preferences (<code>video standard</code>, <code>hide-text</code>, <code>keyboard layout</code>, <code>game-details display</code>, <code>description-scroll speed</code>, <code>game-list cache</code>, <code>boot sound</code>, <code>overscan</code>; the full persisted-key list — including launch/path/profile/device keys — lives in STATE.md),<br />
+- persisted UI preferences (<code>video standard</code>, <code>hide-text</code>, <code>keyboard layout</code>, <code>game-details display</code>, <code>game-list cache</code>, <code>boot sound</code>, <code>overscan</code>; the full persisted-key list — including launch/path/device keys — lives in STATE.md),<br />
 - input/navigation behavior (analog-stick→d-pad fold gating, frame-counted nav auto-repeat, frame-counted description scroll),<br />
 - launch path validation and error feedback,<br />
 - startup backend auto-init,<br />
@@ -63,7 +63,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 - busy/progress overlays,<br />
 - cover art behavior,<br />
 - exit handoff behavior,<br />
-- currently unimplemented menu options (<code>SMB (v1)</code>, <code>i.Link</code>; <code>HDD (exFAT)</code> is now implemented via BDMA <code>ATA</code> and is in hardware validation),<br />
+- network/streaming menu options (<code>SMB (v1)</code> is now implemented — connect/browse/launch/disconnect over the share — and is in hardware validation; <code>HDD (exFAT)</code> is now implemented via BDMA <code>ATA</code> and is in hardware validation; <code>i.Link</code> remains unimplemented),<br />
 - release package validation gates,<br />
 - repository automation workflows that are not runtime/hardware gates.</p>
 <p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
@@ -89,7 +89,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <td>CI-02</td>
 <td>Bundled Lua syntax/newline</td>
 <td>workflow step <code>Validate bundled Lua sources (syntax/newline)</code></td>
-<td><code>etc/boot.lua</code> + <code>bin/POPSLDR/{system,ui,images,pops_profiles}.lua</code> all exist; <code>etc/boot.lua</code> ends with newline (0x0A); every file passes <code>luac5.4 -p</code> (gate is LIVE and hard-fails -- <code>lua5.4</code> is a build dependency, no silent skip)</td>
+<td><code>etc/boot.lua</code> + <code>bin/POPSLDR/{system,ui,images}.lua</code> all exist (<code>pops_profiles.lua</code> removed 2026-07-13 with the profile system); <code>etc/boot.lua</code> ends with newline (0x0A); every file passes <code>luac5.4 -p</code> (gate is LIVE and hard-fails -- <code>lua5.4</code> is a build dependency, no silent skip)</td>
 </tr>
 <tr>
 <td>CI-03</td>
@@ -159,7 +159,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>S-03</td>
 <td>Commit on exit</td>
-<td>Change profile/paths/BDMA and confirm or leave</td>
+<td>Change paths/BDMA and confirm or leave</td>
 <td>Reopen Settings</td>
 <td>Values persist and reload</td>
 </tr>
@@ -180,7 +180,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>S-06</td>
 <td>Back prompts when staged settings exist</td>
-<td>Open Settings from a non-main scene and change profile/path/video/hide-text state</td>
+<td>Open Settings from a non-main scene and change path/video/hide-text state</td>
 <td>Press <code>O Back</code></td>
 <td>A "Save Settings" modal appears with <code>X Save / O Cancel / Triangle Don't Save</code>. Triangle (Don't Save) returns to the originating scene without saving and reopening Settings shows prior runtime/persisted values. O (Cancel) stays on Settings. X (Save) commits and exits to the originating scene. With no staged changes, Back returns immediately with no prompt.</td>
 </tr>
@@ -201,7 +201,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>S-09</td>
 <td>Keyboard layout persistence</td>
-<td>Set keyboard layout to <code>ABC</code>, <code>QWERTY</code>, or <code>DVORAK</code> and save</td>
+<td>Set keyboard layout to <code>ABC</code>, <code>QWERTY</code> (the default), or <code>DVORAK</code> and save</td>
 <td>Reboot/relaunch and reopen the path editor</td>
 <td>Selected keyboard layout reloads from settings and the keyboard opens in that layout</td>
 </tr>
@@ -214,10 +214,10 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>S-11</td>
-<td>Description-scroll-speed persistence</td>
-<td>Set <code>Description scroll speed</code> to <code>Fast</code>, <code>Medium</code>, or <code>Slow</code> and save</td>
+<td>Cover/details folder persistence</td>
+<td>Set <code>Cover/details folder</code> to <code>POPS/ART</code>, <code>POPS</code>, or <code>ART</code> and save</td>
 <td>Reboot/relaunch and reopen Settings</td>
-<td>Selected scroll speed reloads from settings (<code>DESC_SCROLL_SPEED</code>) and matches the last saved value</td>
+<td>Selected folder reloads from settings (<code>ART_LOCATION</code>; default <code>pops_art</code> when unset). Removable covers/details are then sought in that folder first, with the game's own <code>POPS/</code> folder always also checked as a fallback (HDD/PFS stays fixed at <code>__common/POPS/ART/</code>)</td>
 </tr>
 <tr>
 <td>S-12</td>
@@ -257,7 +257,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>L-01</td>
 <td>Missing POPStarter path</td>
-<td>Configure nonexistent POPStarter path</td>
+<td>Configure nonexistent POPStarter path, with <strong>no</strong> <code>POPSTARTER.ELF</code> available on the game device, the launcher folder, or <code>mc0:</code>/<code>mc1:</code> (a resolvable fallback copy silently launches instead — that is the designed silent fallthrough, not a failure)</td>
 <td>Launch game</td>
 <td>UI shows <code>No POPSTARTER found at this path</code> notification (followed by the configured path; if the resolved path differs, also a <code>Resolved:</code> line)</td>
 </tr>
@@ -305,10 +305,17 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>L-08</td>
-<td>Default/Profile 1 local POPSTARTER path</td>
-<td>Start from a settings file that may contain an older absolute local POPSTARTER path, then select default/Profile 1 with local sidecar/cwd <code>POPSTARTER.ELF</code> present</td>
+<td>Automatic/default local POPSTARTER path</td>
+<td>Start from a settings file with POPSTARTER Path on Automatic (empty; or an older file whose legacy PROFILE keys are now ignored), with the game device's own <code>&lt;device&gt;:/POPS/POPSTARTER.ELF</code> and/or local cwd <code>POPSTARTER.ELF</code> present</td>
 <td>Cold boot and launch a game</td>
-<td>Launch does not stop at <code>Cant find POPSTARTER ELF</code>; the current local sidecar/cwd POPSTARTER path wins over the stale equivalent override</td>
+<td>Launch does not stop at <code>Cant find POPSTARTER ELF</code>. For a removable device the resolver (<code>PLDR.ResolveLaunchPopstarterPath</code>, <code>bin/POPSLDR/system.lua</code>) tries, in order: the explicit user-configured absolute POPSTARTER Path when it resolves; then the game's own <code>&lt;device&gt;:/POPS/POPSTARTER.ELF</code> when it exists; then cwd <code>POPSTARTER.ELF</code>; then the <code>mc0:</code>→<code>mc1:</code> net. A stale custom path does not block the device/cwd fallbacks. (Both device + cwd steps are existence-gated — a device with no <code>POPSTARTER.ELF</code> simply falls through.)</td>
+</tr>
+<tr>
+<td>L-09</td>
+<td>USB drive-resident-only POPSTARTER (sAGA repro)</td>
+<td>POPSTARTER Path on Automatic; <code>POPSTARTER.ELF</code> present <strong>only</strong> at the USB drive's <code>POPS/</code> folder (none beside POPSLOADER.ELF, none on <code>mc0:</code>/<code>mc1:</code>)</td>
+<td>Open the USB page and launch a game</td>
+<td>Launch proceeds using <code>&lt;drive&gt;:/POPS/POPSTARTER.ELF</code>; <strong>no</strong> <code>No POPSTARTER.ELF found</code> toast. (Pre-2026-07-16 this failed: the <code>ui.lua</code> preflight resolved with the USB page's empty <code>PLDR.GAMEPATH</code> instead of the game entry's own device root, so the device rung never ran — the gate blocked before <code>RunPOPStarterGame</code> could resolve correctly.)</td>
 </tr>
 </tbody>
 </table>
@@ -375,10 +382,31 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>D-07</td>
-<td>SMB option status</td>
-<td>any setup</td>
+<td>SMB (v1) connect/browse</td>
+<td>SMB settings configured (server IP, share, user/password, IP assignment, port, games path) + SMB modules pack installed (<code>mc:/POPSTARTER</code> IRX + <code>IPCONFIG.DAT</code>/<code>SMBCONFIG.DAT</code> generated)</td>
+<td>Select <code>SMB (v1)</code> (scene <code>GSMBNET</code>)</td>
+<td>Network stack comes up lazily on entering the SMB page (NEVER at boot); the share opens (Path B netman recipe), the share's <code>POPS/</code> folder scans, and VCD games list like any other device. With the Share field empty, <code>GETSHARELIST</code> enumerates the server's shares and an in-UI picker lets you choose one (choice persisted to settings + in-game <code>SMBCONFIG.DAT</code>, then reconnects). NEW — validating on hardware.</td>
+</tr>
+<tr>
+<td>D-07B</td>
+<td>SMB (v1) launch</td>
+<td>SMB connected and a VCD listed (D-07)</td>
+<td>Launch an SMB title</td>
+<td>POPStarter receives argv0 selector <code>smb:/POPS/SB.&lt;name&gt;.ELF</code> and streams the VCD from its own <code>smb:/POPS</code> mount via <code>mc:/POPSTARTER/SMBCONFIG.DAT</code>. (HW-only unknown: the exact argv0 device prefix POPStarter accepts — ship <code>smb:/POPS/SB.&lt;name&gt;.ELF</code>; fallbacks <code>mass:/POPS/SB.&lt;name&gt;.ELF</code> then <code>mass:/SB.&lt;name&gt;.ELF</code>.) NEW — validating on hardware.</td>
+</tr>
+<tr>
+<td>D-07C</td>
+<td>SMB (v1) disconnect</td>
+<td>SMB connected (D-07)</td>
+<td>Leave the SMB page; also force a failed connect</td>
+<td>Leaving the SMB page tears the session down (<code>CLOSESHARE</code>+<code>LOGOFF</code>); a failed connect also tears down so no half-open session lingers. NEW — validating on hardware.</td>
+</tr>
+<tr>
+<td>D-07D</td>
+<td>SMB option absent</td>
+<td>SMB modules pack NOT installed / no reachable server</td>
 <td>Select <code>SMB (v1)</code></td>
-<td>UI shows <code>Not Implemented Yet</code></td>
+<td>Connect is lazy and fails cleanly with the session torn down (no half-open session); no hang. NEW — validating on hardware.</td>
 </tr>
 <tr>
 <td>D-07A</td>
@@ -404,21 +432,21 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>D-10</td>
 <td>HDD POPSTARTER on HDD</td>
-<td>POPSLoader and/or configured <code>POPSTARTER_PATH</code> points to HDD, including HDD sidecar/CWD resolution</td>
+<td>POPSLoader and/or configured <code>POPSTARTER_PATH</code> points to HDD, including HDD <code>hdd0:__common/POPS/POPSTARTER.ELF</code> resolution</td>
 <td>Launch HDD title</td>
-<td>POPSTARTER resolves from sidecar or configured HDD path without blocking launch or hanging on a black screen</td>
+<td>POPSTARTER resolves without blocking launch or hanging on a black screen. For an internal-PFS HDD (APA) title the resolver (<code>PLDR.ResolveLaunchPopstarterPath</code>, <code>bin/POPSLDR/system.lua</code>) tries, in order: an explicit custom path when it resolves; then <code>hdd0:__common/POPS/POPSTARTER.ELF</code> (resolved through the <code>__common</code> partition machinery, so the D-10/D-15 partition-context + embedded-loader handoff is preserved); then cwd / boot-sidecar; then the <code>mc</code> net</td>
 </tr>
 <tr>
 <td>D-11</td>
 <td>HDD common art path</td>
-<td><code>hdd0:__common/POPS/ART/&lt;title&gt;_COV.png</code> present</td>
+<td><code>hdd0:__common/POPS/ART/&lt;title&gt;.png</code> present</td>
 <td>Browse HDD title list</td>
 <td>cover art appears and launch still succeeds</td>
 </tr>
 <tr>
 <td>D-12</td>
 <td>Startup backend auto-init</td>
-<td>Boot from USB/MX4SIO/MMCE/HDD, or save a <code>POPSTARTER_PATH</code> / <code>DKWDRV_PATH</code> / profile on one of those devices</td>
+<td>Boot from USB/MX4SIO/MMCE/HDD, or save a <code>POPSTARTER_PATH</code> / <code>DKWDRV_PATH</code> pointing at one of those devices</td>
 <td>Cold boot app and launch without first opening that device page</td>
 <td>Required backend drivers initialize automatically from boot/configured paths</td>
 </tr>
@@ -432,7 +460,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 <tr>
 <td>D-14</td>
 <td>HDD-backed POPSTARTER with non-HDD game</td>
-<td>Configure <code>POPSTARTER_PATH</code> or Profile 2 to an HDD-resident <code>POPSTARTER.ELF</code></td>
+<td>Configure <code>POPSTARTER_PATH</code> to an HDD-resident <code>POPSTARTER.ELF</code></td>
 <td>Launch a USB, MMCE, or MX4SIO title</td>
 <td>POPSTARTER launches without hanging on a black screen even though the executable itself is on HDD</td>
 </tr>
@@ -480,15 +508,15 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>U-03</td>
-<td>Cover sidecar load</td>
-<td>Put <code>&lt;game&gt;.png</code> beside selected <code>.VCD</code></td>
+<td>Cover art load</td>
+<td>Put <code>&lt;gamefilename&gt;_COV.png</code> in the device's top-level <code>ART/</code> folder (the only location read since EXP71)</td>
 <td>Highlight game</td>
-<td>Cover preview appears</td>
+<td>Cover preview appears. <code>BuildCoverCandidates</code> (<code>bin/POPSLDR/ui.lua</code>) returns EXACTLY ONE candidate per device: removable = <code>&lt;device&gt;:/ART/&lt;gamefilename&gt;_COV.png</code>, HDD/PFS = <code>hdd0:__common/POPS/ART/&lt;gamefilename&gt;_COV.png</code> from the <code>__common</code> partition. The name must match the game file exactly — the disc-marker-stripped family name is no longer tried, so a multi-disc game needs one art file per disc. Art in <code>POPS/</code>, <code>POPS/ART/</code> or beside the <code>.VCD</code> is intentionally NOT found</td>
 </tr>
 <tr>
 <td>U-04</td>
-<td>Cover file missing</td>
-<td>Remove the <code>_COV.png</code> from <code>ART/</code></td>
+<td>Cover art missing</td>
+<td>Remove the <code>POPS/ART/&lt;game&gt;.png</code> and any beside-<code>.VCD</code> <code>&lt;game&gt;.png</code></td>
 <td>Move selection repeatedly</td>
 <td>No notification spam; UI remains responsive</td>
 </tr>
@@ -564,17 +592,17 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 </tr>
 <tr>
 <td>U-15</td>
-<td>Description right-stick scroll honors the speed setting</td>
-<td>Highlight a game with a long description; set <code>Description scroll speed</code> Fast/Med/Slow</td>
+<td>Description right-stick scroll (fixed Fast pace)</td>
+<td>Highlight a game with a long description</td>
 <td>Push the right stick down to scroll the description</td>
-<td>Scroll steps once every <code>ceil(_secs * fps)</code> frames; Slow 0.9s / Medium 0.3s / Fast 0.15s actually differ (frame-counted via <code>DescScrollFrames</code>, <code>bin/POPSLDR/ui.lua</code>). Releasing the stick scrolls again immediately on the next push</td>
+<td>Scroll steps once every <code>ceil(_secs * fps)</code> frames at the fixed Fast pace (<code>_secs</code> 0.15s, ~7 lines/sec, frame-counted via <code>DescScrollFrames</code>, <code>bin/POPSLDR/ui.lua</code>). Releasing the stick scrolls again immediately on the next push</td>
 </tr>
 <tr>
 <td>U-16</td>
 <td>Cover placeholder layering</td>
-<td>Browse the game list with cover preview ON and OFF (the saved <em>Settings → Game List → Cover art</em> toggle); include a game with no cover art</td>
+<td>Browse the game list with cover preview ON (Square enabled) and OFF; include a game with no cover art</td>
 <td>Highlight games and toggle cover preview</td>
-<td>Preview OFF (setting) draws <code>IMG.cover_default</code> only — no "Cover disabled" text label (removed). Preview ON but no cover art -&gt; <code>cover_default.png</code> with <code>cover_missing.png</code> overlaid. A live cover draws unchanged. Default, overlay, and <code>frame.png</code> share the frame's aspect-corrected right-anchored rect so they register with the jewel-case window on NTSC + PAL</td>
+<td>Preview OFF (Square) draws <code>IMG.cover_default</code> only — no "Cover disabled" text label (removed). Preview ON but no cover art -&gt; <code>cover_default.png</code> with <code>cover_missing.png</code> overlaid. A live cover draws unchanged. Default, overlay, and <code>frame.png</code> share the frame's aspect-corrected right-anchored rect so they register with the jewel-case window on NTSC + PAL</td>
 </tr>
 </tbody>
 </table>
@@ -1275,6 +1303,7 @@ Active dev branch is now <strong><code>BETA-13-PLAY</code></strong> (created off
 - <strong>Boot sound save + survives reboot (S-13)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
 - <strong>Up/down + analog-stick nav lands on individual items; continuous scroll fine (U-13/U-14)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
 - <strong>Broad rolling-release pass</strong> — <strong>PASS</strong>, "everything working fantastically" (Nuno6573, 2026-06-21).<br />
+- <strong>Cover/details folder (<code>ART_LOCATION</code>) art lookup (S-11)</strong> — <strong>PASS</strong> (FifthFox, 2026-06-30). Covers show on hardware via the <em>Cover/details folder</em> setting; the earlier "POPS/ART fails" report was tester name/placement (user error), matching the SDK finding (<code>open</code>==<code>fopen</code>, nested reads work; wf w0ucpisvc). The <code>6641860</code> pre-probe drop was inert; the "No cover. Looked for:" caption ships as a self-diagnosis aid.<br />
 - <strong>HDD (exFAT) via BDMA ATA (D-06 / D-06A)</strong> — NEW backend (<code>df2eb9d</code>), CI/Rolling green, <strong>never run on hardware</strong>. Needs a tester with an exFAT-formatted internal drive: confirm the <code>HDD (exFAT)</code> page lists <code>mass:/POPS</code> and games <strong>launch</strong>, and that the drive does NOT mis-classify as USB/MX4SIO. Tester steps in <strong><code>TESTING.md</code></strong> P1.<br />
 - <strong>Still pending an eyeball (NOT broken):</strong> overscan CRT inset on a real CRT (S-14), <code>cover_default</code> + <code>cover_missing</code> overlay registration on NTSC + PAL (U-16), description-scroll feel (U-15), HDD Proposal A deliberate HW test (game scan steered off the boot slot), PAL-despite-NTSC carry-forward (no team PAL HW).<br />
 - The 2026-06 HDD-RW / PAL-512 / BDMA-folder features are repository-verified and <strong>boot on PCSX2</strong>; provato confirmed the <strong>HDD is RW-writable on real hardware</strong>; full flows are <strong>still validating on hardware</strong> (not yet broadly hardware-confirmed). See STATE.md &gt; Known Issues / Reported Hardware Status.</p>

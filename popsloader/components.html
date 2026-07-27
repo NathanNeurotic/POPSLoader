@@ -44,7 +44,7 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Components</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/BETA-13-PLAY/COMPONENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-22 (BETA-13 rolling candidate; HEAD = BETA-13-PLAY @ 3d89631; BETA-12 is the public release at af983d7, and BETA-12-PLAY is now ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new <code>Pads.getMode()</code> C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (<code>Screen.setOverscan</code>/<code>getOverscan</code> + <code>OVX</code>/<code>OVY</code>); the game-list cover box now layers <code>cover_default.png</code> + <code>cover_missing.png</code> and <code>MISSING.png</code> was removed (−62 KB ELF); and two new settings keys (BOOT_SOUND, OVERSCAN) bring EncodeSettings to 20 keys. Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under <code>mass:</code> classified by the EXACT ioctl driver-name <code>ata</code>, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps <code>-page</code>/<code>-mode=ata*</code>→EXFAT (opt 3) and <code>=hdd</code>/<code>apa</code>/<code>pfs*</code>→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the <code>MIN_ACTION_MS</code> action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — this doc points there instead of restating them.</p>
+  <main class="content"><h1>Components</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/COMPONENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-06-30 (BETA-13 rolling candidate; HEAD = <code>dev</code> (renamed from BETA-13-PLAY after the 1.0.0 cut); 1.1.0 is the public release at 2270cec, and BETA-12-PLAY is ARCHIVAL/frozen). Since the prior pass: nav auto-repeat and the right-stick description scroll were re-cut to FRAME-COUNTING (the wall clock reads microseconds on PS2, so the old "_ms" gates fired every frame); the analog-stick→d-pad fold is now gated on a live-negotiated analog mode (new <code>Pads.getMode()</code> C binding) plus hysteresis; an OPL-style overscan (CRT inset) render transform was added (<code>Screen.setOverscan</code>/<code>getOverscan</code> + <code>OVX</code>/<code>OVY</code>); the game-list cover box now layers <code>cover_default.png</code> + <code>cover_missing.png</code> and <code>MISSING.png</code> was removed (−62 KB ELF); the BOOT_SOUND/OVERSCAN keys plus the new <code>ART_LOCATION</code> (selectable cover/details folder) brought documented EncodeSettings coverage to 23 keys (<code>ART_LOCATION</code>'s Settings row was later removed in EXP35 and the key is now inert) + the appended SMB block, and <code>CoverCache:GetOrLoad</code> dropped its redundant <code>open()</code> existence pre-probe (ps2sdk routes <code>open</code> and <code>fopen</code> through the same libcglue <code>_open</code>, so it was a duplicate, not a cover fix; a workflow settled this against newlib/ps2sdk/OPL source). Since 56a5ad5: the HDD (exFAT) / BDMA-ATA backend landed (df2eb9d/6fd2142/afa1c09 — internal SATA/IDE drive enumerates under <code>mass:</code> classified by the EXACT ioctl driver-name <code>ata</code>, carousel opt 3 = exFAT page scene GBDMHDD); launch-arg routing (3d89631) maps <code>-page</code>/<code>-mode=ata*</code>→EXFAT (opt 3) and <code>=hdd</code>/<code>apa</code>/<code>pfs*</code>→HDD (opt 4); the audit cleanup (2735229) removed dead symbols and SHIFTED line numbers across luasystem.cpp/ui.lua/system.lua; the timer sweep finished (9c3f64f/a8e61f3) and the <code>MIN_ACTION_MS</code> action debounce was removed (edge-trigger is the only gate); and the Layer C lazy-IRX effort is CLOSED (ds34bt/usbd deferral DECLINED, only mmceman shipped). For current Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status, see <strong><code>STATE.md</code></strong> (canonical) — including its <strong>Experimental channel (EXP32–EXP42)</strong> section for the current device-layer / cover-art / defaults goal state. This doc's dated body below predates the EXP32 device-layer rebuild and is retained as history; treat STATE.md as authoritative where they differ.</p>
 <h1 id="components">COMPONENTS</h1>
 <h2 id="purpose">Purpose</h2>
 <p>Current technical map of POPSLoader source files, their responsibility, and key<br />
@@ -54,13 +54,15 @@ ELF via bin2c), embedded IOP IRX modules, and a BRAM child ELF-loader. Every<br 
 technical claim below cites <code>path:line</code> against this worktree.</p>
 <blockquote>
 <p>Scope note: this file documents what is actually present and wired in the<br />
-BETA-13-PLAY rolling state (the active branch; BETA-12-PLAY is frozen). Where a<br />
+<code>dev</code> rolling state (the active branch; BETA-12-PLAY is frozen). Where a<br />
 component is on disk but unused (dead or<br />
 dormant), that is called out explicitly rather than omitted. Several files an<br />
 external audit flagged for removal — the 3D render pipeline (commit a56441c),<br />
 <code>md5</code>, and the orphaned SMB / <code>strUtils</code> source (commit f83dbbb) — have since<br />
-been removed from the tree and are documented as removed below. (The SMB<br />
-main-menu entry remains as an unimplemented stub.)</p>
+been removed from the tree and are documented as removed below. (The old<br />
+orphan <code>src/luaSMB.cpp</code> is gone; SMB (v1) is now a real, wired feature — a C<br />
+binding inside the <code>System.*</code> surface plus the GSMBNET scene — documented<br />
+below. Implemented this cycle, CI+Rolling green, validating on hardware.)</p>
 </blockquote>
 <h2 id="1-ee-bootstrap-and-runtime-src">1. EE bootstrap and runtime (<code>src/</code>)</h2>
 <h3 id="srcmaincpp-ee-entry-pre-main-iop-hygiene-irx-bring-up"><code>src/main.cpp</code> — EE entry, pre-main IOP hygiene, IRX bring-up</h3>
@@ -95,8 +97,9 @@ main-menu entry remains as an unimplemented stub.)</p>
 </ul>
 <h3 id="srcluaplayercpp-lua-vm-lifecycle-and-embedded-asset-wiring"><code>src/luaplayer.cpp</code> — Lua VM lifecycle and embedded asset wiring</h3>
 <ul>
-<li><code>g_embedded_lua_assets</code> (luaplayer.cpp:35-41) is the embedded script table:<br />
-<code>boot.lua</code>, <code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code>, <code>pops_profiles.lua</code>.</li>
+<li><code>g_embedded_lua_assets</code> (luaplayer.cpp) is the embedded script table:<br />
+<code>boot.lua</code>, <code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code> (<code>pops_profiles.lua</code> was<br />
+  removed 2026-07-13 with the profile-preset system).</li>
 <li><code>runScript()</code> (luaplayer.cpp:254) creates the Lua state, installs the embedded<br />
   searcher (<code>InstallEmbeddedLuaSearcher</code>, luaplayer.cpp:272), disables on-disk<br />
   script loaders (<code>DisableLuaFilesystemScriptLoaders</code>, luaplayer.cpp:273 — nils<br />
@@ -106,8 +109,12 @@ main-menu entry remains as an unimplemented stub.)</p>
   (luaplayer.cpp:294-302).</li>
 <li>Registered binding modules (luaplayer.cpp:282-288): <code>luaGraphics_init</code>,<br />
 <code>luaControls_init</code>, <code>luaScreen_init</code>, <code>luaTimer_init</code>, <code>luaSystem_init</code>,<br />
-<code>luaSound_init</code>, <code>luaHDD_init</code>. NOTE: <code>luaSMB_init</code> is NOT<br />
-  called here (see Orphaned/dormant code below).</li>
+<code>luaSound_init</code>, <code>luaHDD_init</code>. NOTE: there is no separate <code>luaSMB_init</code> —<br />
+  the SMB (v1) network client lives inside the <code>System.*</code> surface<br />
+  (<code>initSMB</code>/<code>connectSMB</code>/<code>disconnectSMB</code>, registered by <code>luaSystem_init</code>;<br />
+  the Lua-side <code>PLDR.InitSMBPopsRoot</code> wraps them), not a standalone module.<br />
+  The old orphan <code>src/luaSMB.cpp</code><br />
+  (commit f83dbbb) is unrelated and removed (see Orphaned/dead-on-disk).</li>
 </ul>
 <h3 id="srcluasystemcpp-the-largest-binding-surface-system"><code>src/luasystem.cpp</code> — the largest binding surface (System.*)</h3>
 <ul>
@@ -126,6 +133,20 @@ main-menu entry remains as an unimplemented stub.)</p>
 <code>lua_set_exec_keep_pfs_mask</code> (luasystem.cpp:945).</li>
 <li>Launch-arg binding <code>lua_getLaunchArgs</code> (luasystem.cpp:1211) and boot-hint<br />
   binding <code>lua_getBootDeviceHint</code> (luasystem.cpp:1227).</li>
+<li>SMB (v1) network client (Path B = OPL's netman recipe; implemented this cycle,<br />
+  CI+Rolling green, validating on hardware). Lazy net stack <code>EnsureNet</code><br />
+  (luasystem.cpp:1412): brings up dev9 once via the shared <code>EnsureDev9</code>/<br />
+<code>g_dev9_loaded</code> guard, then loads <code>netman</code> + <code>smap</code> + <code>ps2ips</code> + <code>smbman</code> and<br />
+<code>ps2ip</code> and calls <code>NetManInit</code> — NEVER at boot, only on a menu/settings action.<br />
+  Bindings registered in the <code>System.*</code> table (luasystem.cpp:1776-1779):<br />
+<code>initSMB</code> (<code>lua_smb_init</code>), <code>connectSMB</code> (<code>lua_smb_connect</code>, luasystem.cpp:1578),<br />
+<code>disconnectSMB</code> (<code>lua_smb_disconnect</code>, luasystem.cpp:1724 — <code>CLOSESHARE</code>+<code>LOGOFF</code>,<br />
+  also torn down on a failed connect so no half-open session lingers). Connect<br />
+  drives the <code>ps2smb.h</code> devctls (<code>LOGON</code>/<code>ECHO</code>/<code>OPENSHARE</code>) on <code>smb0:</code>. A<br />
+  blank Share field triggers <code>SMB_DEVCTL_GETSHARELIST</code> (luasystem.cpp:1686-1701)<br />
+  to enumerate the server's shares for the in-UI picker. EE links <code>-lnetman</code><br />
+<code>-lps2ip</code> <code>-lps2ips</code>. NetBIOS is NOT supported (deferred: <code>nbns.irx</code> is<br />
+  OPL-custom, not stock ps2sdk — address type must be IP).</li>
 <li><code>lua_rename</code> (luasystem.cpp:753) is a non-atomic copy+delete, but the<br />
   safe-promote fix has <strong>landed in this worktree</strong>: it calls the shared<br />
 <code>copy_file_contents</code> (luasystem.cpp:714) and <strong>only <code>remove()</code>s the source if<br />
@@ -139,11 +160,24 @@ main-menu entry remains as an unimplemented stub.)</p>
 <h3 id="srcluahddcpp-hdd-dev9-irx-stack-and-pfs-mounting"><code>src/luaHDD.cpp</code> — HDD (dev9) IRX stack and PFS mounting</h3>
 <ul>
 <li><code>Load_HDD_IRX</code> (luaHDD.cpp:120, exposed as <code>HDD.Initialize</code> at luaHDD.cpp:173)<br />
-  loads ps2dev9 -&gt; ps2atad -&gt; ps2hdd-osd -&gt; ps2fs back-to-back (luaHDD.cpp:142-161),<br />
-  with HDD args <code>-o 4 -n 20</code> and PFS args <code>-m 4 -o 10 -n 40</code> (luaHDD.cpp:136-139).<br />
-  This BETA-13-PLAY state has NO inter-module cold-dev9 settle delay here.</li>
+  calls <code>EnsureAtaBdm()</code> (dev9 -&gt; bdm -&gt; bdmfs_fatfs -&gt; <code>ata_bd</code>, i.e. ps2atad<br />
+  built with <code>ATA_ENABLE_BDM=1</code> so one atad instance serves APA/PFS and exFAT),<br />
+  then ps2hdd-osd -&gt; ps2fs, with HDD args <code>-o 4 -n 20</code> and PFS args<br />
+<code>-m 4 -o 10 -n 40</code>. Plain <code>ps2atad</code> is no longer loaded. There ARE settles now:<br />
+<code>sleep(1)</code> before the <code>ata_bd</code> load and <code>sleep(1)</code> after it<br />
+  (<code>luasystem.cpp</code> <code>EnsureAtaBdmModulesInner</code>), matching NHDDL/wLaunchELF ordering.</li>
 <li><code>GetHDDStatus</code> via <code>HDIOC_STATUS</code> (luaHDD.cpp:93-96); on-demand mount<br />
-<code>MountPart</code>/<code>mnt</code> (luaHDD.cpp:21-92) producing <code>pfs%d:/</code> mount points.</li>
+<code>MountPart</code>/<code>mnt</code> (luaHDD.cpp:21-92) producing <code>pfs%d:/</code> mount points.<br />
+<code>HDD.MountPartition</code> returns <code>(ok, rc)</code> — the second value is the raw<br />
+<code>fileXioMount</code> rc (2026-07-09 diagnostics; <code>mnt</code> no longer collapses failures<br />
+  to a constant <code>-4</code>).</li>
+<li><code>HDD.ListPartitions</code> (2026-07-09) — read-only APA-table enumerator:<br />
+<code>fileXioDopen("hdd0:")</code> + <code>fileXioDread</code>, keeping main-partition records with<br />
+  the PFS format magic (the OPL / wLaunchELF technique; constants mirror ps2sdk<br />
+<code>libhdd.h</code>). Names are snapshotted into a static buffer and the dir fd closed<br />
+  BEFORE any Lua-heap call so an allocation longjmp can't leak a ps2hdd slot.<br />
+  Returns the name array, or <code>nil, rc</code> before ps2hdd loads. Consumed by<br />
+<code>PLDR.HDD.DiscoverPartitionGames</code> (partition-installed <code>PP.</code>/<code>__.</code> games).</li>
 </ul>
 <h3 id="srcembed_assetscpp-runtime-name-embedded-blob-resolver"><code>src/embed_assets.cpp</code> — runtime name -&gt; embedded blob resolver</h3>
 <ul>
@@ -208,11 +242,13 @@ longer in the Makefile object lists, and luaRender_init is no longer called<br /
 from luaplayer.cpp.</p>
 <h3 id="orphaned-dead-on-disk">Orphaned / dead-on-disk</h3>
 <ul>
-<li><code>src/luaSMB.cpp</code> (SMB network-share client logon helpers) was orphan source —<br />
-  never in the Makefile object lists and never initialized (<code>luaSMB_init</code> was<br />
-  uncalled) — and was DELETED in commit f83dbbb (2026-06-13). It no longer<br />
-  exists in the tree. The SMB (v1) main-menu entry remains as an unimplemented<br />
-  stub (OPT7, ui.lua:4397-4398) — see Feature Surface.</li>
+<li><code>src/luaSMB.cpp</code> (the old orphan SMB network-share logon helpers) was orphan<br />
+  source — never in the Makefile object lists and never initialized — and was<br />
+  DELETED in commit f83dbbb (2026-06-13). It no longer exists in the tree. This<br />
+  dead file is NOT the current SMB feature: SMB (v1) was re-implemented this<br />
+  cycle as a live C binding inside the <code>System.*</code> surface (luasystem.cpp,<br />
+<code>EnsureNet</code>/<code>lua_smb_connect</code>) plus Lua wiring (GSMBNET scene, OPT7) — see<br />
+  the luasystem.cpp SMB notes above and Feature Surface below.</li>
 </ul>
 <h2 id="2-embedded-lua-application-binpopsldr">2. Embedded Lua application (<code>bin/POPSLDR/</code>)</h2>
 <p>All <code>bin/POPSLDR/*.lua</code> are bin2c'd into the EE ELF at build time; the on-card<br />
@@ -220,8 +256,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <h3 id="binpopsldrsystemlua-controller-devicelaunch-engine-settings"><code>bin/POPSLDR/system.lua</code> — controller, device/launch engine, settings</h3>
 <ul>
 <li>Owns device resolution, settings persistence, game-list building, the HDD<br />
-  cache, and the launch engine. <code>require</code>s pops_profiles/ui/images<br />
-  (system.lua:2433, 2526).</li>
+  cache, and the launch engine. <code>require</code>s ui/images.</li>
 <li>Boot-device classification: <code>ResolveBootContext</code> (system.lua:1849) /<br />
 <code>DetectBootDevice</code> (system.lua:1983), prefix rules under <code>ResolveBootContext</code>.<br />
 <code>mass:/</code> is disambiguated via the BDM driver name (<code>classify_mass_boot</code>,<br />
@@ -229,14 +264,19 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <li>Launch-arg ingest: <code>NormalizeLaunchPage</code> (system.lua; <code>ata*</code>-&gt;EXFAT,<br />
 <code>hdd*</code>/<code>apa*</code>/<code>pfs*</code>-&gt;HDD, bare <code>bdma</code>-&gt;no-op page value), <code>PLDR.LAUNCH_ARGS</code>,<br />
   carousel page auto-nav <code>page_to_opt</code> (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).</li>
-<li>Settings: <code>EncodeSettings</code> (system.lua:3072, <strong>20 keys</strong>: PROFILE,<br />
-  POPSTARTER_PATH, POPSTARTER_MODE, BDMA, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,<br />
-  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, BOOT_PAGE, MULTIDISC_COLLAPSE,<br />
+<li>Settings: <code>EncodeSettings</code> (<strong>23 keys</strong> + appended SMB block:<br />
+  POPSTARTER_PATH (<code>""</code> = Automatic; the legacy PROFILE/POPSTARTER_MODE keys are<br />
+  no longer written, and on load a legacy PROFILE=N pick migrates into<br />
+  POPSTARTER_PATH — profiles dropped 2026-07-13),<br />
+  BDMA, BDMA_ADAPTIVE, DKWDRV_PATH, STRICT_HDD_PREEXEC_GATE,<br />
+  VIDEO_STANDARD, HIDE_TEXT, KEYBOARD_LAYOUT, LANGUAGE, BOOT_PAGE, MULTIDISC_COLLAPSE,<br />
   GLOBAL_HIDE, POPSTARTER_MC_FOLDER, HIDDEN_DEVICES, SHOW_DETAILS, DETAILS_ALIGN,<br />
-  GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, DESC_SCROLL_SPEED — BOOT_SOUND and OVERSCAN<br />
-  are new this cycle), <code>LoadSettingsNonFatal</code> (system.lua:3301),<br />
-<code>SaveSettingsAtomic</code> (system.lua:3262) -&gt; <code>WriteAtomic</code> (system.lua:2663),<br />
-<code>CommitSettingsChanges</code> (transactional, system.lua:3540). Per-device sidecar<br />
+  ART_LOCATION, HDD_FS, COVER_ART, GAMELIST_CACHE, BOOT_SOUND, OVERSCAN, SMB_MODULES — the<br />
+  SMB connection block is appended after these by SmbAppendLines), <code>LoadSettingsNonFatal</code> (system.lua:3650,<br />
+  normalizes CRLF before parsing — a Notepad-edited sidecar used to silently revert<br />
+  most settings), <code>SaveSettingsAtomic</code> (system.lua:3598, retries the MC fallback once<br />
+  when a non-MC sidecar write fails) -&gt; <code>WriteAtomic</code> (system.lua:2793),<br />
+<code>CommitSettingsChanges</code> (transactional, system.lua:3912). Per-device sidecar<br />
 <code>.pldrs</code> at APP_DIR for every device; <strong>HDD installs now persist on the HDD<br />
   boot partition</strong> via the <code>PLDR.HDD.EnsureBootPartitionWritable</code> RW mount<br />
   take-over (system.lua:2159) — no <code>mc0:</code> carve-out. <code>mc0:/POPSTARTER/.pldrs</code><br />
@@ -246,7 +286,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
 <code>HDD.BuildGameList</code> (system.lua:4720, <code>partition|relpath</code>). HDD cache<br />
   (<code>CreateCache</code> system.lua:4880 / <code>ReadCache</code> system.lua:4927) is gated on the<br />
 <code>PLDR.GAMELIST_CACHE</code> setting (opt-in, default OFF; default set at<br />
-  system.lua:3319, runtime gate checks at system.lua:4522/5031/5078).<br />
+  system.lua:3672; runtime gate checks live in the cache save/load helpers).<br />
 <code>USECACHE</code> (system.lua:2048) is a dead legacy flag. The same <code>GAMELIST_CACHE</code><br />
   gate covers the USB/MMCE/MX4SIO list cache (<code>SaveGameListCache</code><br />
   system.lua:4816; there is no separate <code>ReadGameListCache</code> function — the HDD<br />
@@ -256,6 +296,23 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   per-device <code>reboot_iop</code>). HDD pre-exec gate <code>ValidateHddPopstarterExecGate</code><br />
   (system.lua:1655). Keep-PFS-mask prep <code>PrepareForExternalELFLaunch</code><br />
   (local def system.lua:1120, PLDR wrapper system.lua:1793).</li>
+<li>POPSTARTER.ELF resolution <code>PLDR.ResolveLaunchPopstarterPath</code><br />
+  (system.lua) is PER DEVICE, existence-gated at each step so a device with<br />
+  no copy falls through. REMOVABLE (USB / exFAT-ATA / MX4SIO / MMCE), in order:<br />
+  1. the explicit user-configured ABSOLUTE path (the "POPSTARTER Path" setting)<br />
+  when it resolves; 2. the game's own<br />
+<code>&lt;device&gt;:/POPS/POPSTARTER.ELF</code> when it exists (lets a per-device build — e.g.<br />
+  a USB-delay POPSTARTER dropped in the USB drive's <code>POPS</code> folder — be used<br />
+  WITHOUT forcing it); 3. <code>POPSTARTER.ELF</code> in the launcher's own folder (cwd,<br />
+<code>ResolveCwdSidecarPopstarter</code>); 4. the <code>mc0:/mc1:/POPSTARTER</code><br />
+  fallback net. INTERNAL-PFS HDD (APA): 1. custom; 2.<br />
+<code>hdd0:__common/POPS/POPSTARTER.ELF</code> (resolved through the partition<br />
+  machinery that preserves the D-10/D-15 partition-context</li>
+<li>embedded-loader handoff); 3. cwd /<br />
+  boot-sidecar; 4. mc net. <strong>The 16-preset profile system was removed<br />
+  2026-07-13</strong> (R3Z3N review): <code>PLDR.POPSTARTER_PATH</code> is the single value,<br />
+<code>""</code> = Automatic (the ladder), a set path = step-1 custom with silent<br />
+  fallback; the ladder itself is unchanged. Validating on hardware.</li>
 <li>Startup ordering at module end: <code>LoadSettingsNonFatal</code> -&gt;<br />
 <code>AutoInitStartupBackends</code> (system.lua:3920) -&gt; <code>SurfaceLaunchArgsDebug</code> -&gt;<br />
 <code>AutoLaunchFromLaunchArgs</code> (system.lua:6139), then the single render loop<br />
@@ -267,9 +324,11 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   Contains all scenes, the scene/transition state machine, notification queue,<br />
   busy overlay, cover-art cache, path-editor keyboard, modals, and input layer.<br />
   It has NO main loop — the loop lives at the bottom of system.lua.</li>
-<li>Scenes enum <code>UI.SCENES</code> (ui.lua:448-458): GUSBFAT=1, GSMB=3 (reused for MMCE<br />
-  and SMB), GMX4SIO=4, GHDD=5 (GAPAHDD aliases 5), GBDMHDD=6, MMAIN=8,<br />
-  MPROFILE=9, CREDITS=10.</li>
+<li>Scenes enum <code>UI.SCENES</code> (ui.lua:448-458): GUSBFAT=1, GSMB=3 (the MMCE list<br />
+  page — despite the name, NOT the network-SMB page), GMX4SIO=4, GHDD=5<br />
+  (GAPAHDD aliases 5), GBDMHDD=6, GSMBNET=7 (the live SMB (v1) network page),<br />
+  MMAIN=8, MPROFILE=9, CREDITS=10. SMB (v1) now has its OWN dedicated scene<br />
+  (GSMBNET=7); it does NOT reuse GSMB=3.</li>
 <li>Main menu carousel <code>UI.MainMenu</code> (table ui.lua:3976, opts ui.lua:3978; the<br />
   CONFIRM/Play dispatch is the MainMenu <code>Play</code> handler at ui.lua:3997, OPT switch<br />
   ~4227-4404). Game list <code>UI.GameList</code> (table ui.lua:2324), launch trigger<br />
@@ -301,24 +360,35 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   they register with the jewel-case window on both NTSC and PAL.</li>
 <li>Right-stick description scroll (ui.lua:2669-2700) is FRAME-COUNTED too via<br />
 <code>UI.GameList.DescScrollFrames</code> (ui.lua:2334): step every <code>ceil(_secs*fps)</code><br />
-  frames (ui.lua:2684-2687), with the "Description scroll speed" setting in<br />
-  SECONDS — slow 0.9 (default) / medium 0.3 / fast 0.15 (ui.lua:2680-2682).</li>
-<li>Cover-art LRU <code>CoverCache</code> (ui.lua:257-343), candidate builder<br />
-<code>BuildCoverCandidates</code> (ui.lua): non-HDD = <code>&lt;device&gt;:/ART/&lt;basename&gt;_COV.png</code><br />
-  (OPL standard first, legacy families additive), HDD = <code>hdd0:__common/POPS/ART/&lt;basename&gt;_COV.png</code>.</li>
+  frames (ui.lua:2684-2687), fixed at the Fast pace (<code>_secs</code> = 0.15, ~7<br />
+  lines/sec; the Fast/Medium/Slow "Description scroll speed" setting was removed).</li>
+<li>Cover-art LRU <code>CoverCache</code> (ui.lua:305-374), candidate builder<br />
+<code>BuildCoverCandidates</code> (ui.lua:190). On <strong>removable</strong> devices the cover<br />
+  is ONE path with an EXACT filename (EXP71): <code>BuildCoverCandidates</code> returns a<br />
+  single candidate <code>&lt;device-root&gt;/ART/&lt;gamefilename&gt;_COV.png</code>. The<br />
+<em>Cover/details folder</em> setting was removed in EXP35 (<code>PLDR.ART_LOCATION</code> still<br />
+  parses but is INERT), there is no <code>POPS/ART</code> mode, no beside-the-<code>.vcd</code><br />
+  fallback, and no disc-marker-stripped family name — so multi-disc games need<br />
+  art per disc. HDD/PFS is fixed to<br />
+<code>hdd0:__common/POPS/ART/&lt;gamefilename&gt;_COV.png</code> via<br />
+<code>PLDR.ResolveHddPartitionReadablePath</code>. The <code>.txt</code> details sidecar does NOT<br />
+  ride the cover candidates: removable devices compute<br />
+<code>&lt;device-root&gt;/ART/&lt;gamefilename&gt;.txt</code> (no <code>_COV</code>) and hand it to the resident<br />
+  cover worker (<code>Graphics.coverLoadTextPath</code>), and HDD resolves it separately.<br />
+<code>GetOrLoad</code> loads<br />
+  via <code>Graphics.loadImage</code>/<code>fopen</code> directly with NO <code>doesFileExist</code>/<code>open()</code><br />
+  pre-probe -- a redundant-syscall cleanup, since ps2sdk routes <code>open</code> and <code>fopen</code><br />
+  through the same libcglue <code>_open</code> (nested reads work; OPL reads <code>mass:/ART/</code> the<br />
+  same way). A missing <code>POPS/ART</code> cover is a filename/location issue, and the list<br />
+  view's "No cover. Looked for: <path>" caption and its <code>last_cover_probe</code> state<br />
+  were REMOVED (EXP42) -- a missing cover just draws the placeholder. Cover drawing<br />
+  is gated by the persisted <code>COVER_ART</code> setting (<code>UI.CoverPreviewEnabled</code>, applied<br />
+  via <code>UI.SetCoverPreview</code>); the Square toggle is gone.</li>
 <li>WRITE-GUARD GOTCHA: <code>__newindex</code> metatables on <code>UI.MainMenu</code> and <code>UI</code><br />
   (ui.lua:4957 &amp; 4979) silently DROP writes to <code>UI.MainMenu.OPT</code> (unless<br />
 <code>Carousel.allowOptWrite</code>, ui.lua:4960) and <code>UI.CURSCENE</code> (unless<br />
 <code>Transition.allowSceneWrite</code>, ui.lua:4981). Build-info display reads<br />
 <code>BUILD_INFO.txt</code> (<code>LoadBuildInfo</code>, ui.lua:4687).</li>
-</ul>
-<h3 id="binpopsldrpops_profileslua-popstarterelf-location-list"><code>bin/POPSLDR/pops_profiles.lua</code> — POPSTARTER.ELF location list</h3>
-<ul>
-<li><code>PLDR.PROFILES</code> (pops_profiles.lua:26-91) is a 16-entry ordered list of<br />
-<code>{ELF=path, DESC=text}</code> POPSTARTER.ELF <em>locations</em> (not per-game configs).<br />
-<code>DEFAULT_PROFILE = 1</code> seeds <code>PLDR.POPSTARTER_PATH</code> (pops_profiles.lua:8,<br />
-  93-94). The orthogonal PROFILE_DEFAULT vs CUSTOM mode (system.lua:667-712)<br />
-  decides whether the profile ELF or a typed override wins.</li>
 </ul>
 <h3 id="binpopsldrimageslua-embedded-ui-glyphchrome-atlas"><code>bin/POPSLDR/images.lua</code> — embedded UI glyph/chrome atlas</h3>
 <ul>
@@ -437,7 +507,7 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   next to <code>POPSLOADER.ELF</code> (compilation.yml:161) AND in <code>POPS/</code><br />
   (compilation.yml:171), both on the manifest's required-file list.<br />
   See <code>STATE.md &gt; CI / release</code>.</li>
-<li><code>.github/workflows/rolling-release.yml</code> — on push to <strong>BETA-13-PLAY</strong><br />
+<li><code>.github/workflows/rolling-release.yml</code> — on push to <strong>dev</strong><br />
   (rolling-release.yml:6) and PR events: bundles the ELF + full git-tracked source<br />
   and force-updates the <code>rolling-release</code> prerelease via the GitHub API. The<br />
   redistributable <code>POPSTARTER.ELF</code> now ships at the ZIP ROOT next to<br />
@@ -459,9 +529,25 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   backend (BDMA <code>ata</code>) via <code>InitATAPopsRoot</code> + <code>GetPS1GameLists</code> -&gt; scene GBDMHDD=6<br />
   (ui.lua:4349). Classified by exact ioctl driver-name <code>ata</code>. Validating on hardware.<br />
 - <code>i.Link</code> (OPT6): NOT implemented (ui.lua:4462).<br />
-- <code>SMB (v1)</code> (OPT7): NOT implemented (ui.lua:4464). There is no SMB C client;<br />
-  the former <code>src/luaSMB.cpp</code> orphan was removed in commit f83dbbb (see<br />
-  Orphaned/dead-on-disk).</p>
+- <code>SMB (v1)</code> (OPT7): implemented — routes to scene GSMBNET=7. SMB / Network<br />
+  settings (server IP, share, user/password, IP assignment DHCP-or-static, port,<br />
+  games path/cwd, link mode; IP addressing only) plus an "SMB modules" install<br />
+  toggle that copies the POPStarter in-game SMB streaming pack (6 IRX:<br />
+  poweroff/ps2dev9/ps2ip/ps2smap/smbman/SMSUTILS) into <code>mc:/POPSTARTER</code> and<br />
+  generates <code>IPCONFIG.DAT</code> + <code>SMBCONFIG.DAT</code> from the settings (backfilled on<br />
+  every settings save while the pack is installed). CONNECT is LAZY (net stack<br />
+  + share open only on entering the SMB page or a settings action, never at<br />
+  boot) via the luasystem.cpp <code>EnsureNet</code>/<code>connectSMB</code> bindings; BROWSE scans<br />
+  the share's POPS folder and lists VCDs; a blank Share field opens an in-UI<br />
+  picker driven by <code>GETSHARELIST</code>; LAUNCH hands off to POPStarter with argv0<br />
+  selector <code>smb:/POPS/SB.&lt;name&gt;.ELF</code> (POPStarter streams the VCD from its own<br />
+<code>smb:/POPS</code> mount via <code>mc:/POPSTARTER/SMBCONFIG.DAT</code>); DISCONNECT<br />
+  (<code>CLOSESHARE</code>+<code>LOGOFF</code>) on leaving the page. NetBIOS is deferred (address type<br />
+  must be IP). Implemented this cycle, CI+Rolling green, <strong>validating on<br />
+  hardware</strong> — the exact argv0 device prefix POPStarter accepts (fallbacks<br />
+<code>mass:/POPS/SB.&lt;name&gt;.ELF</code> then <code>mass:/SB.&lt;name&gt;.ELF</code>), the connect handshake,<br />
+  and the <code>GETSHARELIST</code> DMA are the hardware-only unknowns. See the<br />
+  luasystem.cpp SMB notes.</p>
 <h2 id="preservation-contracts-hardware-load-bearing-do-not-regress">Preservation Contracts (hardware-load-bearing — do not regress)</h2>
 <ul>
 <li>D-10 (HDD POPSTARTER + HDD game): the BRAM child-loader route via the<br />
@@ -484,10 +570,11 @@ copies are not read at runtime. Editing them requires a rebuild.</p>
   and <code>STATE.md &gt; Settings (single-device parity)</code>.</li>
 </ul>
 <blockquote>
-<p>Divergence note (per project memory): this BETA-13-PLAY worktree's<br />
-<code>PLDR.LoadHDDModules</code> (system.lua:4754) and <code>Load_HDD_IRX</code> (luaHDD.cpp:120) have<br />
-NO cold-dev9 settle between HDD IRX loads. The "fail to load HDD" cold-dev9<br />
-settle fix lives on a separate rolling branch and is NOT merged here.</p>
+<p>Settle note: <code>Load_HDD_IRX</code> routes through <code>EnsureAtaBdm()</code>, which applies a<br />
+1-second settle before loading <code>ata_bd</code> and another after it (see<br />
+<code>EnsureAtaBdmModulesInner</code> in <code>src/luasystem.cpp</code>). The older "no cold-dev9<br />
+settle / fix lives on a separate branch" note is superseded — rolling publishes<br />
+from <code>dev</code>, which is this branch.</p>
 </blockquote>
 <h2 id="primary-change-entry-points">Primary Change Entry Points</h2>
 <ul>

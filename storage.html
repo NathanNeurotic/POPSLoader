@@ -62,10 +62,8 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>MX4SIO</td><td>FAT32 / exFAT — SD via SIO2 slot</td><td>BDMA <code>MX4SIO</code></td><td> Working</td></tr>
 <tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
-<tr><td>SMB</td><td>network share</td><td>POPStarter core</td><td> core ·  fork stub</td></tr>
+<tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
 <tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
-<tr><td>UDPBD</td><td>UDP block device — games streamed over Ethernet from a PC <code>udpbd</code> server (modern SMB alternative)</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
-<tr><td>UDPFS</td><td>UDP network filesystem backend</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
 In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
@@ -74,7 +72,7 @@ special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, <code>M
 validating on hardware). Everything except an APA/PFS internal HDD goes through BDMA — it loads the
 <b>BDM&nbsp;Assault</b> driver set, which is how the launcher reaches exFAT USB, the exFAT internal HDD, and the
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
-iLink and UDPBD/UDPFS backends extend the same BDM mechanism but aren't hardware-tested yet. For large
+iLink backend extends the same BDM mechanism but is not hardware-tested yet. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div><h2 id="popstarter-for-usb-device-storage-type"><strong>POPStarter for USB Device Storage Type</strong></h2>
 <hr>
 
