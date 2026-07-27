@@ -1,6 +1,6 @@
 English (do not edit)	Hungarian (put your translation here)
- (%d hidden -- Global Hide is on)	 (%d hidden -- Global Hide is on)
- (%d multi-disc collapsed)	 (%d multi-disc collapsed)
+ (%d hidden -- Global Hide is on)	 (%d rejtett -- A Globális elrejtés be van kapcsolva)
+ (%d multi-disc collapsed)	 (%d többlemezesek kibontva)
 (could NOT save -- reverts on reboot)	(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)
 (not set)	(nincs beállítva)
 (share root)	(gyökérkönyvtár megosztása)
@@ -11,12 +11,12 @@ English (do not edit)	Hungarian (put your translation here)
 100M Half	100M Half
 10M Full	10M Full
 10M Half	10M Half
-__.POPS partition %s accepts writes (game-partition RW test)	__.POPS partition %s accepts writes (game-partition RW test)
+__.POPS partition %s accepts writes (game-partition RW test)	__.POPS %s partíció írási műveleteket fogad (játékpartíció RW-teszt)
 About	Névjegy
 Actual output	Aktuális kimenet
 Adaptive BDMA	Adaptív BDMA
 Adaptive BDMA couldn't stage	Az adaptív BDMA nem tudott szakaszosan működni
-Address type	Address type
+Address type	Címtípus
 adjusted -- using	kiigazítva -- a következővel
 APA / PFS (default)	APA / PFS (alapértelmezett)
 Applying BDMA mode	BDMA mód alkalmazása
@@ -37,7 +37,7 @@ Boot sound	Starthang
 BOOT.ELF failed to launch	A BOOT.ELF elindítása sikertelen volt
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	A BOOT.ELF fájl nem található\nEllenőrizve: mc0:/BOOT és mc1:/BOOT
 Booted from:	Boot eszköz:
-Both	Both
+Both	Mindegyik
 Bringing up network...	Hálózat felépítése...
 Building HDD game list...	HDD játéklista összeállítása...
 Building USB game list...	USB játéklista összeállítása...
@@ -55,7 +55,7 @@ Center aligned	Középre igazítva
 check the memory card, or turn Adaptive BDMA off	ellenőrizze a memóriakártyát, vagy kapcsolja ki az Adaptive BDMA funkciót
 Checking POPSTARTER...	POPSTARTER ellenőrzése...
 Checking the game file...	A játékfájl ellenőrzése...
-CLR	ÜRÍTÉS
+CLR	CLR
 Code by El_isra	Kódolás: El_isra
 Confirm	Megerősítés
 Connecting to SMB...	Csatlakozás az SMB-hez...
@@ -65,7 +65,7 @@ Couldn't restore BDMA mode	Nem sikerült visszaállítani a BDMA módot
 Couldn't save settings	A beállítások mentése nem sikerült
 Couldn't save settings -- POPSTARTER folder NOT deleted	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került törlésre
 Couldn't save settings -- POPSTARTER folder NOT restored	A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra
-Couldn't save settings\n%s may be read-only	Couldn't save settings\n%s may be read-only
+Couldn't save settings\n%s may be read-only	A beállításokat nem sikerült menteni\nLehet, hogy a %s írásvédett
 Couldn't update hidden state	A rejtett állapotot nem sikerült frissíteni
 Couldn't write .hide to the HDD	Nem sikerült a .hide fájlt a HDD-re írni
 Cover art	Borítókép
@@ -88,7 +88,7 @@ DKWDRV Path	DKWDRV útvonal
 DNS	DNS
 Don't Save	Ne mentse el
 DONE	KÉSZ
-Done	Done
+Done	Kész
 Edit	Szerkesztés
 Edit %s	%s szerkesztése
 Edit DKWDRV Path	DKWDRV útvonal szerkesztése
@@ -119,7 +119,7 @@ Gateway	Átjáró
 HDD Alt	HDD Alt
 HDD Alt mode needs POPSTARTER on HDD	A HDD Alt módhoz POPSTARTER szükséges a HDD-n
 HDD dir read failed:	A HDD könyvtár olvasása sikertelen:
-HDD game-partition write test FAILED (%s)	HDD game-partition write test FAILED (%s)
+HDD game-partition write test FAILED (%s)	A HDD játékpartíciójára történt írási teszt MEGHIÚSULT (%s)
 HDD list loaded from cache (R1 rescans)	A HDD-lista betöltődött a gyorsítótárból (R1 - lista frissítése)
 HDD list refreshed	A HDD-lista frissült
 HDD list refreshed (no games found)	A HDD-lista frissült (nincs játék)
@@ -144,7 +144,7 @@ L3 on the game list	L3 a játéklistában
 Language	Nyelv
 Launch	Indítás
 Launch DKWDRV?	Elindítja a DKWDRV-t?
-LAUNCH FAILED	LAUNCH FAILED
+LAUNCH FAILED	SIKERTELEN INDÍTÁS
 Left aligned	Balra igazítva
 Link mode	Link mód
 List refreshed	Lista frissítve
@@ -201,7 +201,7 @@ POPSTARTER folder deleted from the memory card	A POPSTARTER mappa törölve lett
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	A POPSTARTER mappa visszaállítva a memóriakártyán\n(állítsa be a BDMA módot az exFAT/SMB modulok újbóli hozzáadásához)
 POPSTARTER Path	POPSTARTER útvonal
 Port	Port
-Press %s/%s to continue.	Press %s/%s to continue.
+Press %s/%s to continue.	Folytatáshoz nyomja meg a %s/%s gombot.
 Press CIRCLE again to discard what you typed	Nyomja meg újra a KÖR gombot, hogy törölje a beírt szöveget
 Press CROSS again to discard what you typed	Nyomja meg újra a KERESZT gombot a beírtak elvetéséhez
 Profile	Profil
@@ -245,7 +245,7 @@ Share not found\ncheck the Share name (host must allow SMB1)	A megosztás nem ta
 Show all discs	Összes lemez látható
 Showing hidden games (dimmed) -- press L3 to unhide	Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők
 Shown	Megjelenítés
-Slot:	Nyílás:
+Slot:	Foglalat:
 SMB / Network	SMB / Hálózat
 SMB connect failed	Az SMB-kapcsolat sikertelen
 SMB connection dropped	Az SMB-kapcsolat megszakadt
@@ -262,7 +262,7 @@ Startup	Indítás
 Static (manual)	Statikus (manuális)
 status:	státusz:
 Storage	Tároló
-The internal drive is still starting\nopen this page again in a moment	A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy pillanat múlva
+The internal drive is still starting\nopen this page again in a moment	A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy kis idő múlva
 This backend isn't implemented yet	Ez a háttérrendszer még nincs megvalósítva
 This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Ezzel eltávolítja a POPSTARTER csomagot -- beleértve a\nBDMA és SMB modulokat -- az mc0: / mc1: eszközökről.\nAddig nem jelennek meg, amíg ezt újra be nem kapcsolja\n(vagy kézzel újra hozzá nem adja). A beállítások megmaradnak.
 Triangle	Háromszög
@@ -270,7 +270,7 @@ UI text hidden	UI szövegek elrejtve
 UI text shown	UI szövegek megjelenítve
 Unknown BDMA mode:	Ismeretlen BDMA mód:
 User	Felhasználó
-Version	Version
+Version	Verzió
 Video Standard	Videó szabvány
 Visible	Látható
 Visible (manage)	Láthatóak (kezelhetők)
