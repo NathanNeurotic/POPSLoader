@@ -455,7 +455,8 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- a cheap hit rather than a full-directory miss. If a game has no cover, its .txt
   -- is not read at all -- so a card with no art (the reported case) does ZERO reads
   -- per navigation instead of two slow ones.
-  self.pending_desc = (type(PLDR) == "table" and PLDR.SHOW_DETAILS == true) and candidates or nil
+  -- (EXP73: self.pending_desc was dropped here -- write-only since EXP72 deleted its
+  -- only reader, the EXP54 in-Pump read.)
   -- Mass devices: compute the details-.txt path for the WORKER-side companion
   -- read (EXP72, sAGA: details never showed without a cover). NO io here --
   -- T35's zero-blocking-IO invariant: the resident cover worker opens the file
@@ -506,27 +507,32 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   -- Anything already decoded, or already known absent, is answered with ZERO I/O.
   local first_unknown = nil
+  local cached_img = nil
   for i = 1, #candidates do
     local p = candidates[i]
     local cached = self.entries[p]
     if cached ~= nil then
-      self.last_img = cached
-      return cached
+      cached_img = cached
+      break
     end
     if not self.failed[p] and first_unknown == nil then
       first_unknown = i
     end
   end
+  if cached_img ~= nil then
+    self.last_img = cached_img
+    -- EXP73: a CACHED cover used to return straight from here, before any details
+    -- job was issued, so a game whose art was already decoded could never show its
+    -- .txt -- and revisiting a game was the common case. The sidecar still has to
+    -- be fetched; it just has no cover to ride on.
+    self:BeginTextOnlyLoad(key)
+    return cached_img
+  end
   if first_unknown == nil then
     -- every cover candidate is a known miss. The DETAILS text may still exist:
     -- give the worker a text-only job (empty image path) so cover-less games
     -- show their description without any render-thread io (EXP72).
-    if self.pending_desc_path ~= nil and type(Graphics.coverLoadBegin) == "function" then
-      local dp = self.pending_desc_path
-      self.pending_desc_path = nil
-      pcall(Graphics.coverLoadTextPath, dp)
-      pcall(Graphics.coverLoadBegin, "", self.token)
-    end
+    self:BeginTextOnlyLoad(key)
     return nil   -- nothing to do for the cover itself
   end
   -- EXP49: hand the unknown candidate to the worker and RETURN IMMEDIATELY. The list
@@ -563,13 +569,81 @@ function CoverCache:BeginLoad(key, candidates, idx)
     return
   end
   self.token = (self.token or 0) + 1
-  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token }
+  local dp = self.pending_desc_path
+  self.pending_desc_path = nil
+  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token, desc_path = dp }
+  -- EXP73: ALWAYS set the companion text path here, clearing it with "" when this
+  -- game has none. EXP72 set it only in the text-only and the worker-refused-retry
+  -- branches, so this -- the path EVERY first-time cover load takes -- asked the
+  -- worker for no text at all, and games with BOTH a cover and a .txt lost details
+  -- they used to show (the EXP54 read was deleted in the same commit). Clearing on
+  -- the no-details case matters just as much: a path left over from a refused job
+  -- otherwise rides the next game's cover job and shows the WRONG game's blurb.
+  if type(Graphics.coverLoadTextPath) == "function" then
+    pcall(Graphics.coverLoadTextPath, dp or "")
+  end
   local ok, accepted = pcall(Graphics.coverLoadBegin, path, self.token)
   if not ok or accepted ~= true then
     -- Worker busy (or refused): Pump retries on a later frame. Never block here.
     self.pending.started = false
   else
     self.pending.started = true
+  end
+end
+
+-- EXP73: issue a TEXT-ONLY worker job (empty image path) for a pending details
+-- sidecar -- the case where there is no cover load to carry it.
+--
+-- EXP72 fired this job but never set self.pending, and CoverCache:Pump early-returns
+-- on a nil pending, so the job was never polled: the worker DID read the file and the
+-- bytes were dropped on the floor. That is the reported bug ("Game Details does not
+-- appear on the game list"). It also left the C slot finished-but-unread, which
+-- refuses every later request until something else drains it.
+function CoverCache:BeginTextOnlyLoad(key)
+  local dp = self.pending_desc_path
+  self.pending_desc_path = nil
+  if dp == nil then return end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function"
+     or type(Graphics.coverLoadTextPath) ~= "function" then
+    return
+  end
+  -- Drain an uncollected result first, for EXP53's reason: a finished-but-unread
+  -- job occupies the slot and every request is refused while it sits there.
+  if type(Graphics.coverLoadPoll) == "function" then
+    local ok_d, _, orphan = pcall(Graphics.coverLoadPoll)
+    if ok_d and orphan ~= nil and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, orphan)
+    end
+  end
+  self.token = (self.token or 0) + 1
+  self.pending = { key = key, candidates = {}, idx = 0, token = self.token,
+                   text_only = true, desc_path = dp }
+  pcall(Graphics.coverLoadTextPath, dp)
+  local ok, accepted = pcall(Graphics.coverLoadBegin, "", self.token)
+  self.pending.started = (ok and accepted == true)
+end
+
+-- Drain the worker's companion-text channel for a COMPLETED job.
+--
+-- Must run on every completed job, whatever the cover outcome: the C channel is
+-- consumed on read (luagraphics.cpp lua_coverloadtext), so a value left sitting
+-- there is picked up by the NEXT game. A stale result is drained and DISCARDED --
+-- the same rule T30 pins for textures: never show one game's data on another's row.
+function CoverCache:CollectPendingText(p, stale)
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadText) ~= "function" then return end
+  local ok, dtxt = pcall(Graphics.coverLoadText)   -- consume unconditionally
+  if not ok then return end
+  local dp = p.desc_path
+  if dp == nil or stale then return end
+  if type(dtxt) == "string" and dtxt ~= "" then
+    if self.last_desc == nil then
+      self.last_desc = dtxt
+      self.last_desc_lines = nil
+    end
+  elseif dtxt == false then
+    -- false is the worker's "open/read failed" -- treat as absent so a cover-less
+    -- game without a sidecar stops re-requesting it on every visit.
+    self.failed[dp] = true
   end
 end
 
@@ -611,6 +685,8 @@ function CoverCache:Pump()
     self.pending = nil
     return
   end
+  -- EXP73: a text-only job carries no cover candidate; its image path is "".
+  local ipath = (p.text_only == true) and "" or p.candidates[p.idx]
   if p.started ~= true then
     -- EXP57: BOUNDED retry. This used to retry forever, so a request that could never
     -- start left the loader pending permanently -- sAGA reported the "Loading ART..."
@@ -628,16 +704,30 @@ function CoverCache:Pump()
       self.pending = nil
       return
     end
-    if self.pending_desc_path ~= nil then
-      pcall(Graphics.coverLoadTextPath, self.pending_desc_path)
+    -- EXP73: our begin was refused, so any DONE result in the slot belongs to an
+    -- ABANDONED job -- drain it, or it refuses this retry too and every retry after
+    -- it (the "covers stop for the rest of the session" state EXP57 could only bound).
+    local ok_d, _, orphan = pcall(Graphics.coverLoadPoll)
+    if ok_d and orphan ~= nil and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, orphan)
     end
-    local ok, accepted = pcall(Graphics.coverLoadBegin, p.candidates[p.idx], p.token)
+    -- Re-arm from the JOB's own desc_path, not self.pending_desc_path (already
+    -- consumed when the job was created), and clear when this job carries none.
+    if type(Graphics.coverLoadTextPath) == "function" then
+      pcall(Graphics.coverLoadTextPath, p.desc_path or "")
+    end
+    local ok, accepted = pcall(Graphics.coverLoadBegin, ipath, p.token)
     p.started = (ok and accepted == true)
     return
   end
   local ok, token, ptr = pcall(Graphics.coverLoadPoll)
   if not ok or token == nil then return end   -- still working
   local stale = (token ~= p.token) or (self.last_key ~= p.key)
+  -- EXP73: collect the sidecar on EVERY completed job -- cover hit, cover miss and
+  -- text-only alike. EXP72 collected it only inside the `ptr ~= nil` arm, so a
+  -- cover-less game (the reported case) never got its .txt; and it ran the collect
+  -- TWICE on a hit, the second read always hitting an already-consumed channel.
+  self:CollectPendingText(p, stale)
   if ptr ~= nil then
     if stale then
       -- The selection moved on while this was loading: drop it rather than show or
@@ -647,42 +737,22 @@ function CoverCache:Pump()
       if type(Graphics.setImageFilters) == "function" then
         pcall(Graphics.setImageFilters, ptr, LINEAR)
       end
-      self.entries[p.candidates[p.idx]] = ptr
-      table.insert(self.order, p.candidates[p.idx])
+      self.entries[ipath] = ptr
+      table.insert(self.order, ipath)
       self:EvictIfNeeded()
       self.last_img = ptr
-      -- EXP72: the details sidecar now arrives from the WORKER (read on its
-      -- thread alongside the cover attempt), so this collect is a cheap local
-      -- call -- zero io on the render path even for cover-less games.
-      if type(Graphics.coverLoadText) == "function" and self.last_desc == nil then
-        local dp = self.pending_desc_path or ""
-        local dtxt = Graphics.coverLoadText()
-        if type(dtxt) == "string" and dtxt ~= "" then
-          self.last_desc = dtxt
-          self.last_desc_lines = nil
-        elseif dtxt == false and dp ~= "" then
-          self.failed[dp] = true
-        end
-      end
-      self.pending_desc_path = nil
     end
     self.pending = nil
-    if type(Graphics.coverLoadText) == "function" and self.last_desc == nil then
-      local dp = self.pending_desc_path or ""
-      local dtxt = Graphics.coverLoadText()
-      if type(dtxt) == "string" and dtxt ~= "" then
-        self.last_desc = dtxt
-        self.last_desc_lines = nil
-      elseif dtxt == false and dp ~= "" then
-        self.failed[dp] = true
-      end
-    end
-    self.pending_desc_path = nil
+    return
+  end
+  if p.text_only == true then
+    -- No cover was requested: nothing to memoize as absent, nothing to advance to.
+    self.pending = nil
     return
   end
   -- Miss: memoize ONLY when the file is genuinely absent (EXP59, OPL parity --
   -- a decode failure on a present file stays retryable), then try the next candidate.
-  self:MemoizeMiss(p.candidates[p.idx])
+  self:MemoizeMiss(ipath)
   if stale then self.pending = nil; return end
   local nxt = nil
   for i = p.idx + 1, #p.candidates do
@@ -3622,13 +3692,17 @@ UI = {
                 diag = string.format("\n%d part, %d files, %d VCD",
                          tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                 if (tonumber(d.hidden) or 0) > 0 then
-                  diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                  diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
                 elseif (tonumber(d.collapsed) or 0) > 0 then
-                  diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                  diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
                 end
               end
             end
-            UI.Notif_queue.add("HDD list refreshed (no games found)"..diag, "warn")
+            -- Translate the sentence, THEN append the diagnostic. Concatenating
+            -- first defeats add()'s exact-key lookup and threw away the translation
+            -- this string already has in all six languages. The diag tail stays
+            -- English on purpose: raw mount rc codes and counters (README rule 3).
+            UI.Notif_queue.add(PLDR.L("HDD list refreshed (no games found)")..diag, "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
@@ -4064,10 +4138,14 @@ UI = {
             -- diagnostic. (nil return = not an HDD boot -> no toast.)
             if type(PLDR.ProbeHddSettingsWrite) == "function" then
               local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
+              -- Formattable keys, not concatenation: this fires on EVERY Settings
+              -- save with the HDD loaded, so it is one of the most-seen toasts on
+              -- an HDD rig -- and built by `..` it could never match a table key.
+              -- The %s is only ever "__.POPS" or "__.POPS0".."9", so it stays as-is.
               if hdd_w_ok == true then
-                UI.Notif_queue.add("__.POPS partition "..tostring(hdd_w_info).." accepts writes (game-partition RW test)", "ok")
+                UI.Notif_queue.add(PLDR.LFmt("__.POPS partition %s accepts writes (game-partition RW test)", tostring(hdd_w_info)), "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add("HDD game-partition write test FAILED ("..tostring(hdd_w_info)..")", "warn")
+                UI.Notif_queue.add(PLDR.LFmt("HDD game-partition write test FAILED (%s)", tostring(hdd_w_info)), "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
@@ -4105,7 +4183,12 @@ UI = {
             elseif reason == "smb_apply_failed" then
               UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
-              UI.Notif_queue.add(PLDR.L("Couldn't save settings").."\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              -- One formattable key for the whole sentence rather than a translated
+              -- head with a bare English " may be read-only" welded on: Hungarian
+              -- needs to put the path somewhere other than in front of the predicate,
+              -- and a dangling suffix fragment cannot express that. The mx4sio probe
+              -- tail stays English (technical diagnostic, README rule 3).
+              UI.Notif_queue.add(PLDR.LFmt("Couldn't save settings\n%s may be read-only", tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs"))..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -5659,13 +5742,17 @@ UI = {
                       diag = string.format("\n%d part, %d files, %d VCD",
                                tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
                       if (tonumber(d.hidden) or 0) > 0 then
-                        diag = diag..string.format(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                        diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
                       elseif (tonumber(d.collapsed) or 0) > 0 then
-                        diag = diag..string.format(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                        diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
                       end
                     end
                   end
-                  UI.Notif_queue.add("No games found on hdd0:"..diag, "warn")
+                  -- Translate the sentence, THEN append the diagnostic (README rule
+                  -- 3 keeps rc codes and counters English). EXP33 swapped the static
+                  -- second line for this runtime diag and orphaned the six-language
+                  -- translation of the old two-line key; the key is now the sentence.
+                  UI.Notif_queue.add(PLDR.L("No games found on hdd0:")..diag, "warn")
                 end
               else
                 UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")

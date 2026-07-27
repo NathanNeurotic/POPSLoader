@@ -1,4 +1,4 @@
-POPSLDR_VER = "v1.1.1-dev-EXP72"
+POPSLDR_VER = "v1.1.1-dev-EXP73"
 
 --- Processes a HDD full path into its components.
 --- Supports both explicit PFS paths (`hdd0:__system:pfs:/osd110/hosdsys.elf`)
