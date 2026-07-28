@@ -7098,6 +7098,19 @@ end
 -- if-changed to spare the memory card. Called on every settings commit so the .DAT always
 -- track the saved settings -- even if the modules were installed or the files removed out
 -- of band (the install/remove path itself still owns the full pack via Apply/RemoveSmbModules).
+-- Are the SMB modules ACTUALLY on the memory card? PLDR.SMB_MODULES is only a saved
+-- preference, and it can outlive the files: a failed or partial install, a card swap,
+-- a user tidying mc0:/POPSTARTER by hand. SyncSmbDat already tests the filesystem
+-- before it will write SMBCONFIG.DAT, so the launch gate must test the same thing or
+-- the two disagree and a launch is allowed that POPStarter cannot complete (#560).
+-- smbman.irx is the marker SyncSmbDat itself uses; keep them on the same check.
+function PLDR.AreSmbModulesStaged()
+  if type(doesFileExist) ~= "function" then return PLDR.SMB_MODULES == true end
+  local ok, present = pcall(doesFileExist, POPSTARTER_PACK_ROOT.."/smbman.irx")
+  if not ok then return PLDR.SMB_MODULES == true end   -- probe failed: don't block on a guess
+  return present == true
+end
+
 function PLDR.SyncSmbDat()
   if not doesFileExist(POPSTARTER_PACK_ROOT.."/smbman.irx") then
     return false

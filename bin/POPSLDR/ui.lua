@@ -3563,7 +3563,17 @@ UI = {
             -- anywhere" warns (R3Z3N).
             local message
             if configured_popstarter_path == "" then
-              message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+              -- Name the places we ACTUALLY probed. On the SMB page we deliberately
+              -- do NOT read POPSTARTER.ELF from the share (system.lua
+              -- ResolveDeviceLocalPopstarter refuses any smb: root), so the generic
+              -- "checked the game device" wording was a lie there -- issue #560, where
+              -- it sent a tester to put the file in his share twice, in the one place
+              -- the ladder will never look.
+              if UI.CURSCENE == UI.SCENES.GSMBNET then
+                message = "No POPSTARTER.ELF found\nPOPSTARTER is never read from the share -- put it in mc0:/POPSTARTER/,\nor beside POPSLOADER.ELF, or set Settings > POPSTARTER Path"
+              else
+                message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+              end
             else
               message = PLDR.L("No POPSTARTER found at this path").."\n"..configured_popstarter_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
@@ -3587,10 +3597,26 @@ UI = {
           -- installed. Browsing works WITHOUT it (the menu has its own embedded
           -- stack), so without this gate a launch fails in-game with zero
           -- explanation.
-          if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
-            unpaint()
-            UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
-            return
+          -- Gate on the FILE, not just the setting. PLDR.SMB_MODULES is a saved
+          -- preference; PLDR.SyncSmbDat tests `smbman.irx` actually being on the card
+          -- before it will write SMBCONFIG.DAT. Those two can disagree -- a setting
+          -- left true after a failed or partial install, or a card swapped out -- and
+          -- when they do, this gate waved the launch through while SyncSmbDat silently
+          -- no-op'd, handing POPStarter the placeholder SMBCONFIG.DAT the repo ships
+          -- ("SMBip:SMBport SMBshareNAME"). The result is a launch that dies partway
+          -- into loading with no explanation, which is issue #560's second symptom.
+          if UI.CURSCENE == UI.SCENES.GSMBNET then
+            local modules_staged = (type(PLDR.AreSmbModulesStaged) == "function")
+              and PLDR.AreSmbModulesStaged() or (PLDR.SMB_MODULES == true)
+            if not modules_staged then
+              unpaint()
+              if PLDR.SMB_MODULES == true then
+                UI.Notif_queue.add("SMB modules are missing from the memory card\nThe setting is on but the files are not there --\nre-install via Settings > SMB modules, then Save", "error")
+              else
+                UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
+              end
+              return
+            end
           end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
