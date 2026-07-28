@@ -176,7 +176,7 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 
 ### SMB / Network
 
-Browse and launch PS1 games from an **SMBv1** network share via the **SMB** carousel entry. Networking is **lazy**: nothing network-related runs at boot; the stack comes up only when you open the SMB page. *(New feature — validating on hardware.)*
+Browse and launch PS1 games from an **SMBv1** network share via the **SMB** carousel entry. Networking is **lazy**: nothing network-related runs at boot; the stack comes up only when you open the SMB page. *(Browsing and launching are confirmed working on a **static** IP setup. **DHCP** needs a build newer than `bb62f2be` — earlier builds deleted the address file POPStarter depends on, so a DHCP setup would list games and then fail to boot them.)*
 
 | Setting | Default | What it does |
 | :--- | :--- | :--- |
@@ -271,7 +271,7 @@ Planned for subsequent updates:
 *   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
-*   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **validating on hardware**.
+*   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **browse + launch hardware-confirmed on a static IP config**; the DHCP path was fixed in `bb62f2be` and is not yet confirmed.
 *   **`i.Link`** menu flow: currently surfaces as "Not Implemented Yet" until feature work lands.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.

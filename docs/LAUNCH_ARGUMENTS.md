@@ -84,7 +84,8 @@ Boots straight into launching a game. Requires **both** `-page=` and
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
 toast describing what happened. **SMB:** SMB (v1) network browsing is
-implemented (CI + Rolling green, validating on hardware). `-page=smb` opens
+implemented (CI + Rolling green; browse + launch hardware-confirmed on a
+static IP config, DHCP path fixed in `bb62f2be` and unconfirmed). `-page=smb` opens
 the SMB page (scene `GSMBNET`), which brings up the network stack lazily and
 opens the configured share before scanning its POPS folder for VCD games.
 `-page=smb -game=...` is **not** implemented: auto-launch has no SMB branch

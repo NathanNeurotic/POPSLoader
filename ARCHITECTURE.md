@@ -251,7 +251,7 @@ CONFIRM dispatches by OPT index inside the CONFIRM handler (`ui.lua:4148-4322`):
 | 4 | HDD (PFS) | `LoadHDDModules` + deps + `BuildGameList` -> `GHDD` |
 | 5 | USB | `ensureUsbMass` + `BuildMassGameListByType` -> `GUSBFAT` |
 | 6 | i.Link | **stub** (`ui.lua:4318`) |
-| 7 | SMB (v1) | `InitSMBPopsRoot` (lazy connect + share scan) + `GetPS1GameLists` -> scene `GSMBNET` (`ui.lua:4320`) — *implemented, CI+Rolling green, validating on hardware* |
+| 7 | SMB (v1) | `InitSMBPopsRoot` (lazy connect + share scan) + `GetPS1GameLists` -> scene `GSMBNET` (`ui.lua:4320`) — *implemented, CI+Rolling green; browse + launch hardware-confirmed on a static IP config, DHCP path fixed in `bb62f2be` and unconfirmed* |
 | 8 | Disc (DKWDRV) | open DKWDRV modal |
 
 `UI.RunBusyTask` (`ui.lua:715`) wraps every device-load worker in `pcall`
