@@ -1612,6 +1612,48 @@ t41 = E('''function()
 end''')()
 check("T41 PLDR.LFmt translates the template and survives a malformed translation", t41)
 
+
+
+# T42: L3 must HIDE a game while "Hidden games = Hidden" is set.
+#
+# sAGA, rolling 2026-07-27: "When Hidden Games=Visible, the hiding function is working
+# good. When Hidden Games=Hidden, the function is not working."
+#
+# The L3 handler refused outright whenever GLOBAL_HIDE was on without an R3 reveal and
+# told the user to press R3 "to unhide". But the scan drops hidden entries when
+# GLOBAL_HIDE is on (system.lua: `if not (PLDR.GLOBAL_HIDE and is_hidden)`), so every
+# game still on screen is VISIBLE and the only action available is HIDE -- the one thing
+# the guard blocked. The refusal only ever made sense for an already-hidden entry.
+#
+# Second half: once hidden, the entry is filtered out of this very list, so the list must
+# rebuild or the toast reads "Game hidden" while the row sits there unchanged, which a
+# tester cannot tell apart from a no-op. UI.Pad.Events.R1 cannot be raised from here --
+# the R1 handlers run ABOVE this block and the event table is cleared every frame -- so
+# the fix uses the existing deferred UI.PendingHideRebuild flag.
+#
+# This asserts against the SOURCE, not a restatement of the logic: a test that models the
+# predicate separately would keep passing after a revert, which is the failure mode that
+# let EXP72 ship broken at a green 39/39.
+_ui = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_t42_ok, _t42_why = True, ""
+_old_guard = "if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then"
+if _old_guard in _ui:
+    _t42_ok, _t42_why = False, "the blanket L3 guard is back: it refuses to hide a VISIBLE game whenever Hidden games = Hidden"
+elif "UI.RevealHidden ~= true and l3_hidden then" not in _ui:
+    _t42_ok, _t42_why = False, "the L3 guard no longer narrows on the selected entry being hidden"
+elif _ui.count("UI.PendingHideDrop = entry") != 2:
+    _t42_ok, _t42_why = False, ("expected 2 UI.PendingHideDrop raises (HDD hide + removable hide), found %d"
+                                % _ui.count("UI.PendingHideDrop = entry"))
+elif "table.remove(PLDR.GAMES, i)" not in _ui:
+    _t42_ok, _t42_why = False, "the hidden row is never dropped from PLDR.GAMES, so it stays on screen"
+elif _ui.index("UI.PendingHideDrop ~= nil") > _ui.index("local ammount = #PLDR.GAMES"):
+    _t42_ok, _t42_why = False, ("the drop is consumed AFTER `local ammount = #PLDR.GAMES`, so the frame "
+                                "runs with a stale count and can index past the shortened list")
+elif "(not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true" not in _ui:
+    _t42_ok, _t42_why = False, "the post-hide rebuild is not conditioned on the entry actually becoming filtered out"
+check("T42 L3 hides a visible game while Hidden games = Hidden, and the list rebuilds",
+      _t42_ok, _t42_why)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

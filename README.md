@@ -221,6 +221,19 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ---
 
+## Loading extra IRX drivers
+
+At boot POPSLoader loads **every `.irx` file sitting in its own folder**, next to `POPSLOADER.ELF`, in directory order. If it finds none there it then tries an `IRX/` subfolder. That is how you add a driver POPSLoader does not ship — put the `.irx` beside the ELF and it is loaded.
+
+There is no allow-list and no prompt, so **anything** with an `.irx` extension in that folder is loaded, whether or not you meant it. Two consequences worth knowing:
+
+*   Keep the folder tidy. A driver you copied there once to test is still being loaded every boot, months later.
+*   A driver that hangs waiting on hardware you do not have will hang the boot. The most common way to hit this is running POPSLoader from a **downloads folder** that still contains loose drivers, or under an **emulator** where the hardware a driver probes is only a stub. If POPSLoader boots on a real console but hangs in an emulator, move the loose `.irx` files out of the folder and try again — that is the first thing to check.
+
+Use the `IRX/` subfolder if you want the drivers kept but not tangled up with whatever else lands in your download directory.
+
+---
+
 ## Troubleshooting
 
 ### Game does not appear in the menu list
