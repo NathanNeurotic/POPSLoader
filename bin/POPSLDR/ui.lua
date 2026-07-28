@@ -3031,6 +3031,23 @@ UI = {
           UI.Footer.Draw(labels, order)
           return
         end
+        -- A game hidden under "Hidden games = Hidden" must leave THIS list, or the
+        -- "Game hidden" toast fires while the row sits there looking untouched, which
+        -- is indistinguishable from the feature not working (sAGA, rolling 2026-07-27).
+        -- Dropped LOCALLY rather than by raising R1: the R1 rescan re-initialises the
+        -- whole device -- SMB logs out and back in, MMCE re-detects, APA remounts --
+        -- then resets the cursor to the top and fires a second toast, all to remove one
+        -- row. Consumed HERE, immediately before `ammount` is taken, so the CLAMP just
+        -- below repairs the cursor and nothing this frame ever sees a stale count.
+        -- Matched by entry IDENTITY, so a flag that somehow outlives the page simply
+        -- finds nothing on the next device's list and clears itself.
+        if UI.PendingHideDrop ~= nil then
+          local drop = UI.PendingHideDrop
+          UI.PendingHideDrop = nil
+          for i = #PLDR.GAMES, 1, -1 do
+            if PLDR.GAMES[i] == drop then table.remove(PLDR.GAMES, i); break end
+          end
+        end
         local ammount = #PLDR.GAMES
         if ammount <= 0 then
           UI.GameList.CURR = 1
@@ -3373,6 +3390,7 @@ UI = {
           end
           UI.RevealHidden = false
           PLDR._GLOBAL_HIDE_SAVED = nil
+          UI.PendingHideDrop = nil   -- never carry a pending row-drop to another device
           UI.SceneChange(UI.SCENES.MMAIN)
         end
         if ammount > 0 then
@@ -3801,7 +3819,18 @@ UI = {
           end
         end
         if UI.Pad.Events.L3 and ammount > 0 then
-          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+          -- Refuse ONLY when the selected game is already hidden, i.e. the user is
+          -- trying to unhide something the filter is keeping off screen. With
+          -- GLOBAL_HIDE on, the scan drops hidden entries outright (system.lua:
+          -- `if not (PLDR.GLOBAL_HIDE and is_hidden)`), so every game still ON SCREEN
+          -- is visible and the only action possible is HIDE. The old blanket guard
+          -- blocked exactly that and then advised about unhiding, so with
+          -- *Hidden games = Hidden* the L3 hide did nothing at all (sAGA, rolling
+          -- 2026-07-27). The refusal is kept as a safety net for a list that somehow
+          -- still carries a hidden entry; in the normal filtered case it is unreachable.
+          local l3_entry = PLDR.GAMES[UI.GameList.CURR]
+          local l3_hidden = (type(PLDR.IsGameHidden) == "function") and PLDR.IsGameHidden(l3_entry) == true
+          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true and l3_hidden then
             UI.Notif_queue.add("Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
             local entry = PLDR.GAMES[UI.GameList.CURR]
@@ -3809,6 +3838,14 @@ UI = {
             local ok, reason = PLDR.SetHddGameHidden(entry, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- The game is now filtered out of this very list, so rebuild or the toast
+              -- says "Game hidden" while the entry sits there looking untouched -- which
+              -- is indistinguishable from the feature being broken. Deferred through the
+              -- existing flag because the R1 handlers run ABOVE this block and
+              -- UI.Pad.Events is cleared every frame, so raising R1 here would be lost.
+              if (not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+                UI.PendingHideDrop = entry
+              end
             else
               UI.Notif_queue.add(PLDR.L("Couldn't write .hide to the HDD").." ("..tostring(reason or "")..")\n"..PLDR.L("You can still add a \"<game>.hide\" next to the .VCD from a PC."), "warn")
             end
@@ -3819,6 +3856,14 @@ UI = {
             local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- Same rebuild as the HDD branch: with the hide filter on, the entry we
+              -- just hid must actually leave the list, or nothing visibly happened.
+              -- Dropped on the NEXT frame (see the consumer above `local ammount`),
+              -- so the cache save just below still sees the entry present and records
+              -- it as hidden rather than losing the game from the cache entirely.
+              if (not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+                UI.PendingHideDrop = entry
+              end
               -- Keep the opt-in per-device cache coherent: its H-records (written at
               -- scan time) would otherwise revert this hide on the next page re-entry,
               -- since a cache HIT never re-reads the live .hide. Re-save with the

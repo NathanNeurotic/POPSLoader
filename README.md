@@ -115,7 +115,6 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Circle (O)** | Go back to the Main Menu / Cancel (Cross on a Japanese-ROM console) |
 | **Start** | Open Settings |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art). Works on the device list and the game lists; on the Settings page use *Display → Hide UI Text* instead. |
-| **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
 | **R3 (right stick click)** | Reveal / re-hide this device's hidden games — a **temporary view for this session only**. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Nothing is saved: the persisted setting lives in *Settings → Game List → Hidden games* and comes back in force when you leave the page or reboot. |
@@ -157,8 +156,8 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
 | **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
-| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). The `.txt` lives in the same fixed top-level `ART/` folder as the cover, and the disc-marker-stripped name is tried first so one file serves every disc of a multi-disc game. Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
-| **Cover art** | **On** (default) · Off | Draws each game's cover in the preview box beside the list. **Off** shows the plain jewel-case placeholder instead. Covers are always read from one fixed place — a top-level `<device>:/ART/` folder, named `<name>_COV.png` (the OPL convention) — with no folder choice and no fallback. The folder is read **once** and remembered, so a missing cover is instant and never stalls browsing. The internal HDD keeps its fixed `__common/POPS/ART/` layout. |
+| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). The `.txt` lives in the same fixed top-level `ART/` folder as the cover and is named after the **exact** game filename, so a multi-disc game needs one `.txt` per disc. (The internal PFS HDD is the one exception: there the disc-marker-stripped name is still tried first.) Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
+| **Cover art** | **On** (default) · Off | Draws each game's cover in the preview box beside the list. **Off** shows the plain jewel-case placeholder instead. Covers are always read from one fixed place — a top-level `<device>:/ART/` folder, named `<name>_COV.png` (the OPL convention) — with no folder choice and no fallback. Each cover is fetched by a background worker, so browsing never stalls waiting on the card, and a cover that genuinely is not there is remembered as missing and not looked for again that session. The internal HDD keeps its fixed `__common/POPS/ART/` layout. |
 | **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO **and the internal HDD (PFS)** save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
 
 ### Other settings
@@ -169,9 +168,9 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
 - **Boot sound** — **On** (default) / Off. Plays the startup chime over the boot splash. Turn it **Off** for a silent boot. (Hardware-confirmed to save and survive a reboot.)
 - **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE** / **ATA** (`exFAT-HDD (ata)` — an internal SATA/IDE drive formatted exFAT; *new, validating on hardware*). The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
-- **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. The USB page can't tell FAT32 from exFAT drives, so there your saved **BDMA Mode** decides: `exFAT-USB` keeps the exFAT drivers for USB launches, anything else means your USB drive is FAT32 (drivers removed, POPStarter's built-in stack used). Default **Off**.
+- **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. With Adaptive BDMA on, USB launches always stage the exFAT-USB pair (`USBEXFAT`). That pair reads FAT32 drives too, so one variant plays every USB stick and nothing has to guess the filesystem. Using POPStarter's own built-in FAT32 stack is a manual-only choice now: set **BDMA Mode** to `FAT32` with Adaptive **Off**. Default **Off**.
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on (or while Adaptive BDMA is on), and you can't enable either while this folder is off.
-- **Hide UI Text** — **On/Off**; clears on-screen text for a clean cover-art view (also toggled with **Select**).
+- **Hide UI Text** — **On** (default) / Off; clears on-screen text for a clean cover-art view (also toggled with **Select**). It ships **On**, so a fresh install starts with the on-screen text hidden.
 - **Keyboard Layout** — on-screen keyboard layout for the path editor: **QWERTY** (default) / DVORAK / ABC / AZERTY / QWERTZ / ABNT. This is the only place the layout is chosen; the keyboard itself no longer carries a layout strip.
 - **Credits** — *Settings → About → Credits*. (It used to be a Triangle shortcut advertised in every footer.)
 
@@ -222,6 +221,19 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ---
 
+## Loading extra IRX drivers
+
+At boot POPSLoader loads **every `.irx` file sitting in its own folder**, next to `POPSLOADER.ELF`, in directory order. If it finds none there it then tries an `IRX/` subfolder. That is how you add a driver POPSLoader does not ship — put the `.irx` beside the ELF and it is loaded.
+
+There is no allow-list and no prompt, so **anything** with an `.irx` extension in that folder is loaded, whether or not you meant it. Two consequences worth knowing:
+
+*   Keep the folder tidy. A driver you copied there once to test is still being loaded every boot, months later.
+*   A driver that hangs waiting on hardware you do not have will hang the boot. The most common way to hit this is running POPSLoader from a **downloads folder** that still contains loose drivers, or under an **emulator** where the hardware a driver probes is only a stub. If POPSLoader boots on a real console but hangs in an emulator, move the loose `.irx` files out of the folder and try again — that is the first thing to check.
+
+Use the `IRX/` subfolder if you want the drivers kept but not tangled up with whatever else lands in your download directory.
+
+---
+
 ## Troubleshooting
 
 ### Game does not appear in the menu list
@@ -239,9 +251,9 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ### Cover art is not showing up
 *   Check that the cover image is in `.png` format.
-*   **This is the most common reason art does not appear after updating.** The PNG filename must match the `.VCD` game filename with the OPL `_COV` suffix (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot_COV.png`). For a multi-disc game, the disc-marker-stripped name (`Crash Bandicoot_COV.png`) is tried first so one cover serves every disc; an exact per-disc name still works.
+*   **This is the most common reason art does not appear after updating.** The PNG filename must match the `.VCD` game filename with the OPL `_COV` suffix (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot_COV.png`). Only the exact game filename is tried, so a multi-disc game needs one cover **per disc** (`Game (Disc 1)_COV.png`, `Game (Disc 2)_COV.png`). A single shared cover for the whole set no longer works.
 *   Place the cover in a top-level **`ART/`** folder at the device root. That is the only location that is read; there is no setting and no fallback, so a cover in `POPS/` or `POPS/ART/` will not show. On the internal HDD covers live in `__common/POPS/ART/`.
-*   Confirm cover-art preview is enabled — press **Square (□)** in the game list to toggle it.
+*   Confirm cover-art preview is enabled in *Settings → Game List → Cover art* (default **On**). Square is not bound in the game list.
 *   For best compatibility and performance, use 200x200 pixel images.
 
 ### BOOT.ELF exit option fails or hangs
@@ -288,7 +300,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Development & Building
 
-GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `dev` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `dev`. Pull-request events build and run the same gates but no longer publish: the publish step is gated on `github.event_name == 'push'` (PR #511, 2026-07-16). CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
 
 POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 

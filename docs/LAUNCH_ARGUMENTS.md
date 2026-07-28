@@ -35,7 +35,7 @@ page:
 
 | Page | Accepted values |
 | --- | --- |
-| **HDD (exFAT)** (BDMA ATA) | `ata`, `ata0`, `ataN` |
+| **HDD (exFAT)** (BDMA ATA) | `exfat`, `ata`, `ata0`, `ataN` |
 | **HDD (PFS)** (APA) | `hdd`, `hdd0`, `pfs`, `apa`, `apa0` |
 | **USB** | `usb`, `mass` |
 | **MC** | `mc`, `memcard` *(accepted but not navigable — there is no standalone Memory Card page; standard PS2 memory cards are not a separate carousel device)* |
@@ -79,7 +79,7 @@ Boots straight into launching a game. Requires **both** `-page=` and
 | MX4SIO | `<FILE>` relative to `mx4sio:/POPS` |
 | MMCE | `<FILE>` relative to `mmce0:/POPS` |
 | HDD (exFAT) | `<FILE>` relative to `mass:/POPS` (use `-page=ata`) |
-| SMB | `<FILE>` relative to the share's `POPS` folder — POPSLoader hands off to POPStarter with the `smb:/POPS/SB.<name>.ELF` selector |
+| SMB | **not wired** — `-page=smb` opens the SMB page for browsing, but there is no SMB branch in `PLDR.AutoLaunchFromLaunchArgs`; `-game=` on the SMB page toasts "Auto-launch page not supported: SMB" (`system.lua:9368-9372`) and falls back to the main menu |
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
@@ -87,8 +87,9 @@ toast describing what happened. **SMB:** SMB (v1) network browsing is
 implemented (CI + Rolling green, validating on hardware). `-page=smb` opens
 the SMB page (scene `GSMBNET`), which brings up the network stack lazily and
 opens the configured share before scanning its POPS folder for VCD games.
-`-page=smb -game=...` auto-launches a title from the share (see the
-auto-launch table above).
+`-page=smb -game=...` is **not** implemented: auto-launch has no SMB branch
+(`system.lua:9368-9372`), so it toasts "Auto-launch page not supported: SMB"
+and drops to the main menu. Use `-page=smb` and pick the game manually.
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:

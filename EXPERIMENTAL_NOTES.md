@@ -2,13 +2,41 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP69**. The check is simple: a version ending in **-EXP69** = this build; **-EXP68** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP74**. The check is simple: a version ending in **-EXP74** = this build; **-EXP73** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP69, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP73, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP74: hiding games works when the list is set to hide them
+
+Reported by sAGA on the 0727 rolling build. With *Settings, Game List, Hidden games* set to **Hidden**, pressing **L3** on a game did nothing at all. With it set to **Visible** it worked fine.
+
+The reason: when the setting is **Hidden**, the launcher already leaves hidden games out of the list, so every game you can see is one that is NOT hidden. The only thing L3 can do there is hide something. The check that was supposed to stop you from unhiding a game you cannot see was stopping that instead, and then telling you to press R3, which is advice for a completely different situation.
+
+Two things changed. L3 now hides a game whatever that setting is, and once you hide it the game leaves the list straight away so you can see it worked. Before, even after the block was gone, the message said "Game hidden" while the game sat there looking untouched, which is impossible to tell apart from nothing happening.
+
+Please check:
+
+* With *Hidden games* set to **Hidden**, press L3 on a game. It should say "Game hidden" and the game should disappear from the list immediately.
+* The cursor should stay roughly where it was. It should NOT jump back to the top of the list.
+* Press R3 to reveal the hidden games, then L3 on one to unhide it. That should still work exactly as before.
+* With *Hidden games* set to **Visible**, hiding should behave exactly as it always has: the game stays in the list and goes dim. It should NOT vanish in that mode.
+* Try it on every device you use. Please say which ones you tested.
+
+## New in EXP73: game details, and messages that were stuck in English
+
+**Game details actually appear now.** The previous build claimed to fix this and did not. Worse, it also broke details for games that DO have cover art, which had been working. If you tried the details feature on EXP72 and saw nothing, that was this.
+
+Turn it on at *Settings, Game List, Game details* (it is **Off** by default) and leave *Cover art* on, then check three cases: a game with cover art and a .txt file, a game with only a .txt file, and a game with neither. Also scroll quickly through a folder of mixed games and make sure a game never shows another game's text.
+
+The .txt goes next to the cover, in the top level ART folder on your drive, named exactly like the game file.
+
+**Messages that would not translate.** A batch of on screen messages was being put together in a way that threw the translation away before it was looked up, so they stayed English even though a translation existed. On the HDD page the "no games found" and "list refreshed" messages should now appear in your language. The launch failure screen is translated too, and it now names the correct button for your console instead of always saying X and O.
+
+If any message shows a raw %s, or a message you expected does not appear at all, please report the language and the exact screen.
 
 ## New in EXP69: the winners' recipe, properly this time
 

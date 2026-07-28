@@ -126,12 +126,19 @@ def check_removed_behaviour():
         if txt is None:
             continue
         for phrase, why in REMOVED_BEHAVIOUR:
-            for i, line in enumerate(txt.split("\n"), 1):
+            lines = txt.split("\n")
+            for i, line in enumerate(lines, 1):
                 if phrase in line:
                     # A line that explicitly marks it as removed/historical is fine.
-                    low = line.lower()
-                    if any(w in low for w in ("removed", "no longer", "was ", "used to",
-                                              "gone", "deleted", "superseded")):
+                    # Look at a small WINDOW, not just the one line: prose in these docs
+                    # is hard-wrapped, so "...caption and its state / were REMOVED (EXP42)"
+                    # puts the phrase and its disclaimer on different physical lines. That
+                    # cost a false positive on COMPONENTS.md for as long as this check
+                    # existed, and a checker that cries wolf gets ignored.
+                    window = " ".join(lines[max(0, i - 2):i + 2]).lower()
+                    if any(w in window for w in ("removed", "no longer", "was ", "used to",
+                                                 "gone", "deleted", "superseded",
+                                                 "not selectable", "fixed, not")):
                         continue
                     fail("removed-behaviour",
                          "%s:%d still presents removed behaviour as current -- %s\n      %s"
@@ -181,8 +188,13 @@ def check_harness_count():
     if h is None:
         fail("harness-count", "tools/host_harness.py not found")
         return
-    actual = len(re.findall(r'^check\(', h, re.M))
-    note("harness-count", "host_harness.py has %d check() calls" % actual)
+    # Count DISTINCT test names, not lines starting with check(. Two of the calls sit
+    # indented inside a try/except and share one name (only one of the pair ever fires),
+    # so a `^check\(` regex reported 40 while the harness printed 41/41 -- close enough
+    # to slip under the +-1 tolerance below, which is exactly how a drifting count hides.
+    names = set(re.findall(r'check\(\s*"((?:[^"\\]|\\.)*)"', h))
+    actual = len(names)
+    note("harness-count", "host_harness.py runs %d distinct checks" % actual)
     for rel in ("STATE.md", "AGENTS.md", "CONTRIBUTING.md", "TESTING.md"):
         txt = read(rel)
         if txt is None:

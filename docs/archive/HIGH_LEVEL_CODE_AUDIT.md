@@ -5,7 +5,7 @@
 **Auditor:** Antigravity (AI)
 **Scope:** Read-only survey of checked-out source. No source changes made.
 
-> **Historical note (2026-05-28):** This audit is a snapshot from before the BETA-10-5 release (tagged 2026-05-27 at `9a0ebe2`) and before the post-release PRs #470 (LAUNCH_ARGS consumers), #472 (MX4SIO evidence-based classification), and #473 (Lua forward-reference hotfix). Some of the "Findings" and "Recommended Next Steps" below have since been acted on. Treat this file as **historical reference**; the current state lives in [STATE.md](../STATE.md), [TRUTHSHEET.md](../TRUTHSHEET.md), and [QA_REGRESSION_MATRIX.md](../QA_REGRESSION_MATRIX.md).
+> **Historical note (2026-05-28):** This audit is a snapshot from before the BETA-10-5 release (tagged 2026-05-27 at `9a0ebe2`) and before the post-release PRs #470 (LAUNCH_ARGS consumers), #472 (MX4SIO evidence-based classification), and #473 (Lua forward-reference hotfix). Some of the "Findings" and "Recommended Next Steps" below have since been acted on. Treat this file as **historical reference**; the current state lives in [STATE.md](../../STATE.md), [TRUTHSHEET.md](TRUTHSHEET.md), and [QA_REGRESSION_MATRIX.md](../../QA_REGRESSION_MATRIX.md).
 
 ---
 
