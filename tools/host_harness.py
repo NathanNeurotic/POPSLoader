@@ -1654,6 +1654,63 @@ elif "(not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true" not in 
 check("T42 L3 hides a visible game while Hidden games = Hidden, and the list rebuilds",
       _t42_ok, _t42_why)
 
+
+# T43: IPCONFIG.DAT must NEVER be deleted, and on DHCP must carry a real address.
+#
+# Issue #560 (elvengf): SMB games listed but the launch died right after the loader's
+# last frame. Root cause, confirmed by the maintainer: POPStarter has NO DHCP of its own.
+# It needs a literal address in mc?:/POPSTARTER/IPCONFIG.DAT or it has no network at all.
+#
+# RenderSmbIpconfig returned nil on DHCP and SyncSmbDat turned nil into DeleteIfExists,
+# on the assumption that "absent" meant "lease it yourself". Since DHCP is the SHIPPED
+# DEFAULT, the default config browsed fine on the menu's own lease (our stack does DHCP)
+# and then handed POPStarter nothing. That asymmetry -- browse works, launch dies -- is
+# exactly the reported symptom, and it would hit nearly every user, which is consistent
+# with SMB launching never once having been confirmed working on hardware.
+#
+# Guarded here because the delete looks correct in isolation: "on DHCP there should be no
+# static IP file" reads as obviously right, and the recovered POPStarter docs mention DHCP
+# ZERO times across all 60 wiki pages, so nothing in-repo contradicts it. Only the
+# maintainer's knowledge of POPStarter's runtime settles it. A future reader WILL be
+# tempted to reinstate the delete.
+_sys43 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_ui43 = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_c43 = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+
+_i = _sys43.find("function PLDR.SyncSmbDat()")
+_sync_body = _sys43[_i:_sys43.find("\nfunction ", _i + 1)] if _i != -1 else ""
+
+_t43_ok, _t43_why = True, ""
+if _i == -1:
+    _t43_ok, _t43_why = False, "PLDR.SyncSmbDat is gone"
+elif "if cfg.DHCP == true then return nil end" in _sys43:
+    _t43_ok, _t43_why = False, ("RenderSmbIpconfig bails to nil on DHCP again -- POPStarter cannot "
+                                "lease an address, so this strands it with no network")
+elif "DeleteIfExists" in _sync_body:
+    _t43_ok, _t43_why = False, ("SyncSmbDat deletes a .DAT again; an absent IPCONFIG.DAT means "
+                                "POPStarter has no network and the launch dies silently")
+elif "System.smbGetIPConfig" not in _sys43:
+    _t43_ok, _t43_why = False, "RenderSmbIpconfig no longer asks the live stack for the leased address"
+elif '{"smbGetIPConfig",' not in _c43:
+    _t43_ok, _t43_why = False, "System.smbGetIPConfig is not registered in luasystem.cpp"
+elif 'POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"' in _sync_body:
+    _t43_ok, _t43_why = False, ("SyncSmbDat writes to the resolved-root-by-card-presence again "
+                                "instead of the root actually holding the pack")
+elif '"mc1:/POPSTARTER"' not in _sys43 or "ResolveStagedPackRoot" not in _sys43:
+    _t43_ok, _t43_why = False, ("the staged-pack probe no longer checks both cards; POPStarter reads "
+                                "mc0 with a per-file mc1 fallback, so an mc1 install is real")
+else:
+    # The sync must run on the ORDINARY connect (where the lease exists), not only in the
+    # blank-Share picker branch. Without this the fix never fires for anyone whose Share
+    # is already configured -- i.e. everyone past first-run.
+    _sc = _ui43.find("UI.SceneChange(UI.SCENES.GSMBNET)")
+    _sy = _ui43.find("pcall(PLDR.SyncSmbDat)")
+    if _sc == -1 or _sy == -1 or _sy > _sc:
+        _t43_ok, _t43_why = False, ("SyncSmbDat no longer runs on a successful connect before entering "
+                                    "the SMB scene, so the leased address never reaches the card")
+check("T43 IPCONFIG.DAT is never deleted and carries the leased address on DHCP",
+      _t43_ok, _t43_why)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

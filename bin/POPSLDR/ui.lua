@@ -6538,7 +6538,11 @@ function UI.RunSmbConnectFlow()
   -- Browsing works without the mc:/POPSTARTER SMB pack (the menu has its own
   -- embedded stack), but LAUNCHING doesn't -- warn up front (browse stays usable;
   -- the launch dispatch enforces the hard gate).
-  if type(PLDR) == "table" and PLDR.SMB_MODULES ~= true then
+  -- Test the filesystem, not the saved preference, so this warning and the hard launch
+  -- gate can never disagree (both now go through PLDR.AreSmbModulesStaged).
+  local modules_staged = (type(PLDR) == "table" and type(PLDR.AreSmbModulesStaged) == "function")
+    and PLDR.AreSmbModulesStaged() or (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
+  if type(PLDR) == "table" and not modules_staged then
     UI.Notif_queue.add("SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first", "warn")
   end
   local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
@@ -6581,6 +6585,13 @@ function UI.RunSmbConnectFlow()
           UI.Notif_queue.add("Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS", "warn")
         end
       end
+      -- Refresh the in-game .DAT now that the interface is actually up. On DHCP this
+      -- is the ONLY moment a real address exists to write: POPStarter cannot lease one
+      -- itself, and the boot-time backfill runs long before the network comes up. The
+      -- share-picker branch below also syncs, but that only fires when Share was blank
+      -- -- the ordinary "share already configured" path reached the launch with a stale
+      -- or absent IPCONFIG.DAT. Write-if-changed, so this is a no-op once it's current.
+      pcall(PLDR.SyncSmbDat)
       UI.SceneChange(UI.SCENES.GSMBNET)
       entered = true
     end, "Failed to connect to SMB")

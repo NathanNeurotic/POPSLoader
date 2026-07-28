@@ -2006,6 +2006,51 @@ static int SmbApplyIPConfig(int dhcp, const unsigned char ip[4], const unsigned 
 	return 0;
 }
 
+// Dotted-quad from an lwip ip4_addr. Byte-indexed, exactly as lwip's own ip4_addr1..4
+// macros do it, so this is endian-independent rather than relying on a u32 shift.
+static void SmbFormatIp(const void *addr, char *out, size_t n)
+{
+	const unsigned char *b = (const unsigned char *)&((const struct ip4_addr *)addr)->addr;
+	snprintf(out, n, "%u.%u.%u.%u",
+	         (unsigned)b[0], (unsigned)b[1], (unsigned)b[2], (unsigned)b[3]);
+}
+
+// System.smbGetIPConfig() -- the interface's CURRENT address, after DHCP has bound
+// (or as statically set). Returns ip, netmask, gateway as dotted strings, or nil when
+// the stack isn't up yet or holds no address.
+//
+// WHY THIS EXISTS: POPStarter has no DHCP of its own -- it needs a literal address in
+// mc?:/POPSTARTER/IPCONFIG.DAT or it has no network at all. Our menu browses fine on a
+// DHCP lease, so on the default (DHCP) config the handoff used to give POPStarter
+// nothing: the game list populated, then the launch died after our last frame. We hand
+// POPStarter the address we already leased so it can keep using it statically.
+static int lua_smb_getipconfig(lua_State *L)
+{
+	if (lua_gettop(L) > 0) {
+		return luaL_error(L, "Argument error: System.smbGetIPConfig() takes no arguments.");
+	}
+	t_ip_info ip_info;
+	if (ps2ip_getconfig(SMB_IFNAME, &ip_info) < 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const unsigned char *ip = (const unsigned char *)&((struct ip4_addr *)&ip_info.ipaddr)->addr;
+	// 0.0.0.0 means "no lease yet" -- reporting it as an address would write a
+	// useless IPCONFIG.DAT over a good one.
+	if (ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	char a[16], m[16], g[16];
+	SmbFormatIp(&ip_info.ipaddr, a, sizeof(a));
+	SmbFormatIp(&ip_info.netmask, m, sizeof(m));
+	SmbFormatIp(&ip_info.gw,      g, sizeof(g));
+	lua_pushstring(L, a);
+	lua_pushstring(L, m);
+	lua_pushstring(L, g);
+	return 3;
+}
+
 // System.initSMB() -- load the SMB IRX stack (lazy). true / (false,"IRX_LOAD_FAIL").
 static int lua_smb_init(lua_State *L)
 {
@@ -2294,6 +2339,7 @@ static const luaL_Reg System_functions[] = {
 	{"clearATA",               lua_ata_clear},
 	{"getSio2Owner",           lua_get_sio2_owner},
 	{"initSMB",                lua_smb_init},
+	{"smbGetIPConfig",         lua_smb_getipconfig},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},
 	{"disconnectSMB",          lua_smb_disconnect},

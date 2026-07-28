@@ -6969,11 +6969,29 @@ end
 -- recovered POPStarter docs but only a real PS2 + this smbman.irx confirm it.
 -- ============================================================================
 
--- IPCONFIG.DAT body, or nil when DHCP (caller deletes any stale file instead).
--- Format: "<PS2_IP> <NETMASK> <GATEWAY>" (single line, no trailing newline).
+-- IPCONFIG.DAT body. Format: "<PS2_IP> <NETMASK> <GATEWAY>" (single line, no
+-- trailing newline). Returns nil for "cannot determine right now", which the
+-- caller treats as leave-the-card-alone.
+--
+-- POPStarter has NO DHCP of its own -- an absent or address-less IPCONFIG.DAT means it
+-- has no network at all. This used to return nil on DHCP so the caller would DELETE the
+-- file, on the assumption that absent meant "lease it yourself". It does not. Since DHCP
+-- is the shipped default, the default config browsed fine on the menu's own lease and
+-- then handed POPStarter nothing: games listed, the launch died right after our last
+-- frame. So on DHCP we now write the address WE already hold, which POPStarter then uses
+-- statically. When no lease exists yet (the boot-time backfill runs long before the
+-- network comes up) we return nil and leave any existing good file untouched.
 function PLDR.RenderSmbIpconfig(cfg)
-  if cfg.DHCP == true then return nil end
-  return tostring(cfg.PS2_IP or "").." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
+  if cfg.DHCP ~= true then
+    return tostring(cfg.PS2_IP or "").." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
+  end
+  if type(System) == "table" and type(System.smbGetIPConfig) == "function" then
+    local ok, ip, mask, gw = pcall(System.smbGetIPConfig)
+    if ok and type(ip) == "string" and ip ~= "" then
+      return ip.." "..tostring(mask or "").." "..tostring(gw or "")
+    end
+  end
+  return nil
 end
 
 -- SMBCONFIG.DAT body. Line 1 = "<SERVER>[:<PORT>] <SHARE>" (the colon-port only
@@ -7104,21 +7122,52 @@ end
 -- before it will write SMBCONFIG.DAT, so the launch gate must test the same thing or
 -- the two disagree and a launch is allowed that POPStarter cannot complete (#560).
 -- smbman.irx is the marker SyncSmbDat itself uses; keep them on the same check.
+-- Where is the pack ACTUALLY staged? POPStarter reads every pack file from
+-- mc0:/POPSTARTER with a per-file mc1:/POPSTARTER fallback, so a pack on EITHER
+-- card is live. POPSTARTER_PACK_ROOT is not that answer: it resolves to mc0
+-- whenever slot 1 holds any card at all, whether or not the pack is on it. So on
+-- a two-card console with the pack hand-staged on mc1, POPStarter streams fine
+-- while a probe of the root alone reports "not installed".
+-- Returns the root holding smbman.irx (mc0 first, matching POPStarter's own
+-- order), or nil when neither card has it.
+function PLDR.ResolveStagedPackRoot()
+  if type(doesFileExist) ~= "function" then return nil end
+  local seen = {}
+  local roots = { POPSTARTER_PACK_ROOT, "mc0:/POPSTARTER", "mc1:/POPSTARTER" }
+  for i = 1, #roots do
+    local root = roots[i]
+    if root ~= nil and seen[root] ~= true then
+      seen[root] = true
+      local ok, present = pcall(doesFileExist, root.."/smbman.irx")
+      if ok and present == true then return root end
+    end
+  end
+  return nil
+end
+
 function PLDR.AreSmbModulesStaged()
   if type(doesFileExist) ~= "function" then return PLDR.SMB_MODULES == true end
-  local ok, present = pcall(doesFileExist, POPSTARTER_PACK_ROOT.."/smbman.irx")
+  local ok, root = pcall(PLDR.ResolveStagedPackRoot)
   if not ok then return PLDR.SMB_MODULES == true end   -- probe failed: don't block on a guess
-  return present == true
+  return root ~= nil
 end
 
 function PLDR.SyncSmbDat()
-  if not doesFileExist(POPSTARTER_PACK_ROOT.."/smbman.irx") then
+  -- Write beside the modules POPStarter will actually load, not beside a root
+  -- that merely has a card in it. Identical to the old behaviour whenever mc0
+  -- holds the pack; the only changed branch is "pack lives on mc1", which
+  -- previously wrote the .DAT nowhere at all.
+  local root = PLDR.ResolveStagedPackRoot()
+  if root == nil then
     return false
   end
   local cfg = PLDR.SmbCopy(PLDR.SMB)
   local function write_if_changed(dest, body)
     if body == nil then
-      return DeleteIfExists(dest)        -- DHCP: no static IPCONFIG.DAT should exist
+      -- "We cannot determine the correct contents right now" -- NOT "delete it".
+      -- Deleting IPCONFIG.DAT is never correct: POPStarter cannot lease an address,
+      -- so an absent file leaves it with no network and a launch that dies silently.
+      return true
     end
     if ReadWholeFile(dest) == body then
       return true                        -- already current; skip the mc write
@@ -7126,8 +7175,8 @@ function PLDR.SyncSmbDat()
     return WriteBytesAtomicBounded(body, dest)
   end
   local ok = true
-  if not write_if_changed(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
-  if not write_if_changed(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT", PLDR.RenderSmbConfig(cfg)) then ok = false end
+  if not write_if_changed(root.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
+  if not write_if_changed(root.."/SMBCONFIG.DAT", PLDR.RenderSmbConfig(cfg)) then ok = false end
   return ok
 end
 
