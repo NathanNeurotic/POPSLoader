@@ -72,16 +72,18 @@ internal drive (BDMA-ATA), while <code>hdd</code> / <code>pfs</code> / <code>apa
 <table>
 <thead><tr><th>Opens this page</th><th>Accepted <code>-page=</code> / <code>-mode=</code> values</th></tr></thead>
 <tbody>
-<tr><td><b>HDD (exFAT)</b> — BDMA ATA</td><td><code>ata</code>, <code>ata0</code>, <code>ataN</code></td></tr>
+<tr><td><b>HDD (exFAT)</b> — BDMA ATA</td><td><code>exfat</code>, <code>ata</code>, <code>ata0</code>, <code>ataN</code></td></tr>
 <tr><td><b>HDD (PFS)</b> — APA</td><td><code>hdd</code>, <code>hdd0</code>, <code>pfs</code>, <code>apa</code>, <code>apa0</code></td></tr>
 <tr><td><b>USB</b></td><td><code>usb</code>, <code>mass</code></td></tr>
 <tr><td><b>MX4SIO</b></td><td><code>mx4sio</code>, <code>mx4</code>, <code>sdc</code></td></tr>
 <tr><td><b>MMCE</b> (SD2PSX / MemCard&nbsp;PRO2)</td><td><code>mmce</code></td></tr>
+<tr><td><b>SMB (v1)</b> network share</td><td><code>smb</code></td></tr>
 </tbody>
 </table>
-<p class="hint"> Not navigable: <code>smb</code> and <code>i.Link</code> aren't implemented yet, and the bare
-<code>bdma</code> token is a no-op — use <code>ata</code> to reach the exFAT page. An unrecognised value is
-ignored and the carousel just opens on its default page.</p>
+<p class="hint"> Not navigable: <code>i.Link</code>, which is unimplemented and has no route. The bare
+<code>bdma</code> token is a no-op — use <code>ata</code> or <code>exfat</code> to reach the exFAT page. An
+unrecognised value is ignored and the carousel just opens on its default page. (<code>smb</code> <b>does</b>
+navigate — it was listed here as unimplemented for a long time and that was wrong.)</p>
 
 <h2 id="auto-launch">Auto-launching a game (<code>-game=</code>)</h2>
 <p>Combine <code>-page=</code> with <code>-game=</code> to boot straight into a specific title. The selector

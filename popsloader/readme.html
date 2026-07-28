@@ -448,6 +448,15 @@ Game compatibility and drive loading performance may vary depending on your spec
 <h3 id="settings-storage-on-hdd-installs">Settings Storage on HDD Installs</h3>
 <p>HDD-installed POPSLoader saves its <code>.pldrs</code> settings file <strong>on the HDD itself</strong>, in the launcher's boot partition — same single-device behavior as USB / MX4SIO / MMCE, which keep the sidecar at <code>&lt;install dir&gt;/.pldrs</code>. To do this POPSLoader takes over its own boot partition's mount and remounts it read-write (the OPL "own your mount" pattern), so there is <strong>no <code>mc0:</code> fallback</strong> for HDD installs. The same read-write mount is what lets in-app <code>.hide</code> markers (toggled with L3) be written on the HDD. See <strong><a href="state.html#settings-single-device-parity">STATE.md &gt; Settings</a></strong> for the canonical rules.</p>
 <hr />
+<h2 id="loading-extra-irx-drivers">Loading extra IRX drivers</h2>
+<p>At boot POPSLoader loads <strong>every <code>.irx</code> file sitting in its own folder</strong>, next to <code>POPSLOADER.ELF</code>, in directory order. If it finds none there it then tries an <code>IRX/</code> subfolder. That is how you add a driver POPSLoader does not ship — put the <code>.irx</code> beside the ELF and it is loaded.</p>
+<p>There is no allow-list and no prompt, so <strong>anything</strong> with an <code>.irx</code> extension in that folder is loaded, whether or not you meant it. Two consequences worth knowing:</p>
+<ul>
+<li>Keep the folder tidy. A driver you copied there once to test is still being loaded every boot, months later.</li>
+<li>A driver that hangs waiting on hardware you do not have will hang the boot. The most common way to hit this is running POPSLoader from a <strong>downloads folder</strong> that still contains loose drivers, or under an <strong>emulator</strong> where the hardware a driver probes is only a stub. If POPSLoader boots on a real console but hangs in an emulator, move the loose <code>.irx</code> files out of the folder and try again — that is the first thing to check.</li>
+</ul>
+<p>Use the <code>IRX/</code> subfolder if you want the drivers kept but not tangled up with whatever else lands in your download directory.</p>
+<hr />
 <h2 id="troubleshooting">Troubleshooting</h2>
 <h3 id="game-does-not-appear-in-the-menu-list">Game does not appear in the menu list</h3>
 <ul>
