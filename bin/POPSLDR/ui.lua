@@ -78,14 +78,23 @@ end
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
 -- Faded palette for hidden games shown in the "manage" view (Global Hide off).
--- sAGA (#536): the old shade still read too clearly next to the white normal
--- rows. PS2 alpha is 0-128 (GREY above is 128 = fully opaque), so the lever is
--- alpha: the UNSELECTED hidden row drops to "barely visible" (~1/4 opacity) so a
--- hidden game barely registers, while the SELECTED hidden row stays dim-but-
--- findable so you can still navigate to it to un-hide. Tune on hardware if
--- either reads too faint/strong; the intent is "clearly less visible than before".
-local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 34)
-local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 80)
+-- PS2 alpha is 0-128 (128 = fully opaque), and alpha is the right lever because it
+-- moves the row strictly toward whatever is behind it; changing RGB would help on a
+-- dark backdrop and hurt on a light one.
+--
+-- SECOND tuning pass. sAGA asked for this once (#536, which set 34/80 from a much
+-- stronger shade) and again on 2026-07-28 after testing RR74: "the names of the
+-- hidden games need to be made even fainter (even fainter)". Unselected drops
+-- 34 -> 20, i.e. ~41% less opaque again and about 16% of full; selected drops
+-- 80 -> 68, a smaller step on purpose.
+--
+-- The asymmetry is deliberate and is the constraint to respect if this is tuned a
+-- THIRD time: the unselected rows are the clutter being complained about, but the
+-- SELECTED hidden row is how you find a game in order to press L3 and un-hide it.
+-- Drive that one too low and the manage view stops being usable at all -- so take
+-- any further reduction out of the unselected value first.
+local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 20)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 68)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))

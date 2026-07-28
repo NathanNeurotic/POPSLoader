@@ -2,13 +2,25 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP75**. The check is simple: a version ending in **-EXP75** = this build; **-EXP74** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP76**. The check is simple: a version ending in **-EXP76** = this build; **-EXP75** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP73, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP76: hidden game names are fainter again
+
+Straight from your feedback on RR74: the hidden names still read too clearly.
+
+They are now noticeably fainter than in EXP75. The one you have the cursor on is still deliberately more visible than the rest, because that is how you find a hidden game in order to press L3 and bring it back.
+
+Please check:
+
+* With *Settings, Game List, Hidden games* set to **Visible**, hide a couple of games. The hidden ones should now sit clearly in the background compared to your normal games.
+* Move the cursor onto a hidden game. It should become readable enough that you can tell which one you are on, then press **L3** to unhide it. If you cannot comfortably find and land on a hidden row any more, that is too far and I need to know.
+* If it is still not faint enough, say so and I will take it further. The room to go fainter is in the rows you are NOT on, so tell me which of the two is wrong: the general clutter, or the one under the cursor.
 
 ## New in EXP75: bigger cover images are accepted
 
