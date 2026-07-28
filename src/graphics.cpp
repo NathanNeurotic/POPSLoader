@@ -59,6 +59,26 @@ static void PngReadFromMemory(png_structp png_ptr, png_bytep outBytes, png_size_
 	reader->off += byteCountToRead;
 }
 
+// Decoded-size budget, checked against the texture's REAL PSM. Follows OPL's
+// texSizeValidate (.codex_refs/Open-PS2-Loader/src/textures.c:236, called at :531
+// with texture->PSM already set) and its maxSize of 720*512*4 (textures.c:102).
+// Indexed art is finally measured at its true T4/T8 cost instead of being charged
+// CT32 rates, which is the whole bug: a valid 8-bit 800x800 cover was silently
+// discarded for "exceeding" a budget it never actually used.
+//
+// DELIBERATE DIVERGENCE: OPL validates with gsKit_texture_size (VRAM, rounded up to
+// page alignment); we use gsKit_texture_size_ee (the EE buffer). Reason: _ee is
+// exactly what the memalign below reserves, so the check bounds the real allocation,
+// and switching to VRAM sizing would TIGHTEN truecolor from ~600x600 to ~576x576 and
+// break covers that ship working today. This way the change is strictly more
+// permissive than the previous behaviour for every format -- never less -- while the
+// 1024-per-dimension guard above still bounds VRAM. Revisit only with a hardware
+// report of the gsKit TexManager eviction freeze, which is what the cap guards.
+static int cover_size_ok(const GSTEXTURE *tex)
+{
+	return gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM) <= 720 * 512 * 4;
+}
+
 static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, bool delayed)
 {
 	GSTEXTURE* tex = (GSTEXTURE*)malloc(sizeof(GSTEXTURE));
@@ -112,14 +132,17 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	png_set_filler(png_ptr, 0xff, PNG_FILLER_AFTER);
 	png_read_update_info(png_ptr, info_ptr);
 
-	// Reject zero/oversized dimensions before allocating from them. OPL's rule
-	// (textures.c texSizeValidate): each dimension <= 1024 AND the decoded buffer
-	// no larger than 720*512*4 bytes (CT32 worst case here, since the PSM is not
-	// chosen yet). Beyond rejecting absurd attacker-controlled IHDR fields, this
-	// keeps covers inside what free VRAM can hold -- a too-large texture makes
-	// gsKit's TexManager eviction loop never terminate (UI freeze at draw time).
-	if (width == 0 || height == 0 || width > 1024u || height > 1024u ||
-		gsKit_texture_size_ee((int)width, (int)height, GS_PSM_CT32) > 720 * 512 * 4) {
+	// Reject zero/absurd dimensions before allocating from them -- OPL's first check
+	// too (textures.c texSizeValidate:238). The BYTE-BUDGET half of the rule cannot
+	// run here: it depends on the PSM, and the PSM is not chosen until the colour-type
+	// branches below. It now runs per-branch via cover_size_ok(), against the real PSM.
+	//
+	// It used to run here with GS_PSM_CT32 hardcoded, which made the budget w*h*4 for
+	// EVERY image regardless of format: an effective ~607x607 ceiling, so a valid 8-bit
+	// indexed 800x800 cover (real cost w*h) was thrown away silently. That is a
+	// divergence from OPL, which passes texture->PSM in (textures.c:531), not a
+	// deliberate safety margin.
+	if (width == 0 || height == 0 || width > 1024u || height > 1024u) {
 		DPRINTF("PNG: rejecting out-of-range dimensions %ux%u\n", (unsigned)width, (unsigned)height);
 		longjmp(png_jmpbuf(png_ptr), 1);
 	}
@@ -134,6 +157,11 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT32;
+		if (!cover_size_ok(tex)) {
+			DPRINTF("PNG: %ux%u exceeds the VRAM budget for psm %d\n",
+				(unsigned)tex->Width, (unsigned)tex->Height, (int)tex->PSM);
+			longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
@@ -164,6 +192,11 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 	{
 		int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 		tex->PSM = GS_PSM_CT24;
+		if (!cover_size_ok(tex)) {
+			DPRINTF("PNG: %ux%u exceeds the VRAM budget for psm %d\n",
+				(unsigned)tex->Width, (unsigned)tex->Height, (int)tex->PSM);
+			longjmp(png_jmpbuf(png_ptr), 1);
+		}
 		tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 		if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
@@ -207,6 +240,11 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		if (bit_depth == 4) {
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T4;
+			if (!cover_size_ok(tex)) {
+				DPRINTF("PNG: %ux%u exceeds the VRAM budget for psm %d\n",
+					(unsigned)tex->Width, (unsigned)tex->Height, (int)tex->PSM);
+				longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 
@@ -252,6 +290,11 @@ static GSTEXTURE* decode_png_stream(png_structp png_ptr, png_infop info_ptr, boo
 		else if (bit_depth == 8) {
 			int row_bytes = png_get_rowbytes(png_ptr, info_ptr);
 			tex->PSM = GS_PSM_T8;
+			if (!cover_size_ok(tex)) {
+				DPRINTF("PNG: %ux%u exceeds the VRAM budget for psm %d\n",
+					(unsigned)tex->Width, (unsigned)tex->Height, (int)tex->PSM);
+				longjmp(png_jmpbuf(png_ptr), 1);
+			}
 			tex->Mem = (u32*)memalign(128, gsKit_texture_size_ee(tex->Width, tex->Height, tex->PSM));
 			if (tex->Mem == NULL) longjmp(png_jmpbuf(png_ptr), 1);
 

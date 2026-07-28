@@ -2,13 +2,88 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP73**. The check is simple: a version ending in **-EXP73** = this build; **-EXP72** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP77**. The check is simple: a version ending in **-EXP77** = this build; **-EXP76** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP73, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP77, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP77: network games can finally launch on automatic IP
+
+Only relevant if you play games off a network share. If you do, this is the big one.
+
+Browsing a share has worked for a while, but for most people the games would list perfectly and then the screen went black a moment after launching. Here is why. Once you pick a game, POPSLoader hands over to POPStarter, and POPStarter does its own networking. Unlike the menu, it cannot ask your router for an address. It can only read one written down on the memory card. We were deleting that file whenever *IP assignment* was set to automatic, which is the default, because we assumed POPStarter could get its own address. It cannot. So it took over with no network at all.
+
+The menu now writes down the address it already got, and POPStarter reuses it. The file is written when you connect, so you have to enter the SMB page once before launching.
+
+Please check:
+
+* Set *IP assignment* to **automatic** and connect. Your games should list as before, and now a game should actually boot. This is the single most useful thing to test in this build.
+* If you have a fixed address set instead, nothing should change for you. That path already worked. Tell me if it stopped.
+* If a game still black screens, say whether the game list appeared first, and roughly how far the loading got. Those two details separate the network problem from a different one.
+
+Two smaller fixes came with it:
+
+* The message you get when `POPSTARTER.ELF` cannot be found used to claim it had checked your share. It never does, on purpose, and never has. It now names the three places it really looks.
+* Turning on *SMB modules* only recorded the setting, it did not confirm the files reached the card. If the copy failed, or you swapped cards, the launcher would let you start a game that could not possibly work. It now checks the card itself, and looks at both memory card slots, since POPStarter reads either.
+
+## New in EXP76: hidden game names are fainter again
+
+Straight from your feedback on RR74: the hidden names still read too clearly.
+
+They are now noticeably fainter than in EXP75. The one you have the cursor on is still deliberately more visible than the rest, because that is how you find a hidden game in order to press L3 and bring it back.
+
+Please check:
+
+* With *Settings, Game List, Hidden games* set to **Visible**, hide a couple of games. The hidden ones should now sit clearly in the background compared to your normal games.
+* Move the cursor onto a hidden game. It should become readable enough that you can tell which one you are on, then press **L3** to unhide it. If you cannot comfortably find and land on a hidden row any more, that is too far and I need to know.
+* If it is still not faint enough, say so and I will take it further. The room to go fainter is in the rows you are NOT on, so tell me which of the two is wrong: the general clutter, or the one under the cursor.
+
+## New in EXP75: bigger cover images are accepted
+
+Only worth testing if you have cover art that never showed up. Everything that works today keeps working, this only widens what is allowed.
+
+The check that decides whether a cover is too big was measuring every image as though it used four bytes per pixel. Most cover art does not: a picture saved with 256 colours or fewer uses one byte per pixel, so those were being charged four times their real size and thrown away for being "too big" when they were not. Nothing appeared on screen and nothing said why.
+
+Now the check measures each picture the way it is actually stored. In practice a 256-colour cover can be up to about 1024x1024 instead of roughly 600x600. Full-colour pictures are unchanged.
+
+Please check:
+
+* Any cover that never appeared, and is **not** a full-colour photo-style image, is worth retrying. If it now shows up, say what size it is.
+* Everything that already worked must still work. If a cover that used to display has stopped, that is a problem, please report it immediately.
+* Watch for the launcher slowing down or freezing while scrolling a list of games with very large cover images. This check exists partly to stop oversized pictures from filling video memory, so if browsing gets sluggish or locks up with big art, that matters.
+
+Reminder on naming, since it caught us out this week: the cover must end in **_COV.png** and match the game filename exactly, for example `Crash Bandicoot.VCD` needs `Crash Bandicoot_COV.png`. The details text file does **not** take that suffix, it is just `Crash Bandicoot.txt`. The `_COV` part is required so the same folder can be shared with OPL.
+
+## New in EXP74: hiding games works when the list is set to hide them
+
+Reported by sAGA on the 0727 rolling build. With *Settings, Game List, Hidden games* set to **Hidden**, pressing **L3** on a game did nothing at all. With it set to **Visible** it worked fine.
+
+The reason: when the setting is **Hidden**, the launcher already leaves hidden games out of the list, so every game you can see is one that is NOT hidden. The only thing L3 can do there is hide something. The check that was supposed to stop you from unhiding a game you cannot see was stopping that instead, and then telling you to press R3, which is advice for a completely different situation.
+
+Two things changed. L3 now hides a game whatever that setting is, and once you hide it the game leaves the list straight away so you can see it worked. Before, even after the block was gone, the message said "Game hidden" while the game sat there looking untouched, which is impossible to tell apart from nothing happening.
+
+Please check:
+
+* With *Hidden games* set to **Hidden**, press L3 on a game. It should say "Game hidden" and the game should disappear from the list immediately.
+* The cursor should stay roughly where it was. It should NOT jump back to the top of the list.
+* Press R3 to reveal the hidden games, then L3 on one to unhide it. That should still work exactly as before.
+* With *Hidden games* set to **Visible**, hiding should behave exactly as it always has: the game stays in the list and goes dim. It should NOT vanish in that mode.
+* Try it on every device you use. Please say which ones you tested.
+
+## New in EXP73: game details, and messages that were stuck in English
+
+**Game details actually appear now.** The previous build claimed to fix this and did not. Worse, it also broke details for games that DO have cover art, which had been working. If you tried the details feature on EXP72 and saw nothing, that was this.
+
+Turn it on at *Settings, Game List, Game details* (it is **Off** by default) and leave *Cover art* on, then check three cases: a game with cover art and a .txt file, a game with only a .txt file, and a game with neither. Also scroll quickly through a folder of mixed games and make sure a game never shows another game's text.
+
+The .txt goes next to the cover, in the top level ART folder on your drive, named exactly like the game file.
+
+**Messages that would not translate.** A batch of on screen messages was being put together in a way that threw the translation away before it was looked up, so they stayed English even though a translation existed. On the HDD page the "no games found" and "list refreshed" messages should now appear in your language. The launch failure screen is translated too, and it now names the correct button for your console instead of always saying X and O.
+
+If any message shows a raw %s, or a message you expected does not appear at all, please report the language and the exact screen.
 
 ## New in EXP69: the winners' recipe, properly this time
 
