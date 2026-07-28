@@ -2,13 +2,29 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP74**. The check is simple: a version ending in **-EXP74** = this build; **-EXP73** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP75**. The check is simple: a version ending in **-EXP75** = this build; **-EXP74** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
 **File size check:** if *About* does not show EXP73, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP75: bigger cover images are accepted
+
+Only worth testing if you have cover art that never showed up. Everything that works today keeps working, this only widens what is allowed.
+
+The check that decides whether a cover is too big was measuring every image as though it used four bytes per pixel. Most cover art does not: a picture saved with 256 colours or fewer uses one byte per pixel, so those were being charged four times their real size and thrown away for being "too big" when they were not. Nothing appeared on screen and nothing said why.
+
+Now the check measures each picture the way it is actually stored. In practice a 256-colour cover can be up to about 1024x1024 instead of roughly 600x600. Full-colour pictures are unchanged.
+
+Please check:
+
+* Any cover that never appeared, and is **not** a full-colour photo-style image, is worth retrying. If it now shows up, say what size it is.
+* Everything that already worked must still work. If a cover that used to display has stopped, that is a problem, please report it immediately.
+* Watch for the launcher slowing down or freezing while scrolling a list of games with very large cover images. This check exists partly to stop oversized pictures from filling video memory, so if browsing gets sluggish or locks up with big art, that matters.
+
+Reminder on naming, since it caught us out this week: the cover must end in **_COV.png** and match the game filename exactly, for example `Crash Bandicoot.VCD` needs `Crash Bandicoot_COV.png`. The details text file does **not** take that suffix, it is just `Crash Bandicoot.txt`. The `_COV` part is required so the same folder can be shared with OPL.
 
 ## New in EXP74: hiding games works when the list is set to hide them
 
