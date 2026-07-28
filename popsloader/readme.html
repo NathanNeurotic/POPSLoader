@@ -376,7 +376,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 <li><strong>Credits</strong> — <em>Settings → About → Credits</em>. (It used to be a Triangle shortcut advertised in every footer.)</li>
 </ul>
 <h3 id="smb-network">SMB / Network</h3>
-<p>Browse and launch PS1 games from an <strong>SMBv1</strong> network share via the <strong>SMB</strong> carousel entry. Networking is <strong>lazy</strong>: nothing network-related runs at boot; the stack comes up only when you open the SMB page. <em>(New feature — validating on hardware.)</em></p>
+<p>Browse and launch PS1 games from an <strong>SMBv1</strong> network share via the <strong>SMB</strong> carousel entry. Networking is <strong>lazy</strong>: nothing network-related runs at boot; the stack comes up only when you open the SMB page. <em>(Browsing and launching are confirmed working on a </em><em>static</em><em> IP setup. </em><em>DHCP</em><em> needs a build newer than <code>bb62f2be</code> — earlier builds deleted the address file POPStarter depends on, so a DHCP setup would list games and then fail to boot them.)</em></p>
 <table>
 <thead>
 <tr>
@@ -495,7 +495,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 *   <strong>GUI Themes</strong>: Customizable colors / skins / fonts and a setting to skip the boot splash.<br />
 *   <strong>In-Game Features</strong>: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.<br />
 *   <strong><code>HDD (exFAT)</code></strong> menu flow: now <strong>implemented</strong> as a <code>mass:</code> backend via BDMA Mode <code>ATA</code> (built, CI/Rolling green) — <strong>validating on hardware</strong>.<br />
-*   <strong><code>SMB (v1)</code></strong> network game browsing: now <strong>implemented</strong> (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — <strong>validating on hardware</strong>.<br />
+*   <strong><code>SMB (v1)</code></strong> network game browsing: now <strong>implemented</strong> (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — <strong>browse + launch hardware-confirmed on a static IP config</strong>; the DHCP path was fixed in <code>bb62f2be</code> and is not yet confirmed.<br />
 *   <strong><code>i.Link</code></strong> menu flow: currently surfaces as "Not Implemented Yet" until feature work lands.</p>
 <p>See <a href="state.html">STATE.md</a> "Known Open Work" and <a href="roadmap.html">ROADMAP.md</a> for the prioritized backlog.</p>
 <hr />

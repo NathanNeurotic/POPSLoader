@@ -385,14 +385,14 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 <td>SMB (v1) connect/browse</td>
 <td>SMB settings configured (server IP, share, user/password, IP assignment, port, games path) + SMB modules pack installed (<code>mc:/POPSTARTER</code> IRX + <code>IPCONFIG.DAT</code>/<code>SMBCONFIG.DAT</code> generated)</td>
 <td>Select <code>SMB (v1)</code> (scene <code>GSMBNET</code>)</td>
-<td>Network stack comes up lazily on entering the SMB page (NEVER at boot); the share opens (Path B netman recipe), the share's <code>POPS/</code> folder scans, and VCD games list like any other device. With the Share field empty, <code>GETSHARELIST</code> enumerates the server's shares and an in-UI picker lets you choose one (choice persisted to settings + in-game <code>SMBCONFIG.DAT</code>, then reconnects). NEW — validating on hardware.</td>
+<td>Network stack comes up lazily on entering the SMB page (NEVER at boot); the share opens (Path B netman recipe), the share's <code>POPS/</code> folder scans, and VCD games list like any other device. With the Share field empty, <code>GETSHARELIST</code> enumerates the server's shares and an in-UI picker lets you choose one (choice persisted to settings + in-game <code>SMBCONFIG.DAT</code>, then reconnects). <strong>Connect + browse HARDWARE-CONFIRMED</strong> (maintainer, static IP). The blank-Share <code>GETSHARELIST</code> picker is still unconfirmed.</td>
 </tr>
 <tr>
 <td>D-07B</td>
 <td>SMB (v1) launch</td>
 <td>SMB connected and a VCD listed (D-07)</td>
 <td>Launch an SMB title</td>
-<td>POPStarter receives argv0 selector <code>smb:/POPS/SB.&lt;name&gt;.ELF</code> and streams the VCD from its own <code>smb:/POPS</code> mount via <code>mc:/POPSTARTER/SMBCONFIG.DAT</code>. (HW-only unknown: the exact argv0 device prefix POPStarter accepts — ship <code>smb:/POPS/SB.&lt;name&gt;.ELF</code>; fallbacks <code>mass:/POPS/SB.&lt;name&gt;.ELF</code> then <code>mass:/SB.&lt;name&gt;.ELF</code>.) NEW — validating on hardware.</td>
+<td>POPStarter receives argv0 selector <code>smb:/POPS/SB.&lt;name&gt;.ELF</code> and streams the VCD from its own <code>smb:/POPS</code> mount via <code>mc:/POPSTARTER/SMBCONFIG.DAT</code>. <strong>HARDWARE-CONFIRMED on a static IP config</strong> (maintainer, in use for some time), which also settles the previously-flagged argv0 prefix — <code>smb:/POPS/SB.&lt;name&gt;.ELF</code> is accepted; the <code>mass:/…</code> fallbacks were never needed. <strong>Still unconfirmed: the DHCP path.</strong> POPStarter has no DHCP of its own and needs a literal address in <code>mc?:/POPSTARTER/IPCONFIG.DAT</code>; builds before <code>bb62f2be</code> <em>deleted</em> that file whenever IP assignment was DHCP (the shipped default), so a DHCP setup browsed fine and then died shortly into the launch (#560). Retest specifically with <strong>IP assignment = DHCP</strong>: after connecting, <code>IPCONFIG.DAT</code> must exist on the card and hold the leased address, and the game must boot.</td>
 </tr>
 <tr>
 <td>D-07C</td>
