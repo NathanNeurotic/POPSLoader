@@ -658,7 +658,7 @@ map to the exFAT page (opt 3, <code>GBDMHDD</code>), HDD to the PFS page (opt 4)
 to the SMB (v1) network page (opt 7, <code>GSMBNET</code>). The bare <code>bdma</code> token and i.Link<br />
 remain unrouted no-ops.</p>
 <h3 id="on-disk-settings-pldrs">On-disk settings (<code>.pldrs</code>)</h3>
-<p>Plain KEY=VALUE text with <strong>23 keys</strong> (<code>EncodeSettings</code>, <code>system.lua</code>; the<br />
+<p>Plain KEY=VALUE text with <strong>24 keys</strong> (<code>EncodeSettings</code>, <code>system.lua</code>; the<br />
 loader normalizes CRLF before parsing, and <code>usb:</code>/<code>smb:</code>-prefixed boots fall back<br />
 to the MC settings path since those filesystems aren't live in-app),<br />
 then the SMB connection block (<code>SMB_*</code>) appended by <code>SmbAppendLines</code>:<br />
