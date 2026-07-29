@@ -1739,23 +1739,22 @@ if _t44_ok:
 check("T44 the POPSTARTER .DAT are read as well as written, with the port always explicit",
       _t44_ok, _t44_why)
 
-# T45: SMBCONFIG.DAT must ROUND-TRIP without losing lines 2 and 3.
+# T45: SMBCONFIG.DAT must round-trip, and lines 2 and 3 ALWAYS exist.
 #
-# elvengf, issue #560: he hand-added his username and password to SMBCONFIG.DAT,
-# launched a game from POPSLOADER, pulled the card, and the file was back to a
-# single line with the credentials gone. Maintainer: "Then it's me, I'm polluting
-# the format with a write."
+# elvengf, issue #560: he put credentials in, launched a game from POPSLOADER,
+# pulled the card, and the file was back to a single line. Maintainer: "Then it's
+# me, I'm polluting the format with a write." Two separate defects fed that:
 #
-# Two independent causes, both fixed and both guarded here:
-#   * We wrote from a config that never had the file's USER/PASS in it, so
-#     RenderSmbConfig took its guest branch and emitted line 1 only. The loader now
-#     READS the .DAT first, so whatever is on the card survives a write.
-#   * We suppressed ":445" as "implied", so even the server line came back changed.
+#   * We wrote from a config that had never read the file, so the credentials were
+#     not in it to write back. The loader now READS the .DAT first.
+#   * We collapsed the file to ONE LINE whenever User and Password were blank.
+#     That is wrong: blank fields mean lines 2 and 3 EXIST AND ARE EMPTY, which is
+#     the guest form. Empty is not absent. Collapsing silently rewrote the user's
+#     declared credential state.
 #
-# The third assertion is the belt-and-braces one: if the config is empty for ANY
-# reason -- card unreadable at boot, a load that quietly failed, a first run --
-# RenderSmbConfig must return nil so the caller leaves the file ALONE. Writing
-# nothing is recoverable; overwriting a working hand-made file is not.
+# POPSLOADER's contract is to leave these files in a POPSTARTER-correct shape every
+# time it touches them -- which includes normalising a one-line file it finds into
+# the full three-line form.
 t45 = E(r"""function()
   if type(PLDR.ParseSmbconfigDat) ~= "function" then return false, "ParseSmbconfigDat missing" end
   local function roundtrip(text)
@@ -1764,34 +1763,41 @@ t45 = E(r"""function()
     return PLDR.RenderSmbConfig(cfg)
   end
 
-  -- elvengf's own file, with the credentials he added by hand.
+  -- elvengf's file with the credentials he added by hand: byte-identical back.
   local three = "192.168.4.47:445 PS2\r\nmyuser\r\nmypass"
   local got = roundtrip(three)
   if got ~= three then
-    return false, "3-line round trip lost data: expected [" .. three .. "] got [" .. tostring(got) .. "]"
+    return false, "credentials lost: expected [" .. three .. "] got [" .. tostring(got) .. "]"
   end
 
-  -- Guest: a single line must stay a single line (no empty 2/3 appended).
-  local one = "192.168.4.47:445 PS2"
-  got = roundtrip(one)
-  if got ~= one then
-    return false, "1-line round trip changed: expected [" .. one .. "] got [" .. tostring(got) .. "]"
+  -- Guest: blank User/Password must still produce lines 2 and 3, empty.
+  local guest = "192.168.4.47:445 PS2\r\n\r\n"
+  got = roundtrip(guest)
+  if got ~= guest then
+    return false, "guest blank lines lost: expected [" .. string.gsub(guest, "\r\n", "<CRLF>")
+                  .. "] got [" .. string.gsub(tostring(got), "\r\n", "<CRLF>") .. "]"
   end
 
-  -- A share name containing spaces must survive; line 1 splits on the FIRST space only.
-  local spaced = "192.168.0.254:445 My Shared Folder"
+  -- A one-line file found on the card is NORMALISED to the full form, not left short.
+  got = roundtrip("192.168.4.47:445 PS2")
+  if got ~= guest then
+    return false, "one-line file not normalised: got [" .. string.gsub(tostring(got), "\r\n", "<CRLF>") .. "]"
+  end
+
+  -- Share names may contain spaces; line 1 splits on the FIRST space only.
+  local spaced = "192.168.0.254:445 My Shared Folder\r\n\r\n"
   got = roundtrip(spaced)
   if got ~= spaced then
-    return false, "spaced share lost: expected [" .. spaced .. "] got [" .. tostring(got) .. "]"
+    return false, "spaced share lost: got [" .. string.gsub(tostring(got), "\r\n", "<CRLF>") .. "]"
   end
 
-  -- An unpopulated config must produce NOTHING, so a write can never blank a good file.
+  -- An unpopulated config renders NOTHING, so a stray write can never blank a good file.
   if PLDR.RenderSmbConfig(PLDR.SmbDefaults()) ~= nil then
     return false, "a blank config still renders a file -- a stray write would clobber the user's real one"
   end
   return true
 end""")()
-check("T45 SMBCONFIG.DAT round-trips (credentials and port survive a write)", t45)
+check("T45 SMBCONFIG.DAT round-trips; blank guest lines 2 and 3 always exist", t45)
 
 
 print()

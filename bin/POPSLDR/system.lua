@@ -7042,10 +7042,17 @@ function PLDR.RenderSmbConfig(cfg)
   -- password-with-blank-User config must reach POPStarter too, or the menu
   -- browses fine while in-game streaming silently lacks the proven-needed
   -- credentials. Both-blank stays guest (line 1 only).
-  if user ~= "" or pass ~= "" then
-    return line1.."\r\n"..user.."\r\n"..pass
-  end
-  return line1
+  -- ALWAYS THREE LINES. Blank User and Password in the settings mean lines 2 and 3
+  -- exist and are EMPTY -- that is the guest form, and it is what the recovered
+  -- POPSTARTER docs describe ("for guest access, don't write anything to line 2
+  -- and 3": the lines are there, holding nothing).
+  --
+  -- This used to collapse to a single line whenever both were blank, which quietly
+  -- rewrote the user's declared credential state and is half of issue #560. Empty
+  -- is not the same as absent, and POPSLOADER's job is to leave these files in a
+  -- POPSTARTER-correct shape every time it touches them -- including normalising a
+  -- one-line file it found into the full form.
+  return line1.."\r\n"..user.."\r\n"..pass
 end
 
 -- ===========================================================================
@@ -7100,9 +7107,12 @@ function PLDR.ParseSmbconfigDat(text)
     end
     cfg.SHARE = share or ""
   end
-  if l2 ~= "" or l3 ~= "" then
-    cfg.USER, cfg.PASS = l2, l3
-  end
+  -- Lines 2 and 3 always map straight to USER and PASS, blank included. A blank
+  -- credential line is an explicit "guest, no password", NOT a missing line, and a
+  -- one-line file simply reads as blank-blank. Nothing here treats empty as absent
+  -- -- that conflation is what let a write collapse the file and drop the user's
+  -- declared credential state (issue #560).
+  cfg.USER, cfg.PASS = l2, l3
   return cfg
 end
 
