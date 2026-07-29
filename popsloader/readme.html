@@ -389,42 +389,32 @@ Game compatibility and drive loading performance may vary depending on your spec
 <tr>
 <td style="text-align: left;"><strong>SMB modules</strong></td>
 <td style="text-align: left;">Not installed</td>
-<td style="text-align: left;">Installs the in-game SMB streaming pack (6 IRX + <code>SMBCONFIG.DAT</code>/<code>IPCONFIG.DAT</code>) into <code>mc:/POPSTARTER</code> on Save. <strong>Required to LAUNCH games</strong> — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the <em>POPSTARTER Memory Card Folder</em> toggle.</td>
+<td style="text-align: left;">Installs the in-game SMB streaming pack (6 IRX + <code>SMBCONFIG.DAT</code>/<code>IPCONFIG.DAT</code>) into <code>mc:/POPSTARTER</code> on Save. Turning it <strong>off removes those 8 files from BOTH memory card slots</strong> — POPSTARTER reads mc0 with a per-file mc1 fallback, so a half-removal would leave it still finding modules and a stale <code>SMBCONFIG.DAT</code> holding your server, share and plaintext password. <strong>Required to LAUNCH games</strong> — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the <em>POPSTARTER Memory Card Folder</em> toggle.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>IP assignment</strong></td>
-<td style="text-align: left;">DHCP</td>
-<td style="text-align: left;">DHCP or Static. Static uses the <strong>PS2 IP / Netmask / Gateway / DNS</strong> rows (validated as dotted quads).</td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>Link mode</strong></td>
-<td style="text-align: left;">Auto</td>
-<td style="text-align: left;">Ethernet negotiation (Auto / 100 full / 100 half / 10 full / 10 half).</td>
+<td style="text-align: left;">Static</td>
+<td style="text-align: left;">DHCP or Static, and this controls <strong>browsing only</strong>. POPSTARTER cannot obtain an address itself, so the <strong>PS2 IP / Netmask / Gateway</strong> rows must be filled in either way — they are what gets written to <code>IPCONFIG.DAT</code> for the game to use. Nothing is invented for you; blank means blank.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Server IP</strong></td>
-<td style="text-align: left;">192.168.1.100</td>
-<td style="text-align: left;">The SMB server's IP address. (NetBIOS names are not supported — use the IP.) The static-IP rows also default to a common home-LAN layout: PS2 IP <code>192.168.1.10</code>, gateway/DNS <code>192.168.1.1</code>.</td>
+<td style="text-align: left;"><em>(blank)</em></td>
+<td style="text-align: left;">The SMB server's IP address. (NetBIOS names are not supported — use the IP.) <strong>No defaults are supplied for any network field.</strong> They used to be pre-filled with a guessed home-LAN layout, which read as configuration the user had chosen and hid the real values; on first run every field is now empty, and existing <code>IPCONFIG.DAT</code>/<code>SMBCONFIG.DAT</code> on the memory card are loaded instead.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Port</strong></td>
-<td style="text-align: left;"><strong>1111</strong></td>
-<td style="text-align: left;">The server's SMB TCP port. <strong>Stock SMB servers listen on 445</strong> — the 1111 default suits alternate-port SMBv1 setups (e.g. the PS2-Servers configs); set it to whatever your server actually listens on. Written into <code>SMBCONFIG.DAT</code> as <code>SERVER:PORT</code> (445 is implied and omitted).</td>
+<td style="text-align: left;"><em>(blank)</em></td>
+<td style="text-align: left;">The server's SMB TCP port. <strong>Stock SMB servers listen on 445</strong>; leave blank and POPSTARTER uses 445. Written into <code>SMBCONFIG.DAT</code> as <code>SERVER:PORT</code> — <strong>always explicit</strong>, including <code>:445</code>, because these files are read back as well as written.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Share</strong></td>
-<td style="text-align: left;"><code>games</code></td>
-<td style="text-align: left;">The share name (defaults to <code>games</code>). <strong>Clear it</strong> and the SMB page lists the server's shares in an in-app picker; your choice is saved.</td>
+<td style="text-align: left;"><em>(blank)</em></td>
+<td style="text-align: left;">The share name. <strong>Leave it blank</strong> and the SMB page lists the server's shares in an in-app picker; your choice is saved.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>User / Password</strong></td>
 <td style="text-align: left;"><em>(guest)</em></td>
 <td style="text-align: left;">Credentials, when the share needs them (either one set = credentials are used, in-app and in-game). Values are trimmed except the password; the R2 symbol shift types <code>@ # $ %</code> etc.</td>
-</tr>
-<tr>
-<td style="text-align: left;"><strong>Games path (folder holding POPS)</strong></td>
-<td style="text-align: left;"><em>(share root)</em></td>
-<td style="text-align: left;">Optional folder under the share that CONTAINS your <code>POPS/</code> folder. <strong>Browsing only</strong>: POPStarter launches from <code>&lt;share&gt;/POPS</code>, so prefer sharing the folder itself and leaving this blank.</td>
 </tr>
 </tbody>
 </table>
