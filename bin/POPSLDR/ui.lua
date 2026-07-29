@@ -4129,7 +4129,6 @@ UI = {
                 hide_text = UI.HideTextMode == true,
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 smb = UI.SmbDraft,
-                psnet = UI.PsnetDraft,
                 smb_modules = UI.SmbModulesDraft,
                 apply_smb = (UI.SmbModulesDirty == true)
                             or (UI.SmbModulesDraft == true and UI.SmbDirty == true),
@@ -4210,8 +4209,6 @@ UI = {
             UI.DkwdrvDirty = false
             UI.VideoStandardDirty = false
             UI.SmbDirty = false
-            UI.PsnetDirty = false
-            UI._PsnetEffCache = nil
             UI.SmbModulesDirty = false
             clear_settings_session()
             -- HDD-write probe (TEST): on an HDD boot, report whether a __.POPS
@@ -4280,8 +4277,6 @@ UI = {
               UI.DkwdrvDirty = false
               UI.VideoStandardDirty = false
               UI.SmbDirty = false
-            UI.PsnetDirty = false
-            UI._PsnetEffCache = nil
               UI.SmbModulesDirty = false
               clear_settings_session()
               UI.SceneChange(target_scene)
@@ -4453,8 +4448,6 @@ UI = {
               if tostring(smb_cur[k]) ~= tostring(smb_def[k]) then smb_changed = true end
             end
             UI.SmbDraft = smb_def
-            if type(PLDR.PsnetDefaults) == "function" then UI.PsnetDraft = PLDR.PsnetDefaults() end
-            UI._PsnetEffCache = nil
             if smb_changed then
               UI.SmbDirty = true
               UI.ProfileDirty = true
@@ -4877,27 +4870,6 @@ UI = {
           end
         end
 
-        -- POPSTARTER Network: what is actually written into
-        -- mc?:/POPSTARTER/IPCONFIG.DAT and SMBCONFIG.DAT, which POPSTARTER reads at
-        -- launch. Separate from SMB / Network above because it serves a different
-        -- program with different capabilities -- most importantly POPSTARTER CANNOT
-        -- use DHCP, so there is deliberately no IP-assignment row and the address it
-        -- receives is always literal. A blank row inherits from the browsing settings
-        -- and DISPLAYS the value that will be written, including a DHCP lease, so
-        -- "why does the file say something I did not type" is answerable on screen.
-        if type(PLDR.PSNET_FIELDS) == "table" then
-          AddSection("POPSTARTER Network")
-          for ps_i = 1, #PLDR.PSNET_FIELDS do
-            local ps_field = PLDR.PSNET_FIELDS[ps_i]
-            AddPath(
-              UI._PSNET_LABELS[ps_field.key] or ps_field.key,
-              function() return UI.PsnetFieldDisplay(ps_field) end,
-              function() UI.PsnetFieldOpenEditor(ps_field) end,
-              function() return UI.PsnetFieldDirty(ps_field.key) end
-            )
-          end
-        end
-
         AddSection("POPSTARTER")
         -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
         -- system): one user-defined path, empty = Automatic (the launch ladder:
@@ -4950,7 +4922,6 @@ UI = {
             or (math.floor(tonumber(UI.Overscan) or 0)) ~= (math.floor(tonumber(UI.SettingsEntryOverscan) or 0))
             or (UI.BootPageIndex or 1) ~= (UI.SettingsEntryBootPageIndex or 1)
             or (UI.SmbDirty == true)
-            or (UI.PsnetDirty == true)
             or (UI.SmbModulesDirty == true)
         end
 
@@ -6702,110 +6673,6 @@ function UI.RunVideoModeConfirm(seconds)
   end
   return false
 end
--- ===== POPSTARTER Network settings field helpers ============================
--- Rows for the "POPSTARTER Network" section: the values written into
--- mc?:/POPSTARTER/IPCONFIG.DAT and SMBCONFIG.DAT, which POPSTARTER reads at
--- launch. Spec + persistence live in system.lua (PLDR.PSNET_FIELDS / PLDR.Psnet*).
---
--- Blank means "same as browsing", so every row renders the EFFECTIVE value and
--- says where it came from. That readout is the reason this section exists: on a
--- DHCP browsing setup the static boxes in SMB / Network are not in play, and with
--- no way to see that, a user reasonably concludes the loader ignored their input
--- (issue #560 -- 255.255.252.0 written where 255.255.255.0 had been typed, only
--- discoverable by pulling the memory card to a PC).
-UI._PSNET_LABELS = {
-  PS2_IP = "PS2 IP", NETMASK = "Netmask", GATEWAY = "Gateway",
-  SERVER = "Server IP", PORT = "Port", SHARE = "Share",
-  USER = "User", PASS = "Password",
-}
--- PLDR.PopstarterNetEffective consults the live network stack for the DHCP lease,
--- so it must NOT run per row per frame (8 rows x 60fps of ps2ip RPC). Cached, and
--- invalidated on any edit and on settings entry.
-function UI.PsnetEffective()
-  if UI._PsnetEffCache == nil then
-    local c = nil
-    if type(PLDR) == "table" and type(PLDR.PopstarterNetEffective) == "function" then
-      local ok, eff, src = pcall(PLDR.PopstarterNetEffective)
-      if ok and type(eff) == "table" then c = { eff = eff, src = src or {} } end
-    end
-    UI._PsnetEffCache = c or { eff = {}, src = {} }
-  end
-  return UI._PsnetEffCache.eff, UI._PsnetEffCache.src
-end
--- Own truncator rather than the SMB section's _SmbTruncMiddle: that is a chunk
--- LOCAL declared further down this file, so referencing it from here would resolve
--- to a nil global at runtime (the settings page would error on first render, and
--- nothing in a parse check or the harness would catch it).
-function UI.PsnetTrunc(s, max)
-  s = tostring(s or "")
-  if string.len(s) <= max then return s end
-  local keep = math.floor((max - 3) / 2)
-  if keep < 1 then keep = 1 end
-  return string.sub(s, 1, keep).."..."..string.sub(s, string.len(s) - keep + 1)
-end
-function UI.PsnetEnsureDraft()
-  if type(UI.PsnetDraft) ~= "table" then
-    if type(PLDR) == "table" and type(PLDR.PsnetCopy) == "function" then
-      UI.PsnetDraft = PLDR.PsnetCopy(PLDR.PSNET)
-    else
-      UI.PsnetDraft = {}
-    end
-  end
-  return UI.PsnetDraft
-end
-function UI.PsnetFieldDirty(key)
-  local d = UI.PsnetEnsureDraft()
-  local cur = (type(PLDR) == "table" and type(PLDR.PSNET) == "table") and PLDR.PSNET[key] or nil
-  return tostring(d[key] or "") ~= tostring(cur or "")
-end
-function UI.PsnetFieldDisplay(field)
-  local d = UI.PsnetEnsureDraft()
-  local v = tostring(d[field.key] or "")
-  if v ~= "" then
-    if field.key == "PASS" then return string.rep("*", math.min(string.len(v), 16)) end
-    return UI.PsnetTrunc(v, 34)
-  end
-  -- Inheriting: show what will ACTUALLY be written, and from where.
-  local eff, src = UI.PsnetEffective()
-  local e = tostring((eff and eff[field.key]) or "")
-  local s = (src and src[field.key]) or "browsing"
-  if field.key == "PASS" then
-    e = (e == "") and PLDR.L("none") or string.rep("*", math.min(string.len(e), 16))
-  elseif e == "" then
-    -- Only reachable for the address triple while browsing is on DHCP and no lease
-    -- has been taken yet. Say so plainly rather than showing a blank row.
-    return PLDR.L("Same as browsing (not known until you connect)")
-  end
-  if s == "leased" then
-    return PLDR.LFmt("From DHCP lease: %s", e)
-  end
-  return PLDR.LFmt("Same as browsing: %s", e)
-end
-function UI.PsnetFieldOpenEditor(field)
-  local d = UI.PsnetEnsureDraft()
-  local field_label = PLDR.L(UI._PSNET_LABELS[field.key] or field.key)
-  local fmt_ok, fmt_title = pcall(string.format, PLDR.L("Edit %s"), field_label)
-  local title = fmt_ok and fmt_title or (PLDR.L("Edit").." "..field_label)
-  if type(UI.PathEditor) == "table" and type(UI.PathEditor.Open) == "function" then
-    UI.PathEditor.Open(title, tostring(d[field.key] or ""), function(value)
-      local dd = UI.PsnetEnsureDraft()
-      local typed = string.gsub(tostring(value or ""), "[\r\n]", "")
-      -- Blank is a legitimate value here (it means "inherit"), so an empty string
-      -- must pass through untouched rather than being sanitized to a default.
-      local cleaned = typed
-      if typed ~= "" and type(PLDR) == "table" and type(PLDR.SmbSanitize) == "function" then
-        cleaned = PLDR.SmbSanitize(field, typed)
-        if tostring(cleaned) ~= typed and type(UI.Notif_queue) == "table" then
-          UI.Notif_queue.add(PLDR.L(UI._PSNET_LABELS[field.key] or field.key).." "..PLDR.L("adjusted -- using").." \""..tostring(cleaned).."\"", "warn")
-        end
-      end
-      dd[field.key] = cleaned
-      UI.PsnetDirty = true
-      UI._PsnetEffCache = nil   -- an override changes the effective readout
-    end)
-  end
-end
-
 -- ===== SMB / Network settings field helpers (Stage 1: config only) ==========
 -- Spec-driven row rendering for the "SMB / Network" settings section. The field
 -- spec + persistence live in system.lua (PLDR.SMB_FIELDS / PLDR.Smb*). These are
@@ -6959,8 +6826,6 @@ function UI.SyncSettingsDraftFromRuntime()
     UI.SmbDraft = {}
   end
   UI.SmbDirty = false
-            UI.PsnetDirty = false
-            UI._PsnetEffCache = nil
   UI.SmbModulesDraft = (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
   UI.SmbModulesDirty = false
 end

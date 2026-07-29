@@ -1051,8 +1051,12 @@ t28 = E('''function()
   local hd = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
   if string.find(hd, "ILINK", 1, true) == nil then return false, "i.Link should be hidden by default, HIDDEN_DEVICES="..tostring(PLDR.HIDDEN_DEVICES) end
   local smb = PLDR.SmbDefaults()
-  local want = { PS2_IP="192.168.1.10", GATEWAY="192.168.1.1", DNS="192.168.1.1",
-                 SERVER="192.168.1.100", SHARE="games", USER="guest", PORT="1111" }
+  -- Every value POPSTARTER reads now defaults to BLANK. These used to ship guesses
+  -- (192.168.1.10 / server .100 / port 1111 / share "games" / user "guest") shown
+  -- to the user as if they were configuration; the loader now reads what is on the
+  -- memory card, or leaves the field empty to be filled in.
+  local want = { PS2_IP="", GATEWAY="", DNS="",
+                 SERVER="", SHARE="", USER="", PORT="" }
   for k, v in pairs(want) do
     if tostring(smb[k]) ~= v then return false, "SMB "..k.." should be "..v..", got "..tostring(smb[k]) end
   end
@@ -1655,102 +1659,84 @@ check("T42 L3 hides a visible game while Hidden games = Hidden, and the list reb
       _t42_ok, _t42_why)
 
 
-# T43: IPCONFIG.DAT must NEVER be deleted, and on DHCP must carry a real address.
+# T43 / T44: POPSTARTER's .DAT files are the single source of truth for SMB.
 #
-# Issue #560 (elvengf): SMB games listed but the launch died right after the loader's
-# last frame. Root cause, confirmed by the maintainer: POPStarter has NO DHCP of its own.
-# It needs a literal address in mc?:/POPSTARTER/IPCONFIG.DAT or it has no network at all.
+# Issue #560 was two bugs wearing one coat, and both came from storing SMB config
+# somewhere other than the files POPSTARTER actually reads.
 #
-# RenderSmbIpconfig returned nil on DHCP and SyncSmbDat turned nil into DeleteIfExists,
-# on the assumption that "absent" meant "lease it yourself". Since DHCP is the SHIPPED
-# DEFAULT, the default config browsed fine on the menu's own lease (our stack does DHCP)
-# and then handed POPStarter nothing. That asymmetry -- browse works, launch dies -- is
-# exactly the reported symptom, and it would hit nearly every user, which is consistent
-# with SMB launching never once having been confirmed working on hardware.
+#   1. We DELETED mc?:/POPSTARTER/IPCONFIG.DAT whenever the menu was set to DHCP,
+#      assuming "absent" meant "lease your own". POPSTARTER has no DHCP. DHCP was
+#      the shipped default, so a default install browsed fine on the menu's own
+#      lease and then died at the handoff with no network at all.
+#   2. The fix for (1) wrote the address the MENU had leased -- which silently
+#      overrode what the user typed. That is how elvengf ended up staring at a
+#      netmask (255.255.252.0) he never entered, with no screen able to explain it.
+#      He found it by pulling the memory card and reading it on a PC.
 #
-# Guarded here because the delete looks correct in isolation: "on DHCP there should be no
-# static IP file" reads as obviously right, and the recovered POPStarter docs mention DHCP
-# ZERO times across all 60 wiki pages, so nothing in-repo contradicts it. Only the
-# maintainer's knowledge of POPStarter's runtime settles it. A future reader WILL be
-# tempted to reinstate the delete.
-_sys43 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
-_ui43 = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
-_c43 = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+# The resolution is architectural: POPSLOADER reads AND writes these files, so the
+# app and POPSTARTER cannot disagree -- they are the same bytes. Nothing is
+# invented: no defaults, no leased address, no deletion.
+import re
+_sys = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
 
-_i = _sys43.find("function PLDR.SyncSmbDat()")
-_sync_body = _sys43[_i:_sys43.find("\nfunction ", _i + 1)] if _i != -1 else ""
+
+def _fnbody(src, fn):
+    i = src.find("function PLDR." + fn)
+    if i == -1:
+        return ""
+    j = src.find('\n' + "function ", i + 1)
+    return src[i:j] if j != -1 else src[i:]
+
+
+_sync = _fnbody(_sys, "SyncSmbDat")
+_apply = _fnbody(_sys, "ApplySmbModules")
+_render_ip = _fnbody(_sys, "RenderSmbIpconfig")
 
 _t43_ok, _t43_why = True, ""
-if _i == -1:
-    _t43_ok, _t43_why = False, "PLDR.SyncSmbDat is gone"
-elif "if cfg.DHCP == true then return nil end" in _sys43:
-    _t43_ok, _t43_why = False, ("RenderSmbIpconfig bails to nil on DHCP again -- POPStarter cannot "
-                                "lease an address, so this strands it with no network")
-elif "DeleteIfExists" in _sync_body:
-    _t43_ok, _t43_why = False, ("SyncSmbDat deletes a .DAT again; an absent IPCONFIG.DAT means "
-                                "POPStarter has no network and the launch dies silently")
-elif "System.smbGetIPConfig" not in _sys43:
-    _t43_ok, _t43_why = False, "RenderSmbIpconfig no longer asks the live stack for the leased address"
-elif '{"smbGetIPConfig",' not in _c43:
-    _t43_ok, _t43_why = False, "System.smbGetIPConfig is not registered in luasystem.cpp"
-elif 'POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"' in _sync_body:
-    _t43_ok, _t43_why = False, ("SyncSmbDat writes to the resolved-root-by-card-presence again "
-                                "instead of the root actually holding the pack")
-elif '"mc1:/POPSTARTER"' not in _sys43 or "ResolveStagedPackRoot" not in _sys43:
-    _t43_ok, _t43_why = False, ("the staged-pack probe no longer checks both cards; POPStarter reads "
-                                "mc0 with a per-file mc1 fallback, so an mc1 install is real")
+if "if cfg.DHCP == true then return nil end" in _sys:
+    _t43_ok, _t43_why = False, "RenderSmbIpconfig bails to nil on DHCP again -- POPSTARTER cannot lease an address"
+elif "DeleteIfExists" in _sync:
+    _t43_ok, _t43_why = False, "SyncSmbDat deletes a .DAT again; an absent IPCONFIG.DAT leaves POPSTARTER with no network"
+elif "DeleteIfExists(ip_dest)" in _apply:
+    _t43_ok, _t43_why = False, "ApplySmbModules deletes IPCONFIG.DAT again (the half of this fix that was already missed once)"
+elif "smbGetIPConfig" in _render_ip or "smbGetIPConfig" in _sync:
+    _t43_ok, _t43_why = False, ("the DHCP lease is being written into IPCONFIG.DAT again -- that silently "
+                                "overrides what the user typed, which is the second half of #560")
 else:
-    # The sync must run on the ORDINARY connect (where the lease exists), not only in the
-    # blank-Share picker branch. Without this the fix never fires for anyone whose Share
-    # is already configured -- i.e. everyone past first-run.
-    _sc = _ui43.find("UI.SceneChange(UI.SCENES.GSMBNET)")
-    _sy = _ui43.find("pcall(PLDR.SyncSmbDat)")
-    if _sc == -1 or _sy == -1 or _sy > _sc:
-        _t43_ok, _t43_why = False, ("SyncSmbDat no longer runs on a successful connect before entering "
-                                    "the SMB scene, so the leased address never reaches the card")
-check("T43 IPCONFIG.DAT is never deleted and carries the leased address on DHCP",
+    _spec = _sys[_sys.find("PLDR.SMB_FIELDS = {"):]
+    _spec = _spec[:_spec.find('\n' + "}")]
+    for _k in ("PS2_IP", "NETMASK", "GATEWAY", "SERVER", "PORT", "SHARE", "USER"):
+        _m = re.search(r'key = "%s",\s*kind = "str",\s*default = "([^"]*)"' % _k, _spec)
+        if _m is None:
+            _t43_ok, _t43_why = False, "field %s vanished from SMB_FIELDS" % _k
+            break
+        if _m.group(1) != "":
+            _t43_ok, _t43_why = False, ("%s ships a built-in default (%r) again -- a guess presented as the "
+                                        "user's own configuration; read the card or leave it blank"
+                                        % (_k, _m.group(1)))
+            break
+check("T43 IPCONFIG.DAT is never deleted, never synthesised, and nothing is defaulted",
       _t43_ok, _t43_why)
 
-
-# T44: POPSTARTER's network config is a SEPARATE table and is ALWAYS static.
-#
-# POPSTARTER cannot lease an address (see T43). The settings it reads therefore
-# cannot offer DHCP, and no code path may hand it "use DHCP" or nothing at all.
-# PLDR.PSNET_FIELDS deliberately has NO DHCP key, and PopstarterNetEffective pins
-# DHCP=false after resolving any browsing lease down to a literal address.
-#
-# The second half guards a bug found while building this: bb62f2be fixed the
-# delete-IPCONFIG.DAT defect in SyncSmbDat but MISSED the identical one in
-# ApplySmbModules, so turning SMB modules on while IP assignment was DHCP still
-# deleted the file. Two writers, one fixed, one not. They must now share a single
-# source of truth (PopstarterNetEffective) and neither may delete.
-_sys44 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
-_i44 = _sys44.find("function PLDR.ApplySmbModules")
-_apply_body = _sys44[_i44:_sys44.find("\nfunction ", _i44 + 1)] if _i44 != -1 else ""
-_j44 = _sys44.find("PLDR.PSNET_FIELDS = {")
-_spec = _sys44[_j44:_sys44.find("}", _j44)] if _j44 != -1 else ""
-
 _t44_ok, _t44_why = True, ""
-if _j44 == -1:
-    _t44_ok, _t44_why = False, "PLDR.PSNET_FIELDS is gone -- POPSTARTER's config is no longer separable"
-elif 'key = "DHCP"' in _spec:
-    _t44_ok, _t44_why = False, ("a DHCP field was added to PSNET_FIELDS; POPSTARTER cannot lease an "
-                                "address, so offering the choice sells a guaranteed failure")
-elif "eff.DHCP = false" not in _sys44:
-    _t44_ok, _t44_why = False, "PopstarterNetEffective no longer pins DHCP=false, so a lease could reach the card as 'use DHCP'"
-elif _i44 == -1:
-    _t44_ok, _t44_why = False, "PLDR.ApplySmbModules is gone"
-elif "IPCONFIG.DAT" in _apply_body and "DeleteIfExists(ip_dest)" in _apply_body:
-    _t44_ok, _t44_why = False, ("ApplySmbModules deletes IPCONFIG.DAT again -- installing the modules "
-                                "on a DHCP setup would strand POPSTARTER with no network")
-elif "PLDR.PopstarterNetEffective()" not in _apply_body:
-    _t44_ok, _t44_why = False, "ApplySmbModules no longer writes the POPSTARTER-side config, so install and backfill can disagree"
-else:
-    _sync44 = _sys44[_sys44.find("function PLDR.SyncSmbDat"):]
-    _sync44 = _sync44[:_sync44.find("\nfunction ", 1)]
-    if "PLDR.PopstarterNetEffective()" not in _sync44:
-        _t44_ok, _t44_why = False, "SyncSmbDat no longer uses the POPSTARTER-side config"
-check("T44 POPSTARTER network config is separate, always static, and never deleted",
+for _fn in ("ParseIpconfigDat", "ParseSmbconfigDat", "LoadPopstarterDat"):
+    if "function PLDR." + _fn not in _sys:
+        _t44_ok, _t44_why = False, "PLDR.%s is gone -- the .DAT are no longer read as the source of truth" % _fn
+        break
+if _t44_ok:
+    _after_parse = _sys[_sys.find("PLDR.SMB = PLDR.SmbParse(data)"):][:1400]
+    if "PLDR.LoadPopstarterDat" not in _after_parse:
+        _t44_ok, _t44_why = False, ("settings load no longer overlays the card's .DAT, so the app can display "
+                                    "values that differ from what POPSTARTER will actually read")
+if _t44_ok and "pnum ~= 445" in _sys:
+    _t44_ok, _t44_why = False, ("the :445 port suppression is back; these files are READ BACK now, so a "
+                                "suppressed port silently changes meaning on the round trip")
+if _t44_ok:
+    for _n, _b in (("SyncSmbDat", _sync), ("ApplySmbModules", _apply)):
+        if "PLDR.SmbCopy(PLDR.SMB)" not in _b:
+            _t44_ok, _t44_why = False, "%s no longer writes from PLDR.SMB, so the two writers can disagree" % _n
+            break
+check("T44 the POPSTARTER .DAT are read as well as written, with the port always explicit",
       _t44_ok, _t44_why)
 
 print()
