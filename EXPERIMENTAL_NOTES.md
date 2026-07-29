@@ -2,15 +2,15 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP79**. The check is simple: a version ending in **-EXP79** = this build; **-EXP78** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP80**. The check is simple: a version ending in **-EXP80** = this build; **-EXP79** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP79, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP80, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
 
-## New in EXP79: the network settings now ARE the POPSTARTER files
+## New in EXP80: the network settings now ARE the POPSTARTER files
 
 Only relevant if you play games off a network share, but if you do, please read
 this one.

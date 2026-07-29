@@ -1739,6 +1739,61 @@ if _t44_ok:
 check("T44 the POPSTARTER .DAT are read as well as written, with the port always explicit",
       _t44_ok, _t44_why)
 
+# T45: SMBCONFIG.DAT must ROUND-TRIP without losing lines 2 and 3.
+#
+# elvengf, issue #560: he hand-added his username and password to SMBCONFIG.DAT,
+# launched a game from POPSLOADER, pulled the card, and the file was back to a
+# single line with the credentials gone. Maintainer: "Then it's me, I'm polluting
+# the format with a write."
+#
+# Two independent causes, both fixed and both guarded here:
+#   * We wrote from a config that never had the file's USER/PASS in it, so
+#     RenderSmbConfig took its guest branch and emitted line 1 only. The loader now
+#     READS the .DAT first, so whatever is on the card survives a write.
+#   * We suppressed ":445" as "implied", so even the server line came back changed.
+#
+# The third assertion is the belt-and-braces one: if the config is empty for ANY
+# reason -- card unreadable at boot, a load that quietly failed, a first run --
+# RenderSmbConfig must return nil so the caller leaves the file ALONE. Writing
+# nothing is recoverable; overwriting a working hand-made file is not.
+t45 = E(r"""function()
+  if type(PLDR.ParseSmbconfigDat) ~= "function" then return false, "ParseSmbconfigDat missing" end
+  local function roundtrip(text)
+    local cfg = PLDR.SmbCopy(PLDR.SMB)
+    for k, v in pairs(PLDR.ParseSmbconfigDat(text)) do cfg[k] = v end
+    return PLDR.RenderSmbConfig(cfg)
+  end
+
+  -- elvengf's own file, with the credentials he added by hand.
+  local three = "192.168.4.47:445 PS2\r\nmyuser\r\nmypass"
+  local got = roundtrip(three)
+  if got ~= three then
+    return false, "3-line round trip lost data: expected [" .. three .. "] got [" .. tostring(got) .. "]"
+  end
+
+  -- Guest: a single line must stay a single line (no empty 2/3 appended).
+  local one = "192.168.4.47:445 PS2"
+  got = roundtrip(one)
+  if got ~= one then
+    return false, "1-line round trip changed: expected [" .. one .. "] got [" .. tostring(got) .. "]"
+  end
+
+  -- A share name containing spaces must survive; line 1 splits on the FIRST space only.
+  local spaced = "192.168.0.254:445 My Shared Folder"
+  got = roundtrip(spaced)
+  if got ~= spaced then
+    return false, "spaced share lost: expected [" .. spaced .. "] got [" .. tostring(got) .. "]"
+  end
+
+  -- An unpopulated config must produce NOTHING, so a write can never blank a good file.
+  if PLDR.RenderSmbConfig(PLDR.SmbDefaults()) ~= nil then
+    return false, "a blank config still renders a file -- a stray write would clobber the user's real one"
+  end
+  return true
+end""")()
+check("T45 SMBCONFIG.DAT round-trips (credentials and port survive a write)", t45)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

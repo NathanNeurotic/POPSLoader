@@ -7014,7 +7014,19 @@ end
 -- when PORT != 445; the colon binds to the server, never the share). Lines 2/3
 -- (CRLF-separated) carry USER then plaintext PASS, omitted entirely for guest.
 function PLDR.RenderSmbConfig(cfg)
-  local server = tostring(cfg.SERVER or "")
+  local server = tostring((cfg and cfg.SERVER) or "")
+  -- A BLANK SERVER MEANS WE HAVE NOTHING WORTH WRITING. Return nil so the caller
+  -- leaves the file on the card exactly as it is, instead of stamping an empty
+  -- config over a working one.
+  --
+  -- This is the "I'm polluting the format with a write" failure (issue #560):
+  -- elvengf hand-added his credentials, launched a game, and the file came back a
+  -- single line with the credentials gone. Any path that reaches a write with an
+  -- unpopulated config -- the memory card not readable yet at boot, a load that
+  -- silently failed, a first run before anything is configured -- would otherwise
+  -- destroy a file the user had made correct by hand. Writing nothing is always
+  -- recoverable; overwriting is not.
+  if server == "" then return nil end
   -- PORT IS ALWAYS WRITTEN EXPLICITLY, including 445. This used to suppress :445
   -- as "implied" (a deliberate call recorded in DECISIONS.md), but these files are
   -- now the single source of truth that we READ BACK as well as write, and a
@@ -7189,10 +7201,16 @@ function PLDR.ApplySmbModules(progress)
   if ip_body ~= nil then
     if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
   end
-  -- SMBCONFIG.DAT: always generated from the current settings.
+  -- SMBCONFIG.DAT: generated from the current settings, but NEVER blanked. Same
+  -- rule as IPCONFIG.DAT above -- nil means "nothing worth writing", so leave any
+  -- existing file alone rather than replacing a hand-made working config with an
+  -- empty one. Installing the modules must not cost the user their credentials.
   step(total, "SMBCONFIG.DAT")
-  if not WriteBytesAtomicBounded(PLDR.RenderSmbConfig(cfg), POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
-    return false
+  local smb_body = PLDR.RenderSmbConfig(cfg)
+  if smb_body ~= nil then
+    if not WriteBytesAtomicBounded(smb_body, POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
+      return false
+    end
   end
   return true
 end
