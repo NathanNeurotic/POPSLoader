@@ -49,6 +49,18 @@ HOSDMenu, wLaunchELF, a forwarder, etc.) can boot it straight to a device<br />
 page or auto-launch a specific game. Arguments are parsed in<br />
 <code>src/main.cpp</code> <code>parseLaunchArgs()</code>, exposed to Lua via<br />
 <code>System.getLaunchArgs()</code>, and acted on in <code>bin/POPSLDR/system.lua</code>.</p>
+<h2 id="-bdmamode-pin-the-bdm-assault-driver-variant"><code>-bdma=&lt;mode&gt;</code> — pin the BDM Assault driver variant</h2>
+<p><code>-bdma=fat32 | usbexfat | mx4sio | mmce | ata</code> stages that BDMA variant for the<br />
+launch, <strong>overriding</strong> Adaptive BDMA's per-device choice. <code>hddexfat</code> is accepted<br />
+as an alias for <code>ata</code>.</p>
+<p>Adaptive BDMA is <strong>on by default</strong> (changed 2026-07-28), so the drivers for the<br />
+device you launch are staged automatically and this argument is only needed when<br />
+you want a specific variant regardless of the device — for example forcing the<br />
+exFAT-USB pair on a FAT32 stick, or staging <code>ata</code> from a launcher that does not<br />
+route through the exFAT page.</p>
+<p>The value is normalised by <code>NormalizeBdmaModeKey</code>. An <strong>unrecognised value is<br />
+ignored</strong>, falling back to the normal adaptive choice, rather than pinning<br />
+something bogus and staging the wrong driver pair.</p>
 <h2 id="the-arguments">The arguments</h2>
 <table>
 <thead>
@@ -69,6 +81,10 @@ page or auto-launch a specific game. Arguments are parsed in<br />
 <tr>
 <td><code>-game=&lt;selector&gt;</code></td>
 <td>Auto-launch a game. <strong>Must be combined with <code>-page=</code>.</strong></td>
+</tr>
+<tr>
+<td><code>-bdma=&lt;mode&gt;</code></td>
+<td>Pin the BDM Assault driver variant for this launch, overriding Adaptive BDMA's per-device choice.</td>
 </tr>
 <tr>
 <td><code>-debug</code></td>
