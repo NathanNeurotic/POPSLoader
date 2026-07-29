@@ -2,13 +2,60 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP78**. The check is simple: a version ending in **-EXP78** = this build; **-EXP77** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP79**. The check is simple: a version ending in **-EXP79** = this build; **-EXP78** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP78, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP79, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP79: the network settings now ARE the POPSTARTER files
+
+Only relevant if you play games off a network share, but if you do, please read
+this one.
+
+Until now the loader kept its own copy of your network settings and then tried to
+write matching files to the memory card for POPSTARTER. Two copies, and they could
+drift apart. That is what caused the confusion in the last round: one tester typed
+a netmask into the app, a different netmask ended up on his card, and nothing on
+screen could explain why. He only found out by pulling the card and reading it on
+a PC.
+
+There is only one copy now. The loader reads and writes
+POPSTARTER/IPCONFIG.DAT and POPSTARTER/SMBCONFIG.DAT directly, in POPSTARTER's own
+format. What you see in Settings is literally what POPSTARTER will read, because
+it is the same file.
+
+Two things follow from that, and both are deliberate:
+
+* **The network fields start empty now.** They used to be pre-filled with
+  192.168.1.10, a server address, port 1111, a share called "games" and a user
+  called "guest". None of that was ever your configuration, it was a guess wearing
+  a costume. Blank means blank. If the files are already on your card, the loader
+  loads those values instead.
+* **Your address is never invented for you.** Even with automatic addressing on for
+  browsing, POPSTARTER still needs a real address written down, and it will only
+  ever be the one you entered or the one already on the card. The last build filled
+  it in from your router, which quietly overwrote what people had typed.
+
+We also stopped asking for things POPSTARTER does not need. DNS, link mode, games
+path and the NetBIOS options are gone from the screen. POPSTARTER never used them.
+
+Please check:
+
+* Open Settings and look at the network rows. If you already had working files on
+  your memory card, your real values should appear. If they show blank instead,
+  that is a bug and I need to know immediately.
+* Change something, save, then read the files off the card. They should match
+  exactly, including the port, which is now always written out in full
+  (192.168.4.47:445 rather than just 192.168.4.47).
+* If you had SMB working before, it should still work. Report it straight away if
+  it does not.
+
+Not done yet, so do not test for it: the loader does not yet offer to install the
+SMB modules for you when the folder is missing, and does not yet tell you SMB is
+unavailable when there is no memory card at all. Both are coming.
 
 ## New in EXP78: POPSTARTER now has its own network settings
 
