@@ -1919,6 +1919,82 @@ check("T48 Adaptive BDMA defaults ON and -bdma=<mode> pins the staged variant",
       _t48_ok, _t48_why)
 
 
+# T49: the -page/-mode launch-arg ROUTING, driven for real.
+#
+# This layer had ZERO coverage until now, which is why it has broken three times
+# without anything noticing. The routing block runs at system.lua CHUNK LOAD time
+# and reads System.getLaunchArgs(), and the harness mock above hard-codes that to
+# {} -- so every one of the other tests passes with this entire path dead.
+#
+# CosmicScale reported it broken on 2026-06-09 (the OPT write was silently
+# swallowed by the MainMenu __newindex guard), again on 2026-06-12 (the page was
+# highlighted but the list never opened), and again on 2026-07-28. Both earlier
+# fixes went in blind and ungated.
+#
+# So: load the REAL chunk in a SECOND Lua runtime with getLaunchArgs returning a
+# page, and assert what actually comes out -- normalised page, carousel OPT, the
+# carousel indices, and the one-shot auto-enter flag.
+_t49_ok, _t49_why = True, ""
+try:
+    from lupa import lua54 as _lua54
+
+    def _route(page):
+        _m = MOCKS.replace(
+            "getLaunchArgs = function() return {} end,",
+            'getLaunchArgs = function() return {page = "%s"} end,' % page, 1)
+        assert "getLaunchArgs = function() return {page" in _m, "mock swap failed"
+        _L = _lua54.LuaRuntime(unpack_returned_tuples=True)
+        _L.execute(_m)
+        _pre = _L.eval("function(src, name) return function() return load(src, name)() end end")
+        _L.globals().package.preload["ui"] = _pre(UI_SRC, "ui.lua")
+        _f = _L.eval("function(src,name) local c,e = load(src,name); if not c then error(e) end return c end")
+        _f(SYS_TRUNC, "system.lua")()
+        _g = _L.globals()
+        _mm = _g.UI.MainMenu
+        return {
+            "page": _g.PLDR.LAUNCH_ARGS.page,
+            "opt": _mm.OPT,
+            "idx": _mm.Carousel.currentIndex,
+            "enter": _mm.PendingAutoEnter,
+            "exfat_hidden": _g.PLDR.IsDeviceHidden("EXFAT"),
+            "pfs_hidden": _g.PLDR.IsDeviceHidden("PFS"),
+        }
+
+    # (arg, expected normalised page, expected carousel opt)
+    for _arg, _want_page, _want_opt in (
+            ("ata", "EXFAT", 3), ("ata0", "EXFAT", 3), ("exfat", "EXFAT", 3),
+            ("ATA", "EXFAT", 3), ("hdd", "HDD", 4), ("usb", "USB", 5),
+            ("mx4sio", "MX4SIO", 2), ("mmce", "MMCE", 1)):
+        _r = _route(_arg)
+        if _r["page"] != _want_page:
+            _t49_ok, _t49_why = False, "-page=%s normalised to %s, want %s" % (_arg, _r["page"], _want_page)
+            break
+        if _r["opt"] != _want_opt:
+            _t49_ok, _t49_why = False, ("-page=%s left MainMenu.OPT=%s, want %s -- the carousel never moves "
+                                        "to the requested device" % (_arg, _r["opt"], _want_opt))
+            break
+        if _r["idx"] != _want_opt:
+            _t49_ok, _t49_why = False, ("-page=%s left Carousel.currentIndex=%s, want %s"
+                                        % (_arg, _r["idx"], _want_opt))
+            break
+        if _r["enter"] is not True:
+            _t49_ok, _t49_why = False, ("-page=%s did not raise PendingAutoEnter, so the device list is never "
+                                        "opened -- it boots to the plain carousel" % _arg)
+            break
+
+    # An explicit ATA session must REVEAL the exFAT page and must NOT hide PFS
+    # (the 2026-07-28 additive rule; hiding PFS deleted a device from the carousel).
+    if _t49_ok:
+        _r = _route("ata")
+        if _r["exfat_hidden"] is not False:
+            _t49_ok, _t49_why = False, "-page=ata leaves the exFAT page HIDDEN -- the argument cannot open the page it names"
+        elif _r["pfs_hidden"] is not False:
+            _t49_ok, _t49_why = False, "-page=ata hides the PFS page again -- an argument must not remove a device"
+except Exception as _e:
+    _t49_ok, _t49_why = False, "probe failed: %s" % str(_e)[:180]
+check("T49 -page/-mode routes the carousel and raises the one-shot auto-enter", _t49_ok, _t49_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
