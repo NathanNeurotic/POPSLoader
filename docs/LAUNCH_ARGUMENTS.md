@@ -6,6 +6,23 @@ page or auto-launch a specific game. Arguments are parsed in
 `src/main.cpp` `parseLaunchArgs()`, exposed to Lua via
 `System.getLaunchArgs()`, and acted on in `bin/POPSLDR/system.lua`.
 
+## `-bdma=<mode>` — pin the BDM Assault driver variant
+
+`-bdma=fat32 | usbexfat | mx4sio | mmce | ata` stages that BDMA variant for the
+launch, **overriding** Adaptive BDMA's per-device choice. `hddexfat` is accepted
+as an alias for `ata`.
+
+Adaptive BDMA is **on by default** (changed 2026-07-28), so the drivers for the
+device you launch are staged automatically and this argument is only needed when
+you want a specific variant regardless of the device — for example forcing the
+exFAT-USB pair on a FAT32 stick, or staging `ata` from a launcher that does not
+route through the exFAT page.
+
+The value is normalised by `NormalizeBdmaModeKey`. An **unrecognised value is
+ignored**, falling back to the normal adaptive choice, rather than pinning
+something bogus and staging the wrong driver pair.
+
+
 ## The arguments
 
 | Argument | Effect |
@@ -13,6 +30,7 @@ page or auto-launch a specific game. Arguments are parsed in
 | `-page=<device>` | Boot **straight into that device's game list** (when used without `-game`). |
 | `-mode=<device>` | NHDDL-compatible **alias** for `-page=` (identical behavior, same values). |
 | `-game=<selector>` | Auto-launch a game. **Must be combined with `-page=`.** |
+| `-bdma=<mode>` | Pin the BDM Assault driver variant for this launch, overriding Adaptive BDMA's per-device choice. |
 | `-debug` | Show an on-screen toast with the parsed args + resolved boot context. |
 
 Each argument is a separate token, exactly like a command line:

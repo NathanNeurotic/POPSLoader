@@ -1864,6 +1864,53 @@ check("T47 a launch is blocked, and the empty fields named, when POPSTARTER lack
       _t47_ok, _t47_why)
 
 
+# T48: Adaptive BDMA ships ON, and -bdma=<mode> can pin the variant.
+#
+# CosmicScale, 2026-07-28: "POPSLoader automatically installs the required BDM
+# Assault drivers... it isn't working for ATA." It was not working for anything.
+# MaybeApplyAdaptiveBdma returns immediately unless PLDR.BDMA_ADAPTIVE is true,
+# and it shipped false, so the whole feature was inert on a stock install. The
+# staging machinery was complete and correct the entire time -- ATA had its
+# ".ata" suffix and both usbd/usbhdfsd embeds -- it was one boolean away, sitting
+# behind a setting users had no reason to know existed. Verified identical between
+# 2270cec (1.1.0) and dev: never a regression, it has simply never worked
+# out of the box.
+#
+# The half-created state is what made it read as broken rather than unconfigured:
+# the POPSTARTER folder and its .icn/icon.sys DO get written (a different code
+# path), so the user sees a folder appear with no drivers in it.
+_sysB = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_uiB = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_mainB = (REPO / "src" / "main.cpp").read_text(encoding="utf-8")
+_lsB = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+
+_t48_ok, _t48_why = True, ""
+if "PLDR.BDMA_ADAPTIVE = false" in _sysB:
+    _t48_ok, _t48_why = False, ("Adaptive BDMA is back to default OFF -- the drivers are then never staged "
+                                "for any device and the feature is inert on a stock install")
+elif "PLDR.BDMA_ADAPTIVE = true" not in _sysB:
+    _t48_ok, _t48_why = False, "PLDR.BDMA_ADAPTIVE no longer has an explicit default"
+elif "UI.BdmaAdaptive = true" not in _uiB:
+    _t48_ok, _t48_why = False, "reset-to-defaults no longer restores Adaptive BDMA to ON, so a reset silently disables staging"
+elif '"-bdma="' not in _mainB:
+    _t48_ok, _t48_why = False, "the -bdma= launch argument is no longer parsed in main.cpp"
+elif "launch_arg_bdma" not in _lsB:
+    _t48_ok, _t48_why = False, "-bdma= never reaches Lua (missing from lua_getLaunchArgs)"
+elif "function PLDR.LaunchArgBdmaMode" not in _sysB:
+    _t48_ok, _t48_why = False, "PLDR.LaunchArgBdmaMode is gone -- -bdma= is parsed but never honoured"
+else:
+    # The pin must be consulted INSIDE the adaptive target resolution, ahead of the
+    # per-device mapping, or an explicit -bdma= is silently overridden by the page.
+    _res = _sysB[_sysB.find("function PLDR.ResolveAdaptiveBdmaTarget"):]
+    _res = _res[:_res.find(chr(10) + "end")]
+    if "PLDR.LaunchArgBdmaMode()" not in _res:
+        _t48_ok, _t48_why = False, "ResolveAdaptiveBdmaTarget ignores the -bdma= pin, so the per-device guess wins"
+    elif _res.find("PLDR.LaunchArgBdmaMode()") > _res.find('device_page == "MX4SIO"'):
+        _t48_ok, _t48_why = False, "the -bdma= pin is checked AFTER the per-device mapping, so it can never take effect"
+check("T48 Adaptive BDMA defaults ON and -bdma=<mode> pins the staged variant",
+      _t48_ok, _t48_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

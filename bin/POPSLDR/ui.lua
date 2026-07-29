@@ -4387,8 +4387,8 @@ UI = {
             UI.BootSound = true
             UI.ProfileDirty = true
           end
-          if UI.BdmaAdaptive == true then   -- default OFF
-            UI.BdmaAdaptive = false
+          if UI.BdmaAdaptive ~= true then   -- default ON
+            UI.BdmaAdaptive = true
             UI.ProfileDirty = true
           end
           if (math.floor(tonumber(UI.Overscan) or 0)) ~= 0 then   -- default 0 (off)

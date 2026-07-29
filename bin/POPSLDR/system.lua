@@ -2329,6 +2329,7 @@ PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
   page = nil,
   page_raw = nil,
   game = nil,
+  bdma_raw = nil,   -- normalised at point of use; see PLDR.LaunchArgBdmaMode
   debug = false,
 }
 if type(System) == "table" and type(System.getLaunchArgs) == "function" then
@@ -2348,6 +2349,12 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
       if game_raw ~= "" then
         PLDR.LAUNCH_ARGS.game = game_raw
       end
+    end
+    local bdma_raw = tostring(args.bdma or "")
+    if bdma_raw ~= "" then
+      -- Stored RAW on purpose: NormalizeBdmaModeKey is a chunk-local declared far
+      -- below this point, so calling it here would resolve to a nil global.
+      PLDR.LAUNCH_ARGS.bdma_raw = bdma_raw
     end
     PLDR.LAUNCH_ARGS.debug = (args.debug == true)
     -- Recover a -debug that was written on the same CNF arg line as the
@@ -5246,7 +5253,15 @@ function PLDR.LoadSettingsNonFatal()
   -- the user's choice and the folder (+ its OSD icons) was rebuilt on EVERY boot even when
   -- toggled OFF (provato HW report). The ensure now happens AFTER the load, at the call site.
   PLDR.BDMA_MODE_KEY = "FAT32"
-  PLDR.BDMA_ADAPTIVE = false  -- per-launch BDMA variant staging (issue #509); default OFF, user opts in
+  -- Default ON (maintainer, 2026-07-28). CosmicScale reported that BDM Assault
+  -- drivers were never installed for ATA; the machinery was all present and
+  -- correct, it simply never ran, because MaybeApplyAdaptiveBdma returns
+  -- immediately unless this is true and it shipped false. Users were expected to
+  -- find a setting they did not know existed. Known trade-off, accepted: every
+  -- device now gets a BDMA variant staged unless the user opts OUT (Settings >
+  -- Adaptive BDMA), including the exFAT pair on a FAT32 USB stick -- that pair
+  -- reads FAT32 too, so one variant serves every stick.
+  PLDR.BDMA_ADAPTIVE = true   -- per-launch BDMA variant staging (issue #509)
   PLDR.POPSTARTER_PATH = ""  -- "" = Automatic (the launch ladder); a path = custom-first
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
@@ -6900,7 +6915,21 @@ end
 -- and, per the design ask, only after an equipped check so an already-correct
 -- card takes ZERO memory-card writes.
 
+-- The -bdma=<mode> launch argument, normalised, or nil when absent/unrecognised.
+-- Deliberately tolerant: an unknown value is ignored rather than pinning
+-- something bogus and staging the wrong driver pair.
+function PLDR.LaunchArgBdmaMode()
+  if type(PLDR.LAUNCH_ARGS) ~= "table" then return nil end
+  local raw = PLDR.LAUNCH_ARGS.bdma_raw
+  if raw == nil or raw == "" then return nil end
+  return NormalizeBdmaModeKey(raw)
+end
+
 function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
+  -- An explicit -bdma= pin WINS over the per-device choice: the user has said
+  -- exactly which variant they want staged, so do not second-guess it.
+  local pinned = PLDR.LaunchArgBdmaMode()
+  if pinned ~= nil then return pinned end
   -- exFAT internal HDD launches masquerade as USB (mass:) by design; the scene
   -- is the only reliable discriminator, so check it first.
   if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GBDMHDD then

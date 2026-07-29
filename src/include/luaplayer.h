@@ -19,6 +19,7 @@ extern char app_dir[255];
  * detectBootDeviceHintFromArgv0() in main.cpp. */
 extern char launch_arg_page[64];
 extern char launch_arg_game[256];
+extern char launch_arg_bdma[32];
 extern int  launch_arg_debug;
 extern char boot_device_hint[16];
 

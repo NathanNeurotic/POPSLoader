@@ -1300,6 +1300,8 @@ static int lua_getLaunchArgs(lua_State *L) {
 	lua_setfield(L, -2, "page");
 	lua_pushstring(L, launch_arg_game);
 	lua_setfield(L, -2, "game");
+	lua_pushstring(L, launch_arg_bdma);
+	lua_setfield(L, -2, "bdma");
 	lua_pushboolean(L, launch_arg_debug != 0);
 	lua_setfield(L, -2, "debug");
 	return 1;

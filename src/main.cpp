@@ -124,6 +124,7 @@ static clock_t boot_start = 0;
  */
 char launch_arg_page[64] = "";
 char launch_arg_game[256] = "";
+char launch_arg_bdma[32]  = "";
 int  launch_arg_debug   = 0;
 
 /* C-side mirror of system.lua DetectBootDevice. Returns the canonical
@@ -236,12 +237,19 @@ static void parseLaunchArgs(int argc, char ** argv)
         } else if (strncmp(token, "-game=", 6) == 0) {
             snprintf(launch_arg_game, sizeof(launch_arg_game), "%s", token + 6);
             trimLaunchArgToken(launch_arg_game);
+        } else if (strncmp(token, "-bdma=", 6) == 0) {
+            /* Pin the BDM Assault driver variant for this session, overriding
+             * Adaptive's per-device choice: -bdma=ata|usbexfat|mx4sio|mmce|fat32.
+             * Normalisation/validation is Lua-side (NormalizeBdmaModeKey), so an
+             * unknown value is ignored rather than pinning something bogus. */
+            snprintf(launch_arg_bdma, sizeof(launch_arg_bdma), "%s", token + 6);
+            trimLaunchArgToken(launch_arg_bdma);
         } else if (strcmp(token, "-debug") == 0) {
             launch_arg_debug = 1;
         }
     }
-    DPRINTF("LaunchArgs: page=\"%s\" game=\"%s\" debug=%d\n",
-            launch_arg_page, launch_arg_game, launch_arg_debug);
+    DPRINTF("LaunchArgs: page=\"%s\" game=\"%s\" bdma=\"%s\" debug=%d\n",
+            launch_arg_page, launch_arg_game, launch_arg_bdma, launch_arg_debug);
 }
 
 static unsigned int boot_ms(void)
