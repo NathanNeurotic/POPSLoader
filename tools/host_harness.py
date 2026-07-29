@@ -1836,6 +1836,34 @@ check("T46 no memory card is reported, and a missing SMB pack offers to install 
       _t46_ok, _t46_why)
 
 
+# T47: a launch must be blocked when POPSTARTER's required values are blank.
+#
+# Nothing is invented any more (T43), which is right -- but it means a fresh
+# install has EVERY network field empty, and an empty address makes
+# RenderSmbIpconfig emit nothing, so IPCONFIG.DAT is never written and POPSTARTER
+# starts with no network. That is the original issue #560 black screen reached by a
+# brand new route, opened by the very change that removed the misleading defaults.
+# The launch path has to require them and say which are missing.
+_sys47 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_ui47 = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_t47_ok, _t47_why = True, ""
+if "function PLDR.MissingPopstarterNetFields" not in _sys47:
+    _t47_ok, _t47_why = False, "PLDR.MissingPopstarterNetFields is gone -- a blank config can reach a launch again"
+elif "PLDR.MissingPopstarterNetFields()" not in _ui47:
+    _t47_ok, _t47_why = False, "the launch gate no longer checks for blank required fields"
+else:
+    _req = _sys47[_sys47.find("function PLDR.MissingPopstarterNetFields"):]
+    _req = _req[:_req.find(chr(10) + "end")]
+    for _k in ("PS2_IP", "NETMASK", "GATEWAY", "SERVER", "SHARE"):
+        if _k not in _req:
+            _t47_ok, _t47_why = False, "%s dropped from the required set; POPSTARTER cannot work without it" % _k
+            break
+    if _t47_ok and '"PORT"' in _req:
+        _t47_ok, _t47_why = False, "PORT is being required, but POPSTARTER defaults to 445 when absent -- blank is valid"
+check("T47 a launch is blocked, and the empty fields named, when POPSTARTER lacks required values",
+      _t47_ok, _t47_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

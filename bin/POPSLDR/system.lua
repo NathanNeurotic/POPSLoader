@@ -7281,6 +7281,29 @@ function PLDR.ResolveStagedPackRoot()
   return nil
 end
 
+-- Which values POPSTARTER must have, and does not? Returns a list of missing field
+-- KEYS (empty = ready to launch).
+--
+-- WE INVENT NOTHING NOW, so every one of these starts blank on a fresh install.
+-- That is deliberate -- a guess dressed as configuration is what hid the real
+-- problem in issue #560 -- but it means "blank" is reachable, and a blank address
+-- makes RenderSmbIpconfig emit nothing, so IPCONFIG.DAT never gets written and
+-- POPSTARTER launches with no network at all. Same black screen as the original
+-- bug, by a new route. So the launch path MUST require these rather than let the
+-- user discover it as a hang.
+--
+-- PORT is deliberately NOT required: POPSTARTER defaults to 445 when no port is
+-- present, so a blank one is a valid config rather than a missing answer. USER and
+-- PASS are not required either -- blank is the guest form.
+function PLDR.MissingPopstarterNetFields()
+  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  local missing = {}
+  for _, key in ipairs({ "PS2_IP", "NETMASK", "GATEWAY", "SERVER", "SHARE" }) do
+    if tostring(cfg[key] or "") == "" then missing[#missing + 1] = key end
+  end
+  return missing
+end
+
 -- Is there a memory card at all? POPSTARTER reads its entire SMB pack AND both
 -- .DAT from mc0:/POPSTARTER (with a per-file mc1: fallback), so with no card in
 -- either slot there is nowhere for that configuration to live and an SMB game can

@@ -3626,6 +3626,24 @@ UI = {
               end
               return
             end
+            -- The pack being present is not enough: POPSTARTER also needs a literal
+            -- address and a server/share, and every one of those is BLANK on a fresh
+            -- install now that nothing is invented. A blank address means
+            -- IPCONFIG.DAT is never written, which is the original #560 black
+            -- screen by another route. Name the empty fields instead of letting the
+            -- user find out by staring at a dead screen.
+            local missing = (type(PLDR.MissingPopstarterNetFields) == "function")
+              and PLDR.MissingPopstarterNetFields() or {}
+            if #missing > 0 then
+              unpaint()
+              local names = {}
+              for i = 1, #missing do
+                names[#names + 1] = PLDR.L(UI._SMB_LABELS[missing[i]] or missing[i])
+              end
+              UI.Notif_queue.add(PLDR.L("POPSTARTER needs these filled in first:").."\n"
+                ..table.concat(names, ", ").."\n"..PLDR.L("Settings > SMB / Network"), "error")
+              return
+            end
           end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
