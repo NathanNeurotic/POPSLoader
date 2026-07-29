@@ -7281,6 +7281,24 @@ function PLDR.ResolveStagedPackRoot()
   return nil
 end
 
+-- Is there a memory card at all? POPSTARTER reads its entire SMB pack AND both
+-- .DAT from mc0:/POPSTARTER (with a per-file mc1: fallback), so with no card in
+-- either slot there is nowhere for that configuration to live and an SMB game can
+-- never launch -- however well browsing works, since the menu browses on its own
+-- embedded stack and needs no memory card for that. Worth saying out loud: the
+-- failure otherwise looks like a working feature right up to the black screen.
+--
+-- Fails SAFE: if the probe itself is unavailable we report "yes" rather than
+-- blocking someone on a guess.
+function PLDR.HasMemoryCard()
+  if type(doesFolderExist) ~= "function" then return true end
+  for _, root in ipairs({ "mc0:/", "mc1:/" }) do
+    local ok, present = pcall(doesFolderExist, root)
+    if ok and present == true then return true end
+  end
+  return false
+end
+
 function PLDR.AreSmbModulesStaged()
   if type(doesFileExist) ~= "function" then return PLDR.SMB_MODULES == true end
   local ok, root = pcall(PLDR.ResolveStagedPackRoot)

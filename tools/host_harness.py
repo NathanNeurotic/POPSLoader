@@ -1800,6 +1800,42 @@ end""")()
 check("T45 SMBCONFIG.DAT round-trips; blank guest lines 2 and 3 always exist", t45)
 
 
+# T46: the two SMB missing-state cases must be surfaced, not silently tolerated.
+#
+# Maintainer's requirement: "If there is no mc?:/POPSTARTER/ with the proper files,
+# offer to add SMB modules for the user. If the user does not have mc?:/, then we
+# tell them SMB will not launch or play."
+#
+# Both matter because SMB browsing does NOT need a memory card -- the menu carries
+# its own embedded network stack -- while LAUNCHING needs the pack and both .DAT on
+# mc0:/mc1:. So the feature looks perfectly healthy right up to the black screen,
+# which is exactly the shape of issue #560. The check must be on entering the SMB
+# page, before the user picks a game, not at the moment of launch.
+_ui46 = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_sys46 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_i46 = _ui46.find("function UI.RunSmbConnectFlow")
+_flow = _ui46[_i46:_ui46.find("\nfunction ", _i46 + 1)] if _i46 != -1 else ""
+
+_t46_ok, _t46_why = True, ""
+if "function PLDR.HasMemoryCard" not in _sys46:
+    _t46_ok, _t46_why = False, "PLDR.HasMemoryCard is gone -- the no-memory-card case cannot be detected"
+elif _i46 == -1:
+    _t46_ok, _t46_why = False, "UI.RunSmbConnectFlow is gone"
+elif "PLDR.HasMemoryCard()" not in _flow:
+    _t46_ok, _t46_why = False, ("entering the SMB page no longer checks for a memory card, so a console "
+                                "with none browses happily and then black-screens at launch")
+elif "will not launch or play" not in _flow:
+    _t46_ok, _t46_why = False, "the no-memory-card message no longer states plainly that SMB cannot launch or play"
+elif "UI.RunConfirm(" not in _flow or "PLDR.ApplySmbModules(" not in _flow:
+    _t46_ok, _t46_why = False, ("a missing SMB pack no longer OFFERS to install itself; the user is sent to "
+                                "another menu to fix a problem we could fix here")
+elif "PLDR.AreSmbModulesStaged()" not in _flow:
+    _t46_ok, _t46_why = False, ("the pack check reads the saved preference again instead of the filesystem, "
+                                "so it can disagree with the hard launch gate")
+check("T46 no memory card is reported, and a missing SMB pack offers to install itself",
+      _t46_ok, _t46_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

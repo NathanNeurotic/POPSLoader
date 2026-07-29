@@ -6547,12 +6547,46 @@ function UI.RunSmbConnectFlow()
   -- Browsing works without the mc:/POPSTARTER SMB pack (the menu has its own
   -- embedded stack), but LAUNCHING doesn't -- warn up front (browse stays usable;
   -- the launch dispatch enforces the hard gate).
-  -- Test the filesystem, not the saved preference, so this warning and the hard launch
-  -- gate can never disagree (both now go through PLDR.AreSmbModulesStaged).
-  local modules_staged = (type(PLDR) == "table" and type(PLDR.AreSmbModulesStaged) == "function")
-    and PLDR.AreSmbModulesStaged() or (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
-  if type(PLDR) == "table" and not modules_staged then
-    UI.Notif_queue.add("SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first", "warn")
+  -- Three possible states, and only the last can actually play a game. Say which
+  -- one the user is in BEFORE they browse a share and hit a black screen at launch.
+  --
+  -- 1. NO MEMORY CARD AT ALL. POPSTARTER keeps its whole SMB pack and both .DAT on
+  --    mc0:/mc1:, so without a card an SMB game can never launch no matter how well
+  --    the list populates. Browsing still works (the menu has its own embedded
+  --    stack and needs no card), so this informs rather than blocks -- but it says
+  --    plainly that nothing here will play.
+  if type(PLDR) == "table" and type(PLDR.HasMemoryCard) == "function"
+     and PLDR.HasMemoryCard() ~= true then
+    UI.Notif_queue.add("No memory card detected\nSMB games will not launch or play without one --\nPOPSTARTER reads its network settings from mc0: or mc1:", "error")
+  else
+    -- 2. CARD PRESENT BUT NO PACK. Offer to install it right here rather than
+    --    sending the user to another menu. Tested against the FILESYSTEM, not the
+    --    saved preference, so this and the hard launch gate can never disagree.
+    local modules_staged = (type(PLDR) == "table" and type(PLDR.AreSmbModulesStaged) == "function")
+      and PLDR.AreSmbModulesStaged() or (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
+    if type(PLDR) == "table" and not modules_staged then
+      local install = UI.RunConfirm({
+        PLDR.L("The SMB modules are not on your memory card.\nGames will list, but none of them will boot."),
+        PLDR.L("Install them now?"),
+      })
+      if install == true then
+        local installed = false
+        UI.RunBusyTask("Installing SMB modules...", function (report)
+          installed = (PLDR.ApplySmbModules(function(i, n, name)
+            report(tostring(name or ""), (tonumber(n) or 1) > 0 and ((tonumber(i) or 0) / n) or 0)
+          end) == true)
+        end, "Failed to install SMB modules")
+        if installed then
+          PLDR.SMB_MODULES = true
+          pcall(PLDR.SaveSettingsAtomic)
+          UI.Notif_queue.add("SMB modules installed", "info")
+        else
+          UI.Notif_queue.add("Could not install the SMB modules\nCheck the memory card is inserted and has free space", "error")
+        end
+      else
+        UI.Notif_queue.add("Games will list but will not boot\nInstall them from Settings > SMB modules when ready", "warn")
+      end
+    end
   end
   local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
   local function attempt()
