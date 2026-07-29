@@ -3818,7 +3818,13 @@ UI = {
             elseif rescan_scene == UI.SCENES.GBDMHDD then
               -- EXP32: enumeration only; the bounded sweep is the refresh.
               report("Checking the exFAT HDD...", 0.16)
-              local ata_root = PLDR.InitATAPopsRoot()
+              -- Capture the status here too. An R1 rescan that fails leaves an EMPTY
+              -- list and says nothing at all, which is the least diagnosable of the
+              -- three ATA entry points; at minimum the reason must reach -debug.
+              local ata_root, ata_rescan_status = PLDR.InitATAPopsRoot()
+              if ata_root == nil then
+                PLDR.LAST_ATA_STATUS = tostring(ata_rescan_status or "<none>")
+              end
               PLDR.CleanupGameList()
               if type(ata_root) == "string" and ata_root ~= "" then
                 report("Scanning exFAT HDD games...", 0.30)
@@ -5780,8 +5786,19 @@ UI = {
               end)
               if not ok_probe then ata_root = nil; ata_status = nil end
               if ata_root == nil then
+                -- Record it for the -debug toast: this is the ONLY place the reason a
+                -- session failed to reach the exFAT page is known, and it was being
+                -- thrown away.
+                PLDR.LAST_ATA_STATUS = tostring(ata_status or "<none>")
                 if ata_status == "notready" then
                   UI.Notif_queue.add(PLDR.L("The internal drive is still starting\nopen this page again in a moment"), "warn")
+                elseif ata_status ~= nil and ata_status ~= "" and ata_status ~= "nodev" then
+                  -- ANY other status used to collapse into the "reformat your drive"
+                  -- message below. That is a guess, and when it is wrong it sends the
+                  -- user to repartition a perfectly good disk over (say) an IRX load
+                  -- failure. Report what actually happened instead.
+                  UI.Notif_queue.add(PLDR.L("Could not start the internal drive").."\n"
+                    ..tostring(ata_status).."\n"..PLDR.L("Report this code -- the drive may be fine"), "warn")
                 else
                   UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
                 end

@@ -9635,16 +9635,27 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
   elseif (page == "EXFAT" or page == "ATA") and UI.SCENES.GBDMHDD ~= nil then
     scene = UI.SCENES.GBDMHDD
-    local ata_root = nil
+    local ata_root, ata_status = nil, nil
     if type(PLDR.InitATAPopsRoot) == "function" then
-      local ok_root, root = pcall(PLDR.InitATAPopsRoot)
-      if ok_root and type(root) == "string" and root ~= "" then
-        ata_root = root
+      -- Capture the STATUS as well as the root. InitATAPopsRoot has always returned
+      -- (root|nil, status); this call site discarded the status and replaced it with a
+      -- fixed "reformat your drive" guess, so an auto-launch that failed for any other
+      -- reason reported a cause that was very likely wrong.
+      local ok_root, root, status = pcall(PLDR.InitATAPopsRoot)
+      if ok_root then
+        ata_status = status
+        if type(root) == "string" and root ~= "" then ata_root = root end
       end
     end
     if ata_root == nil then
+      PLDR.LAST_ATA_STATUS = tostring(ata_status or "<none>")
       if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-        UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+        if ata_status ~= nil and ata_status ~= "" and ata_status ~= "nodev" then
+          UI.Notif_queue.add(PLDR.L("Could not start the internal drive").."\n"
+            ..tostring(ata_status).."\n"..PLDR.L("Report this code -- the drive may be fine"), "warn")
+        else
+          UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+        end
       end
       return false
     end
@@ -9745,7 +9756,27 @@ function PLDR.SurfaceLaunchArgsDebug()
     lines[#lines+1] = "video: "..UI.VIDEO_READBACK
   end
   lines[#lines+1] = "args.page: "..tostring(PLDR.LAUNCH_ARGS.page or "<nil>")
+    .." (raw: "..tostring(PLDR.LAUNCH_ARGS.page_raw or "<nil>")..")"
   lines[#lines+1] = "args.game: "..tostring(PLDR.LAUNCH_ARGS.game or "<nil>")
+  lines[#lines+1] = "args.bdma: "..tostring(PLDR.LAUNCH_ARGS.bdma_raw or "<nil>")
+  -- WHAT THE ARGS ACTUALLY DID, not just what parsed. Every launch-arg bug reported so
+  -- far (2026-06-09, 2026-06-12, 2026-07-28) was invisible because the toast proved the
+  -- argument ARRIVED and then said nothing about whether it took effect. These four
+  -- lines are the difference between "the arg is fine" and "the arg is fine AND the
+  -- page opened", which is the question every one of those reports actually needed.
+  if type(UI.MainMenu) == "table" then
+    lines[#lines+1] = "menu.OPT: "..tostring(UI.MainMenu.OPT or "<nil>")
+      .."  autoEnter: "..tostring(UI.MainMenu.PendingAutoEnter)
+  end
+  lines[#lines+1] = "scene: "..tostring(UI.CURSCENE or "<nil>")
+  lines[#lines+1] = "bdma: "..tostring(PLDR.BDMA_MODE_KEY or "<nil>")
+    .."  adaptive: "..tostring(PLDR.BDMA_ADAPTIVE == true)
+  -- Set by the exFAT page-entry and auto-launch paths when the drive fails to come up.
+  -- Without it a failed ATA session reports only a guess ("format the drive"), which is
+  -- how three separate people were pointed at the wrong cause.
+  if PLDR.LAST_ATA_STATUS ~= nil then
+    lines[#lines+1] = "ata_status: "..tostring(PLDR.LAST_ATA_STATUS)
+  end
   UI.Notif_queue.add(table.concat(lines, "\n"), "info")
 end
 

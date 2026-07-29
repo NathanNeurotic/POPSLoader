@@ -1995,6 +1995,42 @@ except Exception as _e:
 check("T49 -page/-mode routes the carousel and raises the one-shot auto-enter", _t49_ok, _t49_why)
 
 
+# T50: an ATA bring-up failure must report WHY, not guess "reformat your drive".
+#
+# InitATAPopsRoot has always returned (root|nil, status). All three call sites threw
+# the status away and substituted a fixed message telling the user to reformat the
+# internal drive. When the real cause is anything else -- an IRX load failure, the
+# worker not settling -- that message points at the wrong thing entirely, and sends
+# someone to repartition a disk that is fine. CosmicScale, the maintainer and I each
+# read that message and drew a different wrong conclusion from it.
+#
+# The bring-up itself is HW-confirmed preservation territory (the EXP24-29 wave, a
+# week and 72 tests). Nothing here touches it: these assertions cover only the
+# already-failed branches and the -debug readout.
+_sys50 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_ui50 = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_t50_ok, _t50_why = True, ""
+if _sys50.count("PLDR.LAST_ATA_STATUS") < 2:
+    _t50_ok, _t50_why = False, "the ATA failure status is not recorded for -debug in system.lua"
+elif _ui50.count("PLDR.LAST_ATA_STATUS") < 2:
+    _t50_ok, _t50_why = False, ("the ATA page-entry and/or rescan paths discard the status again -- a failed "
+                                "exFAT session reports no reason at all")
+elif "ata_status: " not in _sys50:
+    _t50_ok, _t50_why = False, "-debug no longer reports ata_status, so the reason never leaves the console"
+elif "autoEnter: " not in _sys50:
+    _t50_ok, _t50_why = False, ("-debug no longer reports whether the launch-arg auto-enter fired -- proving the "
+                                "arg PARSED was never the question")
+else:
+    # The guess must be reachable ONLY when there is genuinely no device.
+    _i = _ui50.find("No exFAT HDD detected")
+    _win = _ui50[max(0, _i - 900):_i]
+    if "Could not start the internal drive" not in _win:
+        _t50_ok, _t50_why = False, ("the reformat-your-drive message is back to catching EVERY failure status "
+                                    "instead of only the no-device case")
+check("T50 an ATA failure reports its status instead of guessing 'reformat the drive'",
+      _t50_ok, _t50_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
