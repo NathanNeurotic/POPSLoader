@@ -4774,16 +4774,23 @@ function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
   -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
-  -- PFS (default) or EXFAT shows exactly one; BOTH shows both (R3Z3N: APA-Jail and PFS can
-  -- coexist). This is ONLY a visibility rule -- it has never gated a driver, mount or IRX.
-  -- The stacks were already unified onto ONE load-once ata_bd that serves APA/PFS and exFAT
-  -- together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH luaHDD.cpp's Load_HDD_IRX and
-  -- lua_ata_init, and it already carries R3Z3N's two 1s settles). So BOTH needs no C change.
-  -- An explicit -page=ata launch is still an exFAT session regardless of this setting: that
-  -- isolation is launch-arg-scoped and deliberately unchanged.
+  -- BOTH (the default since EXP34) shows both; PFS or EXFAT shows exactly one (R3Z3N:
+  -- APA-Jail and PFS can coexist). This is ONLY a visibility rule -- it has never gated a
+  -- driver, mount or IRX. The stacks were already unified onto ONE load-once ata_bd serving
+  -- APA/PFS and exFAT together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH
+  -- luaHDD.cpp's Load_HDD_IRX and lua_ata_init, carrying R3Z3N's two 1s settles).
+  --
+  -- The launch-arg rule is now ADDITIVE (2026-07-28). An explicit -page=ata session
+  -- REVEALS the exFAT page even when the setting would hide it -- otherwise the argument
+  -- cannot open the very page it names -- but it no longer HIDES PFS. The old rule did
+  -- both, which made sense only while the two pages were mutually exclusive. Since EXP34
+  -- made BOTH the default, hiding PFS meant arg-launching to ATA silently deleted a device
+  -- from the carousel, and left it uninitialised too. CosmicScale reported precisely that
+  -- as "arg launching doesn't work" on his ATA setup.
   if ukey == "EXFAT" or ukey == "PFS" then
-    if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
-      return ukey ~= "EXFAT"
+    if ukey == "EXFAT" and type(PLDR.IsExplicitATASession) == "function"
+       and PLDR.IsExplicitATASession() then
+      return false
     end
     local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
     if fs == "BOTH" then return false end
@@ -5874,7 +5881,6 @@ local function CollectStartupBackendTargets()
   local seen_hdd_paths = {}
   local seen_roots = {}
   local boot_name = select(1, DetectBootDevice())
-  local explicit_ata_session = type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession()
   targets.boot_name = boot_name
 
   if boot_name == "USB" then
@@ -5883,7 +5889,14 @@ local function CollectStartupBackendTargets()
     targets.mmce = true
   elseif boot_name == "MX4SIO" then
     targets.mx4sio = true
-  elseif boot_name == "HDD" and not explicit_ata_session then
+  elseif boot_name == "HDD" then
+    -- The `and not explicit_ata_session` guard here is GONE (2026-07-28). It skipped
+    -- APA/PFS startup init whenever the session was arg-launched with -page=ata, which
+    -- paired with the old visibility isolation: the PFS page was hidden, so leaving it
+    -- uninitialised cost nothing. Now that visibility follows the setting alone and BOTH
+    -- is the default, that page is VISIBLE on an ATA arg-launch -- and skipping its init
+    -- would leave a visible page that lists nothing, which is worse than the bug it
+    -- replaced. An HDD boot initialises its APA backend regardless of the launch arg.
     targets.hdd = true
   end
 
@@ -5901,10 +5914,18 @@ local function CollectStartupBackendTargets()
       targets.mx4sio = true
     elseif string.match(normalized, "^mmce%d*:/") ~= nil then
       targets.mmce = true
-    elseif not explicit_ata_session and (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
+    -- The `not explicit_ata_session` guards that used to sit on these two branches are
+    -- GONE (2026-07-28), for the same reason as the visibility rule above. They stopped
+    -- HDD/PFS POPSTARTER.ELF paths being registered whenever the session was arg-launched
+    -- with -page=ata. That was coherent while an ATA session also HID the PFS page: an
+    -- unreachable page needs no paths. Now that PFS stays visible and initialised, leaving
+    -- its paths unregistered would give a page you can open, browse and launch from, whose
+    -- POPSTARTER.ELF then cannot be found -- the L-09 failure shape all over again.
+    -- A launch argument says which PAGE to open. It does not say which devices exist.
+    elseif (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
-    elseif not explicit_ata_session and targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
+    elseif targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, raw)
     else

@@ -707,6 +707,13 @@ check("T17 POPSTARTER_PATH round-trips (custom + Automatic) + legacy PROFILE=N m
 # No test covered IsDeviceHidden at all before. The load-bearing cases are the
 # back-compat ones: a missing/unknown HDD_FS, and an -page=ata session, must
 # behave EXACTLY as they did when the setting was 2-valued.
+#
+# 2026-07-28: the -page=ata rule is now ADDITIVE. It REVEALS the exFAT page when the
+# setting would hide it (or the argument could not open the page it names), but it no
+# longer HIDES PFS. Hiding PFS was a leftover from when the two pages were mutually
+# exclusive; once BOTH became the default it meant an ATA arg-launch silently deleted a
+# device from the carousel and skipped its startup init. CosmicScale reported that as
+# "arg launching doesn't work".
 t18 = E('''function()
   local saved_fs, saved_args = PLDR.HDD_FS, PLDR.LAUNCH_ARGS
   local function vis(fs, page)
@@ -723,8 +730,9 @@ t18 = E('''function()
     {"EXFAT",     nil,    false, true,  "exFAT only"},
     {"BOTH",      nil,    true,  true,  "BOTH shows both (the EXP4 point)"},
     {"both",      nil,    true,  true,  "value is case-insensitive"},
-    {"PFS",       "ATA",  false, true,  "-page=ata forces exFAT even when set to PFS"},
-    {"BOTH",      "ATA",  false, true,  "-page=ata isolation still wins over BOTH"},
+    {"PFS",       "ATA",  true,  true,  "-page=ata REVEALS exFAT when set to PFS -- and must NOT hide PFS"},
+    {"BOTH",      "ATA",  true,  true,  "-page=ata never removes a page from BOTH (CosmicScale 2026-07-28)"},
+    {"EXFAT",     "ATA",  false, true,  "set to exFAT + -page=ata: unchanged, PFS stays hidden by the SETTING"},
   }
   for _, c in ipairs(cases) do
     local p, e = vis(c[1], c[2])
