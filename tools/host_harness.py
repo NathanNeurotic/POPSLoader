@@ -2074,6 +2074,65 @@ check("T51 device-kind labels are name-regulated in the path layer, probe-only",
       _t51_ok, _t51_why)
 
 
+# T52: Retro GEM Game ID -- default ON, round-trips, and stays OFF the scan path.
+#
+# Retro GEM keys per-game settings on a Game ID and there is no data channel for it:
+# the ID is drawn as coloured sprites the mod decodes off the video output. The PS1
+# title ID comes from SYSTEM.CNF INSIDE the .VCD (the filename is only a fallback --
+# plenty of VCDs are not named in the OPL convention, which is exactly what I got
+# wrong first). Reference implementations: CosmicScale's Retro-GEM tools for the
+# packet, saildot4k's wLaunchELF_R3Z for the VCD walk.
+#
+# THE PROPERTY THAT MATTERS MOST: resolving an ID OPENS AND WALKS A DISC IMAGE. It
+# must happen once, at launch, and never from a game-list scan or a draw loop --
+# doing it per entry would re-read every VCD on the device while the user scrolls,
+# on the same pages that took all of EXP24-29 to make stable.
+_sysR = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_uiR = (REPO / "bin" / "POPSLDR" / "ui.lua").read_text(encoding="utf-8")
+_cR = (REPO / "src" / "retrogem.cpp").read_text(encoding="utf-8")
+_lsR = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
+_mkR = (REPO / "Makefile").read_text(encoding="utf-8")
+
+_t52_ok, _t52_why = True, ""
+if "retrogem.o" not in _mkR:
+    _t52_ok, _t52_why = False, "retrogem.o is not in the Makefile object list, so none of this is built"
+elif "PLDR.RETROGEM_GAMEID = true" not in _sysR:
+    _t52_ok, _t52_why = False, "RETROGEM_GAMEID no longer defaults ON"
+elif "RETROGEM_GAMEID=" not in _sysR:
+    _t52_ok, _t52_why = False, "the setting is never written to the sidecar, so it cannot persist"
+elif "retrogem_gameid = next_retrogem" not in _sysR:
+    _t52_ok, _t52_why = False, "the commit path drops retrogem_gameid, so toggling it never sticks"
+elif "SYSTEM.CNF" not in _cR:
+    _t52_ok, _t52_why = False, ("the ID is no longer read from SYSTEM.CNF inside the VCD -- filename-only "
+                                "resolution fails for every disc not named in the OPL convention")
+elif '{"retroGemGameId"' not in _lsR or '{"retroGemDraw"' not in _lsR:
+    _t52_ok, _t52_why = False, "the Lua bindings are not registered"
+elif "UI.EmitRetroGemGameId" not in _uiR:
+    _t52_ok, _t52_why = False, "nothing emits the ID at launch"
+else:
+    # The lookup must be reachable ONLY from the launch path. If it appears anywhere
+    # near the scan/list builders, that is a per-entry disc read.
+    for _bad in ("GetPS1GameLists", "BuildUsbIdentity", "SaveGameListCache", "ApplyGameListCache"):
+        _i = _uiR.find(_bad)
+        while _i != -1:
+            if "retroGemGameId" in _uiR[max(0, _i - 400):_i + 400]:
+                _t52_ok = False
+                _t52_why = ("the Game ID lookup sits next to %s -- that re-reads a disc image per entry "
+                            "during a scan" % _bad)
+                break
+            _i = _uiR.find(_bad, _i + 1)
+        if not _t52_ok:
+            break
+    # Frame-counted emit, never clock-paced: Timer.getTime() is microseconds here.
+    if _t52_ok and "RETROGEM_EMIT_FRAMES" not in _uiR:
+        _t52_ok, _t52_why = False, "the emit is no longer frame-counted; one frame is not reliably latched by the mod"
+    if _t52_ok and "Timer.getTime" in _uiR[_uiR.find("function UI.EmitRetroGemGameId"):][:900]:
+        _t52_ok, _t52_why = False, ("the emit is clock-paced -- Timer.getTime() is MICROSECONDS on this SDK "
+                                    "and vsync is unstable after a mode change; count flips instead")
+check("T52 Retro GEM Game ID: default ON, persists, read from SYSTEM.CNF, off the scan path",
+      _t52_ok, _t52_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

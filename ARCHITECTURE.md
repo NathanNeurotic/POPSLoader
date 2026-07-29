@@ -632,7 +632,7 @@ to the SMB (v1) network page (opt 7, `GSMBNET`). The bare `bdma` token and i.Lin
 remain unrouted no-ops.
 
 ### On-disk settings (`.pldrs`)
-Plain KEY=VALUE text with **23 keys** (`EncodeSettings`, `system.lua`; the
+Plain KEY=VALUE text with **24 keys** (`EncodeSettings`, `system.lua`; the
 loader normalizes CRLF before parsing, and `usb:`/`smb:`-prefixed boots fall back
 to the MC settings path since those filesystems aren't live in-app),
 then the SMB connection block (`SMB_*`) appended by `SmbAppendLines`:

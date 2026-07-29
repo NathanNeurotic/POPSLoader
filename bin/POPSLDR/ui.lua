@@ -2959,6 +2959,8 @@ UI = {
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
         UI.SettingsEntryBootSound = UI.BootSound
+        UI.RetroGemGameId = (type(PLDR) == "table" and PLDR.RETROGEM_GAMEID ~= false)
+        UI.SettingsEntryRetroGemGameId = UI.RetroGemGameId
         UI.BdmaAdaptive = (type(PLDR) == "table" and PLDR.BDMA_ADAPTIVE == true)
         UI.SettingsEntryBdmaAdaptive = UI.BdmaAdaptive
         UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
@@ -3658,6 +3660,15 @@ UI = {
           -- staging = several memory-card writes; the handoff itself). Cleared
           -- on the cancel path; on success the exec never comes back.
           PLDR.LaunchProgress = paint
+          -- Retro GEM Game ID. Read the title ID out of the VCD (SYSTEM.CNF) and
+          -- emit it optically before handing off, so the mod can select this game's
+          -- per-game profile. Done HERE, once, at the last moment before the exec:
+          -- it opens and walks the disc image, which must never happen during a
+          -- game-list scan. Best-effort throughout -- a game with no readable ID, or
+          -- a user with no GEM, launches exactly as before.
+          if PLDR.RETROGEM_GAMEID ~= false then
+            UI.EmitRetroGemGameId(vcd_full)
+          end
           paint(PLDR.L("Starting the game..."), 0.50)
           local launch_path = PLDR.GAMEPATH
           if UI.CURSCENE == UI.SCENES.GHDD then
@@ -4120,6 +4131,7 @@ UI = {
           local cover_art_val = UI.CoverArt ~= false
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
+          local retrogem_val = UI.RetroGemGameId == true
           local bdma_adaptive_val = UI.BdmaAdaptive == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
           local video_live_before = nil
@@ -4148,6 +4160,7 @@ UI = {
                 cover_art = cover_art_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
+                retrogem_gameid = retrogem_val,
                 bdma_adaptive = bdma_adaptive_val,
                 overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
@@ -4387,6 +4400,10 @@ UI = {
           end
           if UI.CoverArt ~= true then   -- default ON
             UI.CoverArt = true
+            UI.ProfileDirty = true
+          end
+          if UI.RetroGemGameId ~= true then   -- default ON
+            UI.RetroGemGameId = true
             UI.ProfileDirty = true
           end
           if UI.BootSound ~= true then   -- default ON
@@ -4838,6 +4855,17 @@ UI = {
           function() UI.BootSound = not UI.BootSound end,
           function() UI.BootSound = not UI.BootSound end,
           function() return (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true) end
+        )
+        -- Retro GEM Game ID: reads the PS1 title ID out of the VCD at launch and
+        -- emits it optically so a Retro GEM applies that game's per-game profile.
+        -- Default ON and harmless without the mod (a few small sprites for a moment
+        -- during the launch overlay), so it costs nothing to leave enabled.
+        AddCycle(
+          "Retro GEM Game ID",
+          function() return UI.RetroGemGameId and "On" or "Off" end,
+          function() UI.RetroGemGameId = not UI.RetroGemGameId end,
+          function() UI.RetroGemGameId = not UI.RetroGemGameId end,
+          function() return (UI.RetroGemGameId == true) ~= (UI.SettingsEntryRetroGemGameId == true) end
         )
         AddCycle(
           "Overscan (CRT inset)",
@@ -6755,6 +6783,44 @@ function UI.RunVideoModeConfirm(seconds)
   end
   return false
 end
+-- ===== Retro GEM Game ID =====================================================
+-- Retro GEM (PixelFX) keys its per-game settings on a Game ID, and there is no data
+-- channel to send one: the ID is transmitted OPTICALLY, as a small pattern of
+-- coloured sprites near the bottom of the frame which the mod decodes off the video
+-- output. So "setting the ID" means drawing it, and drawing it long enough to be
+-- latched -- CosmicScale's own tools emit it continuously from their main loop, so a
+-- single frame is not safe to rely on.
+--
+-- Frame-counted, NOT clock-paced: Timer.getTime() is MICROSECONDS on this SDK and
+-- vsync is unstable right after a mode change, which is what broke the old nav
+-- auto-repeat and the PAL boot countdown. Counting flips is immune to both.
+UI.RETROGEM_EMIT_FRAMES = 20
+
+function UI.EmitRetroGemGameId(vcd_path)
+  if type(System) ~= "table" or type(System.retroGemGameId) ~= "function"
+     or type(System.retroGemDraw) ~= "function" then
+    return nil
+  end
+  if type(vcd_path) ~= "string" or vcd_path == "" then return nil end
+  -- Opens and walks the disc image: once per launch, never in a scan or draw loop.
+  local ok_id, id = pcall(System.retroGemGameId, vcd_path)
+  if not ok_id or type(id) ~= "string" or id == "" then
+    -- No usable title ID -- not every VCD carries one. Emit NOTHING rather than a
+    -- guess: a wrong ID selects the wrong per-game profile on the mod, which is
+    -- worse than leaving it on the global settings.
+    PLDR.LAST_RETROGEM_ID = "<none>"
+    return nil
+  end
+  PLDR.LAST_RETROGEM_ID = id
+  for _ = 1, UI.RETROGEM_EMIT_FRAMES do
+    pcall(System.retroGemDraw, id)
+    if type(Screen) == "table" and type(Screen.flip) == "function" then
+      pcall(Screen.flip)
+    end
+  end
+  return id
+end
+
 -- ===== SMB / Network settings field helpers (Stage 1: config only) ==========
 -- Spec-driven row rendering for the "SMB / Network" settings section. The field
 -- spec + persistence live in system.lua (PLDR.SMB_FIELDS / PLDR.Smb*). These are

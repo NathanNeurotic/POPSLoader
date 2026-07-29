@@ -215,7 +215,7 @@ copies are not read at runtime. Editing them requires a rebuild.
 - Launch-arg ingest: `NormalizeLaunchPage` (system.lua; `ata*`->EXFAT,
   `hdd*`/`apa*`/`pfs*`->HDD, bare `bdma`->no-op page value), `PLDR.LAUNCH_ARGS`,
   carousel page auto-nav `page_to_opt` (MMCE=1/MX4SIO=2/EXFAT=3/ATA=3/HDD=4/USB=5/SMB=7).
-- Settings: `EncodeSettings` (**23 keys** + appended SMB block:
+- Settings: `EncodeSettings` (**24 keys** + appended SMB block:
   POPSTARTER_PATH (`""` = Automatic; the legacy PROFILE/POPSTARTER_MODE keys are
   no longer written, and on load a legacy PROFILE=N pick migrates into
   POPSTARTER_PATH — profiles dropped 2026-07-13),

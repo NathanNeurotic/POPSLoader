@@ -5059,6 +5059,7 @@ local function EncodeSettings()
     "COVER_ART="..((PLDR.COVER_ART ~= false) and "1" or "0"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
+    "RETROGEM_GAMEID="..((PLDR.RETROGEM_GAMEID ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
     "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
   }
@@ -5109,6 +5110,7 @@ local function SnapshotSettingsState()
     cover_art = (PLDR.COVER_ART ~= false),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
+    retrogem_gameid = (PLDR.RETROGEM_GAMEID ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     smb = PLDR.SmbCopy(PLDR.SMB),
     smb_modules = (PLDR.SMB_MODULES == true)
@@ -5178,6 +5180,9 @@ local function ApplySettingsState(state)
   end
   if type(state.boot_sound) == "boolean" then
     PLDR.BOOT_SOUND = state.boot_sound
+  end
+  if type(state.retrogem_gameid) == "boolean" then
+    PLDR.RETROGEM_GAMEID = state.retrogem_gameid
   end
   if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
@@ -5363,6 +5368,11 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.HDD_FS = "BOTH"  -- EXP34 default BOTH (maintainer): show both internal-HDD pages (PFS + exFAT). PFS|EXFAT|BOTH. BOTH means the exFAT boot warm-up runs each boot (EXP33 cascade-bound + sema make that safe).
   PLDR.COVER_ART = true  -- draw cover art in the game-list preview box (default ON; was a session-only Square toggle until EXP42 made it a saved setting)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
+  -- Retro GEM Game ID: read the PS1 title ID out of the VCD at launch and emit it
+  -- optically so a Retro GEM applies that game's per-game profile. Default ON
+  -- (maintainer, 2026-07-29; R3Z3N calls it a must-have). Harmless without the
+  -- mod: it draws a few small sprites for a moment during the launch overlay.
+  PLDR.RETROGEM_GAMEID = true
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
@@ -5529,6 +5539,11 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.DKWDRV_PATH = dkwdrv_path
   end
   local strict_gate_enabled = ParseBooleanSetting(strict_hdd_preexec_gate)
+  local retrogem_gameid = string.match(data, "\nRETROGEM_GAMEID=([^\n]+)") or string.match(data, "^RETROGEM_GAMEID=([^\n]+)")
+  local retrogem_enabled = ParseBooleanSetting(retrogem_gameid)
+  if retrogem_enabled ~= nil then
+    PLDR.RETROGEM_GAMEID = retrogem_enabled
+  end
   if strict_gate_enabled ~= nil then
     PLDR.STRICT_HDD_PREEXEC_GATE = strict_gate_enabled == true
   end
@@ -5685,6 +5700,9 @@ function PLDR.CommitSettingsChanges(opts)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
   if type(opts.boot_sound) == "boolean" then next_boot_sound = opts.boot_sound end
+  -- Default-ON boolean, so the fallback is `~= false` (mirrors next_boot_sound).
+  local next_retrogem = (prev.retrogem_gameid ~= false)
+  if type(opts.retrogem_gameid) == "boolean" then next_retrogem = opts.retrogem_gameid end
   local next_bdma_adaptive = (prev.bdma_adaptive == true)
   if type(opts.bdma_adaptive) == "boolean" then next_bdma_adaptive = opts.bdma_adaptive end
   local next_overscan = math.floor(tonumber(prev.overscan) or 0)
@@ -5726,6 +5744,7 @@ function PLDR.CommitSettingsChanges(opts)
     cover_art = next_cover_art,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
+    retrogem_gameid = next_retrogem,
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,

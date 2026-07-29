@@ -1292,6 +1292,40 @@ static int lua_getAppDir(lua_State *L) {
 	return 1;
 }
 
+/* Retro GEM Game ID (src/retrogem.cpp). The ID is read from SYSTEM.CNF inside the
+ * .VCD and transmitted OPTICALLY -- drawn as coloured sprites the mod decodes off
+ * the video output -- so there is no data channel to open here. */
+extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size);
+extern "C" void retrogem_draw_gameid(const char *game_id);
+
+/* System.retroGemGameId(vcdPath) -> "SLUS_007.42", or nil when the disc carries no
+ * usable title ID. This READS THE DISC IMAGE, so call it once at launch -- never
+ * per frame and never during a game-list scan. */
+static int lua_retrogem_gameid(lua_State *L) {
+	if (lua_gettop(L) != 1 || !lua_isstring(L, 1)) {
+		return luaL_error(L, "System.retroGemGameId(path) expects a path string.");
+	}
+	char id[16];
+	memset(id, 0, sizeof(id));
+	if (retrogem_gameid_for_vcd(lua_tostring(L, 1), id, (int)sizeof(id)) && id[0] != 0) {
+		lua_pushstring(L, id);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+/* System.retroGemDraw(id) -- emit the optical pattern for THIS frame. The caller
+ * repeats it for as long as the launch overlay is up: a single frame is not
+ * guaranteed to be latched by the mod. */
+static int lua_retrogem_draw(lua_State *L) {
+	if (lua_gettop(L) != 1 || !lua_isstring(L, 1)) {
+		return luaL_error(L, "System.retroGemDraw(id) expects an id string.");
+	}
+	retrogem_draw_gameid(lua_tostring(L, 1));
+	return 0;
+}
+
 /* NHDDL-style launch arguments parsed in main.cpp parseLaunchArgs().
  * Externs declared in include/luaplayer.h. */
 static int lua_getLaunchArgs(lua_State *L) {
@@ -2340,6 +2374,8 @@ static const luaL_Reg System_functions[] = {
 	{"initATAModules",         lua_ata_init_modules},
 	{"clearATA",               lua_ata_clear},
 	{"getSio2Owner",           lua_get_sio2_owner},
+	{"retroGemGameId",         lua_retrogem_gameid},
+	{"retroGemDraw",           lua_retrogem_draw},
 	{"initSMB",                lua_smb_init},
 	{"smbGetIPConfig",         lua_smb_getipconfig},
 	{"smbNetUp",               lua_smb_netup},
