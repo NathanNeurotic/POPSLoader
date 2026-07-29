@@ -4931,6 +4931,127 @@ function PLDR.SmbParse(data)
   return cfg
 end
 
+-- ============================================================================
+-- POPSTARTER's OWN network config: the values written into
+-- mc?:/POPSTARTER/IPCONFIG.DAT and SMBCONFIG.DAT. These are read by POPSTARTER
+-- at launch. They are NOT what this menu browses with -- that is PLDR.SMB.
+--
+-- WHY THIS IS A SEPARATE TABLE. Two different programs with different
+-- capabilities were sharing one set of fields, and it has already cost real
+-- debugging time (issue #560). The menu can lease an address over DHCP;
+-- POPSTARTER cannot. So a user who leaves IP assignment on DHCP and then types a
+-- netmask into the static boxes gets those boxes ignored and the LEASE written to
+-- the card. elvengf saw 255.255.252.0 in a file where he had typed
+-- 255.255.255.0, had no screen anywhere that could explain it, and pulled the
+-- memory card to a PC to find out. Three people assumed a write bug. The write
+-- was correct; the fields he filled in simply were not the ones in play.
+--
+-- THERE IS NO DHCP FIELD HERE, DELIBERATELY. POPSTARTER has no DHCP of its own,
+-- and an IPCONFIG.DAT without a literal address leaves it with no network at all.
+-- This config is ALWAYS static. PopstarterNetEffective resolves a DHCP browsing
+-- setup down to the concrete leased address rather than ever letting "use DHCP"
+-- reach the card.
+--
+-- EVERY FIELD DEFAULTS TO "" MEANING "same as browsing". Blank is an INHERIT, not
+-- an empty value, so an existing install behaves exactly as it did before and
+-- nobody types their share details twice. Fill a field in only when POPSTARTER
+-- must differ from the menu. (Consequence worth knowing: a blank PASS inherits
+-- rather than forcing an empty password. Browsing defaults to USER=guest/PASS="",
+-- so inheriting already yields guest; a POPSTARTER-only blank password is not
+-- expressible, which is an acceptable trade for not making everyone type twice.)
+PLDR.PSNET_FIELDS = {
+  { key = "PS2_IP",  kind = "str", default = "" },
+  { key = "NETMASK", kind = "str", default = "" },
+  { key = "GATEWAY", kind = "str", default = "" },
+  { key = "SERVER",  kind = "str", default = "" },
+  { key = "PORT",    kind = "str", default = "" },
+  { key = "SHARE",   kind = "str", default = "" },
+  { key = "USER",    kind = "str", default = "" },
+  { key = "PASS",    kind = "str", default = "" },
+}
+
+function PLDR.PsnetDefaults()
+  local cfg = {}
+  for i = 1, #PLDR.PSNET_FIELDS do
+    cfg[PLDR.PSNET_FIELDS[i].key] = PLDR.PSNET_FIELDS[i].default
+  end
+  return cfg
+end
+
+function PLDR.PsnetCopy(src)
+  src = (type(src) == "table") and src or {}
+  local cfg = {}
+  for i = 1, #PLDR.PSNET_FIELDS do
+    local f = PLDR.PSNET_FIELDS[i]
+    local v = src[f.key]
+    if v == nil then v = f.default end
+    cfg[f.key] = PLDR.SmbSanitize(f, v)   -- same sanitizer; PASS is special-cased by key
+  end
+  return cfg
+end
+
+function PLDR.PsnetAppendLines(lines, cfg)
+  cfg = PLDR.PsnetCopy(cfg)
+  for i = 1, #PLDR.PSNET_FIELDS do
+    local f = PLDR.PSNET_FIELDS[i]
+    lines[#lines + 1] = "PSNET_"..f.key.."="..tostring(cfg[f.key] or "")
+  end
+end
+
+function PLDR.PsnetParse(data)
+  local cfg = PLDR.PsnetDefaults()
+  if type(data) ~= "string" then return cfg end
+  for i = 1, #PLDR.PSNET_FIELDS do
+    local f = PLDR.PSNET_FIELDS[i]
+    local k = "PSNET_"..f.key
+    local raw = string.match(data, "\n"..k.."=([^\n]*)") or string.match(data, "^"..k.."=([^\n]*)")
+    if raw ~= nil then cfg[f.key] = PLDR.SmbSanitize(f, raw) end
+  end
+  return cfg
+end
+
+-- Resolve what ACTUALLY reaches the memory card. Per field: an override if set,
+-- else the browsing value, and for the address triple on a DHCP browsing setup,
+-- the address the menu really leased. Returns (cfg, src) where src maps each key
+-- to "override" / "browsing" / "leased" / "unknown" so the settings page can SHOW
+-- where every value came from instead of leaving the user to guess -- which is the
+-- entire point of this table existing.
+--
+-- The returned cfg is in PLDR.SMB shape so the .DAT renderers consume it unchanged,
+-- and DHCP is pinned false: this path must never hand "use DHCP" to POPSTARTER.
+function PLDR.PopstarterNetEffective()
+  local smb = PLDR.SmbCopy(PLDR.SMB)
+  local over = PLDR.PsnetCopy(PLDR.PSNET)
+  local eff, src = {}, {}
+  local l_ip, l_mask, l_gw = nil, nil, nil
+  if smb.DHCP == true and type(System) == "table"
+     and type(System.smbGetIPConfig) == "function" then
+    local ok, a, m, g = pcall(System.smbGetIPConfig)
+    if ok and type(a) == "string" and a ~= "" then l_ip, l_mask, l_gw = a, m, g end
+  end
+  -- dhcp_addr: this key's browsing value is meaningless while the menu is on DHCP,
+  -- so if there is no override and no lease yet the answer is honestly UNKNOWN.
+  -- Falling back to the untouched static box would write a confidently wrong
+  -- address (its default is 192.168.1.10, on a LAN that may be 192.168.4.x).
+  local function pick(key, browse, leased, dhcp_addr)
+    local o = over[key]
+    if o ~= nil and o ~= "" then eff[key] = o; src[key] = "override"; return end
+    if leased ~= nil and leased ~= "" then eff[key] = leased; src[key] = "leased"; return end
+    if dhcp_addr and smb.DHCP == true then eff[key] = ""; src[key] = "unknown"; return end
+    eff[key] = browse; src[key] = "browsing"
+  end
+  pick("PS2_IP",  smb.PS2_IP,  l_ip,   true)
+  pick("NETMASK", smb.NETMASK, l_mask, true)
+  pick("GATEWAY", smb.GATEWAY, l_gw,   true)
+  pick("SERVER",  smb.SERVER,  nil,    false)
+  pick("PORT",    smb.PORT,    nil,    false)
+  pick("SHARE",   smb.SHARE,   nil,    false)
+  pick("USER",    smb.USER,    nil,    false)
+  pick("PASS",    smb.PASS,    nil,    false)
+  eff.DHCP = false
+  return eff, src
+end
+
 local function EncodeSettings()
   -- POPSTARTER_PATH: "" = Automatic. (The legacy PROFILE=/POPSTARTER_MODE=
   -- keys are no longer written; on load, an old file's PROFILE=N preset pick
@@ -4962,6 +5083,7 @@ local function EncodeSettings()
     "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
   }
   PLDR.SmbAppendLines(lines, PLDR.SMB)
+  PLDR.PsnetAppendLines(lines, PLDR.PSNET)
   return table.concat(lines, "\n").."\n"
 end
 
@@ -5010,6 +5132,7 @@ local function SnapshotSettingsState()
     boot_sound = (PLDR.BOOT_SOUND ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     smb = PLDR.SmbCopy(PLDR.SMB),
+    psnet = PLDR.PsnetCopy(PLDR.PSNET),
     smb_modules = (PLDR.SMB_MODULES == true)
   }
 end
@@ -5084,6 +5207,9 @@ local function ApplySettingsState(state)
   end
   if type(state.smb) == "table" then
     PLDR.SMB = PLDR.SmbCopy(state.smb)
+  end
+  if type(state.psnet) == "table" then
+    PLDR.PSNET = PLDR.PsnetCopy(state.psnet)
   end
   if type(state.smb_modules) == "boolean" then
     PLDR.SMB_MODULES = state.smb_modules
@@ -5257,6 +5383,9 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
+  -- POPSTARTER's own network overrides. All blank = "same as browsing", so a
+  -- fresh install behaves exactly as it did before this table existed.
+  PLDR.PSNET = PLDR.PsnetDefaults()
   PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
   -- EXP56: Hide UI Text now defaults ON (graphics team). It is a DEFAULT-ON boolean,
   -- so an absent HIDE_TEXT= line must mean ON -- see the parse site, which only
@@ -5499,6 +5628,9 @@ function PLDR.LoadSettingsNonFatal()
   if type(PLDR.SmbParse) == "function" then
     PLDR.SMB = PLDR.SmbParse(data)
   end
+  if type(PLDR.PsnetParse) == "function" then
+    PLDR.PSNET = PLDR.PsnetParse(data)
+  end
   local smb_modules = string.match(data, "\nSMB_MODULES=([^\n]+)") or string.match(data, "^SMB_MODULES=([^\n]+)")
   local smb_modules_enabled = ParseBooleanSetting(smb_modules)
   if smb_modules_enabled ~= nil then
@@ -5609,6 +5741,7 @@ function PLDR.CommitSettingsChanges(opts)
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
+    psnet = (type(opts.psnet) == "table") and PLDR.PsnetCopy(opts.psnet) or prev.psnet,
     smb_modules = next_smb_modules
   }
   local apply_bdma = opts.apply_bdma == true
@@ -6981,17 +7114,20 @@ end
 -- frame. So on DHCP we now write the address WE already hold, which POPStarter then uses
 -- statically. When no lease exists yet (the boot-time backfill runs long before the
 -- network comes up) we return nil and leave any existing good file untouched.
+-- ALWAYS emits a literal static address, or nil. Callers MUST pass the config from
+-- PLDR.PopstarterNetEffective(), which has already resolved overrides, browsing
+-- values and any DHCP lease down to concrete numbers and pinned DHCP=false. There
+-- is deliberately no DHCP branch left here: POPSTARTER cannot lease an address, so
+-- "write nothing because we're on DHCP" is never a correct answer.
+--
+-- An empty PS2_IP means the resolver could not determine the address (browsing is
+-- on DHCP and no lease exists yet -- the boot-time backfill runs long before the
+-- network is up). That returns nil, which the writers treat as leave-the-card-alone,
+-- never as delete.
 function PLDR.RenderSmbIpconfig(cfg)
-  if cfg.DHCP ~= true then
-    return tostring(cfg.PS2_IP or "").." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
-  end
-  if type(System) == "table" and type(System.smbGetIPConfig) == "function" then
-    local ok, ip, mask, gw = pcall(System.smbGetIPConfig)
-    if ok and type(ip) == "string" and ip ~= "" then
-      return ip.." "..tostring(mask or "").." "..tostring(gw or "")
-    end
-  end
-  return nil
+  local ip = tostring((cfg and cfg.PS2_IP) or "")
+  if ip == "" then return nil end
+  return ip.." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
 end
 
 -- SMBCONFIG.DAT body. Line 1 = "<SERVER>[:<PORT>] <SHARE>" (the colon-port only
@@ -7034,7 +7170,9 @@ function PLDR.ApplySmbModules(progress)
   local function step(i, name)
     if type(progress) == "function" then pcall(progress, i, total, name) end
   end
-  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  -- POPSTARTER-side config (overrides + resolved lease, always static), never the
+  -- browsing table. Same source SyncSmbDat uses, so install and backfill agree.
+  local cfg = PLDR.PopstarterNetEffective()
   for i = 1, #PLDR.SMB_IRX_FILES do
     local name = PLDR.SMB_IRX_FILES[i]
     step(i, name)
@@ -7072,13 +7210,16 @@ function PLDR.ApplySmbModules(progress)
       if not CopyExternalAtomicBounded(source, dest, want_size) then return false end
     end
   end
-  -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
+  -- IPCONFIG.DAT: write the static line, or leave any existing file alone.
+  -- NEVER delete it. This path had the same defect bb62f2be fixed in SyncSmbDat
+  -- and was missed: installing the modules while IP assignment was DHCP deleted
+  -- the one file POPSTARTER needs to have a network at all. nil here means "the
+  -- address is not knowable yet" (no lease, no override), not "there should be
+  -- no address".
   step(#PLDR.SMB_IRX_FILES + 1, "IPCONFIG.DAT")
   local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
   local ip_body = PLDR.RenderSmbIpconfig(cfg)
-  if ip_body == nil then
-    if not DeleteIfExists(ip_dest) then return false end
-  else
+  if ip_body ~= nil then
     if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
   end
   -- SMBCONFIG.DAT: always generated from the current settings.
@@ -7161,7 +7302,9 @@ function PLDR.SyncSmbDat()
   if root == nil then
     return false
   end
-  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  -- The POPSTARTER-side config, not the browsing one: overrides applied, DHCP
+  -- resolved to the leased address, DHCP pinned false. See PLDR.PSNET_FIELDS.
+  local cfg = PLDR.PopstarterNetEffective()
   local function write_if_changed(dest, body)
     if body == nil then
       -- "We cannot determine the correct contents right now" -- NOT "delete it".

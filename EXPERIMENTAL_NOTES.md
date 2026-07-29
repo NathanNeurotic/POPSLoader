@@ -2,13 +2,53 @@
 
 **This is the opt-in EXPERIMENTAL channel.** It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (**1.1.0**) and the rolling test build are both untouched by anything here.
 
-**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP77**. The check is simple: a version ending in **-EXP77** = this build; **-EXP76** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
+**How to tell you are running it:** Settings, then About: the Version row reads **v1.1.1-dev-EXP78**. The check is simple: a version ending in **-EXP78** = this build; **-EXP77** or lower = an older experimental, please update; plain **v1.1.1-dev** = the rolling build; **v1.1.0** = the public release.
 
-**File size check:** if *About* does not show EXP77, the file on your card was not replaced.
+**File size check:** if *About* does not show EXP78, the file on your card was not replaced.
 
 **How to go back:** reinstall the latest entry on the Releases page. Nothing here changes your settings, your `POPS` folders, or your games, so switching back and forth is safe.
 
 ---
+
+## New in EXP78: POPSTARTER now has its own network settings
+
+Only relevant if you play games off a network share.
+
+There are now two network sections in Settings. **SMB / Network** is what the
+loader itself uses to browse your share. The new **POPSTARTER Network** is what
+gets written to the memory card for POPSTARTER to use when it actually runs the
+game. They were the same fields before, and that caused a genuinely confusing
+problem.
+
+Here is the problem it fixes. The loader can ask your router for an address
+automatically. POPSTARTER cannot, it can only use an address written down for it.
+So if you had it set to automatic and then typed a netmask into the boxes, those
+boxes were ignored and the address from your router was written instead. One
+tester saw a netmask on his memory card that he had never typed, and the only way
+he could find out was to pull the card and read it on a PC.
+
+Now every row in POPSTARTER Network shows you the value that will actually be
+written, and where it came from. Leave a row blank and it says "Same as browsing"
+with the real value, or "From DHCP lease" when the address came from your router.
+Fill a row in only when POPSTARTER needs something different.
+
+There is deliberately no automatic option in this section, because POPSTARTER
+cannot use one. It always gets a real address.
+
+Please check:
+
+* Open Settings and look at POPSTARTER Network. Every row should show a value, not
+  a blank. If a row says "not known until you connect", enter the SMB page once and
+  look again.
+* The values shown should match what is actually in POPSTARTER/IPCONFIG.DAT and
+  SMBCONFIG.DAT on your memory card. If they do not match, that is exactly the bug
+  this was built to catch, so please say so.
+* If you already had SMB working, it should keep working with nothing filled in.
+  Blank means inherit, so nothing changes unless you change it.
+
+Also fixed: turning SMB modules on while set to automatic used to delete the
+address file POPSTARTER needs. That was a leftover from the same fix in the last
+build, which only covered one of the two places that write it.
 
 ## New in EXP77: network games can finally launch on automatic IP
 

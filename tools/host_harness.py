@@ -1711,6 +1711,48 @@ else:
 check("T43 IPCONFIG.DAT is never deleted and carries the leased address on DHCP",
       _t43_ok, _t43_why)
 
+
+# T44: POPSTARTER's network config is a SEPARATE table and is ALWAYS static.
+#
+# POPSTARTER cannot lease an address (see T43). The settings it reads therefore
+# cannot offer DHCP, and no code path may hand it "use DHCP" or nothing at all.
+# PLDR.PSNET_FIELDS deliberately has NO DHCP key, and PopstarterNetEffective pins
+# DHCP=false after resolving any browsing lease down to a literal address.
+#
+# The second half guards a bug found while building this: bb62f2be fixed the
+# delete-IPCONFIG.DAT defect in SyncSmbDat but MISSED the identical one in
+# ApplySmbModules, so turning SMB modules on while IP assignment was DHCP still
+# deleted the file. Two writers, one fixed, one not. They must now share a single
+# source of truth (PopstarterNetEffective) and neither may delete.
+_sys44 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_i44 = _sys44.find("function PLDR.ApplySmbModules")
+_apply_body = _sys44[_i44:_sys44.find("\nfunction ", _i44 + 1)] if _i44 != -1 else ""
+_j44 = _sys44.find("PLDR.PSNET_FIELDS = {")
+_spec = _sys44[_j44:_sys44.find("}", _j44)] if _j44 != -1 else ""
+
+_t44_ok, _t44_why = True, ""
+if _j44 == -1:
+    _t44_ok, _t44_why = False, "PLDR.PSNET_FIELDS is gone -- POPSTARTER's config is no longer separable"
+elif 'key = "DHCP"' in _spec:
+    _t44_ok, _t44_why = False, ("a DHCP field was added to PSNET_FIELDS; POPSTARTER cannot lease an "
+                                "address, so offering the choice sells a guaranteed failure")
+elif "eff.DHCP = false" not in _sys44:
+    _t44_ok, _t44_why = False, "PopstarterNetEffective no longer pins DHCP=false, so a lease could reach the card as 'use DHCP'"
+elif _i44 == -1:
+    _t44_ok, _t44_why = False, "PLDR.ApplySmbModules is gone"
+elif "IPCONFIG.DAT" in _apply_body and "DeleteIfExists(ip_dest)" in _apply_body:
+    _t44_ok, _t44_why = False, ("ApplySmbModules deletes IPCONFIG.DAT again -- installing the modules "
+                                "on a DHCP setup would strand POPSTARTER with no network")
+elif "PLDR.PopstarterNetEffective()" not in _apply_body:
+    _t44_ok, _t44_why = False, "ApplySmbModules no longer writes the POPSTARTER-side config, so install and backfill can disagree"
+else:
+    _sync44 = _sys44[_sys44.find("function PLDR.SyncSmbDat"):]
+    _sync44 = _sync44[:_sync44.find("\nfunction ", 1)]
+    if "PLDR.PopstarterNetEffective()" not in _sync44:
+        _t44_ok, _t44_why = False, "SyncSmbDat no longer uses the POPSTARTER-side config"
+check("T44 POPSTARTER network config is separate, always static, and never deleted",
+      _t44_ok, _t44_why)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
