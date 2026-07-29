@@ -180,14 +180,12 @@ Browse and launch PS1 games from an **SMBv1** network share via the **SMB** caro
 
 | Setting | Default | What it does |
 | :--- | :--- | :--- |
-| **SMB modules** | Not installed | Installs the in-game SMB streaming pack (6 IRX + `SMBCONFIG.DAT`/`IPCONFIG.DAT`) into `mc:/POPSTARTER` on Save. **Required to LAUNCH games** — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the *POPSTARTER Memory Card Folder* toggle. |
-| **IP assignment** | DHCP | DHCP or Static. Static uses the **PS2 IP / Netmask / Gateway / DNS** rows (validated as dotted quads). |
-| **Link mode** | Auto | Ethernet negotiation (Auto / 100 full / 100 half / 10 full / 10 half). |
-| **Server IP** | 192.168.1.100 | The SMB server's IP address. (NetBIOS names are not supported — use the IP.) The static-IP rows also default to a common home-LAN layout: PS2 IP `192.168.1.10`, gateway/DNS `192.168.1.1`. |
-| **Port** | **1111** | The server's SMB TCP port. **Stock SMB servers listen on 445** — the 1111 default suits alternate-port SMBv1 setups (e.g. the PS2-Servers configs); set it to whatever your server actually listens on. Written into `SMBCONFIG.DAT` as `SERVER:PORT` (445 is implied and omitted). |
-| **Share** | `games` | The share name (defaults to `games`). **Clear it** and the SMB page lists the server's shares in an in-app picker; your choice is saved. |
+| **SMB modules** | Not installed | Installs the in-game SMB streaming pack (6 IRX + `SMBCONFIG.DAT`/`IPCONFIG.DAT`) into `mc:/POPSTARTER` on Save. Turning it **off removes those 8 files from BOTH memory card slots** — POPSTARTER reads mc0 with a per-file mc1 fallback, so a half-removal would leave it still finding modules and a stale `SMBCONFIG.DAT` holding your server, share and plaintext password. **Required to LAUNCH games** — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the *POPSTARTER Memory Card Folder* toggle. |
+| **IP assignment** | Static | DHCP or Static, and this controls **browsing only**. POPSTARTER cannot obtain an address itself, so the **PS2 IP / Netmask / Gateway** rows must be filled in either way — they are what gets written to `IPCONFIG.DAT` for the game to use. Nothing is invented for you; blank means blank. |
+| **Server IP** | *(blank)* | The SMB server's IP address. (NetBIOS names are not supported — use the IP.) **No defaults are supplied for any network field.** They used to be pre-filled with a guessed home-LAN layout, which read as configuration the user had chosen and hid the real values; on first run every field is now empty, and existing `IPCONFIG.DAT`/`SMBCONFIG.DAT` on the memory card are loaded instead. |
+| **Port** | *(blank)* | The server's SMB TCP port. **Stock SMB servers listen on 445**; leave blank and POPSTARTER uses 445. Written into `SMBCONFIG.DAT` as `SERVER:PORT` — **always explicit**, including `:445`, because these files are read back as well as written. |
+| **Share** | *(blank)* | The share name. **Leave it blank** and the SMB page lists the server's shares in an in-app picker; your choice is saved. |
 | **User / Password** | *(guest)* | Credentials, when the share needs them (either one set = credentials are used, in-app and in-game). Values are trimmed except the password; the R2 symbol shift types `@ # $ %` etc. |
-| **Games path (folder holding POPS)** | *(share root)* | Optional folder under the share that CONTAINS your `POPS/` folder. **Browsing only**: POPStarter launches from `<share>/POPS`, so prefer sharing the folder itself and leaving this blank. |
 
 Share layout: `\\server\share\POPS\Game.VCD` (plus the usual POPS support files). Launches hand POPStarter an `SB.<name>.ELF` selector and it streams the `.VCD` from the share using the installed pack's `SMBCONFIG.DAT`.
 

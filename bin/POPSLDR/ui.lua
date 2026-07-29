@@ -5693,6 +5693,11 @@ UI = {
                 -- Toast and stay on the carousel (no SceneChange): every sibling
                 -- no-device branch (MX4SIO/exFAT, and the second MMCE check just
                 -- below) returns without entering an empty game list.
+                -- MMCE's message already names what it probed, so it is not a guess
+                -- like the ATA/MX4SIO ones were; record it for -debug so a failed
+                -- session still reports a device reason in the one place testers
+                -- photograph.
+                PLDR.LAST_DEVICE_STATUS = "mmce:noslot"
                 UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 PLDR.CleanupGameList()
                 PLDR.GAMEPATH = ""
@@ -5737,8 +5742,16 @@ UI = {
               report("Locating MX4SIO POPS folder...", 0.42)
               local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
+                -- Same treatment ATA got: the status was already being computed and
+                -- every value except "notready" collapsed into a flat "no device",
+                -- which is a guess that reads as "your adapter is missing" when the
+                -- real cause might be the driver or the slot probe.
+                PLDR.LAST_DEVICE_STATUS = "mx4sio:"..tostring(mx4_status or "<none>")
                 if mx4_status == "notready" then
                   UI.Notif_queue.add("MX4SIO driver failed to load\ntry the page again, or reboot", "warn")
+                elseif mx4_status ~= nil and mx4_status ~= "" and mx4_status ~= "nodevice" then
+                  UI.Notif_queue.add(PLDR.L("Could not start MX4SIO").."\n"
+                    ..tostring(mx4_status).."\n"..PLDR.L("Report this code -- the card may be fine"), "warn")
                 else
                   UI.Notif_queue.add("No MX4SIO device detected", "warn")
                 end

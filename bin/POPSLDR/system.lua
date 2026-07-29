@@ -7352,20 +7352,41 @@ function PLDR.ApplySmbModules(progress)
   return true
 end
 
--- OFF: delete ONLY the 8 SMB-exclusive files from mc:/POPSTARTER, trying them all
--- (so a partial/never-installed pack still cleans up). Leaves icon.sys / *.icn and
--- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
+-- OFF: delete ONLY the 8 SMB-exclusive files, trying them all (so a partial or
+-- never-installed pack still cleans up). Leaves icon.sys / *.icn and the BDMA
+-- usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
+--
+-- BOTH memory card slots, always. POPSTARTER reads its pack from mc0:/POPSTARTER
+-- with a per-file mc1:/POPSTARTER fallback, so deleting from the resolved root
+-- alone left a live copy on the other card: OFF then looked like it had worked
+-- while POPSTARTER still found modules and a stale SMBCONFIG.DAT carrying the
+-- user's server, share and PLAINTEXT PASSWORD. Off must mean gone (maintainer,
+-- 2026-07-29: "SMB modules off should literally remove them... We can't be
+-- leaving a mess"). RemovePopstarterMcFolder already sweeps both roots; this is
+-- the same rule for the targeted removal.
+PLDR.POPSTARTER_PACK_ROOTS = { "mc0:/POPSTARTER", "mc1:/POPSTARTER" }
+
 function PLDR.RemoveSmbModules()
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local ok = true
-  for i = 1, #PLDR.SMB_IRX_FILES do
-    if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/"..PLDR.SMB_IRX_FILES[i]) then ok = false end
+  local seen = {}
+  local roots = { POPSTARTER_PACK_ROOT, PLDR.POPSTARTER_PACK_ROOTS[1], PLDR.POPSTARTER_PACK_ROOTS[2] }
+  for r = 1, #roots do
+    local root = roots[r]
+    if root ~= nil and seen[root] ~= true then
+      seen[root] = true
+      -- A card that isn't present just has nothing to delete; DeleteIfExists is a
+      -- no-op on a missing file, so an absent mc1 costs nothing and never fails.
+      for i = 1, #PLDR.SMB_IRX_FILES do
+        if not DeleteIfExists(root.."/"..PLDR.SMB_IRX_FILES[i]) then ok = false end
+      end
+      if not DeleteIfExists(root.."/IPCONFIG.DAT") then ok = false end
+      if not DeleteIfExists(root.."/SMBCONFIG.DAT") then ok = false end
+    end
   end
-  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT") then ok = false end
-  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then ok = false end
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to remove some SMB modules")
   end
@@ -9744,6 +9765,33 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
     local mmce_prefix = (type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX) or "mmce0:/"
     gamelocation = mmce_prefix.."POPS"
+  elseif page == "SMB" and UI.SCENES.GSMBNET ~= nil then
+    -- SMB auto-launch. This branch simply never existed: every other page could be
+    -- driven by -page= plus -game= and SMB alone toasted "Auto-launch page not
+    -- supported", which is a gap rather than a decision -- the launch handoff
+    -- itself has worked since 68f9ed5.
+    --
+    -- Connect FIRST, exactly like the browse path: the network stack is lazy and
+    -- nothing is up at this point. InitSMBPopsRoot returns the share's POPS root or
+    -- nil + an error code, and UI.SmbErrorMessage already maps every code to a
+    -- sentence, so a failed auto-launch says WHY (no link, refused SMBv1, logon,
+    -- share) instead of dropping silently to the menu.
+    scene = UI.SCENES.GSMBNET
+    local smb_root, smb_err = nil, nil
+    if type(PLDR.InitSMBPopsRoot) == "function" then
+      local ok_smb, root, err = pcall(PLDR.InitSMBPopsRoot)
+      if ok_smb then smb_root, smb_err = root, err end
+    end
+    if type(smb_root) ~= "string" or smb_root == "" then
+      if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+        local msg = (type(UI.SmbErrorMessage) == "function") and UI.SmbErrorMessage(smb_err) or nil
+        UI.Notif_queue.add(msg or (PLDR.L("Could not open the SMB share").."\n"..tostring(smb_err or "")), "warn")
+      end
+      return false
+    end
+    -- The SMB launch gates (modules staged, required fields) live in the ui.lua
+    -- dispatch this path feeds, so they still apply to an auto-launch.
+    gamelocation = smb_root
   else
     if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
       UI.Notif_queue.add("Auto-launch page not supported: "..tostring(page), "warn")
@@ -9853,6 +9901,12 @@ function PLDR.SurfaceLaunchArgsDebug()
   -- how three separate people were pointed at the wrong cause.
   if PLDR.LAST_ATA_STATUS ~= nil then
     lines[#lines+1] = "ata_status: "..tostring(PLDR.LAST_ATA_STATUS)
+  end
+  -- Same idea widened past ATA: MX4SIO and MMCE record why they failed too, so a
+  -- device that refuses to open reports a reason from whichever page the user was
+  -- on, not just the exFAT one.
+  if PLDR.LAST_DEVICE_STATUS ~= nil then
+    lines[#lines+1] = "dev_status: "..tostring(PLDR.LAST_DEVICE_STATUS)
   end
   UI.Notif_queue.add(table.concat(lines, "\n"), "info")
 end

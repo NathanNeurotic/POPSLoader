@@ -51,7 +51,7 @@ Each entry records:
 ### 2026-07-07 — SMB default Port = 1111 is DELIBERATE (rationale for `75e1a84`)
 - Decision: `PLDR.SMB_FIELDS` ships PORT default `"1111"` (changed from 445 in `75e1a84` at the maintainer's request), and it stays.
 - Rationale: the maintainer runs SMB servers on custom ports via his **PS2-Servers repository**; 1111 is the intended ecosystem default for those setups. Standard SMB servers listen on 445 — that is a documentation concern (README's SMB section + TESTING both tell users to set the Port to their server's real port), NOT a reason to change the default. The 2026-07-07 audit flagged this independently 14 times; this entry exists so no future audit re-flags it.
-- Implications: `RenderSmbConfig` keeps the 445-implied convention (an explicit `:1111` is written into `SMBCONFIG.DAT`); connect failures name the failing step so a port mismatch is self-diagnosable. Do NOT migrate persisted `SMB_PORT` values.
+- Implications: ~~`RenderSmbConfig` keeps the 445-implied convention~~ — **SUPERSEDED 2026-07-28**: the port is now written EXPLICITLY, always, including `:445`. Once `SMBCONFIG.DAT` became a file POPSLoader READS BACK as well as writes, a suppressed port was a value that silently changed meaning on the round trip. The maintainer's reference format in issue #560 is explicit (`192.168.4.47:445 PS2`). Connect failures still name the failing step so a port mismatch is self-diagnosable. Do NOT migrate persisted `SMB_PORT` values.
 - Evidence: maintainer statement 2026-07-06 ("Port 1111 should not be the issue, I use custom ports all the time thanks to my PS2-Servers repository"); `bin/POPSLDR/system.lua` SMB_FIELDS.
 
 ### 2026-07-07 — The audit fix waves (61 findings actioned across 5 code commits)
