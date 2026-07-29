@@ -76,6 +76,59 @@ local function MassSlot0PathAliases(path)
   return out
 end
 
+-- ============================================================================
+-- DEVICE-KIND LABEL -> REAL MOUNT. Pure name regulation, no device init.
+--
+-- Launchers hand us argv0 rooted at a device KIND label rather than a mount:
+-- ata:/, usb:/, mx4sio:/ (and their numbered spellings). After the startup IOP
+-- reset those labels do not exist -- the same media comes back on the BDM 'mass'
+-- bus once our own drivers enumerate it. Every write aimed at the label lands
+-- nowhere, which is not a permissions problem: the path simply names a device
+-- POPSLoader does not have.
+--
+-- This kept being solved one launcher at a time: MX4SIO got a special case in
+-- 2026-05 (Nuno, "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only"), and the
+-- identical bug then arrived for ata (CosmicScale, 2026-07-29, settings resolving
+-- to ata0:/POPS/.pldrs). Fold the NAME instead, once, and every current and future
+-- BDM backend is covered without another case.
+--
+-- Identification is by ioctl DRIVER NAME, the PR #472 rule, matching the C-side
+-- ClassifyMassRootDriver exactly -- including that "ata" is an EXACT match
+-- (strcmp + strlen==3, mirroring OPL bdmsupport.c); a substring test there would
+-- false-match other drivers.
+--
+-- PROBE ONLY. This NEVER initialises a backend. Bringing ATA up from here would
+-- add another concurrent EnsureAtaBdm caller, and two atad copies re-initing the
+-- live bus is the 42% scan freeze with the drive light latched (CosmicScale
+-- APA-Jail, 2026-06-25). If the mount is not up yet we return the path unchanged
+-- and the caller's existing fallback handles it.
+local BDM_LABEL_KINDS = {
+  { pat = "^ata%d*:",    match = function(d) return d == "ata" end },
+  { pat = "^mx4sio%d*:", match = function(d) return string.find(d, "mx4", 1, true) ~= nil or string.find(d, "sdc", 1, true) ~= nil end },
+  { pat = "^usb%d*:",    match = function(d) return string.find(d, "usb", 1, true) ~= nil end },
+}
+
+function PLDR.ResolveDeviceLabelRoot(path)
+  if type(path) ~= "string" or path == "" then return path end
+  local lower = string.lower(path)
+  local kind = nil
+  for i = 1, #BDM_LABEL_KINDS do
+    if string.match(lower, BDM_LABEL_KINDS[i].pat) ~= nil then kind = BDM_LABEL_KINDS[i] break end
+  end
+  if kind == nil then return path end
+  if type(System) ~= "table" or type(System.getMassMountDriver) ~= "function" then return path end
+  for slot = 0, 9 do
+    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+    local ok, driver = pcall(System.getMassMountDriver, root)
+    if ok and type(driver) == "string" and driver ~= "" and kind.match(string.lower(driver)) then
+      -- Swap the label root for the real one, keeping the rest of the path.
+      local rest = string.match(path, "^%a+%d*:/*(.*)$") or ""
+      return root..rest
+    end
+  end
+  return path
+end
+
 local function NormalizeHostPath(path)
   if path == nil or path == "" then return path end
   if not string.match(path, "^host:") then
@@ -135,16 +188,23 @@ local function ResolveAppDirLocal()
   if IsPfsMountedPath(current_dir) and IsRawHddPartitionPath(app_dir) then
     return current_dir
   end
-  -- MX4SIO boot: argv0 prefix mx4sio:/ is the BDM device-kind label,
-  -- not a writable fileXio mount. etc/boot.lua translates cwd to the
-  -- actual mass*:/ slot (identified by sdc/mx4 ioctl driver name --
-  -- the same PR #472 rule). When that translation succeeded, prefer
-  -- the cwd over the raw mx4sio:/-rooted APP_DIR so the settings
-  -- sidecar at APP_DIR/.pldrs and other write paths target the
-  -- writable mass*:/ root. Hardware regression 2026-05-28 PM:
-  -- "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only" (Nuno).
+  -- BDM DEVICE-KIND LABEL boot: mx4sio:/, ata:/ and usb:/ in argv0 are device-KIND
+  -- labels, not writable fileXio mounts. etc/boot.lua translates cwd to the real
+  -- mass*:/ slot (identified by ioctl driver name, the PR #472 rule). When that
+  -- translation succeeded, prefer the cwd over the label-rooted APP_DIR so the
+  -- settings sidecar at APP_DIR/.pldrs and every other write targets the writable
+  -- root.
+  --
+  -- This used to test mx4sio ONLY, which is why the identical bug arrived twice:
+  -- "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only" (Nuno, 2026-05-28) and
+  -- then settings resolving to ata0:/POPS/.pldrs on an ata:/ boot (CosmicScale,
+  -- 2026-07-29). Matching the SHAPE -- any device-kind label with a real mass*:/
+  -- cwd underneath it -- fixes ata and usb now and the next backend for free.
   local app_dir_lower = string.lower(app_dir or "")
-  if string.match(app_dir_lower, "^mx4sio%d*:") and string.match(current_dir, "^mass%d*:/") then
+  local is_bdm_label = string.match(app_dir_lower, "^mx4sio%d*:") ~= nil
+     or string.match(app_dir_lower, "^ata%d*:") ~= nil
+     or string.match(app_dir_lower, "^usb%d*:") ~= nil
+  if is_bdm_label and string.match(current_dir, "^mass%d*:/") then
     return current_dir
   end
   return EnsureTrailingSlashNormRaw(app_dir)
@@ -2030,7 +2090,24 @@ local function ResolveBootContext()
   -- real-world case via OPL/uLE network launches.)
   local sidecar = nil
   if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
-    local lower = string.lower(APP_DIR_LOCAL)
+    -- NAME REGULATION FIRST. ata:/ usb:/ mx4sio:/ are device-KIND LABELS, not
+    -- mounts; the same media is on the mass bus once our drivers enumerate it.
+    -- Resolve the label to its real mass*:/ root and the path becomes perfectly
+    -- writable -- so it earns a sidecar like any other removable device instead of
+    -- being excluded. Excluding was always a workaround for not normalising: it
+    -- pushed a user who booted from their own drive onto mc0:, and on the ata boot
+    -- it did not even manage that (CosmicScale, 2026-07-29).
+    local resolved = APP_DIR_LOCAL
+    if type(PLDR.ResolveDeviceLabelRoot) == "function" then
+      local ok_res, r = pcall(PLDR.ResolveDeviceLabelRoot, APP_DIR_LOCAL)
+      if ok_res and type(r) == "string" and r ~= "" then resolved = r end
+    end
+    local lower = string.lower(resolved)
+    -- hdd/pfs/apa stay excluded on their own merits: they are APA/PFS mounts, not
+    -- BDM mass devices, and have their own settings route (the HDD-cwd block
+    -- below). smb: has no local filesystem at all. Only the BDM labels normalise.
+    -- A label that did NOT resolve (drive not enumerated yet) still matches its
+    -- own pattern here and is correctly excluded, exactly as before.
     local is_unwritable_boot = string.match(lower, "^hdd%d*:") ~= nil
        or string.match(lower, "^pfs%d*:") ~= nil
        or string.match(lower, "^ata%d*:") ~= nil
@@ -2038,7 +2115,7 @@ local function ResolveBootContext()
        or string.match(lower, "^usb%d*:") ~= nil
        or string.match(lower, "^smb%d*:") ~= nil
     if not is_unwritable_boot then
-      sidecar = JoinPath(CanonicalizeMassSlot0(APP_DIR_LOCAL), ".pldrs")
+      sidecar = JoinPath(CanonicalizeMassSlot0(resolved), ".pldrs")
     end
   end
 

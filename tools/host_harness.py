@@ -2031,6 +2031,49 @@ check("T50 an ATA failure reports its status instead of guessing 'reformat the d
       _t50_ok, _t50_why)
 
 
+# T51: ONE device-kind-label name resolver, in the PATH layer, probe-only.
+#
+# Launchers root argv0 at a device KIND label (ata:/, usb:/, mx4sio:/) instead of a
+# mount. After the startup IOP reset those labels do not exist; the same media is on
+# the mass bus once our drivers enumerate it. Writes aimed at the label go nowhere --
+# not a permissions problem, the path just names a device we do not have.
+#
+# This was being solved one launcher at a time: MX4SIO got a special case in 2026-05
+# (Nuno, "mx4sio:/...pldrs may be read-only") and the identical bug then arrived for
+# ata (CosmicScale, 2026-07-29, settings resolving to ata0:/POPS/.pldrs). Folding the
+# NAME once covers every current and future BDM backend.
+#
+# TWO PROPERTIES THIS EXISTS TO PROTECT:
+#   1. The resolver NEVER initialises a backend. Bringing ATA up from the path layer
+#      would add another concurrent EnsureAtaBdm caller, and two atad copies re-initing
+#      the live bus IS the 42% freeze with the drive light latched (CosmicScale
+#      APA-Jail, 2026-06-25).
+#   2. etc/boot.lua is NOT the place for this. Boot is deliberately left alone
+#      (maintainer, 2026-07-29: "do not make changes to our boot its perfect").
+_sys51 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_t51_ok, _t51_why = True, ""
+_i = _sys51.find("function PLDR.ResolveDeviceLabelRoot")
+_body = _sys51[_i:_sys51.find(chr(10) + "end", _i)] if _i != -1 else ""
+if _i == -1:
+    _t51_ok, _t51_why = False, "PLDR.ResolveDeviceLabelRoot is gone; device-kind labels are unregulated again"
+elif any(k in _body for k in ("initATA", "EnsureAtaBdm", "initMX4SIO", "ensureUsbMass")):
+    _t51_ok, _t51_why = False, ("the label resolver initialises a backend -- it must PROBE only, or it becomes "
+                                "another concurrent EnsureAtaBdm caller (the 42% live-bus freeze)")
+elif 'd == "ata"' not in _sys51:
+    _t51_ok, _t51_why = False, ("the ata driver match is no longer EXACT; a substring test false-matches "
+                                "(OPL bdmsupport.c uses strcmp + strlen==3)")
+else:
+    for _lbl in ("^ata%d*:", "^mx4sio%d*:", "^usb%d*:"):
+        if _lbl not in _sys51:
+            _t51_ok, _t51_why = False, "device label %s dropped from the resolver" % _lbl
+            break
+    if _t51_ok and "PLDR.ResolveDeviceLabelRoot" not in _sys51[_sys51.find("local sidecar = nil"):][:1400]:
+        _t51_ok, _t51_why = False, ("the settings sidecar no longer regulates the device name, so a label boot "
+                                    "still resolves to a path that does not exist after the IOP reset")
+check("T51 device-kind labels are name-regulated in the path layer, probe-only",
+      _t51_ok, _t51_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
