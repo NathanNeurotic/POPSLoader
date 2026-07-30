@@ -5978,6 +5978,23 @@ local function CollectStartupBackendTargets()
   local seen_roots = {}
   local boot_name = select(1, DetectBootDevice())
   targets.boot_name = boot_name
+  -- boot_name == "HDD" is NOT the same as "booted from an APA/PFS drive".
+  -- ResolveBootContext folds BOTH the APA prefixes (hdd:/pfs:/apa:) AND the BDM
+  -- exFAT one (ata:) into kind "HDD", so an exFAT boot reports "HDD" too --
+  -- CosmicScale's -debug toast on an ata:/POPS/ boot read `kind: HDD`.
+  --
+  -- That distinction is load-bearing here. Gating APA startup on kind alone made an
+  -- exFAT boot bring up the APA backend and go looking through APA partitions for
+  -- settings -- reported 2026-07-29 as "it tried to find settings on __.POPS when
+  -- booted from ATA". Discriminate on the PREFIX: only a real APA/PFS boot owns the
+  -- APA startup path. (The old `not explicit_ata_session` guard is NOT the fix and
+  -- must stay removed -- dropping it is what made -page=ata stop deleting the PFS
+  -- page, locked by T18/T49. This is about the BOOT DEVICE, not the launch arg.)
+  local boot_prefix = string.lower(tostring(ResolveBootContext().prefix or ""))
+  local boot_is_apa = string.match(boot_prefix, "^hdd%d*$") ~= nil
+     or string.match(boot_prefix, "^pfs%d*$") ~= nil
+     or string.match(boot_prefix, "^apa%d*$") ~= nil
+  targets.boot_is_apa = boot_is_apa
 
   if boot_name == "USB" then
     targets.usb = true
@@ -5985,7 +6002,7 @@ local function CollectStartupBackendTargets()
     targets.mmce = true
   elseif boot_name == "MX4SIO" then
     targets.mx4sio = true
-  elseif boot_name == "HDD" then
+  elseif boot_is_apa then
     -- The `and not explicit_ata_session` guard here is GONE (2026-07-28). It skipped
     -- APA/PFS startup init whenever the session was arg-launched with -page=ata, which
     -- paired with the old visibility isolation: the PFS page was hidden, so leaving it
@@ -6021,7 +6038,9 @@ local function CollectStartupBackendTargets()
     elseif (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
-    elseif targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
+    -- APA-only, not kind "HDD": an ata: (exFAT) boot also reports kind "HDD", and
+    -- registering APA POPSTARTER paths for it sent settings hunting through __.POPS.
+    elseif targets.boot_is_apa and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, raw)
     else
@@ -6181,7 +6200,13 @@ function PLDR.AutoInitStartupBackends()
     else
       pcall(EnsureHddRuntimeReadyForExec)
     end
-    if targets.boot_name == "HDD" then
+    -- APA-only for the same reason as above: this readies the APA BOOT PARTITION
+    -- mount, which only exists when we actually booted from an APA/PFS drive. An
+    -- ata: (exFAT) boot also reports kind "HDD", and asking it to ready a boot
+    -- partition it does not have is how settings ended up hunting through __.POPS.
+    -- targets.hdd can still be true here from a pfs:-rooted POPSTARTER path on an
+    -- exFAT boot, so the outer guard is not sufficient.
+    if targets.boot_is_apa then
       EnsureBootHddMountReady()
     end
     WarmStartupHddTargetPaths(targets.hdd_paths)

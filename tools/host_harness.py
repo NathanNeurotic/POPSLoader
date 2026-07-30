@@ -2133,6 +2133,52 @@ check("T52 Retro GEM Game ID: default ON, persists, read from SYSTEM.CNF, off th
       _t52_ok, _t52_why)
 
 
+# T53: APA startup must gate on the BOOT PREFIX, never on kind == "HDD".
+#
+# ResolveBootContext folds the APA prefixes (hdd:/pfs:/apa:) AND the BDM exFAT one
+# (ata:) into the SAME kind, "HDD". CosmicScale's -debug toast on an ata:/POPS/ boot
+# read `kind: HDD`. Gating APA startup on kind therefore made an exFAT boot bring up
+# the APA backend and hunt through APA partitions for settings -- reported 2026-07-29
+# as "it tried to find settings on __.POPS when it was booted from ATA with arg for
+# ATA".
+#
+# I caused that in 4933823b by removing `and not explicit_ata_session` from these
+# branches. That removal was CORRECT and must STAY: it is what stopped -page=ata
+# deleting the PFS page (locked by T18/T49). The bug was gating on the wrong thing --
+# this is about the BOOT DEVICE, not the launch argument.
+_sys53 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_t53_ok, _t53_why = True, ""
+# built from chr() so no escape sequence can be mangled by an editing pass
+Q = chr(34)
+NL = chr(10)
+
+_KIND_BOOT_BRANCH = 'elseif boot_name == ' + Q + 'HDD' + Q + ' then'
+_KIND_PATH_BRANCH = 'targets.boot_name == ' + Q + 'HDD' + Q + ' and (IsDefaultRelativePopstarterPath'
+_KIND_MOUNT_GATE = ('if targets.boot_name == ' + Q + 'HDD' + Q + ' then' + NL +
+                    '      EnsureBootHddMountReady()')
+
+if 'boot_is_apa' not in _sys53:
+    _t53_ok, _t53_why = False, ('APA startup gates on kind again -- an ata: (exFAT) boot reports kind "HDD" '
+                                'too and will probe APA partitions for settings')
+elif _KIND_BOOT_BRANCH in _sys53:
+    _t53_ok, _t53_why = False, 'the boot-device branch gates on kind "HDD" again instead of the APA prefix'
+elif _KIND_PATH_BRANCH in _sys53:
+    _t53_ok, _t53_why = False, 'the default-relative POPSTARTER path branch gates on kind "HDD" again'
+elif _KIND_MOUNT_GATE in _sys53:
+    _t53_ok, _t53_why = False, ('EnsureBootHddMountReady gates on kind again -- an exFAT boot has no APA boot '
+                                'partition to ready')
+else:
+    _p = _sys53[_sys53.find('local boot_is_apa'):][:400]
+    for _want in ('^hdd%d*$', '^pfs%d*$', '^apa%d*$'):
+        if _want not in _p:
+            _t53_ok, _t53_why = False, 'boot_is_apa no longer recognises the %s prefix' % _want
+            break
+    if _t53_ok and '^ata' in _p:
+        _t53_ok, _t53_why = False, 'ata: is being treated as an APA boot -- that is the whole bug'
+check("T53 APA startup gates on the boot PREFIX, so an exFAT boot never probes APA partitions",
+      _t53_ok, _t53_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
