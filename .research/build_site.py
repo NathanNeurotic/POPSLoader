@@ -1238,11 +1238,13 @@ GH = 'https://github.com/NathanNeurotic/POPSLoader/blob/dev/'
 POPSLOADER_DOCS = [
     ('README.md', 'README — Overview'),
     ('STATE.md', 'STATE — status, invariants & known issues'),
+    ('AGENTS.md', 'AGENTS — orientation & high-risk surfaces'),
     ('ARCHITECTURE.md', 'Architecture'),
     ('COMPONENTS.md', 'Components'),
     ('DECISIONS.md', 'Design decisions'),
     ('ROADMAP.md', 'Roadmap'),
     ('ROLLING_NOTES.md', 'Rolling notes'),
+    ('EXPERIMENTAL_NOTES.md', 'Experimental notes'),
     ('QA_REGRESSION_MATRIX.md', 'QA regression matrix'),
     ('TESTING.md', 'Testing'),
     ('CONTRIBUTING.md', 'Contributing'),

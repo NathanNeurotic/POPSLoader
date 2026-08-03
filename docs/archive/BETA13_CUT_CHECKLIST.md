@@ -1,6 +1,6 @@
 # BETA-13 cut gate: hardware pass checklist
 
-**This is the hardware gate for cutting BETA-13.** Tick items as you confirm them on a real PS2. The staged cut runbook lives in [`RELEASE_BETA13.md`](RELEASE_BETA13.md); the release-prep commits (title.cfg, changelog, version banners) are staged on branch `claude/beta13-release-prep`, ready to merge the moment this gate is green. Canonical status: [`STATE.md` > Reported Hardware Status](../STATE.md).
+**This is the hardware gate for cutting BETA-13.** Tick items as you confirm them on a real PS2. The staged cut runbook lives in [`RELEASE_BETA13.md`](RELEASE_BETA13.md); the release-prep commits (title.cfg, changelog, version banners) are staged on branch `claude/beta13-release-prep`, ready to merge the moment this gate is green. Canonical status: [`STATE.md` > Reported Hardware Status](../../STATE.md).
 
 ## The one call that sets the bar
 
