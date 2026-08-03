@@ -31,6 +31,7 @@ something bogus and staging the wrong driver pair.
 | `-mode=<device>` | NHDDL-compatible **alias** for `-page=` (identical behavior, same values). |
 | `-game=<selector>` | Auto-launch a game. **Must be combined with `-page=`.** |
 | `-bdma=<mode>` | Pin the BDM Assault driver variant for this launch, overriding Adaptive BDMA's per-device choice. |
+| `-retrogem=<val>` | Override RetroGEM Game ID optical emission (`1`/`on`/`true` or `0`/`off`/`false`). Aliases `-retrogem` and `-noretrogem`. |
 | `-debug` | Show an on-screen toast with the parsed args + resolved boot context. |
 
 Each argument is a separate token, exactly like a command line:

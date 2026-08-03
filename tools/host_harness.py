@@ -2109,10 +2109,16 @@ elif "retrogem_gameid = next_retrogem" not in _sysR:
 elif "SYSTEM.CNF" not in _cR:
     _t52_ok, _t52_why = False, ("the ID is no longer read from SYSTEM.CNF inside the VCD -- filename-only "
                                 "resolution fails for every disc not named in the OPL convention")
+elif "ps1_generic_game_ids" not in _cR:
+    _t52_ok, _t52_why = False, "the PVD timestamp fallback table is missing from retrogem.cpp"
 elif '{"retroGemGameId"' not in _lsR or '{"retroGemDraw"' not in _lsR:
     _t52_ok, _t52_why = False, "the Lua bindings are not registered"
 elif "UI.EmitRetroGemGameId" not in _uiR:
     _t52_ok, _t52_why = False, "nothing emits the ID at launch"
+elif "launch_arg_retrogem" not in (REPO / "src" / "main.cpp").read_text(encoding="utf-8"):
+    _t52_ok, _t52_why = False, "-retrogem argument parsing is missing from main.cpp"
+elif "PLDR.LAUNCH_ARGS.retrogem_raw" not in _sysR:
+    _t52_ok, _t52_why = False, "retrogem launch argument normalization is missing from system.lua"
 else:
     # The lookup must be reachable ONLY from the launch path. If it appears anywhere
     # near the scan/list builders, that is a per-entry disc read.

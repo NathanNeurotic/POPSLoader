@@ -2407,6 +2407,7 @@ PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
   page_raw = nil,
   game = nil,
   bdma_raw = nil,   -- normalised at point of use; see PLDR.LaunchArgBdmaMode
+  retrogem_raw = nil,
   debug = false,
 }
 if type(System) == "table" and type(System.getLaunchArgs) == "function" then
@@ -2432,6 +2433,16 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
       -- Stored RAW on purpose: NormalizeBdmaModeKey is a chunk-local declared far
       -- below this point, so calling it here would resolve to a nil global.
       PLDR.LAUNCH_ARGS.bdma_raw = bdma_raw
+    end
+    local retrogem_raw = tostring(args.retrogem or "")
+    if retrogem_raw ~= "" then
+      PLDR.LAUNCH_ARGS.retrogem_raw = retrogem_raw
+      local raw = string.lower(retrogem_raw)
+      if raw == "1" or raw == "true" or raw == "yes" or raw == "on" then
+        PLDR.RETROGEM_GAMEID = true
+      elseif raw == "0" or raw == "false" or raw == "no" or raw == "off" then
+        PLDR.RETROGEM_GAMEID = false
+      end
     end
     PLDR.LAUNCH_ARGS.debug = (args.debug == true)
     -- Recover a -debug that was written on the same CNF arg line as the
