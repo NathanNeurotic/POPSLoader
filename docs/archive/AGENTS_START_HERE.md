@@ -14,12 +14,12 @@ It is intentionally informational. It describes the current preservation contrac
 |---|---|
 | [STATE.md](../../STATE.md) | Current code and hardware status. Repo-verified runtime state. Reported hardware table. Post-release PR work. |
 | [ROADMAP.md](../../ROADMAP.md) | Prioritized backlog. Immediate priorities, pragmatically-accepted-broken items, secondary work. |
-| [TRUTHSHEET.md](TRUTHSHEET.md) | Non-negotiable behavioral invariants. Preservation contracts. |
+| [STATE.md](../../STATE.md) | Non-negotiable behavioral invariants. Preservation contracts. (Replaces former TRUTHSHEET.md) |
 | [QA_REGRESSION_MATRIX.md](../../QA_REGRESSION_MATRIX.md) | Authoritative hardware/CI ledger with per-artifact run history. |
 | [DECISIONS.md](../../DECISIONS.md) | Decision log with rationale and evidence. Recent entries cover post-release PRs (#470/#472/#473/#471). |
-| [docs/LAUNCH_HYGIENE.md](LAUNCH_HYGIENE.md) | Launch-path architecture, V2 mimicry rationale, Layer A/B/C definitions. |
-| [docs/U10_INVESTIGATION.md](U10_INVESTIGATION.md) | U-10 BOOT.ELF-from-HDD-boot hypothesis catalog. U-10 is accepted broken; the catalog is preserved for any future revisit. |
-| [docs/DOCUMENTATION_FOLLOWUP_AUDIT.md](DOCUMENTATION_FOLLOWUP_AUDIT.md) | Post-release doc cleanup plan (the doc you may be working from now). |
+| [LAUNCH_HYGIENE.md](LAUNCH_HYGIENE.md) | Launch-path architecture, V2 mimicry rationale, Layer A/B/C definitions. |
+| [U10_INVESTIGATION.md](U10_INVESTIGATION.md) | Deep dive into the U-10 BOOT.ELF exit failure from HDD-booted POPSLoader. |
+| [DOCUMENTATION_FOLLOWUP_AUDIT.md](DOCUMENTATION_FOLLOWUP_AUDIT.md) | Documentation audit and follow-up plan post BETA-10-5. |
 
 ## Hard Constraints (Preservation Contracts)
 
