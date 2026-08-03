@@ -78,14 +78,23 @@ end
 -- can't be used either: it would eat the tail of titles containing a dot
 -- ("Mr. Driller" -> "Mr"). So match .VCD specifically.
 -- Faded palette for hidden games shown in the "manage" view (Global Hide off).
--- sAGA (#536): the old shade still read too clearly next to the white normal
--- rows. PS2 alpha is 0-128 (GREY above is 128 = fully opaque), so the lever is
--- alpha: the UNSELECTED hidden row drops to "barely visible" (~1/4 opacity) so a
--- hidden game barely registers, while the SELECTED hidden row stays dim-but-
--- findable so you can still navigate to it to un-hide. Tune on hardware if
--- either reads too faint/strong; the intent is "clearly less visible than before".
-local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 34)
-local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 80)
+-- PS2 alpha is 0-128 (128 = fully opaque), and alpha is the right lever because it
+-- moves the row strictly toward whatever is behind it; changing RGB would help on a
+-- dark backdrop and hurt on a light one.
+--
+-- SECOND tuning pass. sAGA asked for this once (#536, which set 34/80 from a much
+-- stronger shade) and again on 2026-07-28 after testing RR74: "the names of the
+-- hidden games need to be made even fainter (even fainter)". Unselected drops
+-- 34 -> 20, i.e. ~41% less opaque again and about 16% of full; selected drops
+-- 80 -> 68, a smaller step on purpose.
+--
+-- The asymmetry is deliberate and is the constraint to respect if this is tuned a
+-- THIRD time: the unselected rows are the clutter being complained about, but the
+-- SELECTED hidden row is how you find a game in order to press L3 and un-hide it.
+-- Drive that one too low and the manage view stops being usable at all -- so take
+-- any further reduction out of the unselected value first.
+local LIST_HIDDEN_COLOR = Color.new(80, 82, 104, 20)
+local LIST_HIDDEN_SELECTED_COLOR = Color.new(132, 134, 162, 68)
 local function StripVcdExtension(name)
   local s = tostring(name or "")
   return (string.gsub(s, "%.[Vv][Cc][Dd]$", ""))
@@ -205,21 +214,19 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     if basename == "" then
       basename = BasenameWithoutExtension(vcd_path)
     end
-    local stripped_basename = StripDiscMarker(basename)
     if basename == "" then
       return {}
     end
     if type(PLDR) == "table" and type(PLDR.ResolveHddPartitionReadablePath) == "function" then
-      -- One art file serves all discs: try the disc-marker-stripped name first, then
-      -- the exact per-disc name (back-compat with existing <full-name>.png covers).
-      local out = {}
-      if stripped_basename ~= "" and stripped_basename ~= basename then
-        local r1 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..stripped_basename..".png")
-        if r1 ~= nil then out[#out + 1] = r1 end
-      end
-      local r2 = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename..".png")
-      if r2 ~= nil then out[#out + 1] = r2 end
-      return out
+      -- EXACT game filename ONLY (maintainer directive, EXP71): APA/Partition art
+      -- lives ONLY at hdd0:__common/POPS/ART/<gamefilename>_COV.png. No
+      -- disc-marker-stripped family name, no legacy variants -- a stripped
+      -- candidate could shadow the exact per-disc art, and every extra probe is
+      -- a full dir walk on a big ART folder. Fast hit, or graceful skip. The
+      -- resolver existence-confirms the file.
+      local rc = PLDR.ResolveHddPartitionReadablePath("hdd0:__common", "POPS/ART/"..basename.."_COV.png")
+      if rc ~= nil then return { rc } end
+      return {}
     end
     return {}
   end
@@ -227,36 +234,24 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
     return {}
   end
   local base = StripExtension(vcd_path)
-  -- Cover/details FOLDER is user-selectable (Settings > Game List > "Cover/details folder",
-  -- PLDR.ART_LOCATION): "pops_art" = a POPS/ART/ subfolder (default; matches the HDD/PFS
-  -- __common/POPS/ART layout); "pops" = the game's own POPS folder beside the .vcd; "art" =
-  -- a top-level <device>:/ART/ folder. The game's own folder is ALWAYS also checked as a
-  -- final back-compat fallback so art beside the .vcd never stops showing. Within each
-  -- folder the disc-marker-stripped name is tried first (one file serves every disc of a
-  -- multi-disc game), then the exact per-disc name. The .txt details sidecar rides this
-  -- same list (each .png -> .txt). CoverCache memoizes misses (once per game per session).
+  -- ONE directory, EXACT filename (maintainer directive, EXP71): art is read
+  -- ONLY from <device>:/ART/<gamefilename>_COV.png (APA/PFS:
+  -- hdd0:__common/POPS/ART/<gamefilename>_COV.png, branch above). The
+  -- 2026-07-23 additive legacy families and the disc-marker-stripped family
+  -- name are all gone: every extra candidate is a full dir-chain walk on a
+  -- large ART folder, and the stripped name could shadow exact per-disc art.
+  -- Fast hit, or graceful skip (the memo + placeholder path handles absence);
+  -- probes stay bounded single fopens off the render thread.
   local dir, name = string.match(base, "^(.*/)([^/]+)$")
   if dir == nil then dir, name = "", base end
-  local stripped = StripDiscMarker(name)
-  local has_stripped = (stripped ~= "" and stripped ~= name)
-  local loc = (type(PLDR) == "table" and PLDR.ART_LOCATION) or "pops_art"
-  local out, seen = {}, {}
-  local function add_dir(d)
-    if d == nil or d == "" then return end
-    if has_stripped then
-      local p = d..stripped..".png"
-      if not seen[p] then seen[p] = true; out[#out + 1] = p end
-    end
-    local p2 = d..name..".png"
-    if not seen[p2] then seen[p2] = true; out[#out + 1] = p2 end
-  end
-  if loc == "pops_art" then
-    add_dir(dir.."ART/")
-  elseif loc == "art" then
-    add_dir((string.match(dir, "^(%a+%d*:/)") or dir).."ART/")
-  end
-  add_dir(dir)   -- the game's own folder (beside the .vcd) -- always a fallback
-  return out
+  -- %w+ accepts letters and digits in any order and still stops at the colon
+  -- (mx4sio0: has a digit in the NAME; the old %a+%d*: matched nothing there).
+  local devroot = string.match(dir, "^(%w+:/)")
+  local artdir = (devroot or dir).."ART/"
+  -- EXACT game filename ONLY (maintainer directive, EXP71): <device>:/ART/
+  -- <gamefilename>_COV.png. The disc-marker-stripped family name is GONE --
+  -- tried first, it could shadow the exact per-disc art.
+  return { artdir..name.."_COV.png" }
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
@@ -319,12 +314,13 @@ local CoverCache = {
   entries = {},
   order = {},
   failed = {},
+  pending = nil,     -- EXP49: in-flight async cover load {key,candidates,idx,token,started}
+  token = 0,         -- EXP49: request id, so a late result for an old selection is dropped
   last_key = nil,
   last_img = nil,
   last_desc = nil,
   last_desc_lines = nil,
-  desc_scroll = 0,
-  last_cover_probe = nil  -- primary path we looked for when a cover is MISSING (list-view diagnostic)
+  desc_scroll = 0
 }
 function CoverCache:Clear()
   local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
@@ -336,13 +332,43 @@ function CoverCache:Clear()
   end
   self.order = {}
   self.failed = {}
+  self.pending = nil     -- EXP49: abandon any in-flight load; its result will be dropped as stale
   self.last_key = nil
   self.last_img = nil
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
-  self.last_cover_probe = nil
 end
+-- EXP33: scene-exit cleanup that FREES decoded covers (memory) but KEEPS the
+-- negative-miss memo (self.failed). Re-entering the same device then skips the
+-- re-probe of covers already known absent -- each miss is a full FAT dir-chain
+-- walk on SD-over-SIO2 / USB 1.1, which is the "exit and re-enter MX4SIO stalls"
+-- report. self.failed is keyed by full path, so a different device (or an R1
+-- refresh, which calls the full Clear) never collides. last_img is freed here,
+-- so it MUST be dropped, not kept.
+function CoverCache:ReleaseTextures()
+  local free_ok = type(Graphics) == "table" and type(Graphics.freeImage) == "function"
+  for key, img in pairs(self.entries) do
+    if free_ok then pcall(Graphics.freeImage, img) end
+    self.entries[key] = nil
+  end
+  self.order = {}
+  self.last_key = nil
+  self.last_img = nil
+  self.last_desc = nil
+  self.last_desc_lines = nil
+  self.desc_scroll = 0
+  -- self.failed intentionally preserved: it reflects on-disk state keyed by absolute
+  -- path, so re-entering the SAME device skips re-probing covers already known absent;
+  -- a different device uses different paths (no collision) and R1 does a full Clear.
+end
+-- EXP35: the EXP34 dir-listing existence cache (CoverCache:ListDirSet / :DirHas,
+-- backed by self.dir_listing) was REMOVED -- it ran System.listDirectory
+-- (opendir/readdir) on the cover folder, which on the MX4SIO bdmfs_fatfs backend
+-- correlated with a per-navigation lag ending in "not enough memory" (2026-07-22).
+-- Cover existence is a single bounded Graphics.loadImage (fopen) again; genuine
+-- absences are memoized in self.failed (decode failures stay retryable -- EXP59).
+-- See CoverCache:MemoizeMiss / :GetOrLoad.
 function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
@@ -354,6 +380,18 @@ function CoverCache:EvictIfNeeded()
       self.entries[evict_key] = nil
     end
   end
+end
+-- EXP59 (OPL parity): only GENUINE ABSENCE is memoized. OPL distinguishes
+-- ERR_BAD_FILE (memoized) from decode/IO errors (retried next visit); we used
+-- to memoize ANY nil, so one transient failure (a busy cover worker, EE-RAM
+-- pressure mid-decode, an IOP RPC hiccup on slow media) became a cover that
+-- silently never appeared until R1. A present-but-undecodable file stays
+-- retryable; a truly absent file stays memoized (its re-probe is a full FAT
+-- dir-chain walk on SD-over-SIO2 / USB 1.1 -- that stall protection stands).
+function CoverCache:MemoizeMiss(path)
+  local ok, exists = pcall(doesFileExist, path)
+  if ok and exists == true then return end
+  self.failed[path] = true
 end
 function CoverCache:GetOrLoad(path)
   if path == nil or path == "" then return nil end
@@ -368,18 +406,20 @@ function CoverCache:GetOrLoad(path)
     self.failed[path] = true
     return nil
   end
-  -- Load straight through Graphics.loadImage (fopen) with no separate doesFileExist() open()
-  -- pre-probe. In ps2sdk fopen and open both funnel through the SAME libcglue _open
-  -- (ee/libcglue/src/glue.c -> __path_absolute), so an open() existence check and an fopen()
-  -- load resolve the identical path: the pre-probe was just a redundant second open of the
-  -- same file, never a gate that behaved differently for a nested POPS/ART/ path. Dropping it
-  -- only saves that syscall; loadImage returns nil for a genuinely missing/unreadable file
-  -- (memoized below). This is a cleanup, NOT a cover fix -- nested subfolder reads work on the
-  -- BDM/FAT drivers (OPL reads mass:/ART/ the same way), so a POPS/ART cover that does not
-  -- show is a filename/location problem, not a read-path one.
+  -- EXP49: the dir_present folder gate is GONE. It was added (EXP37) to dodge the
+  -- MX4SIO stutter and never could: it only short-circuits when the ART folder is
+  -- ABSENT, and the folder very much exists -- it is shared with OPL. OPL itself has
+  -- no folder-exists check, no readdir and no stat on this path; it does one open()
+  -- per game, exactly like the line below. With loads now off the render thread
+  -- (CoverCache:Pump / Poll) an absent folder costs nothing visible either, so the
+  -- gate has no remaining job. Same reason the EXP34/44/46 directory listings are
+  -- gone: probe COUNT was never the problem.
+  --
+  -- This synchronous path now runs ONLY as the fallback for builds/devices where the
+  -- async worker is unavailable. The game list never reaches it.
   local img = Graphics.loadImage(path)
   if img == nil then
-    self.failed[path] = true
+    self:MemoizeMiss(path)
     return nil
   end
   if type(Graphics.setImageFilters) == "function" then
@@ -403,7 +443,6 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   self.last_img = nil
   self.last_desc = nil
   self.last_desc_lines = nil
-  self.last_cover_probe = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
   if (use_hdd_common_art ~= true) and (vcd_path == nil or vcd_path == "") then
     return nil
@@ -412,19 +451,39 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
-  if type(PLDR) == "table" and PLDR.SHOW_DETAILS == true and candidates[1] ~= nil then
-    -- Try the .txt next to each cover candidate in order (disc-marker-stripped name
-    -- first, exact name as back-compat fallback). One <name>.txt serves all discs;
-    -- first existing read wins.
-    for ci = 1, #candidates do
-      local desc_path = string.gsub(candidates[ci], "%.png$", ".txt")
-      if desc_path ~= candidates[ci] then
-        local d = ReadGameDetailsText(desc_path)
-        if d ~= nil then
-          self.last_desc = d
-          self.last_desc_lines = nil  -- re-wrap lazily for the new description
-          break
-        end
+  -- EXP54: the details .txt is NO LONGER read here. This was the last blocking card
+  -- read left on the RENDER thread, and it is why EXP53 changed nothing: EXP49/53
+  -- moved the COVER off the thread but left this one on it, so the frame still
+  -- stalled on a slow miss into the same big ART/ folder -- 1-2 opens per newly
+  -- selected title. Confirmed by the field report: totally static screen, scrolling
+  -- text stopped (render blocked, not just input), on exactly the two devices with a
+  -- large ART/ folder (MX4SIO, USB) and never on ATA/APA/SMB.
+  --
+  -- It now rides the cover: the .txt is only read once a cover has actually LOADED
+  -- (see Pump), which means the file is known to exist in that folder and the read is
+  -- a cheap hit rather than a full-directory miss. If a game has no cover, its .txt
+  -- is not read at all -- so a card with no art (the reported case) does ZERO reads
+  -- per navigation instead of two slow ones.
+  -- (EXP73: self.pending_desc was dropped here -- write-only since EXP72 deleted its
+  -- only reader, the EXP54 in-Pump read.)
+  -- Mass devices: compute the details-.txt path for the WORKER-side companion
+  -- read (EXP72, sAGA: details never showed without a cover). NO io here --
+  -- T35's zero-blocking-IO invariant: the resident cover worker opens the file
+  -- on its own thread (Graphics.coverLoadTextPath + coverLoadText), even when
+  -- there is no cover to load at all (a text-only job below). Exact game
+  -- filename only (EXP71 rule); misses memoize in self.failed.
+  self.pending_desc_path = nil
+  if use_hdd_common_art ~= true and type(PLDR) == "table"
+     and PLDR.SHOW_DETAILS == true and self.last_desc == nil
+     and type(Graphics) == "table" and type(Graphics.coverLoadTextPath) == "function" then
+    local base = StripExtension(vcd_path or "")
+    local dir, name = string.match(base, "^(.*/)([^/]+)$")
+    if dir == nil then dir, name = "", base end
+    local devroot = string.match(dir, "^(%w+:/)")
+    if devroot ~= nil and name ~= "" then
+      local dp = devroot.."ART/"..name..".txt"
+      if not self.failed[dp] then
+        self.pending_desc_path = dp
       end
     end
   end
@@ -455,28 +514,264 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
       end
     end
   end
+  -- Anything already decoded, or already known absent, is answered with ZERO I/O.
+  local first_unknown = nil
+  local cached_img = nil
   for i = 1, #candidates do
-    local img = self:GetOrLoad(candidates[i])
-    if img ~= nil then
-      self.last_img = img
-      return img
+    local p = candidates[i]
+    local cached = self.entries[p]
+    if cached ~= nil then
+      cached_img = cached
+      break
+    end
+    if not self.failed[p] and first_unknown == nil then
+      first_unknown = i
     end
   end
-  -- No cover loaded: remember the FIRST place we looked (candidates[1], the ART_LOCATION
-  -- choice) so the list view can print a small "looked for <path>" caption -- lets a tester
-  -- confirm the .png name/folder without a hardware round-trip. The HDD branch has no
-  -- candidate when the png is missing (see above), so synthesize the DISPLAY-ONLY
-  -- expected path -- the one page whose art location is least guessable.
-  self.last_cover_probe = candidates[1]
-  if self.last_cover_probe == nil and use_hdd_common_art == true then
-    local cap_base = ExtractHddArtBasename(entry)
-    if cap_base ~= "" then
-      local cap_stripped = StripDiscMarker(cap_base)
-      if cap_stripped ~= "" then cap_base = cap_stripped end
-      self.last_cover_probe = "hdd0:__common/POPS/ART/"..cap_base..".png"
-    end
+  if cached_img ~= nil then
+    self.last_img = cached_img
+    -- EXP73: a CACHED cover used to return straight from here, before any details
+    -- job was issued, so a game whose art was already decoded could never show its
+    -- .txt -- and revisiting a game was the common case. The sidecar still has to
+    -- be fetched; it just has no cover to ride on.
+    self:BeginTextOnlyLoad(key)
+    return cached_img
   end
+  if first_unknown == nil then
+    -- every cover candidate is a known miss. The DETAILS text may still exist:
+    -- give the worker a text-only job (empty image path) so cover-less games
+    -- show their description without any render-thread io (EXP72).
+    self:BeginTextOnlyLoad(key)
+    return nil   -- nothing to do for the cover itself
+  end
+  -- EXP49: hand the unknown candidate to the worker and RETURN IMMEDIATELY. The list
+  -- keeps drawing the placeholder; CoverCache:Pump adopts the texture when it lands.
+  -- This is the whole fix: the probe itself is unchanged (one open per game, same as
+  -- OPL) -- it simply stops happening on the thread that draws. A miss into a large
+  -- shared ART/ folder still costs ~0.3-0.6s on MX4SIO, but nothing waits for it now.
+  self:BeginLoad(key, candidates, first_unknown)
   return nil
+end
+
+-- Kick an async load for candidates[idx] of `key`. Falls back to the old synchronous
+-- load only when the worker is unavailable (older core), so behaviour degrades rather
+-- than breaks.
+function CoverCache:BeginLoad(key, candidates, idx)
+  local path = candidates[idx]
+  if path == nil then return end
+  -- EXP53: drain an UNCOLLECTED result before requesting. Pump only runs on the
+  -- game-list scene, so leaving the page mid-load (START, a launch, a back-out)
+  -- leaves the worker slot finished-but-unread; without this every later request is
+  -- refused and covers silently stop for the rest of the session. EXP51 did exactly
+  -- this in C and that build would not boot, so it is done HERE and the C stays
+  -- byte-identical to EXP49, which did boot. Polling is free and side-effect-free.
+  if self.pending == nil and type(Graphics) == "table"
+     and type(Graphics.coverLoadPoll) == "function" then
+    local ok_d, _, orphan = pcall(Graphics.coverLoadPoll)
+    if ok_d and orphan ~= nil and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, orphan)
+    end
+  end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function" then
+    local img = self:GetOrLoad(path)
+    if img ~= nil and self.last_key == key then self.last_img = img end
+    return
+  end
+  self.token = (self.token or 0) + 1
+  local dp = self.pending_desc_path
+  self.pending_desc_path = nil
+  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token, desc_path = dp }
+  -- EXP73: ALWAYS set the companion text path here, clearing it with "" when this
+  -- game has none. EXP72 set it only in the text-only and the worker-refused-retry
+  -- branches, so this -- the path EVERY first-time cover load takes -- asked the
+  -- worker for no text at all, and games with BOTH a cover and a .txt lost details
+  -- they used to show (the EXP54 read was deleted in the same commit). Clearing on
+  -- the no-details case matters just as much: a path left over from a refused job
+  -- otherwise rides the next game's cover job and shows the WRONG game's blurb.
+  if type(Graphics.coverLoadTextPath) == "function" then
+    pcall(Graphics.coverLoadTextPath, dp or "")
+  end
+  local ok, accepted = pcall(Graphics.coverLoadBegin, path, self.token)
+  if not ok or accepted ~= true then
+    -- Worker busy (or refused): Pump retries on a later frame. Never block here.
+    self.pending.started = false
+  else
+    self.pending.started = true
+  end
+end
+
+-- EXP73: issue a TEXT-ONLY worker job (empty image path) for a pending details
+-- sidecar -- the case where there is no cover load to carry it.
+--
+-- EXP72 fired this job but never set self.pending, and CoverCache:Pump early-returns
+-- on a nil pending, so the job was never polled: the worker DID read the file and the
+-- bytes were dropped on the floor. That is the reported bug ("Game Details does not
+-- appear on the game list"). It also left the C slot finished-but-unread, which
+-- refuses every later request until something else drains it.
+function CoverCache:BeginTextOnlyLoad(key)
+  local dp = self.pending_desc_path
+  self.pending_desc_path = nil
+  if dp == nil then return end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function"
+     or type(Graphics.coverLoadTextPath) ~= "function" then
+    return
+  end
+  -- Drain an uncollected result first, for EXP53's reason: a finished-but-unread
+  -- job occupies the slot and every request is refused while it sits there.
+  if type(Graphics.coverLoadPoll) == "function" then
+    local ok_d, _, orphan = pcall(Graphics.coverLoadPoll)
+    if ok_d and orphan ~= nil and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, orphan)
+    end
+  end
+  self.token = (self.token or 0) + 1
+  self.pending = { key = key, candidates = {}, idx = 0, token = self.token,
+                   text_only = true, desc_path = dp }
+  pcall(Graphics.coverLoadTextPath, dp)
+  local ok, accepted = pcall(Graphics.coverLoadBegin, "", self.token)
+  self.pending.started = (ok and accepted == true)
+end
+
+-- Drain the worker's companion-text channel for a COMPLETED job.
+--
+-- Must run on every completed job, whatever the cover outcome: the C channel is
+-- consumed on read (luagraphics.cpp lua_coverloadtext), so a value left sitting
+-- there is picked up by the NEXT game. A stale result is drained and DISCARDED --
+-- the same rule T30 pins for textures: never show one game's data on another's row.
+function CoverCache:CollectPendingText(p, stale)
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadText) ~= "function" then return end
+  local ok, dtxt = pcall(Graphics.coverLoadText)   -- consume unconditionally
+  if not ok then return end
+  local dp = p.desc_path
+  if dp == nil or stale then return end
+  if type(dtxt) == "string" and dtxt ~= "" then
+    if self.last_desc == nil then
+      self.last_desc = dtxt
+      self.last_desc_lines = nil
+    end
+  elseif dtxt == false then
+    -- false is the worker's "open/read failed" -- treat as absent so a cover-less
+    -- game without a sidecar stops re-requesting it on every visit.
+    self.failed[dp] = true
+  end
+end
+
+-- Called once per game-list frame. Adopts a finished load, advances to the next
+-- candidate on a miss, and retries a request the worker was too busy to accept.
+-- Does no filesystem work of its own and never blocks.
+-- EXP58: settle the cover worker before handing the machine to another ELF.
+-- The worker can be mid-fopen when a launch happens, which leaves an IOP RPC
+-- outstanding across the SifIopReset the launch performs -- exactly the
+-- "polluted parent" state src/main.cpp:607 has to defend against at BOOT, except
+-- self-inflicted. DKWDRV is the sensitive case (maintainer: "its environment gets
+-- poisoned and its unable to do anything"), because it wants a clean IOP.
+--
+-- BOUNDED: a cover probe into a large ART/ folder can take ~0.5s, so wait up to
+-- ~2s and then give up rather than risk hanging a launch. Any texture that lands
+-- is freed -- we are leaving the scene, nothing will draw it.
+function CoverCache:Quiesce()
+  self.pending = nil
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then return end
+  for _ = 1, 120 do
+    local ok, token, ptr = pcall(Graphics.coverLoadPoll)
+    if not ok then return end
+    if token ~= nil then
+      if ptr ~= nil and type(Graphics.freeImage) == "function" then
+        pcall(Graphics.freeImage, ptr)
+      end
+      return   -- consumed; the slot is idle again
+    end
+    if type(Screen) == "table" and type(Screen.waitVblankStart) == "function" then
+      pcall(Screen.waitVblankStart)
+    end
+  end
+end
+
+function CoverCache:Pump()
+  local p = self.pending
+  if p == nil then return end
+  if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then
+    self.pending = nil
+    return
+  end
+  -- EXP73: a text-only job carries no cover candidate; its image path is "".
+  local ipath = (p.text_only == true) and "" or p.candidates[p.idx]
+  if p.started ~= true then
+    -- EXP57: BOUNDED retry. This used to retry forever, so a request that could never
+    -- start left the loader pending permanently -- sAGA reported the "Loading ART..."
+    -- line stuck on screen, and after EXP56 removed that line the same state simply
+    -- went silent and covers stopped appearing for the rest of the session. The cause
+    -- is that coverLoadBegin creates a NEW EE thread per request (luagraphics.cpp:117,
+    -- OPL uses one long-lived worker instead), so a failed CreateThread refuses every
+    -- later call. Give up after ~1s and treat it as a miss: worst case one cover does
+    -- not appear, never a wedged loader. The proper fix is a single persistent worker.
+    p.retries = (p.retries or 0) + 1
+    if p.retries > 60 then
+      -- Give up on THIS request, but do NOT memoize: a worker that never
+      -- accepted is transient by definition (thread creation / busy worker),
+      -- so the next selection visit must be allowed to re-try (EXP59).
+      self.pending = nil
+      return
+    end
+    -- EXP73: our begin was refused, so any DONE result in the slot belongs to an
+    -- ABANDONED job -- drain it, or it refuses this retry too and every retry after
+    -- it (the "covers stop for the rest of the session" state EXP57 could only bound).
+    local ok_d, _, orphan = pcall(Graphics.coverLoadPoll)
+    if ok_d and orphan ~= nil and type(Graphics.freeImage) == "function" then
+      pcall(Graphics.freeImage, orphan)
+    end
+    -- Re-arm from the JOB's own desc_path, not self.pending_desc_path (already
+    -- consumed when the job was created), and clear when this job carries none.
+    if type(Graphics.coverLoadTextPath) == "function" then
+      pcall(Graphics.coverLoadTextPath, p.desc_path or "")
+    end
+    local ok, accepted = pcall(Graphics.coverLoadBegin, ipath, p.token)
+    p.started = (ok and accepted == true)
+    return
+  end
+  local ok, token, ptr = pcall(Graphics.coverLoadPoll)
+  if not ok or token == nil then return end   -- still working
+  local stale = (token ~= p.token) or (self.last_key ~= p.key)
+  -- EXP73: collect the sidecar on EVERY completed job -- cover hit, cover miss and
+  -- text-only alike. EXP72 collected it only inside the `ptr ~= nil` arm, so a
+  -- cover-less game (the reported case) never got its .txt; and it ran the collect
+  -- TWICE on a hit, the second read always hitting an already-consumed channel.
+  self:CollectPendingText(p, stale)
+  if ptr ~= nil then
+    if stale then
+      -- The selection moved on while this was loading: drop it rather than show or
+      -- cache art for a game that is no longer selected.
+      if type(Graphics.freeImage) == "function" then pcall(Graphics.freeImage, ptr) end
+    else
+      if type(Graphics.setImageFilters) == "function" then
+        pcall(Graphics.setImageFilters, ptr, LINEAR)
+      end
+      self.entries[ipath] = ptr
+      table.insert(self.order, ipath)
+      self:EvictIfNeeded()
+      self.last_img = ptr
+    end
+    self.pending = nil
+    return
+  end
+  if p.text_only == true then
+    -- No cover was requested: nothing to memoize as absent, nothing to advance to.
+    self.pending = nil
+    return
+  end
+  -- Miss: memoize ONLY when the file is genuinely absent (EXP59, OPL parity --
+  -- a decode failure on a present file stays retryable), then try the next candidate.
+  self:MemoizeMiss(ipath)
+  if stale then self.pending = nil; return end
+  local nxt = nil
+  for i = p.idx + 1, #p.candidates do
+    if not self.failed[p.candidates[i]] then nxt = i; break end
+  end
+  if nxt == nil then
+    self.pending = nil
+  else
+    self:BeginLoad(p.key, p.candidates, nxt)
+  end
 end
 
 local VIDEO_STANDARD_AUTO = (type(PLDR) == "table" and PLDR.VIDEO_STANDARD_AUTO) or "AUTO"
@@ -845,6 +1140,30 @@ UI = {
     ToggleHideTextMode = function (notify)
       return UI.SetHideTextMode(not UI.HideTextMode, notify)
     end;
+    -- EXP42: applies the "Cover art" setting (PLDR.COVER_ART) to the LIVE game list.
+    -- Turning it on re-arms the deferred cover load (the settle counter runs on the next
+    -- list frame); turning it off drops the current selection's decoded image so the box
+    -- falls back to the plain jewel-case placeholder immediately. Carries the exact side
+    -- effects the old Square handler had, so behaviour is unchanged: only the trigger
+    -- moved to Settings. Callable from the settings loader before the list scene exists,
+    -- so both GameList and the cover cache are optional here.
+    SetCoverPreview = function (enabled)
+      local next_state = (enabled ~= false)
+      UI.CoverPreviewEnabled = next_state
+      if type(UI.GameList) == "table" then
+        if next_state then
+          UI.GameList.CoverLastIndex = nil
+          UI.GameList.CoverPending = true
+          UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
+        else
+          UI.GameList.CoverPending = false
+        end
+      end
+      if not next_state and UI.CoverCache ~= nil then
+        UI.CoverCache:UpdateSelection(nil)
+      end
+      return next_state
+    end;
     GetSettingsReturnScene = function ()
       local scene = UI.SettingsReturnScene or UI.LASTSCENE or UI.SCENES.MMAIN
       if scene == nil or scene == UI.SCENES.MPROFILE then
@@ -868,49 +1187,11 @@ UI = {
       UI.SavingMessage = "Saving..."
       UI.SavingProgress = nil
     end;
-    -- SIO2 conflict dialog (maintainer, 2026-07-20): mmceman and mx4sio_bd
-    -- cannot share the IOP session (same SIO2 port, raw register ownership,
-    -- no timeouts -- the 48% scan hang). Instead of only blocking, offer a
-    -- POPSLoader RESTART: self-exec through the IOP-reset launch route with
-    -- -page=<target>, so the fresh instance boots clean and lands directly on
-    -- the page the user wanted. Safer than an in-place R3Z-style reset: the
-    -- boot sequence rebuilds everything by definition, no latch surgery.
-    -- Returns true when it handled the entry (dialog opened -> caller must
-    -- return without scanning). Falls through (false) when: no conflict, or
-    -- an hdd0:-booted session (its launch route preserves the IOP, so a
-    -- restart would NOT clear the bus -- the system.lua guard toast covers it).
-    MaybeOfferSio2Restart = function (target)
-      if type(System) ~= "table" or type(System.getSio2Owner) ~= "function" then return false end
-      local ok, owner = pcall(System.getSio2Owner)
-      if not ok or type(owner) ~= "string" or owner == "" or owner == target then return false end
-      local argv0 = ""
-      if type(System.GetArgv0) == "function" then
-        local ok0, a0 = pcall(System.GetArgv0)
-        if ok0 and type(a0) == "string" then argv0 = a0 end
-      end
-      local low = string.lower(argv0)
-      if string.find(low, "^hdd") or string.find(low, "^pfs")
-         or string.find(low, "^ata") or string.find(low, "^apa") then
-        return false
-      end
-      local owner_label = (owner == "BOTH") and PLDR.L("Another device") or owner
-      UI.Modal.active = true
-      UI.Modal.title = PLDR.L("Device conflict")
-      UI.Modal.body = owner_label.." "..PLDR.L("is active -- restart POPSLoader to browse").." "..target.."?"
-      UI.Modal.options = {PLDR.L("Restart"), PLDR.L("Cancel")}
-      UI.Modal.confirm_action = function ()
-        local self_path = argv0
-        if self_path == "" then self_path = "POPSLOADER.ELF" end
-        local page_arg = (target == "MMCE") and "-page=mmce" or "-page=mx4sio"
-        pcall(System.loadELF, self_path, 1, self_path, page_arg)
-        -- Reaching here means the exec FAILED (a successful exec never returns).
-        UI.Modal.Close()
-        UI.Notif_queue.add(PLDR.L("Restart failed -- power cycle to switch device"), "error")
-      end
-      UI.Modal.cancel_action = UI.Modal.Close
-      UI.Modal.ignore_until_release = true
-      return true
-    end;
+    -- EXP32: the SIO2 "Device conflict / Restart" dialog is GONE. mmceman and
+    -- mx4sio_bd coexist on freesio2 (EXP31), exactly as OPL/RiptOPL run them
+    -- concurrently with no exclusion -- there is no conflict left to dialog
+    -- about. (The -page= self-exec plumbing in luasystem.cpp stays: launch
+    -- args use it independently.)
     RunBusyTask = function (initial_message, worker, failure_message)
       UI.ShowSavingOverlay(initial_message or "Working...", 0.05)
       local function report(message, progress)
@@ -2201,7 +2482,7 @@ UI = {
         -- for DISPLAY while the raw key string stays the input-logic identifier
         -- (sAGA #538: BACK/DONE could not be translated). Single-character keys are
         -- never translated. Falls back to the English word if untranslated.
-        if key == "SPACE" or key == "BACK" or key == "DONE" then
+        if key == "SPACE" or key == "BACK" or key == "DONE" or key == "DEL" or key == "CLR" then
           if type(PLDR) == "table" and type(PLDR.L) == "function" then
             return PLDR.L(key)
           end
@@ -2672,10 +2953,14 @@ UI = {
         if _al ~= "pops" and _al ~= "art" then _al = "pops_art" end
         UI.ArtLocation = _al
         UI.SettingsEntryArtLocation = UI.ArtLocation
+        UI.CoverArt = (type(PLDR) == "table" and PLDR.COVER_ART ~= false)
+        UI.SettingsEntryCoverArt = UI.CoverArt
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
         UI.SettingsEntryBootSound = UI.BootSound
+        UI.RetroGemGameId = (type(PLDR) == "table" and PLDR.RETROGEM_GAMEID ~= false)
+        UI.SettingsEntryRetroGemGameId = UI.RetroGemGameId
         UI.BdmaAdaptive = (type(PLDR) == "table" and PLDR.BDMA_ADAPTIVE == true)
         UI.SettingsEntryBdmaAdaptive = UI.BdmaAdaptive
         UI.Overscan = math.floor(tonumber(type(PLDR) == "table" and PLDR.OVERSCAN or 0) or 0)
@@ -2752,11 +3037,27 @@ UI = {
             order_id = "start_r2",
             circle = UI.Footer.labels.circle_other,
             cross = UI.Footer.labels.cross_confirm,
-            square = "Cover Art",
             start = UI.Footer.labels.start_profiles
           })
           UI.Footer.Draw(labels, order)
           return
+        end
+        -- A game hidden under "Hidden games = Hidden" must leave THIS list, or the
+        -- "Game hidden" toast fires while the row sits there looking untouched, which
+        -- is indistinguishable from the feature not working (sAGA, rolling 2026-07-27).
+        -- Dropped LOCALLY rather than by raising R1: the R1 rescan re-initialises the
+        -- whole device -- SMB logs out and back in, MMCE re-detects, APA remounts --
+        -- then resets the cursor to the top and fires a second toast, all to remove one
+        -- row. Consumed HERE, immediately before `ammount` is taken, so the CLAMP just
+        -- below repairs the cursor and nothing this frame ever sees a stale count.
+        -- Matched by entry IDENTITY, so a flag that somehow outlives the page simply
+        -- finds nothing on the next device's list and clears itself.
+        if UI.PendingHideDrop ~= nil then
+          local drop = UI.PendingHideDrop
+          UI.PendingHideDrop = nil
+          for i = #PLDR.GAMES, 1, -1 do
+            if PLDR.GAMES[i] == drop then table.remove(PLDR.GAMES, i); break end
+          end
         end
         local ammount = #PLDR.GAMES
         if ammount <= 0 then
@@ -3038,34 +3339,14 @@ UI = {
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
           end
-          -- Missing-cover diagnostic: when preview is ON but the selected game has NO cover
-          -- (and the details panel isn't already using this space, and UI text isn't hidden),
-          -- print the primary path we looked for so a tester can confirm the .png name/folder
-          -- without a hardware round-trip. Device prefix trimmed; folder + filename on their
-          -- own lines. Clears with the same Select / Hide-UI-Text that clears other text.
-          if cover_enabled and cover_img == nil and details_lines == nil
-             and UI.HideTextMode ~= true and UI.CoverCache ~= nil
-             and type(UI.CoverCache.last_cover_probe) == "string"
-             and UI.CoverCache.last_cover_probe ~= "" then
-            local shown = string.match(UI.CoverCache.last_cover_probe, "^%a+%d*:/(.+)$")
-                          or UI.CoverCache.last_cover_probe
-            local folder, fname = string.match(shown, "^(.*/)([^/]+)$")
-            local cap_lines = { PLDR.L("No cover. Looked for:") }
-            if folder ~= nil then
-              cap_lines[#cap_lines + 1] = folder
-              cap_lines[#cap_lines + 1] = fname
-            else
-              cap_lines[#cap_lines + 1] = shown
-            end
-            local cap_y = draw_y + art_h + 8
-            local cap_bottom = (layout.FOOTER_ICON_Y or (UI.SCR.Y - 56)) - 40  -- same footer clearance as the details panel
-            for ci = 1, #cap_lines do
-              if cap_y > cap_bottom then break end
-              Font.ftPrint(SFONT, draw_x, cap_y, 0, draw_w, 14, cap_lines[ci], UI.CCOL.GREY)
-              cap_y = cap_y + 14
-            end
-          end
-          -- (Cover preview OFF now shows the plain default cover above -- no text label.)
+          -- (EXP56: the "Loading art..." line is REMOVED. It was added when a fetch
+          -- could stall the frame; with loads off the render thread it resolves fast
+          -- enough that the text only flickered. Maintainer: "unnecessary now.")
+          -- EXP42: the "No cover. Looked for: <path>" caption is REMOVED (maintainer:
+          -- "totally useless"). It shipped as a tester self-check aid back when cover
+          -- paths were user-selectable; EXP35 hard-locked the location, so it only ever
+          -- added noise for normal users, who read an empty jewel case fine. Cover
+          -- preview OFF likewise shows the plain default cover above, with no text label.
           -- Paint the description: window the visible slice from the scroll offset,
           -- with a "..." affordance when there's more above/below (font-safe, same
           -- idiom as the old truncation). draw_y/details_y already include the lift.
@@ -3120,6 +3401,7 @@ UI = {
           end
           UI.RevealHidden = false
           PLDR._GLOBAL_HIDE_SAVED = nil
+          UI.PendingHideDrop = nil   -- never carry a pending row-drop to another device
           UI.SceneChange(UI.SCENES.MMAIN)
         end
         if ammount > 0 then
@@ -3182,22 +3464,15 @@ UI = {
             end
           end
         end
-        if UI.Pad.Events.SQUARE then
-          UI.CoverPreviewEnabled = not UI.CoverPreviewEnabled
-          if UI.CoverPreviewEnabled then
-            UI.GameList.CoverLastIndex = nil
-            UI.GameList.CoverPending = true
-            UI.GameList.CoverPendingFrames = 9999  -- re-enabled: load on the next settled frame
-            UI.Notif_queue.add("Cover Art enabled", "ok")
-          else
-            if UI.CoverCache ~= nil then
-              UI.CoverCache:UpdateSelection(nil)
-            end
-            UI.GameList.CoverPending = false
-            UI.Notif_queue.add("Cover Art disabled", "ok")
-          end
-        end
+        -- EXP42: Square no longer toggles cover art here. It was a session-only flip
+        -- that reset every boot and was undiscoverable once the footer legend dropped
+        -- it; it now lives in Settings > Game List > "Cover art" (PLDR.COVER_ART),
+        -- which persists. UI.SetCoverPreview is what that setting drives.
         if UI.CoverCache ~= nil then
+          -- EXP49: adopt a finished async cover (or advance past a miss). Pure bookkeeping:
+          -- no filesystem work, never blocks. Must run every frame, before the settle below,
+          -- so a texture that landed during the last frame is on screen immediately.
+          if type(UI.CoverCache.Pump) == "function" then UI.CoverCache:Pump() end
           -- Cover-load settle: DECODE the selection's cover only after the cursor has been
           -- STABLE for ~250ms, FRAME-COUNTED (Timer.getTime is microseconds, so the old
           -- CoverIdleMs=200 was sub-frame and re-decoded the cover on nearly every selection
@@ -3224,7 +3499,15 @@ UI = {
             end
             if UI.GameList.CoverPending then
               UI.GameList.CoverPendingFrames = (UI.GameList.CoverPendingFrames or 0) + 1
-              if not nav_event and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
+              -- EXP33: never fire the cover probe while the scene transition is
+              -- still running. UpdateSelection does a SYNCHRONOUS read on the
+              -- game device, and a missing cover is a full FAT dir-chain walk
+              -- (seconds on SD-over-SIO2 / USB 1.1). Firing it mid-fade blocked
+              -- the render loop on the opaque background overlay -- the reported
+              -- "only the background shows, activity light stuck on, then the
+              -- list pops in". Let the list paint and the fade finish first.
+              local transitioning = type(UI.Transition) == "table" and UI.Transition.active == true
+              if not nav_event and not transitioning and UI.GameList.CoverPendingFrames >= COVER_IDLE_FRAMES then
                 local entry = PLDR.GAMES[UI.GameList.CURR]
                 local vcd_path = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
                 UI.CoverCache:UpdateSelection(vcd_path, UI.CURSCENE == UI.SCENES.GHDD, entry)
@@ -3291,7 +3574,17 @@ UI = {
             -- anywhere" warns (R3Z3N).
             local message
             if configured_popstarter_path == "" then
-              message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+              -- Name the places we ACTUALLY probed. On the SMB page we deliberately
+              -- do NOT read POPSTARTER.ELF from the share (system.lua
+              -- ResolveDeviceLocalPopstarter refuses any smb: root), so the generic
+              -- "checked the game device" wording was a lie there -- issue #560, where
+              -- it sent a tester to put the file in his share twice, in the one place
+              -- the ladder will never look.
+              if UI.CURSCENE == UI.SCENES.GSMBNET then
+                message = "No POPSTARTER.ELF found\nPOPSTARTER is never read from the share -- put it in mc0:/POPSTARTER/,\nor beside POPSLOADER.ELF, or set Settings > POPSTARTER Path"
+              else
+                message = "No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"
+              end
             else
               message = PLDR.L("No POPSTARTER found at this path").."\n"..configured_popstarter_path
               if configured_popstarter_path ~= tostring(popstarter_path) then
@@ -3315,10 +3608,44 @@ UI = {
           -- installed. Browsing works WITHOUT it (the menu has its own embedded
           -- stack), so without this gate a launch fails in-game with zero
           -- explanation.
-          if UI.CURSCENE == UI.SCENES.GSMBNET and PLDR.SMB_MODULES ~= true then
-            unpaint()
-            UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
-            return
+          -- Gate on the FILE, not just the setting. PLDR.SMB_MODULES is a saved
+          -- preference; PLDR.SyncSmbDat tests `smbman.irx` actually being on the card
+          -- before it will write SMBCONFIG.DAT. Those two can disagree -- a setting
+          -- left true after a failed or partial install, or a card swapped out -- and
+          -- when they do, this gate waved the launch through while SyncSmbDat silently
+          -- no-op'd, handing POPStarter the placeholder SMBCONFIG.DAT the repo ships
+          -- ("SMBip:SMBport SMBshareNAME"). The result is a launch that dies partway
+          -- into loading with no explanation, which is issue #560's second symptom.
+          if UI.CURSCENE == UI.SCENES.GSMBNET then
+            local modules_staged = (type(PLDR.AreSmbModulesStaged) == "function")
+              and PLDR.AreSmbModulesStaged() or (PLDR.SMB_MODULES == true)
+            if not modules_staged then
+              unpaint()
+              if PLDR.SMB_MODULES == true then
+                UI.Notif_queue.add("SMB modules are missing from the memory card\nThe setting is on but the files are not there --\nre-install via Settings > SMB modules, then Save", "error")
+              else
+                UI.Notif_queue.add("SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save", "error")
+              end
+              return
+            end
+            -- The pack being present is not enough: POPSTARTER also needs a literal
+            -- address and a server/share, and every one of those is BLANK on a fresh
+            -- install now that nothing is invented. A blank address means
+            -- IPCONFIG.DAT is never written, which is the original #560 black
+            -- screen by another route. Name the empty fields instead of letting the
+            -- user find out by staring at a dead screen.
+            local missing = (type(PLDR.MissingPopstarterNetFields) == "function")
+              and PLDR.MissingPopstarterNetFields() or {}
+            if #missing > 0 then
+              unpaint()
+              local names = {}
+              for i = 1, #missing do
+                names[#names + 1] = PLDR.L(UI._SMB_LABELS[missing[i]] or missing[i])
+              end
+              UI.Notif_queue.add(PLDR.L("POPSTARTER needs these filled in first:").."\n"
+                ..table.concat(names, ", ").."\n"..PLDR.L("Settings > SMB / Network"), "error")
+              return
+            end
           end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
@@ -3333,6 +3660,15 @@ UI = {
           -- staging = several memory-card writes; the handoff itself). Cleared
           -- on the cancel path; on success the exec never comes back.
           PLDR.LaunchProgress = paint
+          -- Retro GEM Game ID. Read the title ID out of the VCD (SYSTEM.CNF) and
+          -- emit it optically before handing off, so the mod can select this game's
+          -- per-game profile. Done HERE, once, at the last moment before the exec:
+          -- it opens and walks the disc image, which must never happen during a
+          -- game-list scan. Best-effort throughout -- a game with no readable ID, or
+          -- a user with no GEM, launches exactly as before.
+          if PLDR.RETROGEM_GAMEID ~= false then
+            UI.EmitRetroGemGameId(vcd_full)
+          end
           paint(PLDR.L("Starting the game..."), 0.50)
           local launch_path = PLDR.GAMEPATH
           if UI.CURSCENE == UI.SCENES.GHDD then
@@ -3426,7 +3762,29 @@ UI = {
           if r3_hide_toggle then
             -- R3 drove this rebuild; its reveal/hide toast fires below instead.
           elseif #PLDR.GAMES < 1 then
-            UI.Notif_queue.add("HDD list refreshed (no games found)", "warn")
+            -- EXP33: same self-diagnosing readout as the first-entry toast.
+            local d = PLDR.HDD.SCAN_DIAG
+            local diag = ""
+            if type(d) == "table" then
+              if (tonumber(d.remount_fail) or 0) > 0 then
+                diag = string.format("\nmounted %d/%d, remount-fail (rc %s on %s)",
+                         tonumber(d.remounted) or 0, tonumber(d.avail) or 0,
+                         tostring(d.last_fail_rc), tostring(d.last_fail_part))
+              elseif (tonumber(d.avail) or 0) > 0 then
+                diag = string.format("\n%d part, %d files, %d VCD",
+                         tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+                if (tonumber(d.hidden) or 0) > 0 then
+                  diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                elseif (tonumber(d.collapsed) or 0) > 0 then
+                  diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                end
+              end
+            end
+            -- Translate the sentence, THEN append the diagnostic. Concatenating
+            -- first defeats add()'s exact-key lookup and threw away the translation
+            -- this string already has in all six languages. The diag tail stays
+            -- English on purpose: raw mount rc codes and counters (README rule 3).
+            UI.Notif_queue.add(PLDR.L("HDD list refreshed (no games found)")..diag, "warn")
           else
             UI.Notif_queue.add("HDD list refreshed", "ok")
           end
@@ -3458,11 +3816,10 @@ UI = {
                 PLDR.SaveGameListCache(mmce_prefix.."POPS/.gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GMX4SIO then
-              report("Refreshing mass backends...", 0.16)
-              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(true) end
+              -- EXP32: enumeration only (driver is boot-resident); no markers,
+              -- no bdm_query poke -- the bounded sweep IS the refresh.
+              report("Checking the MX4SIO card...", 0.16)
               local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then PLDR.SetMx4sioAutoEnterPending(false) end
               PLDR.CleanupGameList()
               if type(mx4sio_root) == "string" and mx4sio_root ~= "" then
                 report("Scanning MX4SIO games...", 0.30)
@@ -3470,9 +3827,15 @@ UI = {
                 PLDR.SaveGameListCache(mx4sio_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
               end
             elseif rescan_scene == UI.SCENES.GBDMHDD then
-              report("Refreshing mass backends...", 0.16)
-              if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
-              local ata_root = PLDR.InitATAPopsRoot()
+              -- EXP32: enumeration only; the bounded sweep is the refresh.
+              report("Checking the exFAT HDD...", 0.16)
+              -- Capture the status here too. An R1 rescan that fails leaves an EMPTY
+              -- list and says nothing at all, which is the least diagnosable of the
+              -- three ATA entry points; at minimum the reason must reach -debug.
+              local ata_root, ata_rescan_status = PLDR.InitATAPopsRoot()
+              if ata_root == nil then
+                PLDR.LAST_ATA_STATUS = tostring(ata_rescan_status or "<none>")
+              end
               PLDR.CleanupGameList()
               if type(ata_root) == "string" and ata_root ~= "" then
                 report("Scanning exFAT HDD games...", 0.30)
@@ -3526,7 +3889,18 @@ UI = {
           end
         end
         if UI.Pad.Events.L3 and ammount > 0 then
-          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+          -- Refuse ONLY when the selected game is already hidden, i.e. the user is
+          -- trying to unhide something the filter is keeping off screen. With
+          -- GLOBAL_HIDE on, the scan drops hidden entries outright (system.lua:
+          -- `if not (PLDR.GLOBAL_HIDE and is_hidden)`), so every game still ON SCREEN
+          -- is visible and the only action possible is HIDE. The old blanket guard
+          -- blocked exactly that and then advised about unhiding, so with
+          -- *Hidden games = Hidden* the L3 hide did nothing at all (sAGA, rolling
+          -- 2026-07-27). The refusal is kept as a safety net for a list that somehow
+          -- still carries a hidden entry; in the normal filtered case it is unreachable.
+          local l3_entry = PLDR.GAMES[UI.GameList.CURR]
+          local l3_hidden = (type(PLDR.IsGameHidden) == "function") and PLDR.IsGameHidden(l3_entry) == true
+          if PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true and l3_hidden then
             UI.Notif_queue.add("Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.", "warn")
           elseif UI.CURSCENE == UI.SCENES.GHDD then
             local entry = PLDR.GAMES[UI.GameList.CURR]
@@ -3534,6 +3908,14 @@ UI = {
             local ok, reason = PLDR.SetHddGameHidden(entry, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- The game is now filtered out of this very list, so rebuild or the toast
+              -- says "Game hidden" while the entry sits there looking untouched -- which
+              -- is indistinguishable from the feature being broken. Deferred through the
+              -- existing flag because the R1 handlers run ABOVE this block and
+              -- UI.Pad.Events is cleared every frame, so raising R1 here would be lost.
+              if (not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+                UI.PendingHideDrop = entry
+              end
             else
               UI.Notif_queue.add(PLDR.L("Couldn't write .hide to the HDD").." ("..tostring(reason or "")..")\n"..PLDR.L("You can still add a \"<game>.hide\" next to the .VCD from a PC."), "warn")
             end
@@ -3544,6 +3926,14 @@ UI = {
             local ok, reason = PLDR.SetGameHidden(entry, vcd_path, not was_hidden)
             if ok then
               UI.Notif_queue.add(was_hidden and "Game shown" or "Game hidden", "ok")
+              -- Same rebuild as the HDD branch: with the hide filter on, the entry we
+              -- just hid must actually leave the list, or nothing visibly happened.
+              -- Dropped on the NEXT frame (see the consumer above `local ammount`),
+              -- so the cache save just below still sees the entry present and records
+              -- it as hidden rather than losing the game from the cache entirely.
+              if (not was_hidden) and PLDR.GLOBAL_HIDE and UI.RevealHidden ~= true then
+                UI.PendingHideDrop = entry
+              end
               -- Keep the opt-in per-device cache coherent: its H-records (written at
               -- scan time) would otherwise revert this hide on the next page re-entry,
               -- since a cache HIT never re-reads the live .hide. Re-save with the
@@ -3585,7 +3975,6 @@ UI = {
           order_id = "start_r2",
           circle = UI.Footer.labels.circle_other,
           cross = cross_label,
-          square = "Cover Art",
           start = UI.Footer.labels.start_profiles,
           R2 = UI.CURSCENE == UI.SCENES.GHDD and ammount > 0 and "HDD Alt" or nil
         })
@@ -3739,8 +4128,10 @@ UI = {
           local hdd_fs_val = (type(PLDR.NormalizeHddFs) == "function")
           and PLDR.NormalizeHddFs(UI.HddFs) or "PFS"
           local art_location_val = (UI.ArtLocation == "pops" or UI.ArtLocation == "art") and UI.ArtLocation or "pops_art"
+          local cover_art_val = UI.CoverArt ~= false
           local gamelist_cache_val = UI.GameListCache == true
           local boot_sound_val = UI.BootSound == true
+          local retrogem_val = UI.RetroGemGameId == true
           local bdma_adaptive_val = UI.BdmaAdaptive == true
           local overscan_val = math.floor(tonumber(UI.Overscan) or 0)
           local video_live_before = nil
@@ -3766,8 +4157,10 @@ UI = {
                 details_align = details_align_val,
                 hdd_fs = hdd_fs_val,
                 art_location = art_location_val,
+                cover_art = cover_art_val,
                 gamelist_cache = gamelist_cache_val,
                 boot_sound = boot_sound_val,
+                retrogem_gameid = retrogem_val,
                 bdma_adaptive = bdma_adaptive_val,
                 overscan = overscan_val,
                 hide_text = UI.HideTextMode == true,
@@ -3819,6 +4212,10 @@ UI = {
             PLDR.DETAILS_ALIGN = details_align_val
             PLDR.HDD_FS = hdd_fs_val
             PLDR.ART_LOCATION = art_location_val
+            PLDR.COVER_ART = cover_art_val
+            if type(UI.SetCoverPreview) == "function" then
+              UI.SetCoverPreview(cover_art_val)
+            end
             PLDR.GAMELIST_CACHE = gamelist_cache_val
             PLDR.BOOT_SOUND = boot_sound_val
             PLDR.BDMA_ADAPTIVE = bdma_adaptive_val
@@ -3858,10 +4255,14 @@ UI = {
             -- diagnostic. (nil return = not an HDD boot -> no toast.)
             if type(PLDR.ProbeHddSettingsWrite) == "function" then
               local hdd_w_ok, hdd_w_info = PLDR.ProbeHddSettingsWrite()
+              -- Formattable keys, not concatenation: this fires on EVERY Settings
+              -- save with the HDD loaded, so it is one of the most-seen toasts on
+              -- an HDD rig -- and built by `..` it could never match a table key.
+              -- The %s is only ever "__.POPS" or "__.POPS0".."9", so it stays as-is.
               if hdd_w_ok == true then
-                UI.Notif_queue.add("__.POPS partition "..tostring(hdd_w_info).." accepts writes (game-partition RW test)", "ok")
+                UI.Notif_queue.add(PLDR.LFmt("__.POPS partition %s accepts writes (game-partition RW test)", tostring(hdd_w_info)), "ok")
               elseif hdd_w_ok == false then
-                UI.Notif_queue.add("HDD game-partition write test FAILED ("..tostring(hdd_w_info)..")", "warn")
+                UI.Notif_queue.add(PLDR.LFmt("HDD game-partition write test FAILED (%s)", tostring(hdd_w_info)), "warn")
               end
             end
             -- Display-change safety: if the GS mode actually switched, confirm it
@@ -3899,7 +4300,12 @@ UI = {
             elseif reason == "smb_apply_failed" then
               UI.Notif_queue.add("SMB modules didn't install/remove\nmodule setting reverted; other settings were saved", "error")
             else
-              UI.Notif_queue.add(PLDR.L("Couldn't save settings").."\n"..tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs").." may be read-only"..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
+              -- One formattable key for the whole sentence rather than a translated
+              -- head with a bare English " may be read-only" welded on: Hungarian
+              -- needs to put the path somewhere other than in front of the predicate,
+              -- and a dangling suffix fragment cannot express that. The mx4sio probe
+              -- tail stays English (technical diagnostic, README rule 3).
+              UI.Notif_queue.add(PLDR.LFmt("Couldn't save settings\n%s may be read-only", tostring(PLDR.SETTINGS_PATH or "mc0:/POPSTARTER/.pldrs"))..((type(BOOT_MX4SIO_PROBE_RESULT) == "string" and BOOT_MX4SIO_PROBE_RESULT ~= "") and "\nmx4sio probe: "..BOOT_MX4SIO_PROBE_RESULT or ""), "error")
             end
             if allow_fallback_exit == true then
               UI.ProfileDirty = false
@@ -3992,12 +4398,20 @@ UI = {
             UI.GameListCache = false
             UI.ProfileDirty = true
           end
+          if UI.CoverArt ~= true then   -- default ON
+            UI.CoverArt = true
+            UI.ProfileDirty = true
+          end
+          if UI.RetroGemGameId ~= true then   -- default ON
+            UI.RetroGemGameId = true
+            UI.ProfileDirty = true
+          end
           if UI.BootSound ~= true then   -- default ON
             UI.BootSound = true
             UI.ProfileDirty = true
           end
-          if UI.BdmaAdaptive == true then   -- default OFF
-            UI.BdmaAdaptive = false
+          if UI.BdmaAdaptive ~= true then   -- default ON
+            UI.BdmaAdaptive = true
             UI.ProfileDirty = true
           end
           if (math.floor(tonumber(UI.Overscan) or 0)) ~= 0 then   -- default 0 (off)
@@ -4017,8 +4431,8 @@ UI = {
             UI.VideoStandardIndex = default_video_index
             UI.VideoStandardDirty = (UI.VideoStandardIndex ~= (UI.SettingsEntryVideoStandardIndex or 1))
           end
-          if UI.HideTextMode then
-            UI.SetHideTextMode(false, false)
+          if UI.HideTextMode ~= true then   -- EXP56: default ON (graphics team)
+            UI.SetHideTextMode(true, false)
             UI.ProfileDirty = true
           end
           -- "ABC" = the same default a genuine fresh install gets (LoadSettingsNonFatal
@@ -4039,16 +4453,31 @@ UI = {
           end
           -- These three were MISSING from Reset Defaults (the action's label promised
           -- them): Internal HDD page, cover/details folder, carousel device visibility.
-          if tostring(UI.HddFs) ~= "PFS" then
-            UI.HddFs = "PFS"
+          -- EXP34: reset targets track the new factory defaults (HDD_FS=BOTH,
+          -- ART_LOCATION=art, i.Link hidden) so Reset == factory-fresh (see comment above).
+          if tostring(UI.HddFs) ~= "BOTH" then
+            UI.HddFs = "BOTH"
             UI.ProfileDirty = true
           end
-          if tostring(UI.ArtLocation) ~= "pops_art" then
-            UI.ArtLocation = "pops_art"
+          if tostring(UI.ArtLocation) ~= "art" then
+            UI.ArtLocation = "art"
             UI.ProfileDirty = true
           end
-          if type(UI.DeviceHiddenDraft) == "table" and next(UI.DeviceHiddenDraft) ~= nil then
-            UI.DeviceHiddenDraft = {}
+          -- Factory default hides the i.Link page (HIDDEN_DEVICES="ILINK").
+          local default_hidden = { ILINK = true }
+          local hidden_matches = true
+          if type(UI.DeviceHiddenDraft) ~= "table" then
+            hidden_matches = false
+          else
+            for k in pairs(default_hidden) do
+              if UI.DeviceHiddenDraft[k] ~= true then hidden_matches = false break end
+            end
+            for k in pairs(UI.DeviceHiddenDraft) do
+              if default_hidden[k] ~= true then hidden_matches = false break end
+            end
+          end
+          if not hidden_matches then
+            UI.DeviceHiddenDraft = { ILINK = true }
             UI.ProfileDirty = true
           end
           if type(PLDR.SmbDefaults) == "function" and type(PLDR.SMB_FIELDS) == "table" then
@@ -4262,6 +4691,19 @@ UI = {
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
         )
+        AddCycle(
+          "Overscan (CRT inset)",
+          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
+          function()
+            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function()
+            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
+        )
 
         AddSection("Startup")
         AddCycle(
@@ -4338,12 +4780,12 @@ UI = {
         end
 
         -- Internal-HDD page(s) on the carousel: Sony APA/PFS (default), APA-Jail exFAT,
-        -- or BOTH. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
+        -- BOTH, or Disabled. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
         -- choice -- the driver stacks were already unified onto one shared, load-once
         -- ata_bd that serves APA/PFS and exFAT together, settles included. A -page=ata
         -- launch still auto-enters exFAT and hides PFS regardless of this setting.
-        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH"}
-        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both"}
+        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH", "DISABLED"}
+        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both", DISABLED = "Disabled"}
         local function HddFsStep(cur, dir)
           local idx = 1
           for i = 1, #HDD_FS_SEQ do
@@ -4353,7 +4795,7 @@ UI = {
         end
         AddCycle(
           "Internal HDD",
-          function() return HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)" end,
+          function() return PLDR.L(HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)") end,
           function() UI.HddFs = HddFsStep(UI.HddFs, -1) end,
           function() UI.HddFs = HddFsStep(UI.HddFs, 1) end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
@@ -4399,28 +4841,19 @@ UI = {
           function() UI.DetailsAlign = DetailsAlignStep(UI.DetailsAlign, -1) end,
           function() return tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign) end
         )
-        -- Where REMOVABLE-device cover .png + details .txt are looked for (HDD keeps its
-        -- __common/POPS/ART layout). "POPS/ART" is the default; the game's own POPS folder
-        -- (beside the .vcd) is always also checked as a back-compat fallback.
-        local ART_LOCATION_SEQ = {"pops_art", "pops", "art"}
-        -- Spell the paths out with the device prefix. "POPS/ART" alone was
-        -- ambiguous enough that R3Z3N had to ask "I presume you mean
-        -- device:/POPS/ART?" (review round 3) -- so just say so.
-        local ART_LOCATION_TXT = {pops = "device:/POPS", pops_art = "device:/POPS/ART", art = "device:/ART"}
-        local function ArtLocationStep(cur, dir)
-          local idx = 1
-          for i = 1, #ART_LOCATION_SEQ do
-            if ART_LOCATION_SEQ[i] == cur then idx = i; break end
-          end
-          idx = ((idx - 1 + dir) % #ART_LOCATION_SEQ) + 1
-          return ART_LOCATION_SEQ[idx]
-        end
+        -- EXP35: the "Cover/details folder" (ART_LOCATION) row was REMOVED -- cover
+        -- art is now HARD-LOCKED to <device-root>/ART/<name>_COV.png (OPL standard,
+        -- maintainer). There is no folder choice to make anymore; ART_LOCATION is kept
+        -- inert in the settings file only so older sidecars still parse.
+        -- EXP42: cover art used to be a Square toggle on the game list -- session-only,
+        -- lost on every boot, and invisible once the footer legend was trimmed. Same
+        -- behaviour, now discoverable and persisted.
         AddCycle(
-          "Cover/details folder",
-          function() return ART_LOCATION_TXT[UI.ArtLocation] or "device:/POPS/ART" end,
-          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, 1) end,
-          function() UI.ArtLocation = ArtLocationStep(UI.ArtLocation, -1) end,
-          function() return tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation) end
+          "Cover art",
+          function() return UI.CoverArt and "On" or "Off" end,
+          function() UI.CoverArt = not UI.CoverArt end,
+          function() UI.CoverArt = not UI.CoverArt end,
+          function() return (UI.CoverArt == true) ~= (UI.SettingsEntryCoverArt == true) end
         )
         AddCycle(
           "Game list cache",
@@ -4436,18 +4869,16 @@ UI = {
           function() UI.BootSound = not UI.BootSound end,
           function() return (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true) end
         )
+        -- Retro GEM Game ID: reads the PS1 title ID out of the VCD at launch and
+        -- emits it optically so a Retro GEM applies that game's per-game profile.
+        -- Default ON and harmless without the mod (a few small sprites for a moment
+        -- during the launch overlay), so it costs nothing to leave enabled.
         AddCycle(
-          "Overscan (CRT inset)",
-          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
-          function()
-            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
-            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
-          end,
-          function()
-            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
-            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
-          end,
-          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
+          "Retro GEM Game ID",
+          function() return UI.RetroGemGameId and "On" or "Off" end,
+          function() UI.RetroGemGameId = not UI.RetroGemGameId end,
+          function() UI.RetroGemGameId = not UI.RetroGemGameId end,
+          function() return (UI.RetroGemGameId == true) ~= (UI.SettingsEntryRetroGemGameId == true) end
         )
 
         -- SMB / Network (Stage 1: config only -- the network stack loads lazily on
@@ -4536,6 +4967,7 @@ UI = {
             or tostring(UI.DetailsAlign) ~= tostring(UI.SettingsEntryDetailsAlign)
             or tostring(UI.ArtLocation) ~= tostring(UI.SettingsEntryArtLocation)
             or tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs)
+            or (UI.CoverArt == true) ~= (UI.SettingsEntryCoverArt == true)
             or (UI.GameListCache == true) ~= (UI.SettingsEntryGameListCache == true)
             or (UI.BootSound == true) ~= (UI.SettingsEntryBootSound == true)
             or (UI.BdmaAdaptive == true) ~= (UI.SettingsEntryBdmaAdaptive == true)
@@ -5278,9 +5710,6 @@ UI = {
         end
 	          if UI.Pad.Events.CONFIRM then
 	          if UI.MainMenu.OPT == 1 then
-	            -- SIO2 conflict: offer the restart dialog instead of scanning into
-	            -- the guard (MX4SIO resident would hang MMCE reads at 48%).
-	            if UI.MaybeOfferSio2Restart("MMCE") then return end
 	            local ok = UI.RunBusyTask("Loading MMCE...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MMCE games...", 0.48, 0.88)
 	              report("Detecting MMCE device...", 0.18)
@@ -5292,6 +5721,11 @@ UI = {
                 -- Toast and stay on the carousel (no SceneChange): every sibling
                 -- no-device branch (MX4SIO/exFAT, and the second MMCE check just
                 -- below) returns without entering an empty game list.
+                -- MMCE's message already names what it probed, so it is not a guess
+                -- like the ATA/MX4SIO ones were; record it for -debug so a failed
+                -- session still reports a device reason in the one place testers
+                -- photograph.
+                PLDR.LAST_DEVICE_STATUS = "mmce:noslot"
                 UI.Notif_queue.add("No MMCE device detected\nchecked mmce0: and mmce1:", "warn")
                 PLDR.CleanupGameList()
                 PLDR.GAMEPATH = ""
@@ -5325,32 +5759,30 @@ UI = {
             end, "Failed to load MMCE")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 2 then
-	            -- SIO2 conflict: mirror of the MMCE-entry dialog above.
-	            if UI.MaybeOfferSio2Restart("MX4SIO") then return end
 	            local ok = UI.RunBusyTask("Loading MX4SIO...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning MX4SIO games...", 0.48, 0.9)
-	              report("Refreshing mass backends...", 0.18)
 	              PLDR.CleanupGameList()
 	              PLDR.GAMEPATH = ""
-              -- MX4SIO crash-marker: its probe lives in a vendored IOP driver
-              -- that can BLOCK with no card. Mark "pending" before the probe;
-              -- if we hang in there the marker survives, and the next boot's
-              -- Boot-Page auto-enter skips MX4SIO (see system.lua). Cleared as
-              -- soon as the probe returns -- it returns on a no-card result, just
-              -- never on a hang -- so only a genuine stall leaves it set.
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-                PLDR.SetMx4sioAutoEnterPending(true)
-              end
-              if type(PLDR.RefreshMassBackends) == "function" then
-                pcall(PLDR.RefreshMassBackends)
-              end
+              -- EXP32: mx4sio_bd loads LAZILY on this first entry (R3Z/OPL
+              -- model; coexists with mmceman -- no gate, maintainer call).
+              -- After the load: a bounded opendir+ioctl sweep (settle-retry, 1s
+              -- settles). No markers, no bdm_query poke, no unbounded wait.
               report("Locating MX4SIO POPS folder...", 0.42)
-              local mx4sio_root = PLDR.InitMX4SIOPopsRoot()
-              if type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-                PLDR.SetMx4sioAutoEnterPending(false)
-              end
+              local mx4sio_root, mx4_status = PLDR.InitMX4SIOPopsRoot()
               if mx4sio_root == nil then
-                UI.Notif_queue.add("No MX4SIO device detected", "warn")
+                -- Same treatment ATA got: the status was already being computed and
+                -- every value except "notready" collapsed into a flat "no device",
+                -- which is a guess that reads as "your adapter is missing" when the
+                -- real cause might be the driver or the slot probe.
+                PLDR.LAST_DEVICE_STATUS = "mx4sio:"..tostring(mx4_status or "<none>")
+                if mx4_status == "notready" then
+                  UI.Notif_queue.add("MX4SIO driver failed to load\ntry the page again, or reboot", "warn")
+                elseif mx4_status ~= nil and mx4_status ~= "" and mx4_status ~= "nodevice" then
+                  UI.Notif_queue.add(PLDR.L("Could not start MX4SIO").."\n"
+                    ..tostring(mx4_status).."\n"..PLDR.L("Report this code -- the card may be fine"), "warn")
+                else
+                  UI.Notif_queue.add("No MX4SIO device detected", "warn")
+                end
                 return
 	              end
 	              PLDR.CleanupGameList()
@@ -5371,17 +5803,46 @@ UI = {
           elseif UI.MainMenu.OPT == 3 then
             local ok = UI.RunBusyTask("Loading HDD (exFAT)...", function (report)
               local scan_progress = UI.MakeBusyProgressReporter(report, "Scanning exFAT HDD games...", 0.48, 0.9)
-              report("Refreshing mass backends...", 0.18)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
-              if type(PLDR.RefreshMassBackends) == "function" then
-                pcall(PLDR.RefreshMassBackends)
-              end
+              -- EXP32: the ata_bd worker was kicked in the BOOT window
+              -- (do_boot_init) for exFAT installs, so this normally finds it
+              -- already done and just enumerates. If the drive is still
+              -- probing, the wait below is BOUNDED (10s, screen alive) and
+              -- reports honestly instead of freezing; the worker keeps
+              -- running, so re-entering the page a moment later succeeds.
+              -- The old bdm_query re-poke (an RPC that could land mid-module-
+              -- registration) is gone from this path.
               report(PLDR.L("Locating exFAT HDD POPS folder..."), 0.42)
-              local ok_probe, ata_root = pcall(PLDR.InitATAPopsRoot)
-              if not ok_probe then ata_root = nil end
+              -- EXP43: hand the bring-up a reporter so each internal step paints
+              -- BEFORE the call it names. A wedged drive freezes inside one of these
+              -- IOP calls and never repaints, so whatever is on screen at that moment
+              -- IS the diagnosis -- one photo names the stuck call and the slot. This
+              -- is the EXP11 channel, dropped by the EXP32 rebuild; without it a
+              -- failed exFAT round yields no information at all, which is what
+              -- EXP38/39/40 each cost. Progress stays inside the 0.42-0.48 band the
+              -- single step used to occupy, so the bar does not jump around.
+              local ok_probe, ata_root, ata_status = pcall(PLDR.InitATAPopsRoot, function (msg)
+                report(tostring(msg), 0.44)
+              end)
+              if not ok_probe then ata_root = nil; ata_status = nil end
               if ata_root == nil then
-                UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                -- Record it for the -debug toast: this is the ONLY place the reason a
+                -- session failed to reach the exFAT page is known, and it was being
+                -- thrown away.
+                PLDR.LAST_ATA_STATUS = tostring(ata_status or "<none>")
+                if ata_status == "notready" then
+                  UI.Notif_queue.add(PLDR.L("The internal drive is still starting\nopen this page again in a moment"), "warn")
+                elseif ata_status ~= nil and ata_status ~= "" and ata_status ~= "nodev" then
+                  -- ANY other status used to collapse into the "reformat your drive"
+                  -- message below. That is a guess, and when it is wrong it sends the
+                  -- user to repartition a perfectly good disk over (say) an IRX load
+                  -- failure. Report what actually happened instead.
+                  UI.Notif_queue.add(PLDR.L("Could not start the internal drive").."\n"
+                    ..tostring(ata_status).."\n"..PLDR.L("Report this code -- the drive may be fine"), "warn")
+                else
+                  UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+                end
                 return
               end
               PLDR.CleanupGameList()
@@ -5421,7 +5882,33 @@ UI = {
                   local rc_hint = (PLDR.HDD.LAST_MOUNT_RC ~= nil) and (" (last mount rc: "..tostring(PLDR.HDD.LAST_MOUNT_RC)..")") or ""
                   UI.Notif_queue.add(PLDR.L("No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9")..rc_hint, "warn")
 	                elseif #PLDR.GAMES < 1 then
-                  UI.Notif_queue.add("No games found on hdd0:\n(__.POPS partitions are empty)", "warn")
+                  -- EXP33: self-diagnosing. FOUNDANY means pass 1 mounted a
+                  -- __.POPS partition; zero games then is EITHER a silent pass-2
+                  -- re-mount failure (shows rc + partition) OR a mounted-but-
+                  -- empty listing (shows file/VCD counts). The next report says
+                  -- which, instead of the opaque "partitions are empty".
+                  local d = PLDR.HDD.SCAN_DIAG
+                  local diag = ""
+                  if type(d) == "table" then
+                    if (tonumber(d.remount_fail) or 0) > 0 then
+                      diag = string.format("\nmounted %d/%d, remount-fail (rc %s on %s)",
+                               tonumber(d.remounted) or 0, tonumber(d.avail) or 0,
+                               tostring(d.last_fail_rc), tostring(d.last_fail_part))
+                    else
+                      diag = string.format("\n%d part, %d files, %d VCD",
+                               tonumber(d.avail) or 0, tonumber(d.entries) or 0, tonumber(d.vcds) or 0)
+                      if (tonumber(d.hidden) or 0) > 0 then
+                        diag = diag..PLDR.LFmt(" (%d hidden -- Global Hide is on)", tonumber(d.hidden) or 0)
+                      elseif (tonumber(d.collapsed) or 0) > 0 then
+                        diag = diag..PLDR.LFmt(" (%d multi-disc collapsed)", tonumber(d.collapsed) or 0)
+                      end
+                    end
+                  end
+                  -- Translate the sentence, THEN append the diagnostic (README rule
+                  -- 3 keeps rc codes and counters English). EXP33 swapped the static
+                  -- second line for this runtime diag and orphaned the six-language
+                  -- translation of the old two-line key; the key is now the sentence.
+                  UI.Notif_queue.add(PLDR.L("No games found on hdd0:")..diag, "warn")
                 end
               else
                 UI.Notif_queue.add(PLDR.L("HDD not usable").."\n"..PLDR.L("status:").." "..PLDR.HDD.STATUS, "error")
@@ -5917,7 +6404,11 @@ function UI.IsUsbScene(scene)
 end
 function UI.OnSceneExit(previous_scene, next_scene)
   if UI.IsGameScene(previous_scene) and previous_scene ~= next_scene then
-    if UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
+    -- EXP33: free textures but keep the negative-miss memo (see ReleaseTextures)
+    -- so re-entering the same device doesn't re-walk the FAT for missing covers.
+    if UI.CoverCache ~= nil and UI.CoverCache.ReleaseTextures ~= nil then
+      UI.CoverCache:ReleaseTextures()
+    elseif UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
       UI.CoverCache:Clear()
     end
   end
@@ -6132,8 +6623,46 @@ function UI.RunSmbConnectFlow()
   -- Browsing works without the mc:/POPSTARTER SMB pack (the menu has its own
   -- embedded stack), but LAUNCHING doesn't -- warn up front (browse stays usable;
   -- the launch dispatch enforces the hard gate).
-  if type(PLDR) == "table" and PLDR.SMB_MODULES ~= true then
-    UI.Notif_queue.add("SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first", "warn")
+  -- Three possible states, and only the last can actually play a game. Say which
+  -- one the user is in BEFORE they browse a share and hit a black screen at launch.
+  --
+  -- 1. NO MEMORY CARD AT ALL. POPSTARTER keeps its whole SMB pack and both .DAT on
+  --    mc0:/mc1:, so without a card an SMB game can never launch no matter how well
+  --    the list populates. Browsing still works (the menu has its own embedded
+  --    stack and needs no card), so this informs rather than blocks -- but it says
+  --    plainly that nothing here will play.
+  if type(PLDR) == "table" and type(PLDR.HasMemoryCard) == "function"
+     and PLDR.HasMemoryCard() ~= true then
+    UI.Notif_queue.add("No memory card detected\nSMB games will not launch or play without one --\nPOPSTARTER reads its network settings from mc0: or mc1:", "error")
+  else
+    -- 2. CARD PRESENT BUT NO PACK. Offer to install it right here rather than
+    --    sending the user to another menu. Tested against the FILESYSTEM, not the
+    --    saved preference, so this and the hard launch gate can never disagree.
+    local modules_staged = (type(PLDR) == "table" and type(PLDR.AreSmbModulesStaged) == "function")
+      and PLDR.AreSmbModulesStaged() or (type(PLDR) == "table" and PLDR.SMB_MODULES == true)
+    if type(PLDR) == "table" and not modules_staged then
+      local install = UI.RunConfirm({
+        PLDR.L("The SMB modules are not on your memory card.\nGames will list, but none of them will boot."),
+        PLDR.L("Install them now?"),
+      })
+      if install == true then
+        local installed = false
+        UI.RunBusyTask("Installing SMB modules...", function (report)
+          installed = (PLDR.ApplySmbModules(function(i, n, name)
+            report(tostring(name or ""), (tonumber(n) or 1) > 0 and ((tonumber(i) or 0) / n) or 0)
+          end) == true)
+        end, "Failed to install SMB modules")
+        if installed then
+          PLDR.SMB_MODULES = true
+          pcall(PLDR.SaveSettingsAtomic)
+          UI.Notif_queue.add("SMB modules installed", "info")
+        else
+          UI.Notif_queue.add("Could not install the SMB modules\nCheck the memory card is inserted and has free space", "error")
+        end
+      else
+        UI.Notif_queue.add("Games will list but will not boot\nInstall them from Settings > SMB modules when ready", "warn")
+      end
+    end
   end
   local share_choices = nil   -- comma-list set when a connect returns NO_SHARE with shares
   local function attempt()
@@ -6175,6 +6704,13 @@ function UI.RunSmbConnectFlow()
           UI.Notif_queue.add("Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS", "warn")
         end
       end
+      -- Refresh the in-game .DAT now that the interface is actually up. On DHCP this
+      -- is the ONLY moment a real address exists to write: POPStarter cannot lease one
+      -- itself, and the boot-time backfill runs long before the network comes up. The
+      -- share-picker branch below also syncs, but that only fires when Share was blank
+      -- -- the ordinary "share already configured" path reached the launch with a stale
+      -- or absent IPCONFIG.DAT. Write-if-changed, so this is a no-op once it's current.
+      pcall(PLDR.SyncSmbDat)
       UI.SceneChange(UI.SCENES.GSMBNET)
       entered = true
     end, "Failed to connect to SMB")
@@ -6247,6 +6783,44 @@ function UI.RunVideoModeConfirm(seconds)
   end
   return false
 end
+-- ===== Retro GEM Game ID =====================================================
+-- Retro GEM (PixelFX) keys its per-game settings on a Game ID, and there is no data
+-- channel to send one: the ID is transmitted OPTICALLY, as a small pattern of
+-- coloured sprites near the bottom of the frame which the mod decodes off the video
+-- output. So "setting the ID" means drawing it, and drawing it long enough to be
+-- latched -- CosmicScale's own tools emit it continuously from their main loop, so a
+-- single frame is not safe to rely on.
+--
+-- Frame-counted, NOT clock-paced: Timer.getTime() is MICROSECONDS on this SDK and
+-- vsync is unstable right after a mode change, which is what broke the old nav
+-- auto-repeat and the PAL boot countdown. Counting flips is immune to both.
+UI.RETROGEM_EMIT_FRAMES = 20
+
+function UI.EmitRetroGemGameId(vcd_path)
+  if type(System) ~= "table" or type(System.retroGemGameId) ~= "function"
+     or type(System.retroGemDraw) ~= "function" then
+    return nil
+  end
+  if type(vcd_path) ~= "string" or vcd_path == "" then return nil end
+  -- Opens and walks the disc image: once per launch, never in a scan or draw loop.
+  local ok_id, id = pcall(System.retroGemGameId, vcd_path)
+  if not ok_id or type(id) ~= "string" or id == "" then
+    -- No usable title ID -- not every VCD carries one. Emit NOTHING rather than a
+    -- guess: a wrong ID selects the wrong per-game profile on the mod, which is
+    -- worse than leaving it on the global settings.
+    PLDR.LAST_RETROGEM_ID = "<none>"
+    return nil
+  end
+  PLDR.LAST_RETROGEM_ID = id
+  for _ = 1, UI.RETROGEM_EMIT_FRAMES do
+    pcall(System.retroGemDraw, id)
+    if type(Screen) == "table" and type(Screen.flip) == "function" then
+      pcall(Screen.flip)
+    end
+  end
+  return id
+end
+
 -- ===== SMB / Network settings field helpers (Stage 1: config only) ==========
 -- Spec-driven row rendering for the "SMB / Network" settings section. The field
 -- spec + persistence live in system.lua (PLDR.SMB_FIELDS / PLDR.Smb*). These are

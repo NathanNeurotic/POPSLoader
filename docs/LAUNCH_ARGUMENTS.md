@@ -6,6 +6,23 @@ page or auto-launch a specific game. Arguments are parsed in
 `src/main.cpp` `parseLaunchArgs()`, exposed to Lua via
 `System.getLaunchArgs()`, and acted on in `bin/POPSLDR/system.lua`.
 
+## `-bdma=<mode>` — pin the BDM Assault driver variant
+
+`-bdma=fat32 | usbexfat | mx4sio | mmce | ata` stages that BDMA variant for the
+launch, **overriding** Adaptive BDMA's per-device choice. `hddexfat` is accepted
+as an alias for `ata`.
+
+Adaptive BDMA is **on by default** (changed 2026-07-28), so the drivers for the
+device you launch are staged automatically and this argument is only needed when
+you want a specific variant regardless of the device — for example forcing the
+exFAT-USB pair on a FAT32 stick, or staging `ata` from a launcher that does not
+route through the exFAT page.
+
+The value is normalised by `NormalizeBdmaModeKey`. An **unrecognised value is
+ignored**, falling back to the normal adaptive choice, rather than pinning
+something bogus and staging the wrong driver pair.
+
+
 ## The arguments
 
 | Argument | Effect |
@@ -13,6 +30,8 @@ page or auto-launch a specific game. Arguments are parsed in
 | `-page=<device>` | Boot **straight into that device's game list** (when used without `-game`). |
 | `-mode=<device>` | NHDDL-compatible **alias** for `-page=` (identical behavior, same values). |
 | `-game=<selector>` | Auto-launch a game. **Must be combined with `-page=`.** |
+| `-bdma=<mode>` | Pin the BDM Assault driver variant for this launch, overriding Adaptive BDMA's per-device choice. |
+| `-retrogem=<val>` | Override RetroGEM Game ID optical emission (`1`/`on`/`true` or `0`/`off`/`false`). Aliases `-retrogem` and `-noretrogem`. |
 | `-debug` | Show an on-screen toast with the parsed args + resolved boot context. |
 
 Each argument is a separate token, exactly like a command line:
@@ -35,7 +54,7 @@ page:
 
 | Page | Accepted values |
 | --- | --- |
-| **HDD (exFAT)** (BDMA ATA) | `ata`, `ata0`, `ataN` |
+| **HDD (exFAT)** (BDMA ATA) | `exfat`, `ata`, `ata0`, `ataN` |
 | **HDD (PFS)** (APA) | `hdd`, `hdd0`, `pfs`, `apa`, `apa0` |
 | **USB** | `usb`, `mass` |
 | **MC** | `mc`, `memcard` *(accepted but not navigable — there is no standalone Memory Card page; standard PS2 memory cards are not a separate carousel device)* |
@@ -79,16 +98,18 @@ Boots straight into launching a game. Requires **both** `-page=` and
 | MX4SIO | `<FILE>` relative to `mx4sio:/POPS` |
 | MMCE | `<FILE>` relative to `mmce0:/POPS` |
 | HDD (exFAT) | `<FILE>` relative to `mass:/POPS` (use `-page=ata`) |
-| SMB | `<FILE>` relative to the share's `POPS` folder — POPSLoader hands off to POPStarter with the `smb:/POPS/SB.<name>.ELF` selector |
+| SMB | **not wired** — `-page=smb` opens the SMB page for browsing, but there is no SMB branch in `PLDR.AutoLaunchFromLaunchArgs`; `-game=` on the SMB page toasts "Auto-launch page not supported: SMB" (`system.lua:9368-9372`) and falls back to the main menu |
 
 If auto-launch fails (game not found, etc.) POPSLoader does **not** hang —
 it falls back to the normal welcome screen + main menu and shows an error
 toast describing what happened. **SMB:** SMB (v1) network browsing is
-implemented (CI + Rolling green, validating on hardware). `-page=smb` opens
+implemented (CI + Rolling green; browse + launch hardware-confirmed on a
+static IP config, DHCP path fixed in `bb62f2be` and unconfirmed). `-page=smb` opens
 the SMB page (scene `GSMBNET`), which brings up the network stack lazily and
 opens the configured share before scanning its POPS folder for VCD games.
-`-page=smb -game=...` auto-launches a title from the share (see the
-auto-launch table above).
+`-page=smb -game=...` is **not** implemented: auto-launch has no SMB branch
+(`system.lua:9368-9372`), so it toasts "Auto-launch page not supported: SMB"
+and drops to the main menu. Use `-page=smb` and pick the game manually.
 
 ### `-debug`
 Queues an on-screen info toast on the first main-menu frame listing:

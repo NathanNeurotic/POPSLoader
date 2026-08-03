@@ -69,7 +69,9 @@ extern int pad_reinit();
 
 static bool LoadIrxCheckedBuffer(const char *name, unsigned char *irx, unsigned int size, int *out_id, int *out_ret);
 static void BuildMassRootPath(int index, char *out_root, size_t out_sz);
-static bool EnsureDev9();   // defined below (with the SMB block); load-once via g_dev9_loaded
+// dev9 loader, load-once via g_dev9_loaded. Non-static since EXP69 (main.cpp loads
+// it early at boot -- the winners' load order).
+bool EnsureDev9();
 
 #ifndef USBMASS_IOCTL_GET_DRIVERNAME
 #define USBMASS_IOCTL_GET_DRIVERNAME 0x0003
@@ -219,14 +221,13 @@ void MarkMmcemanLoaded()
 }
 
 // System.getSio2Owner(): which SIO2-bus storage driver is resident this
-// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH"
-// (the already-conflicted legacy state this guard exists to prevent). mmceman
-// and mx4sio_bd cannot coexist on one IOP: both drive the shared SIO2 bus and
-// sustained reads from one hang with the other resident (HW-confirmed 48%
-// MMCE-scan hang after an MX4SIO visit, 2026-07-20; NHDDL hardcodes the same
-// exclusion, wLaunchELF_R3Z IOP-resets between them). Until we have R3Z's
-// reset, the pages check this and DECLINE the second driver with a message.
-// Reads the load latches directly so it cannot miss a C-internal load path.
+// session -- "" (neither), "MMCE" (mmceman), "MX4SIO" (mx4sio_bd), or "BOTH".
+// EXP32: DIAGNOSTIC-ONLY. The Lua exclusion guards that read this are gone --
+// mmceman and mx4sio_bd coexist (maintainer call, 2026-07-21: official OPL
+// runs both resident on freesio2, which we carry since EXP31; the contrary
+// R3Z3N /ACK-wiring position is recorded in system.lua as the fallback).
+// Kept because it reads the load latches directly (cannot miss a C-internal
+// load path) -- useful for future diagnostics and the harness contract tests.
 static int lua_get_sio2_owner(lua_State *L)
 {
 	if (mmceman_irx_loaded && mx4sio_irx_loaded) {
@@ -1291,6 +1292,40 @@ static int lua_getAppDir(lua_State *L) {
 	return 1;
 }
 
+/* Retro GEM Game ID (src/retrogem.cpp). The ID is read from SYSTEM.CNF inside the
+ * .VCD and transmitted OPTICALLY -- drawn as coloured sprites the mod decodes off
+ * the video output -- so there is no data channel to open here. */
+extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size);
+extern "C" void retrogem_draw_gameid(const char *game_id);
+
+/* System.retroGemGameId(vcdPath) -> "SLUS_007.42", or nil when the disc carries no
+ * usable title ID. This READS THE DISC IMAGE, so call it once at launch -- never
+ * per frame and never during a game-list scan. */
+static int lua_retrogem_gameid(lua_State *L) {
+	if (lua_gettop(L) != 1 || !lua_isstring(L, 1)) {
+		return luaL_error(L, "System.retroGemGameId(path) expects a path string.");
+	}
+	char id[16];
+	memset(id, 0, sizeof(id));
+	if (retrogem_gameid_for_vcd(lua_tostring(L, 1), id, (int)sizeof(id)) && id[0] != 0) {
+		lua_pushstring(L, id);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+/* System.retroGemDraw(id) -- emit the optical pattern for THIS frame. The caller
+ * repeats it for as long as the launch overlay is up: a single frame is not
+ * guaranteed to be latched by the mod. */
+static int lua_retrogem_draw(lua_State *L) {
+	if (lua_gettop(L) != 1 || !lua_isstring(L, 1)) {
+		return luaL_error(L, "System.retroGemDraw(id) expects an id string.");
+	}
+	retrogem_draw_gameid(lua_tostring(L, 1));
+	return 0;
+}
+
 /* NHDDL-style launch arguments parsed in main.cpp parseLaunchArgs().
  * Externs declared in include/luaplayer.h. */
 static int lua_getLaunchArgs(lua_State *L) {
@@ -1299,6 +1334,10 @@ static int lua_getLaunchArgs(lua_State *L) {
 	lua_setfield(L, -2, "page");
 	lua_pushstring(L, launch_arg_game);
 	lua_setfield(L, -2, "game");
+	lua_pushstring(L, launch_arg_bdma);
+	lua_setfield(L, -2, "bdma");
+	lua_pushstring(L, launch_arg_retrogem);
+	lua_setfield(L, -2, "retrogem");
 	lua_pushboolean(L, launch_arg_debug != 0);
 	lua_setfield(L, -2, "debug");
 	return 1;
@@ -1491,6 +1530,32 @@ static int lua_reinit_pad(lua_State *L)
 	return 1;
 }
 
+// EXP32: mx4sio_bd loads LAZILY, on engagement -- the MX4SIO page's first entry
+// (via System.initMX4SIO), an mx4sio: boot (boot.lua), or the legacy-mass
+// sidecar heal (system.lua) when a mass* cwd turns out not to be USB-backed.
+// No boot-time load: storage stacks load when their device is engaged
+// (wLaunchELF_R3Z's model; OPL loads transports at first BDM init on its
+// worker). Coexists with mmceman when both get engaged (official OPL runs
+// both resident on freesio2; maintainer call 2026-07-21, no gate). The module
+// load itself is cheap and returns promptly (card detection runs on the
+// driver's own IOP thread). Failure never latches: the next page entry
+// retries (success-only latch, OPL's rule). usbmass_bd stays ordered first
+// (maintainer 2026-05-28: "mx4sio will need the usb drivers to activate
+// before it"; EnsureUsbMass is idempotent/latched -- a no-op after boot).
+bool EnsureMx4sioBd(void)
+{
+	if (!EnsureUsbMass()) {
+		return false;
+	}
+	if (!mx4sio_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL)) {
+			return false;
+		}
+		mx4sio_irx_loaded = true;
+	}
+	return true;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -1501,21 +1566,7 @@ static int lua_mx4sio_init(lua_State *L)
 		(void)luaL_checkstring(L, 1);
 	}
 
-	// Per maintainer 2026-05-28: "mx4sio will need the usb drivers to
-	// activate before it with it. USB will never need MX4SIO drivers."
-	// Enforce the dependency order at the lowest level so any caller of
-	// System.initMX4SIO automatically gets usbmass_bd loaded first --
-	// previously, Lua callers that didn't explicitly ensure UsbMass
-	// could load mx4sio_bd into a state where the broader BDM mass
-	// stack wasn't ready. EnsureUsbMass is idempotent (gated by
-	// usbmass_irx_loaded), so this costs nothing on repeat calls.
-	bool ok = EnsureUsbMass();
-	if (ok && !mx4sio_irx_loaded) {
-		ok = LoadIrxCheckedBuffer("mx4sio_bd.irx", mx4sio_bd_irx, size_mx4sio_bd_irx, NULL, NULL);
-		if (ok) {
-			mx4sio_irx_loaded = true;
-		}
-	}
+	bool ok = EnsureMx4sioBd();
 
 	lua_pushboolean(L, ok);
 	if (ok) {
@@ -1535,8 +1586,37 @@ static int lua_mx4sio_init(lua_State *L)
 // freeze with the HDD light latched on (CosmicScale APA-Jail HDD, 2026-06-25). Load-once via
 // g_ata_bd_loaded (a non-static global shared with luaHDD.cpp).
 bool g_ata_bd_loaded = false;
-bool EnsureAtaBdm()
+
+// EXP33: EnsureAtaBdm is called from TWO threads now -- the boot-time async
+// worker (do_boot_init's initATAAsync kick, new in EXP32) AND the main thread
+// (APA page: HDD.Initialize -> Load_HDD_IRX -> EnsureAtaBdm; and the exFAT
+// page). The load-once latches (g_ata_bd_loaded / g_dev9_loaded / bdm+bdmfs)
+// are plain bools set AFTER the load, so two concurrent callers both read
+// them false and BOTH loaded -- a second ata_bd _start re-resets the live ATA
+// bus (the CosmicScale APA-Jail 42% class). Serialize the whole bring-up with
+// a binary semaphore so the second caller waits and returns the completed
+// result. Created before the worker is ever spawned (lua_ata_init_async) so
+// it always exists by the time the worker runs; the Lua-side cascade bound in
+// PLDR.LoadHDDModules normally keeps the main thread from even entering here
+// while the worker runs, so this sema almost never actually blocks.
+static int g_ata_bdm_sema = -1;
+void EnsureAtaBdmSemaInit()
 {
+	if (g_ata_bdm_sema < 0) {
+		ee_sema_t s;
+		s.init_count = 1;
+		s.max_count = 1;
+		s.attr = 0;
+		s.option = 0;
+		g_ata_bdm_sema = CreateSema(&s);
+	}
+}
+
+extern "C" void BootStamp(const char *stage); // main.cpp boot ledger (EXP68)
+
+static bool EnsureAtaBdmModulesInner()
+{
+	BootStamp("ata: dev9");
 	if (!EnsureDev9()) {
 		return false;
 	}
@@ -1547,6 +1627,7 @@ bool EnsureAtaBdm()
 	// ata_bd registers its own BDM "ata" device + the atad library for PFS, and the
 	// APA-boot path (luaHDD.cpp Load_HDD_IRX) needs the same bdm/bdmfs/ata_bd and never
 	// usbmass_bd; ClassifyMassRootDriver treats "ata" and "usb" as distinct buckets.
+	BootStamp("ata: bdm+bdmfs");
 	if (!EnsureBDMFatFs()) {   // dev9 -> bdm -> bdmfs_fatfs; bdm MUST precede ata_bd
 		return false;
 	}
@@ -1555,14 +1636,44 @@ bool EnsureAtaBdm()
 		// 1s settle EnsureUsbMass applies before usbmass_bd (R3Z gets the equivalent gap
 		// from loading dev9 between bdmfs and ata_bd; we load dev9 first, so settle here).
 		sleep(1);
+		BootStamp("ata: ata_bd load");
 		if (!LoadIrxCheckedBuffer("ata_bd.irx", ata_bd_irx, size_ata_bd_irx, NULL, NULL)) {
 			return false;
 		}
-		g_ata_bd_loaded = true;
+		BootStamp("ata: ata_bd up");
+		g_ata_bd_loaded = true; // module resident; drive READINESS is verified separately (EXP65)
 		// Match NHDDL/wLaunchELF ordering: let ata_bd settle before ps2hdd/ps2fs touch it.
 		sleep(1);
 	}
 	return true;
+}
+
+// Sync bring-up (APA/PFS path via luaHDD, plus the explicit-ATA-session warm):
+// MODULES ONLY. EXP63's VerifyAtaDriveReady requirement was wrong here -- it
+// demands a bdmfs-visible "ata" mass unit, which an APA/PFS-only drive NEVER
+// publishes (PFS is not fatfs), so every APA bring-up failed after EXP63/64
+// (maintainer: APA HDD not detected, error toasts). Drive-readiness for the
+// exFAT mass path is checked by the page sweep (BuildBoundedIdentityDeferred
+// probes the slots itself), not in the shared module bring-up.
+static bool EnsureAtaBdmInner()
+{
+	return EnsureAtaBdmModulesInner();
+}
+
+// Locking wrapper (see EnsureAtaBdmSemaInit above). Double-checked: a caller
+// that waited behind an in-flight load returns immediately once g_ata_bd_loaded
+// is set. All callers (worker thread, APA path, exFAT path) go through here.
+bool EnsureAtaBdm()
+{
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0) {
+		WaitSema(g_ata_bdm_sema);
+	}
+	bool ok = EnsureAtaBdmInner();
+	if (g_ata_bdm_sema >= 0) {
+		SignalSema(g_ata_bdm_sema);
+	}
+	return ok;
 }
 
 static int lua_ata_init(lua_State *L)
@@ -1602,16 +1713,22 @@ static int lua_ata_ready(lua_State *L)
 }
 
 // ============================================================================
-// Lazy async ata_bd bring-up (OPL's arrangement). There is NO boot-time ata
-// load (maintainer: the ~5-6s black-screen cost is unacceptable); the exFAT
-// page kicks this worker on entry and polls, screen alive. OPL is the
-// precedent for the whole shape: its "ps2atad_irx" embed is actually the SDK's
-// ata_bd.irx blob (OPL Makefile:622) loaded mid-session on its IO worker
-// thread, on the same consoles where our old SYNCHRONOUS page-time load froze.
-// The earlier async attempt (EXP23) was sunk by two since-fixed bugs riding
-// along -- a bdm core with no GPT support and a mismatched mx4sio_bd -- not by
-// this mechanism. Worker mirrors the proven Graphics.threadLoadImage pattern
-// (ee_thread_t, priority 16, ExitDeleteThread).
+// Async ata_bd bring-up worker. EXP32: the PREFERRED kick is at BOOT (Lua
+// do_boot_init calls initATAAsync when the Internal-HDD setting includes
+// exFAT), so the identical blob loads into the same near-empty IOP as the
+// EXP22 build -- the only configuration hardware-proven on sAGA's SCPH-30004
+// (the byte-identical driver worked at boot and wedged mid-session; the IOP
+// census at load time IS the variable, per the EXP24 analysis "no reference
+// loads BDM-atad late onto a full IOP"). The worker keeps boot responsive:
+// the probe runs behind the splash/carousel instead of blocking ~5s.
+// Page entry only POLLS the state, bounded -- it never loads synchronously
+// (the sync fallback was the historically-freezing configuration and is gone).
+// A done-fail state (3) re-spawns on the next initATAAsync call, so a failed
+// early probe stays RETRYABLE at page-entry time -- RiptOPL's hddsupport.c
+// SCPH-30004 rule ("early dev9 revisions fail the seconds-after-power-on
+// probe and succeed at tab-entry time"; a consumed count poisoned the session).
+// Worker mirrors the proven Graphics.threadLoadImage pattern (ee_thread_t,
+// priority 16, ExitDeleteThread).
 //
 // THE APA/PFS BOOT PATH IS UNCHANGED: luaHDD.cpp Load_HDD_IRX calls the
 // SYNCHRONOUS EnsureAtaBdm at boot on hdd0: boots (must finish before pfs1:
@@ -1620,36 +1737,71 @@ static int lua_ata_ready(lua_State *L)
 // ============================================================================
 extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
 
+// ============================================================================
+// Async ata module-chain worker (EXP68 restoration, MODULES ONLY). The chain
+// COMPLETES at boot on the problem console (rr0718 HW-proven) and HANGS
+// mid-session even fully serial (EXP67 page load) -- the load window is the
+// variable, not concurrency and not the driver. So the boot path kicks this
+// worker and JOINS it bounded (main.cpp, 20s cap): serial with the main
+// thread's own ds34/audsrv loads (the EXP61 race cannot happen), and a wedged
+// chain costs a not-ready page instead of the console. The worker does NO
+// drive verification and NO fileXio -- readiness stays with the exFAT page
+// sweep (EXP65+). The page never spawns this; it uses initATAModules
+// (STILL_STARTING guard below) or finds the modules already resident.
+// ============================================================================
+extern void *_gp;   // GP for spawned EE threads (same symbol luagraphics uses)
+
 // 0=idle 1=running 2=done-ok 3=done-fail. Written by the worker thread, polled
 // from Lua on the main thread; volatile so the poll re-reads it each frame.
 static volatile int g_ata_async_state = 0;
 static u8 g_ata_async_stack[8192] __attribute__((aligned(16)));
 
+// Module-phase completion signal for the bounded boot join.
+static int g_ata_async_modules_sema = -1;
+static void AtaAsyncModulesSemaInit()
+{
+	if (g_ata_async_modules_sema < 0) {
+		ee_sema_t s;
+		s.init_count = 0;
+		s.max_count = 1;
+		s.attr = 0;
+		s.option = 0;
+		g_ata_async_modules_sema = CreateSema(&s);
+	}
+}
+
 static int ata_async_thread(void *arg)
 {
 	(void)arg;
-	bool ok = EnsureAtaBdm();
-	g_ata_async_state = ok ? 2 : 3;
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0)
+		WaitSema(g_ata_bdm_sema);
+	bool mods = EnsureAtaBdmModulesInner();
+	if (g_ata_bdm_sema >= 0)
+		SignalSema(g_ata_bdm_sema);
+	g_ata_async_state = mods ? 2 : 3;
+	if (g_ata_async_modules_sema >= 0)
+		SignalSema(g_ata_async_modules_sema);
 	ExitDeleteThread();
 	return 0;
 }
 
-// System.initATAAsync(): kick the ata_bd bring-up onto a worker thread and
-// return immediately with the state int. If ata_bd is already loaded (e.g. an
-// APA-HDD boot brought it up) it reports done-ok (2) without spawning. Returns
-// -1 if the thread could not be created, so the Lua caller falls back to the
-// synchronous System.initATA.
-static int lua_ata_init_async(lua_State *L)
+// KickAtaAsyncBoot(): spawn the module-chain worker. Idempotent: already
+// loaded -> 2, already running -> 1, spawn failure -> -1 (caller must NOT fall
+// back to a sync load on a busy thread path; the page retries serially).
+int KickAtaAsyncBoot(void)
 {
 	if (g_ata_bd_loaded) {
 		g_ata_async_state = 2;
-		lua_pushinteger(L, 2);
+		return 2;
+	}
+	if (g_ata_async_state == 1) {
 		return 1;
 	}
-	if (g_ata_async_state == 1) {   // already running -- do not spawn a second
-		lua_pushinteger(L, 1);
-		return 1;
-	}
+	EnsureAtaBdmSemaInit();
+	AtaAsyncModulesSemaInit();
+	if (g_ata_async_modules_sema >= 0)
+		PollSema(g_ata_async_modules_sema); // drain any stale token
 	g_ata_async_state = 1;
 	ee_thread_t th;
 	th.attr = 0;
@@ -1658,26 +1810,66 @@ static int lua_ata_init_async(lua_State *L)
 	th.stack = (void *)g_ata_async_stack;
 	th.stack_size = sizeof(g_ata_async_stack);
 	th.gp_reg = &_gp;
-	th.initial_priority = 16;   // same as the proven Graphics.threadLoadImage worker
+	th.initial_priority = 16;
 	int tid = CreateThread(&th);
 	if (tid < 0) {
-		g_ata_async_state = 0;   // spawn failed -> caller uses sync fallback
-		lua_pushinteger(L, -1);
-		return 1;
+		g_ata_async_state = 0;
+		return -1;
 	}
 	StartThread(tid, NULL);
-	lua_pushinteger(L, 1);
 	return 1;
 }
 
-// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Poll each frame.
-// ALSO the cross-page cascade guard: while state==1 an ata load is in flight on
-// the IOP module loader -- other pages must NOT queue their own driver load
-// behind it (System.initMX4SIO would block forever if the ata load ever wedges).
+// WaitAtaAsyncBootBounded(): join the module phase, BOUNDED. Returns the final
+// state (2 ok / 3 fail / 1 still running on timeout). A timeout is NOT a boot
+// failure: main continues, the page reports not-ready and retries serially.
+int WaitAtaAsyncBootBounded(int max_ms)
+{
+	AtaAsyncModulesSemaInit();
+	if (g_ata_async_state != 1)
+		return g_ata_async_state;
+	clock_t start = clock();
+	for (;;) {
+		if (g_ata_async_modules_sema >= 0 && PollSema(g_ata_async_modules_sema) >= 0)
+			break;
+		if (g_ata_async_state != 1)
+			break;
+		if (max_ms >= 0 && ((clock() - start) / 1000) >= (clock_t)max_ms)
+			break;
+		usleep(10000); // 10 ms poll steps; EE clock() is microseconds
+	}
+	return g_ata_async_state;
+}
+
+// System.initATAStatus(): 0=idle 1=running 2=done-ok 3=done-fail. Read by the
+// Lua cascade bounds (mx4sio page, LoadHDDModules) so they never queue a
+// synchronous load behind an in-flight ata chain.
 static int lua_ata_init_status(lua_State *L)
 {
 	(void)L;
 	lua_pushinteger(L, g_ata_async_state);
+	return 1;
+}
+
+// System.initATAModules(): SYNCHRONOUS main-thread module bring-up (EXP65,
+// the SMS shape -- SMS loads ata_bd lazily on its UI thread with ATA/MX4SIO/
+// MMCE coexisting; every worker-based variant here raced main-thread SIF
+// traffic and wedged: EXP32-60 page freeze, EXP61 + EXP64 boot black). EXP66
+// deleted the async worker entirely -- this is the ONLY ata module path left.
+static int lua_ata_init_modules(lua_State *L)
+{
+	if (g_ata_async_state == 1) {
+		lua_pushboolean(L, 0);
+		lua_pushstring(L, "STILL_STARTING");
+		return 2;
+	}
+	EnsureAtaBdmSemaInit();
+	if (g_ata_bdm_sema >= 0)
+		WaitSema(g_ata_bdm_sema);
+	bool ok = EnsureAtaBdmModulesInner();
+	if (g_ata_bdm_sema >= 0)
+		SignalSema(g_ata_bdm_sema);
+	lua_pushboolean(L, ok);
 	return 1;
 }
 
@@ -1694,7 +1886,7 @@ static bool net_irx_loaded = false;
 static bool smb_irx_loaded = false;
 static char SMB_IFNAME[] = "sm0";   // mutable: ps2ip_getconfig takes char*, not const char*
 
-static bool EnsureDev9()
+bool EnsureDev9()
 {
 	if (g_dev9_loaded) {
 		return true;
@@ -1850,6 +2042,51 @@ static int SmbApplyIPConfig(int dhcp, const unsigned char ip[4], const unsigned 
 		dns_setserver(0, &dnsaddr);
 	}
 	return 0;
+}
+
+// Dotted-quad from an lwip ip4_addr. Byte-indexed, exactly as lwip's own ip4_addr1..4
+// macros do it, so this is endian-independent rather than relying on a u32 shift.
+static void SmbFormatIp(const void *addr, char *out, size_t n)
+{
+	const unsigned char *b = (const unsigned char *)&((const struct ip4_addr *)addr)->addr;
+	snprintf(out, n, "%u.%u.%u.%u",
+	         (unsigned)b[0], (unsigned)b[1], (unsigned)b[2], (unsigned)b[3]);
+}
+
+// System.smbGetIPConfig() -- the interface's CURRENT address, after DHCP has bound
+// (or as statically set). Returns ip, netmask, gateway as dotted strings, or nil when
+// the stack isn't up yet or holds no address.
+//
+// WHY THIS EXISTS: POPStarter has no DHCP of its own -- it needs a literal address in
+// mc?:/POPSTARTER/IPCONFIG.DAT or it has no network at all. Our menu browses fine on a
+// DHCP lease, so on the default (DHCP) config the handoff used to give POPStarter
+// nothing: the game list populated, then the launch died after our last frame. We hand
+// POPStarter the address we already leased so it can keep using it statically.
+static int lua_smb_getipconfig(lua_State *L)
+{
+	if (lua_gettop(L) > 0) {
+		return luaL_error(L, "Argument error: System.smbGetIPConfig() takes no arguments.");
+	}
+	t_ip_info ip_info;
+	if (ps2ip_getconfig(SMB_IFNAME, &ip_info) < 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	const unsigned char *ip = (const unsigned char *)&((struct ip4_addr *)&ip_info.ipaddr)->addr;
+	// 0.0.0.0 means "no lease yet" -- reporting it as an address would write a
+	// useless IPCONFIG.DAT over a good one.
+	if (ip[0] == 0 && ip[1] == 0 && ip[2] == 0 && ip[3] == 0) {
+		lua_pushnil(L);
+		return 1;
+	}
+	char a[16], m[16], g[16];
+	SmbFormatIp(&ip_info.ipaddr, a, sizeof(a));
+	SmbFormatIp(&ip_info.netmask, m, sizeof(m));
+	SmbFormatIp(&ip_info.gw,      g, sizeof(g));
+	lua_pushstring(L, a);
+	lua_pushstring(L, m);
+	lua_pushstring(L, g);
+	return 3;
 }
 
 // System.initSMB() -- load the SMB IRX stack (lazy). true / (false,"IRX_LOAD_FAIL").
@@ -2078,6 +2315,18 @@ static int lua_smb_disconnect(lua_State *L)
 	return 1;
 }
 
+// System.clearATA(): reset the "module resident" latch (EXP66). The exFAT page
+// calls this when its bounded sweep found NO ata unit -- a self-exited ata_bd
+// ("HDD is not connected") must be re-loadable on the next page entry, so a
+// slow drive that was still spinning up gets a fresh probe instead of a stale
+// latch (RiptOPL's retryable rule).
+static int lua_ata_clear(lua_State *L)
+{
+	(void)L;
+	g_ata_bd_loaded = false;
+	return 0;
+}
+
 static const luaL_Reg System_functions[] = {
 	{"openFile",                   lua_openfile},
 	{"readFile",                   lua_readfile},
@@ -2123,10 +2372,14 @@ static const luaL_Reg System_functions[] = {
 	{"initMX4SIO",             lua_mx4sio_init},
 	{"initATA",                lua_ata_init},
 	{"ataReady",               lua_ata_ready},
-	{"initATAAsync",           lua_ata_init_async},
 	{"initATAStatus",          lua_ata_init_status},
+	{"initATAModules",         lua_ata_init_modules},
+	{"clearATA",               lua_ata_clear},
 	{"getSio2Owner",           lua_get_sio2_owner},
+	{"retroGemGameId",         lua_retrogem_gameid},
+	{"retroGemDraw",           lua_retrogem_draw},
 	{"initSMB",                lua_smb_init},
+	{"smbGetIPConfig",         lua_smb_getipconfig},
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},
 	{"disconnectSMB",          lua_smb_disconnect},

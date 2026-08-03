@@ -1,7 +1,7 @@
 # POPSLoader — Tester Checklist (rolling `dev`)
 
-**Build:** the rolling build published from `dev`. Public release is **1.0.1** (2026-07-13).
-This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-07-13 — added the **settings-review round 2** batch: Start-button settings menu, region-native confirm button (Japanese consoles), keyboard rework, POPSTARTER Path "Automatic" (profile presets removed). Prior: per-device POPSTARTER.ELF resolution; normal-HDD-still-works; `POPS/ART/` cover folder; SMB (v1); HDD (exFAT).)_
+**Build:** the rolling build published from `dev` (its version row reads **v1.1.1-dev**). Public release is **1.1.0** (2026-07-21).
+This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_NOTES.md)** ("what's new"); for the canonical status / invariants / known-issues list see **[STATE.md](STATE.md)**. Regenerate when the rolling batch changes. _(Last refreshed: 2026-07-27 — added the game-details `.txt` fix, the translation reachability sweep, and the launch-after-browsing regression watch. Prior: settings-review round 2; per-device POPSTARTER.ELF resolution; normal-HDD-still-works; SMB (v1); HDD (exFAT).)_
 
 **Devices:** USB · MX4SIO (SD over SIO2) · MMCE (SD2PSX / MemCard PRO) · HDD (internal PFS) · **HDD (exFAT) — BDMA Mode ATA** · **SMB (v1) network share — NEW**. Test the ones you use; **say which** in every report.
 
@@ -13,41 +13,56 @@ This is the structured "what to test" companion to **[ROLLING_NOTES.md](ROLLING_
 
 - [ ] **Boot to menu** — launch from each device. The welcome **splash appears instantly** (no black screen first), **centered from frame one**, then the carousel. Report any black screen, off-center/letterboxed splash, wrong region/res that flips mid-fade, or hang.
 - [ ] **Normal PS1 launch** — select a game on each device → **X** → POPStarter boots it.
-- [ ] **MX4SIO specifically** — confirm it still loads + launches. *(A −48 KB optimization re-pointed MX4SIO's embedded `usbd.irx`; proven byte-identical by inspection but not run on hardware — the one size change worth a deliberate test.)*
+- [ ] **MX4SIO specifically** — confirm it still loads + launches. *(MX4SIO scanning and launching was hardware-confirmed on 2026-07-20, but the whole device layer was rebuilt after that, so it stays on the must-work list.)*
 - [ ] **Preservation set — MUST still work:**
   - [ ] **HDD-resident POPSTARTER → HDD game (D-10):** on an HDD install where `POPSTARTER.ELF` lives on the HDD, launch an HDD game. No black screen.
   - [ ] ⭐⭐ **Normal internal HDD (PFS) still fully works** — boot from a normal internal PS2 hard drive → reach the menu, your **settings load and save**, and you can **scan + launch** a PS1 game from the **HDD (PFS)** list with no black screen. *(A behind-the-scenes change unified the internal-HDD and exFAT paths onto one shared ATA driver. Source analysis says normal HDD is unaffected — it's the same config OPL/NHDDL ship — but this is the single confirmation that closes it out. If a normal HDD game ever fails to launch or settings stop saving, say so.)*
   - [ ] **Launched-from-MC/USB (U-10 family):** boot POPSLoader from a memory card / USB via a launcher (OSD-XMB, wLaunchELF), then open the HDD page and launch.
-  - [ ] **DKWDRV / Disc → exit to memory card:** no hang on the picture.
+  - [x] ~~**DKWDRV / Disc → exit to memory card:** no hang on the picture.~~ *(Closed 2026-07-23: the exit hang is DKWDRV-side, not POPSLoader — not ours to fix.)*
 - [ ] **START-held recovery** — hold **START** during boot → boots to a safe state; with `-page`/`-game` args it suppresses auto-launch so you can recover.
 
 ## 🟧 P1 — New features this cycle
+
+### ⭐⭐ Translations — messages that were stuck in English (NEW, never run on hardware)
+
+A batch of on-screen messages was being assembled in a way that threw the translation away before it was looked up. Those now go through the translator, and Hungarian gained a fresh round of strings.
+- [ ] Set *Settings → Startup → Language* to a non-English language and use the launcher normally. Report any row, toast or error screen still showing English when the rest of the page is translated, and any label that runs off the edge of a row.
+- [ ] **Hungarian specifically:** on the HDD page, the "no games found" and "list refreshed" toasts should now appear in Hungarian, and the LAUNCH FAILED screen (including the "press this button" line under it) should be translated and name the right button for your console.
+- [ ] A translation with a missing placeholder must fall back to English, never break the message. If any toast shows a raw `%s`, or a message vanishes where you expected one, report the language and the exact screen.
+
+### ⭐⭐ Launching after browsing a list (regression watch, never run on hardware)
+
+The cover loader was reworked, and it is emptied out before every handoff to another program.
+- [ ] On **each** device you use, browse a game list for a while, then launch a game. **MX4SIO and USB matter most**, they are the ones with big `ART/` folders. It must still launch, with no hang on a "Loading ART..." message.
+- [ ] Same check for **Exit → BOOT.ELF** and for **Disc (DKWDRV)** after you have browsed a list first.
+
+### ⭐ Settings save on an HDD-loaded rig
+- [ ] With the HDD game list loaded, change a setting and save it, then reboot and confirm it stuck. If you get a read-only or write-test message, report its exact wording.
 
 ### ⭐ Menu and Settings cleanup (NEW, never run on hardware)
 
 Mostly a "does anything feel missing?" pass. Nothing was removed from what the launcher can DO, only from what it advertises.
 
 - [ ] **Main menu button bar** reads exactly *Select / Settings / Exit*. Credits is gone from it.
-- [ ] **Game list button bar** reads exactly *Launch / Back*. Cover Art, Settings and Credits are gone from the bar, but they all still WORK: **Square** still toggles cover art, **START** still opens Settings. Confirm both.
+- [ ] **Game list button bar** reads exactly *Launch / Back*. Settings and Credits are gone from the bar but still WORK: **START** still opens Settings. Confirm that. Note **Square no longer toggles cover art at all** — that moved to a saved setting, *Settings → Game List → Cover art* (default **On**). Square doing nothing on a game list is correct, not a bug.
 - [ ] **Credits now lives in Settings** (*Settings, About, Credits*). Open it, then back out: you should land back on Settings, and **any setting you changed but did not save must still be changed**.
 - [ ] **One menu for leaving Settings.** Change something, then press **Circle** to leave: you should get the same *Save Changes / Reset Defaults / Discard & Exit* menu that **START** opens (not the old X-Save/O-Cancel/Triangle prompt). With nothing changed, Circle should just leave with no prompt.
 - [ ] **Select on the Settings page no longer hides the text.** It should do nothing there. It must still work on the device list and the game lists. Hide UI Text is now only *Settings, Display, Hide UI Text*.
 - [ ] **Keyboard opens in QWERTY** on a fresh install (it was ABC). ABC is still selectable in *Settings, Startup, Keyboard Layout*.
 - [ ] *Settings, **Device List*** (renamed from "Carousel Devices") still hides and shows devices exactly as before.
-- [ ] *Settings, Game List, Cover/details folder* now reads **device:/POPS/ART** and so on. Your covers must still be found exactly as before, this is only wording.
 - [ ] *Settings, Game List, Hidden games* now has a dimmed line under it: **"How to hide a game / L3 on the game list"**. Try it: L3 on a game hides it.
 - [ ] **Translations:** switch language and check the new rows (About, Credits, Device List, the hide hint) are translated and not blank.
 - Report: any button that stopped working (as opposed to stopped being listed), a Credits trip that lost your unsaved settings, or a blank or missing label.
 
-### ⭐⭐ HDD (exFAT) via BDMA ATA — BRAND-NEW backend, NEVER run on hardware
+### ⭐⭐ HDD (exFAT) via BDMA ATA — worked on one console, stalled on another; needs a wide pass
 
-The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an **exFAT-formatted internal SATA/IDE drive**, exactly like a big USB stick. **If you have an exFAT internal drive, this is the single most valuable thing you can test.** CI-green, but zero hardware runs so far.
+The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an **exFAT-formatted internal SATA/IDE drive**, exactly like a big USB stick. **If you have an exFAT internal drive, this is still one of the most valuable things you can test.** It listed and launched from a 4TB GPT drive on one console, but on another console it stalled while starting the drive for weeks afterwards, and the current build changed *when* the drive driver loads without that change being confirmed on hardware yet. If the page stalls, photograph the screen before rebooting: the step number and the bracketed text on it are the whole diagnosis.
 
 **Setup:**
 1. Format the internal drive **exFAT** (NOT the classic APA/PFS HDL layout — that's the separate "HDD (PFS)" entry).
 2. Put a **`POPS/`** folder at the drive root with your `.VCD` files (+ your own `POPS_IOX.PAK`, `POPSTARTER.ELF`) — same layout as a USB stick.
 3. *Settings → BDMA Mode → **ATA*** and save. *(On apply, the `.ata` launch drivers are copied — with the `.ata` suffix stripped — to `mc?:/POPSTARTER/`.)*
-4. *Settings → **Device List** → **Internal HDD → exFAT (APA-Jail)*** and save. The **HDD (exFAT)** entry replaces **HDD (PFS)** on the carousel — the two internal-HDD pages are mutually exclusive; pick **PFS** again to get the classic page back. *(A `-page=ata` boot argument opens the exFAT page regardless of this setting.)*
+4. *Settings → **Device List** → **Internal HDD*** and save. The choices are **APA / PFS**, **exFAT**, and **Both**; **Both** is now the factory default, so a fresh install should already show both internal-HDD entries on the carousel. Picking a single filesystem shows only that page. *(A `-page=ata` boot argument opens the exFAT page regardless of this setting.)*
 
 **Test:**
 - [ ] Open the **HDD (exFAT)** carousel entry → it scans `mass:/POPS` and **lists your games**.
@@ -110,7 +125,7 @@ The **Profile** row (Profile 1..16 presets) is gone. *Settings → POPSTARTER �
 
 ### ⭐⭐ SMB (v1) network game browsing — NEW end-to-end, never run on hardware
 
-SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating on hardware** — so far it has **zero hardware runs**. You set your server/share/credentials in a new **SMB / Network** Settings section, **install the in-game SMB streaming pack into `mc0:/POPSTARTER/`** (the same way BDMA installs its modules), then **browse and launch** PS1 games straight off a network share from the **SMB** carousel page. Networking is **lazy**: the stack comes up and the share opens **only** when you enter the SMB page or trigger a settings action — **nothing SMB runs at boot**. **NetBIOS is not supported** (the address type must be **IP**); the in-game pack is what POPStarter uses to stream the game off the share at launch.
+SMB (v1) is **implemented end-to-end** (CI + Rolling green). **Browsing and launching are hardware-confirmed on a static IP setup** — the maintainer has been launching SMB games this way for some time. **If you use DHCP, you need a build newer than `bb62f2be`**: POPStarter cannot obtain an address on its own, and the loader used to *delete* the `IPCONFIG.DAT` that carries it whenever IP assignment was DHCP (the default). On those builds a DHCP setup browses perfectly and then black-screens shortly into the launch. That is fixed — the loader now writes the address it leased — but the **DHCP path itself has not been confirmed on hardware yet, so it is the single most valuable thing to test here.** You set your server/share/credentials in a new **SMB / Network** Settings section, **install the in-game SMB streaming pack into `mc0:/POPSTARTER/`** (the same way BDMA installs its modules), then **browse and launch** PS1 games straight off a network share from the **SMB** carousel page. Networking is **lazy**: the stack comes up and the share opens **only** when you enter the SMB page or trigger a settings action — **nothing SMB runs at boot**. **NetBIOS is not supported** (the address type must be **IP**); the in-game pack is what POPStarter uses to stream the game off the share at launch.
 
 **Setup:**
 1. *Settings* → expand **SMB / Network** → set **Server IP**, **Share**, **User/Password**, **IP assignment** (DHCP/Static), **Port** (default **1111** — set this to your server's actual SMB port; stock SMB servers listen on **445**, the 1111 default suits alternate-port SMBv1 setups), **Games path (folder holding POPS)**, **Link mode**.
@@ -122,7 +137,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 - [ ] **Keyboard symbols:** in any SMB text field, toggle **R2** — the digit/bracket keys now type `@ # $ % ^ * " < > | { } ~ \`` so usernames like `user@host`, hidden shares ending `$`, and symbol-heavy passwords are enterable.
 - [ ] **Input hygiene:** type a value with a trailing space or a junk Port like `44S` → the editor immediately shows what was actually kept ("... adjusted") instead of silently saving garbage; a wrong-shaped IP falls back to the default with the same notice.
 - [ ] Edit fields → **unsaved (accent) marker** → **Save Changes** → **reboot** → values **persisted** exactly as entered.
-- [ ] ⭐ **SMB modules = Installed → Save:** `mc0:/POPSTARTER/` (or `mc1:` on a slot-2-only console) should now hold `poweroff.irx`, `ps2dev9.irx`, `ps2ip.irx`, `ps2smap.irx`, `smbman.irx`, `SMSUTILS.irx`, plus `SMBCONFIG.DAT` and (only when **IP assignment = Static**) `IPCONFIG.DAT`. Open `SMBCONFIG.DAT`: line 1 = `<Server>[:<Port>] <Share>`, then (if User **or** Password is set) username + password on lines 2/3. `IPCONFIG.DAT` = `<PS2 IP> <Netmask> <Gateway>`, and is **absent on DHCP**.
+- [ ] ⭐ **SMB modules = Installed → Save:** `mc0:/POPSTARTER/` (or `mc1:` on a slot-2-only console) should now hold `poweroff.irx`, `ps2dev9.irx`, `ps2ip.irx`, `ps2smap.irx`, `smbman.irx`, `SMSUTILS.irx`, plus `SMBCONFIG.DAT` and `IPCONFIG.DAT`. Open `SMBCONFIG.DAT`: line 1 = `<Server>[:<Port>] <Share>`, then (if User **or** Password is set) username + password on lines 2/3. `IPCONFIG.DAT` = `<PS2 IP> <Netmask> <Gateway>`. **On DHCP it is written too**, carrying the address the loader itself leased — POPStarter has no DHCP of its own, so an absent `IPCONFIG.DAT` leaves it with no network and a launch that dies right after the loader's last frame. Because that address only exists once the interface is up, the file is written/refreshed **on a successful SMB connect**, not at boot: if it is missing straight after a Save, enter the SMB page once and re-check.
 - [ ] ⭐ **Change an SMB field while Installed → Save:** the in-game `SMBCONFIG.DAT`/`IPCONFIG.DAT` are **backfilled on every save** — generated if missing, **regenerated** with the new values when changed (the 6 IRX are rewritten harmlessly).
 - [ ] ⭐⚠️ **SMB modules = Not installed → Save:** the 8 SMB files are **removed**, but **`icon.sys`, `*.icn`, and any installed BDMA modules (`usbd.irx`/`usbhdfsd.irx`) MUST remain** — confirm BDMA still works afterward.
 - [ ] **Reset Defaults** sets SMB modules → Not installed + fields to defaults (Save then uninstalls, mirroring BDMA→FAT32).
@@ -183,8 +198,8 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
   6. **Reboot** (or just leave and re-enter the page) → the reveal is gone and the SAVED Hidden-games setting is back in force — R3 never persists anything.
   - Report: empty/wrong list after R3, a crash, a device failing to re-scan, or a reveal that leaks across pages/reboots.
 - [ ] **Boot sound On/Off** — *Settings → Game List → Boot sound* (default **On**) gates the splash chime. ✅ **save survives reboot CONFIRMED (oldman63);** still confirm Off actually silences the chime.
-- [ ] ⭐ **Cover/details folder (now selectable)** — *Settings → Game List → Cover/details folder* sets where a game's cover `.png` and `<game>.txt` details are looked up first on removable devices: **POPS/ART** (default), **POPS** (beside the game), or **ART** (a top-level folder at the drive root). The game's own `POPS/` folder beside the `.VCD` is always also checked, so older art keeps working on any setting. Internal HDD stays `__common/POPS/ART/`. Confirm: a cover in `POPS/ART/` shows with the default setting; one beside the `.VCD` still works; switching to **POPS** or **ART** finds art placed in those spots. For a **multi-disc** game, one file named **without** the `(Disc N)` part covers/describes every disc. **If a cover does not appear**, with cover preview **ON** and UI text shown the box now prints **"No cover. Looked for: `<path>`"** under the placeholder: compare that exact path to your file's name/folder (a mismatch is a naming/location issue, not a bug). Toggle it away with **Select** (Hide UI Text).
-- [ ] **Per-game info text** — add a `<game>.txt` (in the *Cover/details folder* location, or beside the game) → *Settings → Game List → Game details = Left/Center/Right aligned* → blurb under the cover in that alignment, line breaks kept. *Off* hides it.
+- [ ] ⭐ **Cover art location (now FIXED, not selectable)** — the *Cover/details folder* setting was **removed in EXP35**, and since **EXP71** exactly one path is read per device. Removable devices: **`<device>:/ART/<gamefilename>_COV.png`** (OPL's layout). Internal HDD/APA: **`hdd0:__common/POPS/ART/<gamefilename>_COV.png`**. The name must match the game file **exactly** — the disc-marker-stripped family name is no longer tried, so a multi-disc game needs one art file **per disc**, each named after that disc's `.VCD`. Confirm a cover in `<device>:/ART/` appears, and that art in the old `POPS/ART/` or beside-the-`.VCD` spots no longer does (that is intended, not a bug — move the files). Whether covers draw at all is *Settings → Game List → Cover art* (**default On**), which replaced the old session-only Square toggle. **If a cover does not appear** there is no longer any on-screen diagnostic caption (the "No cover. Looked for: `<path>`" line was removed in EXP42) — check the filename and folder against the exact path above.
+- [ ] ⭐⭐ **Per-game info text (the headline test for this build)** — *Settings → Game List → Game details* defaults **Off**; set it to Left/Center/Right aligned and leave **Cover art** on. Put the `.txt` at exactly **`<device>:/ART/<gamefilename>.txt`** (internal HDD/APA: `hdd0:__common/POPS/ART/<name>.txt`), same folder and same exact name as the cover. Check three cases: a game with **both** a cover and a `.txt` (this one was broken in the previous build), a game with **only** a `.txt` (check it on the first visit **and** again after leaving the list and coming back), and a game with neither. Then scroll a mixed folder quickly and confirm no game ever shows **another** game's text. Line breaks are kept; *Off* hides the panel.
 - [ ] **Description scroll** — long `.txt` scrolls with the **right analog stick** at a fixed **Fast** pace (~7 lines/sec, frame-counted). The Fast/Medium/Slow speed setting was removed (provato: Fast is best). Confirm the scroll feels right.
 - [ ] **Game list cache (opt-in, default OFF)** — *Settings → Game list cache → ON:*
   - [ ] First entry builds; second entry / reboot **loads fast** (no "Building…").
@@ -200,7 +215,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 - [ ] **L3 hide/unhide** on every device incl. **HDD** (drops `.hide` next to the VCD; on HDD writes to the boot partition — old "add it from a PC" is now only a write-failure fallback).
 - [ ] **Hidden games filter** — *Hidden* filters out; *Visible (manage)* shows dimmed so L3 can toggle them back.
 - [ ] **Settings save & persist** — change a setting, **reboot**, confirm it stuck. **Especially HDD installs** (settings save to the HDD boot partition now — RW confirmed by provato, full flow wants more confirmation).
-- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / Cover/details folder / cache / Boot sound / Overscan / Boot Page) and press **BACK** without saving → it warns you.
+- [ ] **Unsaved-changes prompt** — change a *cycle* setting (Game details / Cover art / cache / Boot sound / Overscan / Boot Page) and press **BACK** without saving → it warns you.
 - [ ] **POPSTARTER MC Folder toggle + BDMA interlock** — toggle the `mc:/POPSTARTER` folder (off **deletes** it, with confirm). Can't disable the folder while BDMA is on, nor enable BDMA while the folder is off. *(BDMA mode now in `bdma_mode.txt`; legacy `.pldr_bdma_mode` still read.)*
 
 ## 🟦 P3 — Display / PAL (needs PAL hardware — we have none on the team)
@@ -213,7 +228,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 
 - [ ] List a touch **wider**; device name (e.g. "USB") no longer overlaps the **top row**; "Building…" overlay calmer.
 - [ ] **Cover placeholder art** ⭐ **NEW assets, needs an eyeball on NTSC + PAL.** No live cover now draws a layered jewel-case placeholder (`cover_default.png`), with a `cover_missing.png` overlay **only** when the preview is **ON** but the game has no cover. *(The old "Cover disabled" **text** label is gone.)* Confirm the default cover, the missing overlay, and `frame.png` all **register** with the jewel-case window (right-anchored, no drift) on both NTSC and PAL.
-- [ ] **Cover-art preview** toggles with **Square** — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.
+- [ ] **Cover-art preview** is *Settings → Game List → Cover art* (default **On**, saved across reboots; Square no longer toggles it) — OFF shows the plain default case (no overlay), ON shows the live cover or the missing-overlay placeholder.
 - [ ] **Scroll position kept** returning from Settings (cursor doesn't snap to row 1).
 - [ ] **On-screen keyboard feedback** (editing a POPSTARTER / DKWDRV path) — pressing a key now **flashes it** briefly, and the text caret **blinks** at a normal rate. *(Both were broken by a microsecond-vs-millisecond timer bug — the flash expired before the next frame so it never showed, and the caret blinked ~1000× too fast; purely cosmetic, no input behavior change.)*
 
@@ -225,7 +240,7 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 
 ## 📦 Release zip contents
 
-- [ ] The rolling zip ships, at the **root**: a **`POPSTARTER/`** folder (SMB `.irx` pack), **`POPS/PATCH_5.BIN`**, **`POPSTARTER.ELF`** (also copied into **`POPS/`**) — confirm they're present in your download. *(POPS engine binaries are not redistributable and are NOT included; you still supply your own.)*
+- [ ] The rolling zip ships, at the **root**: a **`POPSTARTER/`** folder (SMB `.irx` pack), **`POPS/PATCH_5.BIN`**, **`POPSTARTER.ELF`** (also copied into **`POPS/`**), and a **`POPSTARTER VERSIONS/`** folder (the MAIN / DEBUG / USBDELAY / USBDELAY_DEBUG POPStarter builds, for the per-device test above) — confirm they're present in your download. *(POPS engine binaries are not redistributable and are NOT included; you still supply your own.)*
 
 ---
 
@@ -233,4 +248,4 @@ SMB (v1) is now **implemented end-to-end** (CI + Rolling green) and **validating
 
 - **"Failed to load HDD" when POPSLoader is launched from a non-HDD device** via a launcher (config-specific, seen by Nuno) — most setups list the HDD fine. **If you hit it, post your exact boot config**; it now shows the real reason on a second line. Workaround: boot from the HDD, or open the HDD page a few seconds after the menu.
 - **PAL console still showing PAL when NTSC is selected** (#495) — known, being chased; the "actual output" reading helps.
-- **DKWDRV exit back to memory card "hangs on the pic"** — known open follow-on.
+- ~~**DKWDRV exit back to memory card "hangs on the pic"**~~ — closed 2026-07-23: DKWDRV-side behavior, not a POPSLoader defect.

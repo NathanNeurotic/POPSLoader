@@ -1,4 +1,4 @@
-Last updated: 2026-06-22 (BETA-13 in progress)
+Last updated: 2026-07-27 (rolling `dev` = `v1.1.1-dev`; released line 1.1.0)
 
 # CONTRIBUTING
 
@@ -47,7 +47,7 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - Avoid adding runtime logging unless requested.
 
 ## Packaging Rules
-- CI packaging contract must stay synchronized with docs. The strict-verified `compilation.yml` zip (`POPSLOADER.zip`) is an **exact** set — two top dirs only (`PS1_POPSLOADER/` and `POPS/`), no root files, and any mismatch fails the build:
+- CI packaging contract must stay synchronized with docs. The strict-verified `compilation.yml` zip (`POPSLOADER.zip`) is an **exact** set — three top dirs only (`PS1_POPSLOADER/`, `POPS/` and `POPSTARTER VERSIONS/`), no root files, and any mismatch fails the build:
   - `PS1_POPSLOADER/`: `POPSLOADER.ELF`, `POPSTARTER.ELF`, `BUILD_INFO.txt` (so hardware can confirm the exact GitHub-built artifact), `APPINFO.PBT`, `title.cfg`, `icon.sys`, `list.icn`, `copy.icn`, `del.icn`.
   - `POPS/`: `PATCH_5.BIN` and `POPSTARTER.ELF`.
   - `POPSTARTER.ELF` is the only redistributable launcher binary and ships in **both** the `PS1_POPSLOADER/` install dir and `POPS/`. The POPS engine binaries are NOT redistributable and are never bundled — hardware supplies its own.
@@ -55,7 +55,7 @@ The full invariant list is in **STATE.md > Behavioral Invariants** — preserve 
 - The `rolling-release.yml` zip is the loose dev bundle (different layout from the strict install zip): `POPSLOADER.ELF` + `POPSTARTER.ELF` at the zip root, a `POPS/` folder (`PATCH_5.BIN` + `POPSTARTER.ELF`), a `POPSTARTER/` pack folder (BDMA / SMB modules), and a `source/` tree. It is not strict-verified.
 - CI build is gated on embedded build-identity markers (`Exec path:`, `PrepareForColdExternalELFLaunch`, `BOOT.ELF launch failed`) being present in `bin/enceladus.elf`, plus an embedded-loader blob staleness check.
 - The `ps2dev/ps2dev` container image is pinned to `v2.0.0`.
-- The rolling-release workflow publishes a single canonical asset on push-to-`dev` (the active rolling branch; `BETA-12-PLAY` is archival/frozen) and on PR events (last-write-wins on the shared asset).
+- The rolling-release workflow publishes a single canonical asset on **push-to-`dev` only** (the active rolling branch; `BETA-12-PLAY` is archival/frozen). It still RUNS on PR events, so a PR gets the harness + build gate, but the publish step carries `if: success() && github.event_name == 'push'` and is skipped there. Before PR #511 (merged 2026-07-16) it had no event gate, and any same-repo PR silently republished the rolling channel from its synthetic merge commit.
 - **The embedded-Lua syntax gate is now LIVE** (`luac5.4 -p` on the embedded Lua; the workflows `apk add lua5.4` and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no `luac`. It catches **SYNTAX only** — runtime nil-global / type / **load-order** errors stay invisible to CI, so still cold-boot test the build in PCSX2 (the `d4b04be` load-order boot brick was exactly such a case).
 
 ## Embedded Assets (adding / removing one)
@@ -103,7 +103,7 @@ Settings are write-staged in the UI and committed through a single funnel — `P
 - The old "HDD-install settings save to `mc0:/POPSTARTER/.pldrs`" preservation contract is **obsolete**: HDD installs now persist on the HDD boot partition via the RW take-over (single-device parity, no `mc0:` fallback). See **STATE.md > Settings** and **STATE.md > Preservation Contracts**.
 - **Resolved** (no longer "known broken accepted" — do not document as regressions): `U-10` BOOT.ELF from HDD-booted POPSLoader (PR #479), DKWDRV from a custom HDD path (PRs #486/#487), and the Class-A HOSDmenu / some-wLE start failures. See **STATE.md > Known Issues**.
 - For the current open / in-testing items (e.g. "Failed to load HDD" from a non-HDD boot, and the in-testing HDD/PAL/BDMA-folder features), see **STATE.md > Known Issues** — do not re-derive a cause from source.
-- The rolling-release workflow publishes to a single canonical URL. Pushing to your PR branch triggers a build that overwrites the asset (last-write-wins). Coordinate with the maintainer if testers are mid-cycle.
+- The rolling-release workflow publishes to a single canonical URL, and **only a push to `dev` publishes**. Pushing to a PR branch builds and runs the gates but does NOT overwrite the released asset (gated since PR #511, 2026-07-16). A merge to `dev` does republish it, so coordinate with the maintainer if testers are mid-cycle.
 
 ## Good Bug Reports
 Include:

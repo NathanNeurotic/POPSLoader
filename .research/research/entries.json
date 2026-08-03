@@ -1,0 +1,1362 @@
+[
+  {
+    "name": "$SAFEMODE",
+    "category": "cheats",
+    "effect": "Gates the cheat engine so codes only apply after POPS has left the PS1 OSD/BIOS. Recommended as the first line of every CHEATS.TXT. Without it, raw codes that touch the OSD-load region can crash POPS on startup.",
+    "scope": "CHEATS.TXT global or per-game. Engine present since WIP06 OBT01; $SAFEMODE itself was made functional in Beta 12 (2015-11-24).",
+    "conflicts": "None functional; it is a timing gate, not a code.",
+    "example": "$SAFEMODE",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); krHACKen r13 changelog Beta 12 'Bugfixed: $SAFEMODE not working' (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$SMOOTH",
+    "category": "cheats",
+    "effect": "Enables smooth (bilinear) texture mapping at startup. Underlying raw value is '$S0003390 00000001'. Live in-game toggle: Select+L1+R2 = enable, Select+L2+R1 = disable.",
+    "scope": "CHEATS.TXT global or per-game. Added r13 WIP05/WIP06 era. Effect is subtle.",
+    "conflicts": "None; can be toggled live even when set at startup.",
+    "example": "$SMOOTH",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog 'Press Select+L1+R2 to enable / Select+L2+R1 to disable the smooth texture mapping' (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$NOPAL",
+    "category": "cheats",
+    "effect": "Disables POPStarter's automatic PAL patcher (a PAL game then runs in POPS native NTSC). Equivalent to the stock PATCH_9.BIN. Not meant to convert NTSC games to PAL. (Changelog-sourced, not in the wiki: since Beta 13 the PAL patcher auto-disables when GSM's XBRA+GSM magics are in memory, so $NOPAL after launching GSModeSelector is no longer needed.)",
+    "scope": "CHEATS.TXT global or per-game.",
+    "conflicts": "Opposes $FORCEPAL (don't set both). Same effect as stock PATCH_9.BIN and config offset $42A=0x00 / NO_PAL.PPF.",
+    "example": "$NOPAL",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 13 GSM note (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$FORCEPAL",
+    "category": "cheats",
+    "effect": "Forces the PAL patcher (POPS runs PAL) AND patches the BIOS region code to Euro (boot screen shows in PAL). For PAL VCDs whose bootsector lacks valid license text. Equivalent to PATCH_8.BIN.",
+    "scope": "CHEATS.TXT global or per-game. Added Beta 12 (2015-11-24).",
+    "conflicts": "Opposes $NOPAL.",
+    "example": "$FORCEPAL",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 12 'Added $FORCEPAL' (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$FAKELC",
+    "category": "cheats",
+    "effect": "Loads a null LibCrypt magic word into the cop0 register, for discs with messed-up LibCrypt protection.",
+    "scope": "CHEATS.TXT per-game. Added in the r13 WIP06 cheat-engine era. Beta 13 fixed 'the LC fix was flushed and $FAKELC could not set it up'.",
+    "conflicts": "If it fails to stop freezing (e.g. Jackie Chan Stuntmaster PAL early batch lacking LibCrypt), use an explicit LibCrypt code block instead.",
+    "example": "$FAKELC",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog Beta 13 (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$COMPATIBILITY_0x##",
+    "category": "cheats",
+    "effect": "Activates a POPS compatibility mode at runtime; ## = hex 01-07. Textual equivalent of dropping the matching PATCH_#.BIN. You may write as many lines as you want (subject to the no-combine rule).",
+    "scope": "CHEATS.TXT global or per-game. Fixed (previously broken) in Beta 13 (2015-12-07).",
+    "conflicts": "Modes 0x01/0x02/0x03/0x05 poke CD status and MUST NOT be combined. 0x04/0x06/0x07 combine freely. Hardcode-equivalent: config offsets $418-$41F.",
+    "example": "$COMPATIBILITY_0x04",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170626021721 / 20220218153800); krHACKen r13 changelog Beta 13 (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$CODECACHE_ADDON_0",
+    "category": "cheats",
+    "effect": "For games that lag badly or stall randomly when mode 0x04 doesn't help. Most games STOP working with it - use sparingly per-game.",
+    "scope": "CHEATS.TXT per-game. Documented from the 2017-10-28 wiki revision.",
+    "conflicts": "Breaks most titles; specific lag/stall cases only.",
+    "example": "$CODECACHE_ADDON_0",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$SUBCDSTATUS",
+    "category": "cheats",
+    "effect": "A variant of $COMPATIBILITY_0x05 (sub-CD status handling).",
+    "scope": "CHEATS.TXT per-game. Documented from the 2017-10-28 wiki revision.",
+    "conflicts": "As a 0x05 variant it pokes CD status; don't stack with 0x01/0x02/0x03.",
+    "example": "$SUBCDSTATUS",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$480p",
+    "category": "cheats",
+    "effect": "Forces 480p output. Marked 'NOT reliable ATM' in the wiki. Hardcode-equivalent: config offset $42A=0x02.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "NOT compatible with $XPOS/$YPOS/$DWSTRETCH/$DWCROP. Some games (e.g. Dead Or Alive) output an unsupported 480p signal.",
+    "example": "$480p",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); config-table wiki $42A",
+    "confidence": "primary"
+  },
+  {
+    "name": "$HDTVFIX",
+    "category": "cheats",
+    "effect": "Enables a SetGsCrt hack (static interlace param). Helps HDTVs/LED TVs that can't deal with POPS interlaced resolutions over component (otherwise green screens / garbage). Hardcode-equivalent: config offset $412=0x01.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "INCOMPATIBLE with some CRT TVs (leave off on CRTs).",
+    "example": "$HDTVFIX",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800); config-table wiki $412",
+    "confidence": "primary"
+  },
+  {
+    "name": "$SCANLINES",
+    "category": "cheats",
+    "effect": "Enables the scanlines generator - draws horizontal raster lines to mimic old CRT TVs/tube monitors.",
+    "scope": "CHEATS.TXT per-game. Present in the 2020-06-26 wiki revision; NOT in the 2017 revisions.",
+    "conflicts": "Cosmetic; none documented.",
+    "example": "$SCANLINES",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20220218153800, 'Updated 2020-06-26'). MISSED BY BASE REPORT.",
+    "confidence": "primary"
+  },
+  {
+    "name": "$XPOS_####",
+    "category": "cheats",
+    "effect": "Centers/shifts the screen horizontally. #### is DECIMAL (no negatives). Default 640; below 640 moves left, above moves right.",
+    "scope": "CHEATS.TXT per-game. PAL/NTSC modes only.",
+    "conflicts": "NOT compatible with $480p.",
+    "example": "$XPOS_640",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms 'Default value : 640')",
+    "confidence": "primary"
+  },
+  {
+    "name": "$YPOS_##",
+    "category": "cheats",
+    "effect": "Centers/shifts the screen vertically. DECIMAL (no negatives). No default - depends on the game; higher moves down.",
+    "scope": "CHEATS.TXT per-game. PAL/NTSC only. Was broken in OBT15, fixed OBT16.",
+    "conflicts": "NOT compatible with $480p.",
+    "example": "$YPOS_20",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$DWSTRETCH_####",
+    "category": "cheats",
+    "effect": "Stretches the display horizontally. DECIMAL. Default 2559; increase to stretch right, decrease to stretch left.",
+    "scope": "CHEATS.TXT per-game. PAL/NTSC only.",
+    "conflicts": "NOT compatible with $480p.",
+    "example": "$DWSTRETCH_2559",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms 'Default value : 2559')",
+    "confidence": "primary"
+  },
+  {
+    "name": "$DWCROP_####",
+    "category": "cheats",
+    "effect": "Reduces/expands the display area width. DECIMAL. Maximum 2560; decrease to crop on the right.",
+    "scope": "CHEATS.TXT per-game. PAL/NTSC only.",
+    "conflicts": "NOT compatible with $480p.",
+    "example": "$DWCROP_2560",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 confirms 'Maximum value : 2560')",
+    "confidence": "primary"
+  },
+  {
+    "name": "$WIDESCREEN",
+    "category": "cheats",
+    "effect": "Enables the POPS GTE widescreen hack, forces 16:9. Does NOT fix HUDs, text/fonts, menus or 2D backgrounds (hack unfinished).",
+    "scope": "CHEATS.TXT per-game. Documented from 2017-10-28 wiki revision.",
+    "conflicts": "Pick one of $WIDESCREEN / $ULTRA_WIDESCREEN / $EYEFINITY.",
+    "example": "$WIDESCREEN",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$ULTRA_WIDESCREEN",
+    "category": "cheats",
+    "effect": "As $WIDESCREEN but wider FOV (matches no standard aspect ratio). No HUD/text/menu fix.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "Mutually exclusive with $WIDESCREEN / $EYEFINITY.",
+    "example": "$ULTRA_WIDESCREEN",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$EYEFINITY",
+    "category": "cheats",
+    "effect": "As $WIDESCREEN but 3x16:9 (triple-wide). No HUD/text/menu fix.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "Mutually exclusive with $WIDESCREEN / $ULTRA_WIDESCREEN.",
+    "example": "$EYEFINITY",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$MUTE_CDDA",
+    "category": "cheats",
+    "effect": "Mutes CDDA (Red Book) tracks. Done automatically when playing a physical PS1 CD-ROM.",
+    "scope": "CHEATS.TXT per-game. From 2017-10-28 wiki revision.",
+    "conflicts": "Pairs with $UNDO_MUTE_CDDA (opposite).",
+    "example": "$MUTE_CDDA",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$UNDO_MUTE_CDDA",
+    "category": "cheats",
+    "effect": "Unmutes CDDA tracks in PS1CD mode (overrides the automatic mute when reading a physical disc).",
+    "scope": "CHEATS.TXT per-game, PS1CD mode.",
+    "conflicts": "Opposite of $MUTE_CDDA.",
+    "example": "$UNDO_MUTE_CDDA",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$MUTE_VAB",
+    "category": "cheats",
+    "effect": "Mutes VAB/VAG/VB+VH-based sound/music. For old games with distorted SFX, wrong samples or noise.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "Silences SPU-streamed audio; cosmetic tradeoff.",
+    "example": "$MUTE_VAB",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$D2LS",
+    "category": "cheats",
+    "effect": "'Left Stick is the D-Pad' code + stay on Digital mode. Enables analog-stick support for games that don't support it natively. Recommended default; try $D2LS_ALT if it fails.",
+    "scope": "CHEATS.TXT per-game. Dedicated D2LS wiki page exists.",
+    "conflicts": "Use one of $D2LS / $D2LS_ALT, not both.",
+    "example": "$D2LS",
+    "provenance": "ShaolinAssassin wiki special-cheats + 'D2LS' page (Wayback 20170629123253 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$D2LS_ALT",
+    "category": "cheats",
+    "effect": "'Left Stick is the D-Pad' code + stay on Analog mode. Alternative when the digital-mode variant fails.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "Use one of $D2LS / $D2LS_ALT.",
+    "example": "$D2LS_ALT",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20170629123253 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$NOVMC0",
+    "category": "cheats",
+    "effect": "Use VMC1 only (do not mount VMC0, the first virtual memory card). Hardcode-equivalent partial: config offset $429.",
+    "scope": "CHEATS.TXT per-game. From 2017-10-28 wiki revision.",
+    "conflicts": "Pairs with $NOVMC1; don't set both or you have no VMC.",
+    "example": "$NOVMC0",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$NOVMC1",
+    "category": "cheats",
+    "effect": "Use VMC0 only (do not mount VMC1, the second virtual memory card).",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "Pairs with $NOVMC0.",
+    "example": "$NOVMC1",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$CACHE1",
+    "category": "cheats",
+    "effect": "Makes POPS buffer 1 sector instead of the default 16.",
+    "scope": "CHEATS.TXT per-game. Added r13 WIP05/06 era.",
+    "conflicts": "Performance/compatibility tradeoff; default is 16.",
+    "example": "$CACHE1",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$USBDELAY_#",
+    "category": "cheats",
+    "effect": "Sets the PFS-wrapper USB delay applied inside POPS (# = a number); smooths streaming on slow USB devices. NOTE: this patches POPS, NOT POPStarter - it does NOT fix 'USB drive not detected' (use config offset $413 for that).",
+    "scope": "CHEATS.TXT per-game/global. Added r13 WIP05/06 era.",
+    "conflicts": "Beta 13 fixed '$USBDELAY_# didn't coexist with $C0 codes' - now they coexist. Distinct from the $413 ELF byte.",
+    "example": "$USBDELAY_5",
+    "provenance": "ShaolinAssassin wiki special-cheats; krHACKen r13 changelog (Pastebin 719TCAd5); $413-vs-$USBDELAY distinction from ps2-home debug tutorial t=5311",
+    "confidence": "primary"
+  },
+  {
+    "name": "$UNDO_GAME_FIXES",
+    "category": "cheats",
+    "effect": "Prevents POPStarter from applying its built-in per-game fixes (re-exposes original bugs). Some fixes became obsolete via later POPS patches, so it may not re-expose every problem (e.g. Crash Bandicoot PAL now works without its fix).",
+    "scope": "CHEATS.TXT per-game. Present in the 2020-06-26 wiki revision.",
+    "conflicts": "Diagnostic/advanced; turns OFF the automated compatibility fixes.",
+    "example": "$UNDO_GAME_FIXES",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20220218153800, 'Updated 2020-06-26')",
+    "confidence": "primary"
+  },
+  {
+    "name": "Raw GameShark/AR code line ($<addr> <val>)",
+    "category": "cheats",
+    "effect": "Any line starting with $ followed by address, a space, then value is applied as a raw cheat. PS1 RAW types 30/50/80/D0 (GameShark/Action Replay) supported; PS2 RAW types 0/1/2 supported.",
+    "scope": "CHEATS.TXT in the game's VMC folder (per-game) or in the POPS root (ALL games). Engine present since WIP06 OBT01.",
+    "conflicts": "Each code line MUST have a space between address and value. (Base claim that a root CHEATS.TXT BLOCKS per-game ones is NOT on the wiki - see VMC priority rule and ambiguities.)",
+    "example": "$800AC402 0800",
+    "provenance": "ShaolinAssassin wiki cheat-engine (Wayback 20170629113247)",
+    "confidence": "primary"
+  },
+  {
+    "name": "C0 master code",
+    "category": "cheats",
+    "effect": "Some PS1 games require a master/enable code or they crash (e.g. Air Race Championship). ONLY type C0 master codes are supported; type C1 (activation-on-delay-time) are not and 'will not be' supported.",
+    "scope": "CHEATS.TXT per-game. Beta 13 fixed an 'incorrect load instruction for $C0' bug and a $USBDELAY/$C0 coexistence bug.",
+    "conflicts": "C1 codes silently unsupported.",
+    "example": "$C00AB840 1234",
+    "provenance": "ShaolinAssassin wiki cheat-engine (Wayback 20170629113247); krHACKen r13 changelog $C0 fixes (Pastebin 719TCAd5)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PS1->PS2 RAW conversion / external mastercode",
+    "category": "cheats",
+    "effect": "To convert a PS1 code to PS2 RAW, add 01000000 to the address and follow the target engine's code-type rules. The POPS mastercode for EXTERNAL PS2 cheat devices (ps2rd/CodeBreaker) is 902377F4 0C0902EF - NOT needed when using CHEATS.TXT.",
+    "scope": "Applies when porting external PS1 cheat lists or using a hardware/software PS2 cheat device.",
+    "conflicts": "Do NOT add the 902377F4 mastercode inside CHEATS.TXT.",
+    "example": "902377F4 0C0902EF",
+    "provenance": "ShaolinAssassin wiki cheat-engine (Wayback 20170629113247)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Rumble Always On raw codes",
+    "category": "cheats",
+    "effect": "$00507028 00000001 = Pad 1 rumble always on; $005070B8 00000001 = Pad 2 rumble always on. Pre-listed example raw codes.",
+    "scope": "CHEATS.TXT per-game.",
+    "conflicts": "None.",
+    "example": "$00507028 00000001",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20190403162824 / 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "LibCrypt example block (Jackie Chan Stuntmaster PAL)",
+    "category": "cheats",
+    "effect": "A complete real LibCrypt fix code block to use when the built-in crack and $FAKELC both fail: $20210CF8 2442FFFF / $20210CFC 7C640000 / $20210D00 00000000 / $20210D04 00000000 / $20210D08 00000000 / $00210D0C 000000FA / $S200009C 1F000000.",
+    "scope": "CHEATS.TXT per-game (Jackie Chan Stuntmaster PAL, also see SCES-01444 entry).",
+    "conflicts": "Use instead of $FAKELC when the disc batch lacks LibCrypt.",
+    "example": "$20210CF8 2442FFFF (first line of the block)",
+    "provenance": "ShaolinAssassin wiki special-cheats (Wayback 20220218153800)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_1.BIN (mode 0x01)",
+    "category": "patches",
+    "effect": "'Helps restoring the music/voices in several games.'",
+    "scope": "Drop in game VMC dir (one game) or POPS dir (all games). r13.",
+    "conflicts": "MUST NOT combine with modes 0x02/0x03/0x05. May combine with 0x04/0x06.",
+    "example": "Drop PATCH_1.BIN, or put $COMPATIBILITY_0x01 in CHEATS.TXT",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_2.BIN (mode 0x02)",
+    "category": "patches",
+    "effect": "Variant of mode 0x01 with a second hack to not break MDECoding of FMVs (designed for the Colony Wars series).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "MUST NOT combine with 0x01/0x03/0x05. May combine with 0x04/0x06.",
+    "example": "$COMPATIBILITY_0x02",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_3.BIN (mode 0x03)",
+    "category": "patches",
+    "effect": "Alternate to mode 0x01 - use when 0x01 doesn't give the expected results.",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "MUST NOT combine with 0x01/0x02/0x05. May combine with 0x04/0x06.",
+    "example": "$COMPATIBILITY_0x03",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_4.BIN (mode 0x04)",
+    "category": "patches",
+    "effect": "Fixes slowdowns, flickering and many glitches (prevents the emulator writing a garbage value into two virtual GPU registers).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "SAFE to combine with 0x01/0x02/0x03/0x06. Documented combos: 1+4, 2+4, 1+4+6.",
+    "example": "$COMPATIBILITY_0x01 + $COMPATIBILITY_0x04 (allowed combo)",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_5.BIN (mode 0x05)",
+    "category": "patches",
+    "effect": "Fixes the cutscenes of PAL Resident Evil: Director's Cut. Still shipped as PATCH_5.BIN.",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "MUST NOT combine with 0x01/0x02/0x03. May combine with 0x04/0x06.",
+    "example": "$COMPATIBILITY_0x05",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_6.BIN (mode 0x06)",
+    "category": "patches",
+    "effect": "Disables the OSD shell of the emulator's built-in BIOS, making some games that freeze on startup run.",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "SAFE to combine. Documented combos: 3+6, 1+4+6, 6+4 (Tekken 3). Hardcode-equivalent: config offset $421=0x01.",
+    "example": "$COMPATIBILITY_0x06",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Mode 0x07 ($COMPATIBILITY_0x07)",
+    "category": "patches",
+    "effect": "Fixes missing-textures problems (example: Tomb Raider III). This mode IS documented in the recovered wiki compatibility table (it is not new/undocumented). Wiki caveat: \"Unfinished (breaks the gamma)\"; the 2024 wiki snapshot marks this mode obsolete. No documented stock PATCH_7.BIN ships it.",
+    "scope": "r13. Via $COMPATIBILITY_0x07 in CHEATS.TXT.",
+    "conflicts": "The wiki does not state combinability for 0x07 — treat with caution. (Modes 0x01/0x02/0x03/0x05 are the mutually-exclusive CD-status set.)",
+    "example": "$COMPATIBILITY_0x07",
+    "provenance": "ShaolinAssassin wiki compatibility + krHACKen changelog (Wayback 20170629151818 / 20170629142002)",
+    "confidence": "primary"
+  },
+  {
+    "name": "No-combine rule (modes 0x01/0x02/0x03/0x05)",
+    "category": "patches",
+    "effect": "'Modes 0x01, 0x02, 0x03 and 0x05 cannot be combined - variants of the same hack, conflicting; use only one at a time.' These four poke CD status; 0x04/0x06/0x07 are independent and combinable.",
+    "scope": "All compatibility-mode entry points (PATCH file, CHEATS.TXT, hardcoded $418-$41F). r13.",
+    "conflicts": "Valid combos: 1+4, 2+4, 3+6, 1+4+6. Invalid: any two of 1/2/3/5.",
+    "example": "OK: 0x01+0x04. WRONG: 0x01+0x02",
+    "provenance": "ShaolinAssassin wiki compatibility (Wayback 20170629151818)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_7.BIN",
+    "category": "patches",
+    "effect": "UNDOCUMENTED / AMBIGUOUS. Absent from the surviving wiki, r13 changelog, IGR download table, and the community manual (which jumps PATCH_6 -> PATCH_8). Older (2014 krHACKen, ASSEMblergames) lore says it forced mode 0x06; later mirrors call 'Mode 7' obsolete. No primary file recovered. DISTINCT from the verified TROJAN_7.BIN game-fix bundle.",
+    "scope": "Unknown / legacy. NOT in r13 stock asset set.",
+    "conflicts": "Cannot be assessed - file unverified.",
+    "example": "(none - existence unconfirmed)",
+    "provenance": "NEGATIVE EVIDENCE: absent from wiki compatibility, changelog, IGR thread t=9909, and PDFCoffee manual. Lore only.",
+    "confidence": "unverified"
+  },
+  {
+    "name": "PATCH_8.BIN (PAL / $FORCEPAL)",
+    "category": "patches",
+    "effect": "Forces PAL output: activates the PAL patcher AND patches the BIOS region code to Euro (boot screen in PAL). For PAL VCDs with no/broken license text. Equivalent to $FORCEPAL.",
+    "scope": "Game VMC dir or POPS dir, or use $FORCEPAL. r13.",
+    "conflicts": "Opposite of stock PATCH_9.BIN/$NOPAL. The literal file name is documented in a community manual (mirror); primary docs document the equivalent $FORCEPAL command.",
+    "example": "$FORCEPAL (or drop PATCH_8.BIN)",
+    "provenance": "$FORCEPAL semantics PRIMARY (wiki special-cheats); 'PATCH_8.BIN = PAL' file name from community manual (pdfcoffee) + ps2-home t=621",
+    "confidence": "mirror"
+  },
+  {
+    "name": "PATCH_9.BIN (STOCK = $NOPAL)",
+    "category": "patches",
+    "effect": "The long-standing stock file. Disables POPStarter's automatic PAL patcher so a PAL game runs in POPS native NTSC video. Equivalent to $NOPAL. Wiki: 'PATCH_9.BIN now obsolete (still working tho)' because GSM v0.23x auto-detection later made it usually unnecessary.",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Opposite of PATCH_8/$FORCEPAL. DISTINCT FILE from the 2020 IGR-fix PATCH_9.BIN (same name, different binary). Hardcode-equivalent: config $42A=0x00 / NO_PAL.PPF.",
+    "example": "$NOPAL (or drop stock PATCH_9.BIN to run a PAL VCD in NTSC)",
+    "provenance": "ShaolinAssassin wiki special-cheats ('$NOPAL - PATCH_9.BIN now obsolete', Wayback 20170626021721); ps2-home t=621",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_9.BIN (2020 IGR-loader-disable / return-to-OPL)",
+    "category": "patches",
+    "effect": "A SEPARATE krHACKen file released 2020-03-21 that REUSES the name PATCH_9.BIN. Disables POPStarter's bugged ELF loader (the Beta-13 BOOT.ELF launcher) so IGR/quit falls back to OSDSYS/Browser; with FMCB's button action repointed to OPNPS2LD.ELF, IGR then chains into OPL. Restores 'IGR back to OPL' which BETA-13 broke.",
+    "scope": "Drop in POPS dir (mass0:/POPS/, hdd __common/POPS, SMB share/POPS). Requires FMCB. r13 + BETA13 era. PATCH_9.7z MD5 9db1e18bae92c4991e3de7e2a752558c (188 bytes).",
+    "conflicts": "NAME-COLLIDES with the stock $NOPAL PATCH_9.BIN - different binaries, same filename. Distributed via the IGR 'Trojans and Patches' thread, not the PAL/NTSC docs.",
+    "example": "mass0:/POPS/PATCH_9.BIN (the 2020 return-to-OPL build) + FMCB Configurator -> OSDSYS action = mc1:/OPL/OPNPS2LD.ELF",
+    "provenance": "PS2-HOME t=127 (Wayback 20230619145423 / 20230922122931) + IGR thread t=9909 (Wayback 20230623044907)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH_0.BIN",
+    "category": "patches",
+    "effect": "Disables the IGR menu. Equivalent to $NOIGR. An IGR behaviour modifier shipped as a PATCH file. MD5 PATCH_0.zip b8d32e32d9d27c58e6558f9ad538f555 (221 bytes).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Mutually exclusive with the TROJAN_0..5 IGR modifiers. CHEATS.TXT equivalent: $NOIGR.",
+    "example": "Copy PATCH_0.BIN to POPS dir to kill the IGR menu globally (or $NOIGR)",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PATCH/TROJAN header-number integrity check",
+    "category": "patches",
+    "effect": "POPStarter validates that the NUMBER in a PATCH/TROJAN filename matches a number stored in the file's header (TROJAN build-ID at offset Ah, version at offset Ch=0x03). It refuses to load the file if they don't match; stale-version files auto-skip. To reuse a slot, rename AND hex-edit the header number.",
+    "scope": "All PATCH_#.BIN and TROJAN_#.BIN, both VMC-dir and POPS-dir. r13.",
+    "conflicts": "Renaming without editing the header = silently ignored. This is the mechanism behind the 2015 WIP06 Beta-3 changelog 'fixed TROJAN/PATCH integrity check failures'.",
+    "example": "To run two copies: rename PATCH_1.BIN -> PATCH_3.BIN AND hex-edit the embedded '1' -> '3' in its header",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907); Dekazeta r13 changelog (TROJAN build-ID offsets)",
+    "confidence": "primary"
+  },
+  {
+    "name": "PPF bunch pack (on-load patches)",
+    "category": "patches",
+    "effect": "A set of .PPF patches (apply over POPSTARTER.ELF with PPF-O-Matic) that toggle config-table bytes without hex editing: NO_LC_CRACKS.PPF, DEBUG_AND_HALT.PPF ($410+$411), NO_VMC.PPF ($429=01), ONLY_1ST_VMC.PPF ($429=02), NO_PAL.PPF ($42A=00), FORCE_MODEX.PPF ($418-$41F), DEFAULT_IGR_TEXTURES.PPF ($42D=00), LC_ONLY.PPF ($42F=02), NO_AUTO_PATCH.PPF ($42F=00).",
+    "scope": "Applied to POPSTARTER.ELF/.KELF, r13.",
+    "conflicts": "PPF-O-Matic is flagged by some AV (false positive). Don't stack contradictory ones.",
+    "example": "Apply DEBUG_AND_HALT.PPF to turn on the diagnostic screen instead of hand-editing $410/$411",
+    "provenance": "ShaolinAssassin wiki configuration-table PPF section (Wayback 20170626021731); ps2-home debug tutorial t=5311",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN file - DEFINITION",
+    "category": "trojans",
+    "effect": "In POPStarter a 'TROJAN' is NOT malware - it is krHACKen's NAME for a binary patch asset (TROJAN_#.BIN) loaded from the game's VMC folder or the POPS folder. Serves TWO roles: (1) IGR BEHAVIOUR MODIFIERS (TROJAN_0..5 = alternate IGR combo/quit method, TROJAN_9 = no-2nd-pad-in-IGR); (2) GAME FIXES (per-game-ID AntiCrash/LoadinFix/Boot Fix/SkipVSync/Skip-CutScenes from the 'game fixes archive', bundled cumulatively e.g. TROJAN_7). Differs from PATCH_#.BIN (forces compatibility modes / disables IGR) and CHEATS.TXT (plain-text $commands + raw codes).",
+    "scope": "Game VMC dir (one game) or POPS dir (all games). r13. Obeys the header-number integrity check.",
+    "conflicts": "A TROJAN IGR-modifier conflicts with PATCH_0/other IGR modifiers (pick one). Game-fix TROJANs are per-game-ID and generally independent.",
+    "example": "Game fix: copy a 'WipEout AntiCrash' TROJAN into the WipEout VMC dir. IGR mod: copy TROJAN_1.BIN for a Start+Select reset combo.",
+    "provenance": "ShaolinAssassin wiki compatibility + igr (Wayback 20170629151818 / 20170629144509)",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_0.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - OPENS the IGR menu on a 6-button combo. CHEATS.TXT equivalent: $IGR0 (L1+L2+R1+R2+X+Down). MD5 TROJAN_0.zip 9c431cb92e72d38dcd015d2d1840e3c5 (246B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Pick one IGR modifier only.",
+    "example": "$IGR0 (equivalent to dropping TROJAN_0.BIN)",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909 (Wayback 20170629144509 / 20230623044907)",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_1.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - OPENS the IGR menu on Start+Select. CHEATS.TXT equivalent: $IGR1. MD5 d5551d731a0eae6745e894d8a1b823ed (248B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Exclusive with other IGR modifiers.",
+    "example": "$IGR1",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_2.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - OPENS the IGR menu on L1+L2+R1+R2+Start+Select. CHEATS.TXT equivalent: $IGR2. MD5 5a5e519f2f396eb5323719a659790bee (245B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Exclusive with other IGR modifiers.",
+    "example": "$IGR2",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_3.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - TERMINATES POPS (no menu) on L1+L2+R1+R2+X+Down. CHEATS.TXT equivalent: $IGR3. MD5 c85f0e2a9ef4e4ea35ab1462493c6a2d (263B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Exclusive with other IGR modifiers.",
+    "example": "$IGR3",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_4.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - TERMINATES POPS (no menu) on Start+Select. CHEATS.TXT equivalent: $IGR4. MD5 8ac51ec7e36e1bf06f6ddd1f072b2c9f (262B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Exclusive with other IGR modifiers.",
+    "example": "$IGR4",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_5.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier - TERMINATES POPS (no menu) on L1+L2+R1+R2+Start+Select (the OPL-style no-popup combo). CHEATS.TXT equivalent: $IGR5. MD5 fb0ee2841ca3c40f2483ac4c00c4594c (260B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Exclusive with other IGR modifiers.",
+    "example": "$IGR5",
+    "provenance": "ShaolinAssassin wiki igr + IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_7.BIN",
+    "category": "trojans",
+    "effect": "GAME-FIX BUNDLE (not an IGR modifier). 'Cumulative r6, fixes as of 2020/05/20' - a cumulative pack of per-game crash/compat fixes; released 2020-08-13. MD5 TROJAN_7.zip e5e150f8be4da1fa822b90cb9682cf8e (775B - notably larger than the IGR TROJANs).",
+    "scope": "Game VMC dir or POPS dir. 2020-era r13.",
+    "conflicts": "A game-fix asset, distinct from the IGR-combo TROJANs; the number does not imply an IGR role.",
+    "example": "Drop TROJAN_7.BIN in POPS dir to apply the 2020-05-20 cumulative game fixes",
+    "provenance": "IGR 'Trojans and Patches' thread t=9909 (Wayback 20230623044907)",
+    "confidence": "primary"
+  },
+  {
+    "name": "TROJAN_9.BIN",
+    "category": "trojans",
+    "effect": "IGR behaviour modifier variant - 'No 2nd Pad in IGR' (ignores controller port 2 input in the IGR menu so a 2nd pad can't trigger/navigate it). MD5 TROJAN_9.zip b6960e9a26034723eeea0ebcbe114334 (250B).",
+    "scope": "Game VMC dir or POPS dir. r13.",
+    "conflicts": "Interacts with the chosen IGR combo; addresses 2-pad IGR misfires.",
+    "example": "Drop TROJAN_9.BIN to stop pad-2 from opening the IGR menu",
+    "provenance": "IGR 'Trojans and Patches' thread t=9909 (Wayback 20230623044907)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR0",
+    "category": "igr",
+    "effect": "Hold L1+L2+R1+R2+X+Down to OPEN the IGR menu.",
+    "scope": "CHEATS.TXT command, integrated 2016/11/20 WIP06 Beta 16. Standalone equivalent: TROJAN_0.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR. A global CHEATS.TXT can override per-game.",
+    "example": "$IGR0",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 303 (archive.org popstarter-r-13-beta-20190605); wiki igr glyphs (Wayback 20190403162824)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR1",
+    "category": "igr",
+    "effect": "Hold Start+Select to OPEN the IGR menu.",
+    "scope": "CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_1.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR.",
+    "example": "$IGR1",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 304",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR2",
+    "category": "igr",
+    "effect": "Hold L1+L2+R1+R2+Start+Select to OPEN the IGR menu.",
+    "scope": "CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_2.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR.",
+    "example": "$IGR2",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 305",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR3",
+    "category": "igr",
+    "effect": "Hold L1+L2+R1+R2+X+Down to TERMINATE POPS directly (no menu). On quit POPStarter then tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF, else Browser/OSDSYS.",
+    "scope": "CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_3.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR. No documented BOOT.ELF path override.",
+    "example": "$IGR3",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 306; BOOT.ELF chain CHANGES.TXT Beta 13",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR4",
+    "category": "igr",
+    "effect": "Hold Start+Select to TERMINATE POPS directly (no menu).",
+    "scope": "CHEATS.TXT command (Beta 16, 2016/11/20). Standalone equivalent: TROJAN_4.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR. The Portuguese PDFCoffee/Scribd manual mistranslates $IGR4/$IGR5 ordering - the canonical CHANGES.TXT is authoritative.",
+    "example": "$IGR4",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 307",
+    "confidence": "primary"
+  },
+  {
+    "name": "$IGR5",
+    "category": "igr",
+    "effect": "Hold L1+L2+R1+R2+Start+Select to TERMINATE POPS directly (no menu) - the OPL-style no-popup exit macro. Was broken in earlier r13 builds and FIXED in the final 2019/06/05 build.",
+    "scope": "CHEATS.TXT command (Beta 16, 2016/11/20; fixed 2019/06/05). Standalone equivalent: TROJAN_5.BIN.",
+    "conflicts": "Mutually exclusive with other $IGR#/$NOIGR. Combo matches OPL's own IGR exit macro. CORRECTS base report's combo gloss to L1+L2+R1+R2+Start+Select.",
+    "example": "$IGR5",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 308 + line 9 ('$IGR5 was not working, fixed in this last build'); OPL macro https://github.com/ps2homebrew/Open-PS2-Loader/discussions/543",
+    "confidence": "primary"
+  },
+  {
+    "name": "$NOIGR",
+    "category": "igr",
+    "effect": "Disables the IGR menu entirely (no in-game-reset trigger). Means the only exit is whatever the game itself or a hard reset provides.",
+    "scope": "CHEATS.TXT command. Standalone equivalent: PATCH_0.BIN.",
+    "conflicts": "Overrides any $IGR# combo.",
+    "example": "$NOIGR",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 309; PATCH_0.BIN equivalent IGR thread t=9909",
+    "confidence": "primary"
+  },
+  {
+    "name": "Default IGR trigger (no modifier)",
+    "category": "igr",
+    "effect": "With no $IGR#/TROJAN set, the default combo (community-reported L1+Select+Start) opens POPStarter's IGR menu - a Japanese-language reset/return prompt. The IGR 'skin' is enabled by default in the config table.",
+    "scope": "All r13 betas. Menu text is Japanese unless a translated IGR texture is installed.",
+    "conflicts": "Overridden by any $IGR#/$NOIGR or TROJAN_#.BIN/PATCH_0.BIN.",
+    "example": "In-game hold L1+Select+Start -> IGR menu -> YES -> confirm",
+    "provenance": "PRIMARY skin default: CHANGES.TXT line 702 (2014/08/22 WIP02). NEAR-PRIMARY combo: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "BOOT.ELF exit chain",
+    "category": "igr",
+    "effect": "On IGR quit AND on POPStarter quit-on-failure, the launcher tries mc0:/BOOT/BOOT.ELF, then mc1:/BOOT/BOOT.ELF; if not found/invalid it exits to the PS2 Browser (OSDSYS, which runs FMCB/FHDB if installed). Added 2015/12/07 WIP06 Beta 13. mc0 before mc1.",
+    "scope": "Global, all storage modes; Beta 13 -> r13 final. Gated by config $424=0x01 (the r13 IGR exit method).",
+    "conflicts": "If POPS itself can't init (modules/VCD), the launcher is NOT invoked - you drop straight to OSD. No way to point the chain at MASS/HDD; BOOT.ELF must live on a memory card.",
+    "example": "Put your launcher at mc0:/BOOT/BOOT.ELF so IGR-quit returns there",
+    "provenance": "PRIMARY: r13 CHANGES.TXT lines 388-391 (archive.org popstarter-r-13-beta-20190605); Jay-Jay PS2-HOME t=127 (Wayback 20230619145423)",
+    "confidence": "primary"
+  },
+  {
+    "name": "No documented BOOT.ELF path override",
+    "category": "igr",
+    "effect": "There is NO config/command to redirect the exit chain away from mc0/mc1:/BOOT/BOOT.ELF - the path is hard-coded. A user (Jay-Jay) publicly asked krHACKen for an override on 2016-11-28; it was never implemented through r13.",
+    "scope": "All r13 builds through 2019/06/05.",
+    "conflicts": "Only escapes: replace BOOT.ELF with your launcher, $NOIGR/$IGR5 to suppress, or the 2020 PATCH_9.BIN to fall back to OSDSYS.",
+    "example": "Want IGR to land in uLaunchELF? Name uLaunchELF itself BOOT.ELF at mc0:/BOOT/BOOT.ELF",
+    "provenance": "NEAR-PRIMARY: Jay-Jay PS2-HOME t=127 (Wayback 20230619145423); absent from CHANGES.TXT",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "Quit-on-failure uses the same BOOT.ELF chain",
+    "category": "igr",
+    "effect": "POPStarter's quit-on-failure code (when POPStarter, not POPS, bails) runs the SAME mc0/mc1:/BOOT/BOOT.ELF -> Browser chain as IGR exit. Added together in Beta 13.",
+    "scope": "Since 2015/12/07 Beta 13.",
+    "conflicts": "Only applies when POPStarter reaches the failure path; a POPS init failure bypasses it and drops to OSD.",
+    "example": "(automatic)",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 389",
+    "confidence": "primary"
+  },
+  {
+    "name": "Untested PS1 software-reset hotkey (Select+L2+R2+X)",
+    "category": "igr",
+    "effect": "An additional, explicitly-untested PS1 software reset combo added alongside the IGR-modifier integration. Note the same combo was earlier a speed-up/FPS-boost hotkey (combo reuse across builds).",
+    "scope": "Added ~Beta 16. Marked untested by the author.",
+    "conflicts": "Reliability unknown (author flagged it untested).",
+    "example": "Select+L2+R2+X",
+    "provenance": "PRIMARY: r13 CHANGES.TXT line 310",
+    "confidence": "primary"
+  },
+  {
+    "name": "Config table location/size",
+    "category": "config",
+    "effect": "The POPStarter r13 ELF and KELF contain a 32-byte configuration table from file offset $410 (1040 dec) through $42F, one byte per setting. Verified default table: 00 00 00 02 40 00 03 01 | 00 00 00 00 00 00 00 00 | 01 00 01 01 01 01 01 01 | 01 00 01 01 01 01 01 03. ELF (167700B) and KELF (167708B) tables are byte-identical. There is NO offset above $42F.",
+    "scope": "POPSTARTER.ELF/.KELF, r13. Patch via hex edit or the PPF bunch pack.",
+    "conflicts": "krHACKen: 'don't tamper unless you know exactly what it is for; back up the default config first.'",
+    "example": "$410..$42F = 00 00 00 02 40 00 03 01 00 00 00 00 00 00 00 00 01 00 01 01 01 01 01 01 01 00 01 01 01 01 01 03",
+    "provenance": "PRIMARY: config-table wiki (Wayback 20170626021731 / 20220321112104) + direct hexdump of archive.org popstarter-r-13-beta-20190605",
+    "confidence": "primary"
+  },
+  {
+    "name": "$410 - debug text display",
+    "category": "config",
+    "effect": "0x00 = debug printing DISABLED (factory default, the 'classic' build). 0x01-0xFE = delay between debug pages (higher = longer; ~0x12/18 dec readable). 0xFF = realtime debug text (POPStarter 12 behavior). Basis of the community 'classic 00 vs debug FF' label.",
+    "scope": "POPSTARTER.ELF/.KELF byte $410. r13. SMB-mode setups effectively run debug-on.",
+    "conflicts": "Equivalent to applying DEBUG_AND_HALT.PPF (which also sets $411).",
+    "example": "Set byte $410 to 12 (=18 dec) for paced debug pages, or FF for realtime",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311 (Wayback 20190808161830)",
+    "confidence": "primary"
+  },
+  {
+    "name": "$411 - break/halt on error",
+    "category": "config",
+    "effect": "0x00 = print the error briefly then kick to PS2 OSD (default). Non-zero = print the error and sleep on that screen indefinitely (so you can read it).",
+    "scope": "POPSTARTER.ELF/.KELF byte $411. r13. Default 0x00.",
+    "conflicts": "Pairs with $410: DEBUG_AND_HALT.PPF sets both.",
+    "example": "Set $411=0x01 to freeze on the error/debug screen when a game fails to boot",
+    "provenance": "PRIMARY: config-table wiki (Wayback 20170626021731) + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$412 - SetGsCrt / HDTVFIX hack",
+    "category": "config",
+    "effect": "0x00 = disabled (default). 0x01 = enabled. The feature exposed as the $HDTVFIX cheat. CORRECTION to base report: in r13 $412 is HDTVFIX, NOT a 'function skipper'. The function skipper lived at $412 ONLY in pre-Beta-13 builds and was REMOVED in WIP06 Beta 13 (2015-12-07, ~10KB saved); the freed byte was repurposed for SetGsCrt in Beta 15/16 (2016).",
+    "scope": "POPSTARTER.ELF/.KELF byte $412. r13. Default 0x00. SetGsCrt implemented Beta 15, default-off Beta 16.",
+    "conflicts": "INCOMPATIBLE with some CRT TVs. Equivalent to $HDTVFIX.",
+    "example": "$HDTVFIX, or hex-edit byte $412=0x01, to fix green-screen on a component HDTV",
+    "provenance": "PRIMARY: r13 CHANGES.TXT (function-skipper removal 2015/12/07; HDTVFIX 2016/09/18 + 2016/11/20) + config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$413 - USB access delay",
+    "category": "config",
+    "effect": "USB access delay applied AFTER POPStarter's embedded USB modules run (how long it waits before reaching the USB device). Default 0x02. Increase if POPStarter fails to access the USB device.",
+    "scope": "POPSTARTER.ELF/.KELF byte $413. r13. USB mode. Default 0x02 (verified).",
+    "conflicts": "DO NOT confuse with the $USBDELAY_# CHEATS.TXT command (that patches POPS for streaming and does NOT help find the drive). Distinct from the old PFS-wrapper delay at $417.",
+    "example": "USB drive not detected: hex-edit byte $413 from 02 up to 05/0A until it mounts",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump; ps2-home debug tutorial t=5311",
+    "confidence": "primary"
+  },
+  {
+    "name": "$414 - RESERVED",
+    "category": "config",
+    "effect": "RESERVED (in USB operation mode). Must be 0x40. Not a user tunable.",
+    "scope": "POPSTARTER.ELF/.KELF byte $414. r13. Default 0x40.",
+    "conflicts": "Changing it can break USB operation.",
+    "example": "(leave at 0x40)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$415 - per-VMC user ID",
+    "category": "config",
+    "effect": "User ID for individual VMCs. 0x00 = disabled (default). Set to the ASCII code of a digit '0'..'9' (0x30..0x39) to tag the VMC pair to a user (lets multiple users keep separate VMCs from one install).",
+    "scope": "POPSTARTER.ELF/.KELF byte $415. r13. Default 0x00.",
+    "conflicts": "Value must be a literal ASCII digit byte (0x31 for '1'), not raw 0x01.",
+    "example": "Set $415=0x32 (ASCII '2') so this build uses VMCs tagged for user 2",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$416 - POPS dev9 module loading",
+    "category": "config",
+    "effect": "POPS dev9 module loading (USB mode). 0x00 = let POPS load dev9. 0x03 = forbid loading (default). Set 0x00 to wake the NIC (e.g. for debugging).",
+    "scope": "POPSTARTER.ELF/.KELF byte $416. r13. Default 0x03.",
+    "conflicts": "Only relevant in USB mode.",
+    "example": "(default 0x03 keeps NIC off during USB play)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$417 - NOT USED (legacy PFS-wrapper USB delay)",
+    "category": "config",
+    "effect": "Marked 'NOT USED' in the r13 wiki (vestigial; shipped byte reads 0x01). HISTORICALLY this was the PFS-wrapper USB delay (default 0x05 in Beta 2 2015-06-25, changed to 0x00 in Beta 8 2015-10-23). Old guides citing 'USB delay at 417h' refer to this obsolete PFS-wrapper delay; in r13 use $413.",
+    "scope": "POPSTARTER.ELF/.KELF byte $417. r13 = NOT USED; 2015 betas = PFS-wrapper delay.",
+    "conflicts": "Do not patch $417 expecting a USB-detect fix in r13.",
+    "example": "(do not edit; use $413 instead)",
+    "provenance": "PRIMARY: r13 CHANGES.TXT (Beta 2 + Beta 8) + config-table wiki + ELF hexdump; Pastebin 719TCAd5",
+    "confidence": "primary"
+  },
+  {
+    "name": "$418-$41F - force compatibility modes (8 slots)",
+    "category": "config",
+    "effect": "Force a single compatibility mode per byte; 8 slots = force up to 8 modes simultaneously. Per byte: 0x00 = no mode; 0x0X = force that mode AND disable the automatic activator. All default 0x00. The 8-slot design was added WIP02 (2014-08-22).",
+    "scope": "POPSTARTER.ELF/.KELF bytes $418-$41F. r13.",
+    "conflicts": "Hardcoded equivalent of $COMPATIBILITY_0x##. Modes 0x01/0x02/0x03/0x05 still must NOT be combined. Forcing any mode here interacts with $42F (auto-changes 0x03 -> 0x02).",
+    "example": "Hardcode mode 0x04 + 0x06 globally: $418=0x04, $419=0x06 (rest 0x00)",
+    "provenance": "PRIMARY: config-table wiki + CHANGES.TXT 2014/08/22 + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$420 - patch the genuine HDD check",
+    "category": "config",
+    "effect": "0x00 = don't patch. 0x01 = patch (default). Effectively a no-op for end users (homebrew ATAD on PS2, original POPS ATAD on PSX). krHACKen: 'totally useless, leave it to 0x01.'",
+    "scope": "POPSTARTER.ELF/.KELF byte $420. r13. Default 0x01.",
+    "conflicts": "No practical reason to change.",
+    "example": "(leave at 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$421 - load/execute POPS BIOS OSD shell",
+    "category": "config",
+    "effect": "0x00 = load into user memory and execute (default; don't patch). 0x01 = don't load/execute - same effect as compatibility mode 0x06 (skips CD checks and the PS logo). Neither value applies if a user BIOS.BIN is supplied.",
+    "scope": "POPSTARTER.ELF/.KELF byte $421. r13. Default 0x00.",
+    "conflicts": "Hardcoded equivalent of mode 0x06 / $COMPATIBILITY_0x06. Overridden by a user BIOS.BIN.",
+    "example": "Set $421=0x01 to globally skip the BIOS OSD shell / PS logo (same as mode 6)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$422 - exception breakpoints",
+    "category": "config",
+    "effect": "0x00 = break the emulator. 0x01 = NOP the 2nd-stage exception handler's break instructions, allowing IGR after the emulation has crashed (in a few cases). Shipped default 0x01.",
+    "scope": "POPSTARTER.ELF/.KELF byte $422. r13. Default 0x01.",
+    "conflicts": "Debug/recovery aid.",
+    "example": "(default 0x01 lets you IGR out of a crashed emulator)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$423 - SLBB-00001 disc0 integrity check",
+    "category": "config",
+    "effect": "Original SLBB-00001 disc0 integrity-check control. 0x00 = don't skip. 0x01 = skip (default). Relates to the PSX/PSBBN SLBB-00001 boot disc path.",
+    "scope": "POPSTARTER.ELF/.KELF byte $423. r13. Default 0x01.",
+    "conflicts": "",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$424 - IGR exit method",
+    "category": "config",
+    "effect": "0x00 = original SLBB-00001+PSBBN method (reads MBR itself, no cache flush, no IOP reset - crashy for most users). 0x01 = POPStarter r13 method (default), which enables the mc0->mc1:/BOOT/BOOT.ELF->OSDSYS exit chain from Beta 13.",
+    "scope": "POPSTARTER.ELF/.KELF byte $424. r13. Default 0x01.",
+    "conflicts": "Leaving 0x00 reproduces the old crashy exit.",
+    "example": "(default 0x01 enables the BOOT.ELF exit chain)",
+    "provenance": "PRIMARY: config-table wiki + CHANGES.TXT 2015/12/07 + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$425 - IOPCD stack size patch",
+    "category": "config",
+    "effect": "IOPCD stack size patch (USB mode). 0x00 = don't patch. 0x01 = patch (default).",
+    "scope": "POPSTARTER.ELF/.KELF byte $425. r13. Default 0x01. USB mode.",
+    "conflicts": "",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$426 - Delcro's patches",
+    "category": "config",
+    "effect": "Delcro's patches (USB mode). 0x00 = don't apply to POPS. 0x01 = apply (default).",
+    "scope": "POPSTARTER.ELF/.KELF byte $426. r13. Default 0x01. USB mode.",
+    "conflicts": "",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$427 - emulator-modules load-failure behavior",
+    "category": "config",
+    "effect": "0x00 = don't patch (kick to PS2 OSD). 0x01 = patch: ignore the returned code of an injected IRX and continue (default). 'For your h4x0ring needz.'",
+    "scope": "POPSTARTER.ELF/.KELF byte $427. r13. Default 0x01.",
+    "conflicts": "Developer/modder convenience for custom injected IRX.",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$428 - internal-HDD init-failure behavior",
+    "category": "config",
+    "effect": "0x00 = don't patch (kick to PS2 OSD). 0x01 = patch: ignore and continue (default). 'For your h4x0ring needz.'",
+    "scope": "POPSTARTER.ELF/.KELF byte $428. r13. Default 0x01.",
+    "conflicts": "",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$429 - Virtual Memory Cards control",
+    "category": "config",
+    "effect": "0x00 = use both VMCs (default). 0x01 = don't use VMCs at all. 0x02 = use only the first VMC in the first virtual slot. This (NOT $42A) controls how many VMCs are created. Hardcoded equivalent of $NOVMC0/$NOVMC1.",
+    "scope": "POPSTARTER.ELF/.KELF byte $429. r13. Default 0x00.",
+    "conflicts": "PPF equivalents: NO_VMC.PPF (=0x01), ONLY_1ST_VMC.PPF (=0x02).",
+    "example": "Disable all VMCs globally: $429=0x01 (or NO_VMC.PPF)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42A - auto-PAL patch / 480p",
+    "category": "config",
+    "effect": "0x00 = disabled (PAL patcher off, = $NOPAL). 0x01 = enabled (auto-PAL when 'Euro' is found at VCD offset $102514; default). 0x02 = FORCE 480p output. 480p calc added Beta 15 (2016-09-18).",
+    "scope": "POPSTARTER.ELF/.KELF byte $42A. r13. Default 0x01.",
+    "conflicts": "0x02 is the hardcoded equivalent of $480p (cannot be done via a PATCH file). 0x00 = NO_PAL.PPF / $NOPAL. Some games (e.g. Dead Or Alive) output an unsupported 480p signal.",
+    "example": "Force 480p: byte $42A=0x02 (or $480p). Disable PAL patcher: $42A=0x00 (or $NOPAL)",
+    "provenance": "PRIMARY: config-table wiki + CHANGES.TXT 2016/09/18 + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42B - resident modules loader",
+    "category": "config",
+    "effect": "0x00 = disabled. 0x01 = enabled (default). Loads POPS/MODULE_0.IRX .. MODULE_9.IRX AFTER the IOP is reset with IOPRP252.IMG (kills matching embedded POPS drivers).",
+    "scope": "POPSTARTER.ELF/.KELF byte $42B. r13. Default 0x01.",
+    "conflicts": "Enables the MODULE_#.IRX user-driver injection system.",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42C - software PowerOff fix",
+    "category": "config",
+    "effect": "0x00 = disabled. 0x01 = enabled (default). Purpose uncertain even to the author ('can't remember... perhaps redundant... Prolific, mass?').",
+    "scope": "POPSTARTER.ELF/.KELF byte $42C. r13. Default 0x01.",
+    "conflicts": "Author admits ambiguity (possibly Prolific/mass-storage poweroff).",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42D - IGR textures loader",
+    "category": "config",
+    "effect": "0x00 = disabled. 0x01 = enabled (default). Loads POPS/IGR_BG.TM2, IGR_NO.TM2, IGR_YES.TM2 for the IGR menu skin.",
+    "scope": "POPSTARTER.ELF/.KELF byte $42D. r13. Default 0x01.",
+    "conflicts": "PPF to disable: DEFAULT_IGR_TEXTURES.PPF (sets 0x00, reverts to built-in textures).",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42E - game license/region check",
+    "category": "config",
+    "effect": "0x00 = leave unpatched. 0x01 = patch so the BIOS doesn't loop the region check when the VCD isn't NTSC-J (default; NOPs the loop). The PS logo is not shown for non-JAP games.",
+    "scope": "POPSTARTER.ELF/.KELF byte $42E. r13. Default 0x01.",
+    "conflicts": "Trade-off: region-free skips the PS logo for non-JP titles.",
+    "example": "(default 0x01)",
+    "provenance": "PRIMARY: config-table wiki + ELF hexdump",
+    "confidence": "primary"
+  },
+  {
+    "name": "$42F - automatic compatibility-mode activator (master switch)",
+    "category": "config",
+    "effect": "0x00 = enable nothing. 0x01 = automatic compatibility-mode activation. 0x02 = other subroutines (LibCrypt cracks). 0x03 = ALL (default). 0x04 = 'test mode' (disables per-game fixes, automated modes and LibCrypt fixes; enables integrated test-hacks; added WIP06 Prototype 2 2017-05-27). Special: if 0x03 AND a mode is forced in $418-$41F, it auto-changes to 0x02.",
+    "scope": "POPSTARTER.ELF/.KELF byte $42F (last byte). r13. Default 0x03.",
+    "conflicts": "PPF equivalents: NO_AUTO_PATCH.PPF (=0x00), LC_ONLY.PPF (=0x02), NO_LC_CRACKS.PPF. 0x04 is a diagnostic mode - not for normal play.",
+    "example": "Disable all auto-patching: $42F=0x00 (NO_AUTO_PATCH.PPF). LibCrypt-only: $42F=0x02 (LC_ONLY.PPF)",
+    "provenance": "PRIMARY: CHANGES.TXT 2017/05/27 (Prototype 2 adds the 0x04 test mode) + ELF hexdump. Note: the recovered config-table wiki rows list 0x00–0x03 only.",
+    "confidence": "primary"
+  },
+  {
+    "name": "'classic 00 vs debug FF' build label",
+    "category": "config",
+    "effect": "Community shorthand for the two states of config byte $410: 'classic' ships $410=0x00 (silent boot), 'debug' is $410=0xFF (realtime debug text, old POPStarter-12 behavior). NOT a separate codebase - same ELF, one byte differs (plus optionally $411).",
+    "scope": "POPSTARTER.ELF/.KELF byte $410. Canonical r13 download ships 'classic' (00).",
+    "conflicts": "VERDICT: the LABEL is informal community usage, but ACCURATE and grounded in the primary $410 semantics. Nuance: 0x01-0xFE gives PACED debug (not just 00/FF), and DEBUG_AND_HALT also flips $411.",
+    "example": "'Classic': $410=00. 'Debug realtime': $410=FF. 'Debug paced': $410=12 (18 dec)",
+    "provenance": "NEAR-PRIMARY: derived from PRIMARY $410 definition + verified shipped byte 0x00 + ps2-home tutorial t=5311. Exact phrase is community, not a verbatim krHACKen string.",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "USB layout: mass:/POPS/ (root POPS folder)",
+    "category": "storage",
+    "effect": "USB storage. POPS folder must be at the ROOT of the USB device; contains POPS_IOX.PAK (emulator), the VCDs, and the renamed launcher ELFs. Device must be FAT12/16/32 (NOT NTFS) and DEFRAGMENTED.",
+    "scope": "USB mass storage. USB launch type introduced WIP02.",
+    "conflicts": "NTFS unsupported. Fragmentation causes failures. POPS_IOX.PAK (MD5 a625d0b3036823cdbf04a3c0e1648901) required; legacy POPS.PAK still works but updating is recommended.",
+    "example": "POPS/POPS_IOX.PAK ; POPS/Crash Bandicoot.VCD ; XX.Crash Bandicoot.elf",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)",
+    "confidence": "primary"
+  },
+  {
+    "name": "USB scan order: POPS, POPS0..POPS9",
+    "category": "storage",
+    "effect": "POPStarter looks for the named VCD in POPS or POPS0..POPS9 at USB root (split a large library across folders). POPS_IOX.PAK + the TM2 textures stay in the MAIN POPS folder; BIOS.BIN/PATCH_#.BIN/TROJAN_#.BIN/VMCDIR.TXT must be COPIED into every POPS# folder.",
+    "scope": "USB mode. POPS#-folder feature introduced r13 WIP06 OBT; reading VCDs from POPS# bugfixed Beta 11 (2015-11-11).",
+    "conflicts": "Per-game assets do NOT auto-share across POPS# folders - must be duplicated.",
+    "example": "POPS0/Tekken.VCD launched by XX.Tekken.elf; copy VMCDIR.TXT into each POPS# folder",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 11 (Wayback 20170629142002)",
+    "confidence": "primary"
+  },
+  {
+    "name": "USB launcher ELF naming: XX.<name>.elf",
+    "category": "launch",
+    "effect": "Rename the POPStarter ELF to the VCD's name, swap .VCD for .elf, add the 'XX.' prefix (third char is a literal dot). Prefix and the .VCD extension must be UPPERCASE. USB supports ONLY this 'new' launch type.",
+    "scope": "USB mode only.",
+    "conflicts": "Lowercase prefix or lowercase .vcd breaks matching.",
+    "example": "VCD 'Gran Turismo.VCD' -> ELF 'XX.Gran Turismo.elf'",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)",
+    "confidence": "primary"
+  },
+  {
+    "name": "USB/network modules: mc0:/POPSTARTER/ then mc1:/POPSTARTER/",
+    "category": "storage",
+    "effect": "POPStarter loads usbd.irx/usbhdfsd.irx (and network modules) from the MC POPSTARTER folder, slot 0 first, falling back to mc1 when a file is missing. Loading modules from 'mass' is NO longer supported. PFS_WRAP.BIN no longer needed since OBT8 (embedded into the ELF).",
+    "scope": "USB mode, beta 8+; mc1 fallback added Beta 9 (2015-10-24).",
+    "conflicts": "Custom usbd.irx/usbhdfsd.irx on mass: are ignored; they must be on the MC.",
+    "example": "mc0:/POPSTARTER/usbd.irx ; mc0:/POPSTARTER/usbhdfsd.irx",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547) + changelog Beta 8/9",
+    "confidence": "primary"
+  },
+  {
+    "name": "SMB layout: smb0:/<Share>/POPS/",
+    "category": "storage",
+    "effect": "SMB/network storage. Create a POPS directory at the SHARE ROOT (not a subdir); put POPS_IOX.PAK (same file as USB, MD5 a625d0b3036823cdbf04a3c0e1648901, MANDATORY) and the VCDs there. Requires a PS2 NIC + cable + MC.",
+    "scope": "SMB mode. Backend added Beta 8 (2015-10-23); SB. launch type r13 WIP06/OBT08.",
+    "conflicts": "POPS must be at share root. Legacy POPS.PAK unsupported in SMB.",
+    "example": "smb0:/My Shared Folder/POPS/POPS_IOX.PAK ; smb0:/My Shared Folder/POPS/Crash Bandicoot.VCD",
+    "provenance": "PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)",
+    "confidence": "primary"
+  },
+  {
+    "name": "SMB launcher ELF naming: SB.<name>.elf",
+    "category": "launch",
+    "effect": "Rename POPStarter ELF to the VCD name, .VCD -> .elf, add the 'SB.' prefix (third char a literal dot). Uppercase prefix + uppercase .VCD. The ELF can live anywhere you launch from; only the VCD must be in the SMB POPS folder.",
+    "scope": "SMB mode only. Launch type r13 WIP06 OBT08.",
+    "conflicts": "SMB POPS folder name is fixed 'POPS' (no documented POPS# multi-folder for SMB).",
+    "example": "VCD 'Crash Bandicoot.VCD' -> ELF 'SB.Crash Bandicoot.elf'",
+    "provenance": "PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)",
+    "confidence": "primary"
+  },
+  {
+    "name": "SMB modules folder: mc#:/POPSTARTER/",
+    "category": "storage",
+    "effect": "The PS2-side network modules + the two .DAT config files live in mc0:/POPSTARTER/ (falls back to mc1). Module set: poweroff.irx, ps2dev9.irx, smsutils.irx, ps2ip.irx, ps2smap.irx, smbman.irx, plus IPCONFIG.DAT, SMBCONFIG.DAT.",
+    "scope": "SMB mode. mc1 fallback added Beta 9 (2015-10-24).",
+    "conflicts": "Missing/wrong network modules -> SMB init fails.",
+    "example": "mc0:/POPSTARTER/SMBCONFIG.DAT ; mc0:/POPSTARTER/IPCONFIG.DAT ; mc0:/POPSTARTER/smbman.irx",
+    "provenance": "PRIMARY: ShaolinAssassin wiki smb-mode + quickstart-smb (Wayback 20170629160319 / 20180208032618)",
+    "confidence": "primary"
+  },
+  {
+    "name": "SMBCONFIG.DAT syntax",
+    "category": "storage",
+    "effect": "Line 1: '<SERVER IP> <SHARE NAME>' (optional ':PORT' on the IP, default 445, e.g. ':139'). Line 2 = username, Line 3 = plain-text password for authenticated shares; leave lines 2 and 3 EMPTY for guest access.",
+    "scope": "SMB mode. Port selection added Beta 11 (2015-11-11); authentication added Beta 12 (2015-11-24).",
+    "conflicts": "Default access is GUEST/non-password (Beta 8). Credentials vs guest mismatch fails the connection.",
+    "example": "192.168.0.254 My Shared Folder / MyName / MyPassword (or '192.168.0.254:139 My Shared Folder' + empty lines 2-3 for guest)",
+    "provenance": "PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11/12 (Wayback 20170629160319 / 20170629142002)",
+    "confidence": "primary"
+  },
+  {
+    "name": "IPCONFIG.DAT syntax (optional)",
+    "category": "storage",
+    "effect": "Single line: '<PS2 IP> <NETMASK> <GATEWAY>'. OPTIONAL (DHCP/auto otherwise). Only needed for a static PS2 IP.",
+    "scope": "SMB mode. Made optional in Beta 11 (2015-11-11).",
+    "conflicts": "Omit to let POPStarter use defaults.",
+    "example": "192.168.0.13 255.255.255.0 192.168.0.254",
+    "provenance": "PRIMARY: ShaolinAssassin wiki smb-mode + changelog Beta 11",
+    "confidence": "primary"
+  },
+  {
+    "name": "REFUTED: 'debug build required for SMB'",
+    "category": "storage",
+    "effect": "FALSE. SMB was added as a STANDARD feature in Beta 8 (2015-10-23): 'Added support for ps2host, napLink and SMB (NOT password protected, fixed port 445) shares' - no debug gating. The only debug-related caveat is the wiki note 'Debug infos at startup can NOT be skipped in SMB mode' (cosmetic startup print, NOT a build requirement).",
+    "scope": "SMB mode, Beta 8 onward.",
+    "conflicts": "Do not conflate 'startup debug text always shown' with 'must use a debug build'.",
+    "example": "Beta 8 line: 'Added support for ... SMB (NOT password protected, fixed port 445) shares'",
+    "provenance": "PRIMARY: r13 changelog Beta 8 (Wayback 20170629142002) + wiki smb-mode Additional notes (Wayback 20170629160319)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Windows host SMB share setup",
+    "category": "storage",
+    "effect": "To serve POPS over SMB from modern Windows: enable 'SMB 1.0/CIFS File Sharing Support', turn OFF 'Password protected sharing', grant Guest/Everyone Read/Write on the share. POPStarter's SMB client is legacy (SMB1, guest, port 445).",
+    "scope": "Host-side (Windows 10/11) for SMB mode. COMMUNITY guidance - not in the official wiki.",
+    "conflicts": "SMB1 is insecure and disabled by default on modern Windows - only enable on a trusted LAN. A NAS exposing SMB2/3-only with mandatory auth may still work via SMBCONFIG.DAT credentials, but guest+SMB1 is the documented path.",
+    "example": "Windows feature 'SMB 1.0/CIFS File Sharing Support' ON; 'Password protected sharing' OFF; share POPS folder Guest=RW",
+    "provenance": "COMMUNITY: chipnetics.com/tutorials/ps2-opl-with-samba/; ps2-home t=326; gbatemp 613924",
+    "confidence": "community"
+  },
+  {
+    "name": "pops-smb-config (on-console SMB editor)",
+    "category": "storage",
+    "effect": "A PS2 homebrew tool to edit POPStarter's SMBCONFIG.DAT/IPCONFIG.DAT on the console itself (no PC). Confirms the 3-line SMBCONFIG.DAT format.",
+    "scope": "Companion utility for SMB mode.",
+    "conflicts": "Third-party tool; not part of POPStarter.",
+    "example": "Edits mc0:/POPSTARTER/SMBCONFIG.DAT in-place on the PS2",
+    "provenance": "NEAR-PRIMARY: github.com/blckbearx/pops-smb-config; psx-place resource 1237",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "HDD layout: __.POPS / __.POPS0..9 + __common/POPS (NEW launch type)",
+    "category": "storage",
+    "effect": "Internal HDD, modern multi-VCD type. VCDs go in PS2-formatted partition __.POPS (or __.POPS0..__.POPS9). Emulator (decrypted POPS.ELF + IOPRP252.IMG) goes in a POPS folder inside the __common partition. NO prefix on the launcher ELF (named <game>.elf for <game>.VCD).",
+    "scope": "Internal HDD. New launch type introduced POPStarter 13 WIP01.",
+    "conflicts": "Partition must be named __.POPS (leading double-underscore-dot) - '+__.POPS' is WRONG (use AKuHAK's uLaunchELF or uLE_kHn to create a partition without the '+'). Names case-sensitive; .VCD uppercase.",
+    "example": "__common/POPS/IOPRP252.IMG ; __common/POPS/POPS.ELF ; __.POPS/Crash Bandicoot.VCD ; __sysconf/FMCB/Crash Bandicoot.elf",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "HDD legacy OLD type: PP.<game> partition (HDDOSD-visible)",
+    "category": "storage",
+    "effect": "One VCD per partition named PP.<game>; the VCD is always IMAGE0.VCD (uppercase); launcher prefix PP. (KELF EXECUTE.KELF for HDDOSD). The only type SHOWN in HDDOSD/PSBBN/PSX XMB. POPStarter 12 and older; still supported.",
+    "scope": "Internal HDD, legacy.",
+    "conflicts": "No whitespace in old-type partition names. 1 partition = 1 game (except multi-disc).",
+    "example": "PP.Crash_Bandicoot/EXECUTE.KELF ; PP.Crash_Bandicoot/IMAGE0.VCD",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "HDD legacy ALTERNATE type: __.<game> partition (hidden)",
+    "category": "storage",
+    "effect": "One VCD per partition named __.<game>; VCD is IMAGE0.VCD (uppercase); launcher prefix __. ; partition is HIDDEN (not shown in HDDOSD/PSBBN/XMB). POPStarter 12 and older.",
+    "scope": "Internal HDD, legacy; not HDDOSD-compatible.",
+    "conflicts": "Hidden by design; no whitespace in partition name.",
+    "example": "__.Crash_Bandicoot/IMAGE0.VCD ; __sysconf/FMCB/__.Crash Bandicoot.elf",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "POPSTARTER.KELF (HDDOSD / Sony Browser 2.00)",
+    "category": "storage",
+    "effect": "The bundle ships POPSTARTER.KELF (Krypto-ELF, ELF in a Sony container) for when Sony Browser 2.00 (HDDOSD) is installed; otherwise useless. Partition prefix PP.; 1 partition = 1 game (unless multi-disc).",
+    "scope": "Internal HDD with HDDOSD/Browser 2.00 only.",
+    "conflicts": "Useless without HDDOSD.",
+    "example": "POPSTARTER.KELF placed per PP.<game> partition",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "HDD emulator files: POPS.ELF + IOPRP252.IMG (decrypted)",
+    "category": "storage",
+    "effect": "HDD mode uses the DECRYPTED POPS files (not POPS_IOX.PAK), in __common/POPS. POPS.ELF MD5 355a892a8ce4e4a105469d4ef6f39a42 (the SLBB-00001 ELF). IOPRP252.IMG MD5 1db9c6020a2cd445a7bb176a1a3dd418 (from some retail discs / $CEI SDKs).",
+    "scope": "Internal HDD mode.",
+    "conflicts": "Sony-copyrighted, not redistributed with POPStarter; user must source them.",
+    "example": "__common/POPS/POPS.ELF (MD5 355a892a...) ; __common/POPS/IOPRP252.IMG (MD5 1db9c602...)",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode requirements table (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Launch method 1: renamed-ELF-per-game",
+    "category": "launch",
+    "effect": "Each game has its own copy of POPSTARTER.ELF renamed to '<prefix><VCD name>.elf'. Prefix XX. (USB), SB. (SMB), or none/PP./__. (HDD per type). Launched via uLaunchELF, FMCB/FHDB, OPL Apps, etc.",
+    "scope": "All storage types.",
+    "conflicts": "Tedious for big libraries (one ELF per game) - the reason uLE_kHn and POPSLoader exist.",
+    "example": "XX.Crash Bandicoot.elf launches Crash Bandicoot.VCD",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb/smb/hdd-mode (Wayback 20170629123547 / 20170629160319 / 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Launch method 2: single direct-VCD (uLE_kHn / OPL Apps)",
+    "category": "launch",
+    "effect": "Avoids per-game renaming. Place ONE un-renamed POPSTARTER.ELF in the POPS folder; a special uLaunchELF build (uLE_kHn, e.g. uLE_kHn_20191110) launches a .VCD directly like an ELF (put its BOOT at mc0:/BOOT). OPL's 'Apps' tab (conf_apps.cfg / APPS/<game>/<game>.elf) is the other common direct-launch UI. CORRECTS base report's 'wLE_kHn' typo -> 'uLE_kHn'.",
+    "scope": "USB (uLE_kHn; 'SMB not supported ATM') + OPL Apps for USB/HDD/SMB.",
+    "conflicts": "uLE_kHn did not support SMB at time of writing.",
+    "example": "mass:/POPS/POPSTARTER.ELF + mass:/POPS/Crash Bandicoot.VCD + mc0:/BOOT/BOOT.ELF (uLE_kHn)",
+    "provenance": "PRIMARY: ShaolinAssassin wiki uLE_kHn (Wayback 20170629140906); ps2-home OPL-Apps tutorials t=123/t=3216/t=2295",
+    "confidence": "primary"
+  },
+  {
+    "name": "Launch method 3: modern POPSLoader fork (Lua/Enceladus)",
+    "category": "launch",
+    "effect": "POPSLoader is a Lua launcher on the Enceladus runtime bundling POPSLOADER.ELF + Lua scripts + textures + modules; drop .VCDs in a POPS folder plus your POPStarter ELF + POPS support files (IOPRP252.IMG, POPS.ELF, POPS.PAK, POPS_IOX.PAK), then run POPSLOADER.ELF. Boots from MC/MMCE/MX4SIO/USB(FAT32/exFAT); runs games from MMCE/MX4SIO/USB/APA-HDD. Originally by El_isra; current fork maintained by NathanNeurotic.",
+    "scope": "Modern (post-POPStarter) fork; broad device support incl. MMCE/MX4SIO/exFAT not in stock POPStarter.",
+    "conflicts": "Separate project from krHACKen's POPStarter; supports exFAT and MMCE/MX4SIO that stock POPStarter does not.",
+    "example": "POPS/POPSLOADER.ELF + POPS/<game>.VCD + POPS/POPS_IOX.PAK ; run POPSLOADER.ELF",
+    "provenance": "PRIMARY: github.com/NathanNeurotic/POPSLoader; psx-place fork thread 49539",
+    "confidence": "primary"
+  },
+  {
+    "name": "VMCDIR.TXT",
+    "category": "vmc",
+    "effect": "One-line text file in a game's VMC folder that redirects where POPS saves/reads the VMC pair (SLOT0.VMC + SLOT1.VMC); all other assets (TROJAN/PATCH/CHEATS) still load from the game folder. Forbidden chars / \\ : . Not loaded if >103 bytes or >1 line. Target folder must stay inside the POPS folder.",
+    "scope": "Per-game in the game folder; GLOBAL (one shared VMC pair for ALL games) when placed in the POPS root. USB/SMB/HDD. Must be copied into every POPS# folder.",
+    "conflicts": "In POPS root it overrides per-game VMC isolation but mounts existing VMCs without overwriting (no data loss). Game-folder copy wins over a POPS-root copy. Destination outside POPS is rejected.",
+    "example": "Save 'BLAHBLAH' as VMCDIR.TXT in mass:/POPS/MY_GAME/ -> POPS reads mass:/POPS/BLAHBLAH/SLOT0.VMC + SLOT1.VMC",
+    "provenance": "PRIMARY: ShaolinAssassin wiki vmc (Wayback 20170629133617)",
+    "confidence": "primary"
+  },
+  {
+    "name": "VMCDIR.TXT (shared VMC grouping)",
+    "category": "vmc",
+    "effect": "Multiple games point at one VMC folder so they share a single VMC pair (e.g. all FF8 discs, or a per-user save set). Put a VMCDIR.TXT naming the same destination folder into each game's folder.",
+    "scope": "Per group of games. Also gives multiple users their own VMC folders for one library.",
+    "conflicts": "Shared VMCs are mounted/loaded, not overwritten - data-safe (POPS flashes the whole VMC, see SLOT0/SLOT1).",
+    "example": "smb:/Share/POPS/VMCDIR.TXT contains 'SAVES'; Crash/Tekken/Castlevania all save into smb:/Share/POPS/SAVES/SLOT0.VMC",
+    "provenance": "PRIMARY: ShaolinAssassin wiki vmc (Wayback 20170629133617)",
+    "confidence": "primary"
+  },
+  {
+    "name": "SLOT0.VMC / SLOT1.VMC",
+    "category": "vmc",
+    "effect": "The two virtual memory-card image files POPS auto-creates on first launch (POPS/<GameName>/SLOTx.VMC). SLOT0 = MC port 1, SLOT1 = port 2. PS1 retail saves imported via MemcardRex go into SLOT1.VMC. Standard PS1 MC images, MemcardRex-editable.",
+    "scope": "Per game by default; on HDD inside __common/POPS/<vmcfolder>/. Number created (2/1/none) controlled by config offset $429 (NOT $42A).",
+    "conflicts": "POPS does not save to a physical MC because it flashes the WHOLE VMC, not a single block.",
+    "example": "POPS/Crash Bandicoot.VCD -> POPS/Crash Bandicoot/SLOT0.VMC + SLOT1.VMC",
+    "provenance": "PRIMARY: ShaolinAssassin wiki vmc + pmc-to-vmc + faqs (Wayback 20170629133617 / 20170629154811 / 20170629120342)",
+    "confidence": "primary"
+  },
+  {
+    "name": "HDD VMC location",
+    "category": "vmc",
+    "effect": "On internal HDD, VMCs and per-game BIOS/OSD assets live in the __common partition under __common/POPS/<vmcfolder>/, decoupled from the VCD (which sits in its own __.POPS / PP. / __. partition).",
+    "scope": "Internal HDD (hdd:) mode.",
+    "conflicts": "POPS.ELF + IOPRP252.IMG go in __common/POPS/. Old-type partition names are case-sensitive, no whitespace.",
+    "example": "__common/POPS/PBPX-95000.MY_GAME/SLOT0.VMC (VCD itself in __.POPS/MY_GAME.VCD)",
+    "provenance": "PRIMARY: ShaolinAssassin wiki hdd-mode + bios-osd-handlers (Wayback 20170629165244)",
+    "confidence": "primary"
+  },
+  {
+    "name": "POPS/VMC folder priority rule",
+    "category": "vmc",
+    "effect": "Any external file (TROJAN/PATCH/BIOS.BIN/OSD.BIN/CHEATS.TXT/VMCDIR.TXT/DISCS.TXT) can live in the POPS folder (all games) or the game's VMC folder (that game). When the same type exists in both, the VMC-folder copy has priority. ONLY exception: two CHEATS.TXT loaded at once where one contains special cheats that change the video mode (special-cased).",
+    "scope": "All POPStarter external assets, all backends.",
+    "conflicts": "This exception is the precise mechanism behind the base report's 'root CHEATS.TXT may block per-game' note - the only documented blocking case.",
+    "example": "PATCH_5.BIN in POPS/ vs POPS/MY_GAME/ -> the MY_GAME copy wins for that game",
+    "provenance": "PRIMARY: ShaolinAssassin wiki general-note (Wayback 20170629125310)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Multi-folder POPS0..POPS9 (USB) asset-duplication caveat",
+    "category": "vmc",
+    "effect": "Up to 11 game folders scanned at USB root (POPS, POPS0..POPS9). VMCDIR.TXT, BIOS.BIN, PATCH_#.BIN and TROJAN_#.BIN meant to be global must be COPIED into every POPS# folder (they don't propagate); POPS_IOX.PAK and the TM2 IGR-texture files must stay only in the MAIN POPS folder.",
+    "scope": "USB mass: storage. HDD has __.POPS0..9 equivalent; SMB has only a single POPS folder.",
+    "conflicts": "Forgetting to duplicate global assets into POPS# folders = they don't apply there.",
+    "example": "mass:/POPS0/Tekken.VCD + mass:/POPS0/VMCDIR.TXT copied from mass:/POPS/VMCDIR.TXT",
+    "provenance": "PRIMARY: ShaolinAssassin wiki usb-mode (Wayback 20170629123547)",
+    "confidence": "primary"
+  },
+  {
+    "name": "DISCS.TXT",
+    "category": "multidisc",
+    "effect": "Multi-disc swap list. One VCD filename per line (WITH .VCD extension), up to 4 lines = disc 1..4. Enables in-game disc swapping without a PS1 reboot. Copy into the VMC/game folder of EVERY disc.",
+    "scope": "Per multi-disc game. All VCDs must be in the same partition/folder. Feature present since OBT15.",
+    "conflicts": ">4 lines breaks the feature. Each VCD filename <=89 chars (wiki) but POPSLoader's own testing shows the practical ceiling is ~73 since it's a full-PATH buffer, not a bare-name buffer. .TXT must be uppercase. For >4 discs, install first 4, play to disc 4, then swap in 5-7.",
+    "example": "DISCS.TXT (in BOTH MGS_CD1/ and MGS_CD2/): MGS_CD1.VCD / MGS_CD2.VCD",
+    "provenance": "PRIMARY: ShaolinAssassin wiki multi-disc (Wayback 20170626061653); CHANGES.TXT Beta 15; ~73 nuance from POPSLoader reference-vcd-filename-limit (#503)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Disc-swap hotkeys (lid + disc insert)",
+    "category": "multidisc",
+    "effect": "Hotkeys (since Beta 15, 2016-09-18): Select+L2+R2+Triangle = open lid; +Up = disc 1; +Right = disc 2; +Down = disc 3; +Left = disc 4; +Square = close lid. D-pad direction maps to the DISCS.TXT LINE number, not a physical disc label.",
+    "scope": "In-game, multi-disc games with DISCS.TXT. OBT15+.",
+    "conflicts": "Earlier Beta-14-era build only exposed lid open/close (Triangle/Square) without the Up/Right/Down/Left inserts. A separate simple 'open lid' hotkey (Select+L2+R1) also exists in the general hotkeys table.",
+    "example": "Insert Disc 2: Select+L2+R2+Right ; Close lid: Select+L2+R2+Square",
+    "provenance": "PRIMARY: ShaolinAssassin wiki multi-disc + hotkeys (decoded from archived button-glyph filenames, Wayback 20170626061653 / 20170626021730); CHANGES.TXT lines 316-372",
+    "confidence": "primary"
+  },
+  {
+    "name": "VMCDIR.TXT for multi-disc (single VMC pair)",
+    "category": "multidisc",
+    "effect": "Combine DISCS.TXT with a VMCDIR.TXT (naming disc 1's VMC folder) placed in every disc folder so all discs of one game share a single VMC pair - avoids manual VMC copy/paste between disc folders.",
+    "scope": "Per multi-disc game. VMCDIR.TXT in disc 1 AND disc 2 (and any further disc) folders, naming the disc-1 folder.",
+    "conflicts": "Without it, saves made on disc 1 aren't visible on disc 2 unless VMCs are manually copied. Same 103-byte/1-line/forbidden-char rules.",
+    "example": "MGS/VMCDIR.TXT and MGS_2/VMCDIR.TXT both contain 'MGS' -> both discs save into POPS/MGS/SLOT0.VMC+SLOT1.VMC",
+    "provenance": "PRIMARY: ShaolinAssassin wiki multi-disc (Wayback 20170626061653)",
+    "confidence": "primary"
+  },
+  {
+    "name": "HDD multi-disc (IMAGE0.VCD / IMAGE1.VCD)",
+    "category": "multidisc",
+    "effect": "On internal HDD, multi-disc games use IMAGE0.VCD / IMAGE1.VCD in the SAME PP. partition (POPStarter only looks for IMAGE0.VCD when booting HDD-OSD mode). The discs share one VMC, so no VMCDIR.TXT is needed.",
+    "scope": "Internal HDD multi-disc.",
+    "conflicts": "Disc change cannot cross partitions (cannot unmount/mount). Both discs must share one PP. partition; first VCD MUST be IMAGE0.VCD, second IMAGE1.VCD.",
+    "example": "PP.<game> partition: IMAGE0.VCD + IMAGE1.VCD (shared VMC)",
+    "provenance": "NEAR-PRIMARY: PS2-HOME t=144 (Wayback 20240407083519)",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "OSD.BIN over BIOS.BIN precedence",
+    "category": "vmc",
+    "effect": "If an OSD replacement image named OSD.BIN exists in the VMC dir (or POPS folder) it is injected into POPS's built-in BIOS and used; when OSD.BIN is present, BIOS.BIN is IGNORED. BIOS.BIN alone lets you reach the MC manager / play CDDA tracks via the built-in shell. If neither exists, POPS uses its built-in BIOS. Using a BIOS/OSD does NOT improve game compatibility.",
+    "scope": "Per-game (VMC/game folder) or global (POPS folder). HDD path e.g. __common/POPS/PBPX-95000.MY_GAME/OSD.BIN.",
+    "conflicts": "OSD.BIN strictly wins over BIOS.BIN (mutually exclusive). OSD.BIN must satisfy a strict header or it won't load.",
+    "example": "POPS/MY_GAME/OSD.BIN present -> OSD.BIN used, POPS/MY_GAME/BIOS.BIN silently ignored",
+    "provenance": "PRIMARY: ShaolinAssassin wiki bios-osd-handlers (Wayback 20170629161024)",
+    "confidence": "primary"
+  },
+  {
+    "name": "OSD.BIN header structure (v1)",
+    "category": "vmc",
+    "effect": "Valid OSD replacement format. 0h-8h identifier 'PS-X OSD'; Ch = image version (non-NULL); Eh = OSD build (non-NULL); 1Ch-20h = OSD loadable segment size (header excluded); 20h-34h = OSD name (1-20 ASCII, 0x00-terminated). OSD load address and entrypoint must be multiples of 0x10000. Total file size = header length + OSD size.",
+    "scope": "OSD.BIN files used with POPStarter (the BIOS-injection path).",
+    "conflicts": "Identifier must be exactly 'PS-X OSD'; version (Ch) and build (Eh) cannot be NULL; load addr/entrypoint multiples of 0x10000; name >=1 char. Violations -> not loaded.",
+    "example": "Bytes 0-7 = 'PS-X OSD'; name field at 0x20 = 'MY OSD\\0'",
+    "provenance": "PRIMARY: ShaolinAssassin wiki bios-osd-handlers (Wayback 20170629161024)",
+    "confidence": "primary"
+  },
+  {
+    "name": "USB-not-detected fix (offset $413 vs $USBDELAY)",
+    "category": "troubleshooting",
+    "effect": "If a USB drive/HDD isn't detected: hex-edit POPSTARTER.ELF offset $413 from 0x02 up toward 0x05/0x0A. Also verify FAT32 formatting, a defragmented device, and the POPS folder at the device ROOT. Debug the boot via DEBUG_AND_HALT.PPF or $410=non-zero. NOTE: $USBDELAY_# patches POPS (streaming) not POPStarter - it does NOT fix detection.",
+    "scope": "r13 USB mode (older builds used $417).",
+    "conflicts": "Don't patch $417 in r13 (NOT USED). Use $413.",
+    "example": "Offset $413: 0x02 -> 0x05",
+    "provenance": "NEAR-PRIMARY: ps2-home DEBUG tutorial t=5311 (Wayback 20190808161830); config-table wiki",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "conf_elm.cfg cleanup (OPL Apps menu corruption)",
+    "category": "troubleshooting",
+    "effect": "If the OPL ELF-loader/Apps menu misbehaves after editing entries, delete conf_elm.cfg and conf_elms.cfg; conf_elmz.cfg is safe to keep. OPL regenerates the deleted files.",
+    "scope": "OPL Apps-tab launching of POPStarter games.",
+    "conflicts": "Community troubleshooting step, not a POPStarter feature.",
+    "example": "Delete conf_elm.cfg + conf_elms.cfg (keep conf_elmz.cfg)",
+    "provenance": "PRIMARY/community: Dekazeta r13 changelog mirror + ps2-home wiki t=144",
+    "confidence": "community"
+  },
+  {
+    "name": "Tomb Raider 1/2 CDDA desync (emulation limitation)",
+    "category": "troubleshooting",
+    "effect": "Tomb Raider 1/2 CDDA (Red Book) music desync/drift is a POPS emulation limitation, not a POPStarter misconfiguration - no CHEATS.TXT command reliably fixes it.",
+    "scope": "Specific titles; documented as a known emulation limit.",
+    "conflicts": "Don't chase it with geometry/compat commands.",
+    "example": "(known limitation - no fix)",
+    "provenance": "COMMUNITY: ps2-home / PSX-Place HugoPocked fixes discussion 39750",
+    "confidence": "community"
+  },
+  {
+    "name": "Jackie Chan Stuntmaster (SCES-01444) - built-in LibCrypt crack",
+    "category": "troubleshooting",
+    "effect": "POPStarter has a built-in LibCrypt crack for Jackie Chan Stuntmaster (SCES-01444). If a particular disc batch lacks LibCrypt and still freezes, use $FAKELC or the explicit LibCrypt code block instead.",
+    "scope": "Specific title. r13.",
+    "conflicts": "Built-in crack vs $FAKELC vs explicit block - try in that order.",
+    "example": "SCES-01444 runs via the built-in crack; fall back to the LibCrypt example block",
+    "provenance": "PRIMARY/community: Dekazeta r13 changelog; ShaolinAssassin wiki special-cheats LibCrypt example",
+    "confidence": "near-primary"
+  },
+  {
+    "name": "Tekken 3 - mode 0x06 + 0x04 combo",
+    "category": "troubleshooting",
+    "effect": "Tekken 3 is fixed by combining compatibility modes 0x06 and 0x04 - a concrete example that 0x06 and 0x04 combine safely (neither is in the exclusive 0x01/0x02/0x03/0x05 set).",
+    "scope": "Specific title. r13.",
+    "conflicts": "Demonstrates the no-combine rule applies only to 0x01/0x02/0x03/0x05.",
+    "example": "$COMPATIBILITY_0x06 + $COMPATIBILITY_0x04",
+    "provenance": "COMMUNITY/near-primary: ps2-home t=8744 (Wayback 20230723000350)",
+    "confidence": "community"
+  },
+  {
+    "name": "Crash Bash PAL - best playable config",
+    "category": "troubleshooting",
+    "effect": "Community-documented best-playable configuration for Crash Bash PAL (a notoriously finicky title); pursue the per-title fix thread rather than a generic mode.",
+    "scope": "Specific title.",
+    "conflicts": "Title-specific; no single universal command.",
+    "example": "(see the title's fix thread)",
+    "provenance": "COMMUNITY: ps2-home / PSX-Place title threads",
+    "confidence": "community"
+  },
+  {
+    "name": "POPStarter is the launcher/patch layer; POPS is Sony's emulator",
+    "category": "history",
+    "effect": "POPStarter (krHACKen) is the launcher and patch/cheat layer wrapped AROUND Sony's PS1-on-PS2 POPS emulator (POPS.ELF / SLBB-00001). POPStarter loads per-game assets (CHEATS.TXT, PATCH/TROJAN, BIOS/OSD, VMCDIR/DISCS), applies the cheat engine and compatibility modes, and hands off to POPS to actually emulate. 'POPStarter' is a distinct project from the modern Lua-based POPSLoader fork.",
+    "scope": "Whole architecture. Canonical package = 2019-06-05 r13 Beta.",
+    "conflicts": "Don't conflate POPStarter (krHACKen) with POPS (Sony) or with POPSLoader (El_isra -> NathanNeurotic).",
+    "example": "POPStarter.ELF reads CHEATS.TXT/PATCH_#.BIN, then launches POPS to emulate the VCD",
+    "provenance": "PRIMARY: ShaolinAssassin wiki (whole) + r13 CHANGES.TXT (archive.org popstarter-r-13-beta-20190605)",
+    "confidence": "primary"
+  },
+  {
+    "name": "Version timeline (key betas)",
+    "category": "history",
+    "effect": "WIP01 = HDD __.POPS multi-VCD launch type. WIP02 (2014-08-22) = 8-slot force-compatibility table, IGR skin + IRX loaders default-on. Beta 8 (2015-10-23) = SMB/ps2host/napLink backends, PFS wrapper embedded. Beta 9 (2015-10-24) = mc1 module fallback. Beta 11 (2015-11-11) = SMB port selection, optional IPCONFIG.DAT, POPS# VCD-read fix. Beta 12 (2015-11-24) = $FORCEPAL, $SAFEMODE made functional, SMB auth, function-skipper cleanup begins. Beta 13 (2015-12-07) = BOOT.ELF exit chain, cheat-engine bug fixes ($C0/$USBDELAY/hook+8), function skipper REMOVED ($412 freed), ps2host/napLink launchers removed. Beta 15 (2016-09-18) = CD-lid/DISCS.TXT multi-disc, SetGsCrt(480p) calc. Beta 16 (2016-11-20) = $IGR0..5/$NOIGR/$D2LS integrated as CHEATS.TXT text, $412 repurposed as HDTVFIX, untested soft-reset hotkey. Prototype 2 (2017-05-27) = $42F test mode (0x04). r13 final (2019-06-05) = $IGR5 fixed.",
+    "scope": "Historical reference. Canonical build = r13 2019-06-05.",
+    "conflicts": "Note IGR modifiers existed as TROJAN files from 2014 but became $IGR CHEATS.TXT commands only in Beta 16.",
+    "example": "$IGR5 worked reliably only from the 2019-06-05 r13 final",
+    "provenance": "PRIMARY: r13 CHANGES.TXT (archive.org popstarter-r-13-beta-20190605); ShaolinAssassin wiki popstarter-changelog (Wayback 20170629142002); Dekazeta + Pastebin 719TCAd5 mirrors",
+    "confidence": "primary"
+  }
+]

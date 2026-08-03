@@ -32,6 +32,14 @@ jobs:
             || python3 -m pip install --quiet --break-system-packages lupa \
             || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
           python3 tools/host_harness.py
+      # Mechanical doc/source drift: settings-key counts, harness count, version
+      # stamps, translator hand-off integrity, and phrases describing behaviour that
+      # was deleted. Pure stdlib, no install step, so it cannot fail on infra.
+      # It sat unwired and red for months, which is why STATE.md was still claiming
+      # 22 settings keys and 39 harness tests against a source writing 23 and 41.
+      - name: Verify docs against source
+        shell: bash
+        run: python3 tools/docs_verify.py
 
   build:
     needs: lua-harness
@@ -61,6 +69,15 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Verify pinned ata_bd.irx checksum
+        shell: sh
+        run: |
+          set -eu
+          # The embedded ata_bd is pinned to R3Z v4.70's probe-fixed binary
+          # (HW-proven on 4TB GPT internal exFAT, 2026-07-20); the SDK copy
+          # must not silently replace it. See the Makefile ata_bd rule.
+          echo "16c5d9f00d64be5ea4848b53da89bb5f89a54004957bae47d01dee3c354742f4  iop/embed/ata_bd.irx" | sha256sum -c -
 
       - name: Generate build info
         shell: sh

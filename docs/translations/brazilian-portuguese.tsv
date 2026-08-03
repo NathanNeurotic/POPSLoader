@@ -1,11 +1,9 @@
 English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
+ (%d hidden -- Global Hide is on)	 (%d hidden -- Global Hide is on)
+ (%d multi-disc collapsed)	 (%d multi-disc collapsed)
 (could NOT save -- reverts on reboot)	(could NOT save -- reverts on reboot)
 (not set)	(não definido)
 (share root)	(raiz do share)
-(the two share a bus and cannot run together)	MMCE was used this session -- restart to browse MX4SIO
-(the two share a bus and cannot run together)
-(the two share a bus and cannot run together)	MX4SIO was used this session -- restart to browse MMCE
-(the two share a bus and cannot run together)
 (the usual settings location wasn't writable)	(the usual settings location wasn't writable)
 (unknown)	(desconhecido)
 -- launch cancelled	-- launch cancelled
@@ -13,32 +11,33 @@ English (do not edit)	Brazilian Portuguese (adjust the pre-filled Portuguese)
 100M Half	100M Half
 10M Full	10M Full
 10M Half	10M Half
+APA / PFS (default)	APA / PFS (padrão)
+ART (at root)	ART (na raiz)
 Actual output	Saída real
 Adaptive BDMA	BDMA Adaptativo
 Adaptive BDMA couldn't stage	Adaptive BDMA couldn't stage
 Address type	Address type
-adjusted -- using	adjusted -- using
-Another device	Another device
-APA / PFS (default)	APA / PFS (padrão)
 Applying BDMA mode	Aplicando modo BDMA
 Applying SMB modules	Applying SMB modules
-ART (at root)	ART (na raiz)
 At least one device must stay on the carousel	Ao menos um dispositivo deve ficar no carrossel
+Auto	Auto
 Auto (console region)	Auto (região do console)
-Back	Voltar
 BACK	BACK
-Backspace	Backspace
-BDMA and SMB modules -- from mc0: / mc1:. They won't	módulos BDMA e SMB -- de mc0: / mc1:. Não vão
 BDMA Mode	Modo BDMA
+BDMA and SMB modules -- from mc0: / mc1:. They won't	módulos BDMA e SMB -- de mc0: / mc1:. Não vão
 BDMA mode change didn't apply\nBDMA reverted; other settings were saved	Mudança de modo BDMA não aplicada\nBDMA revertido; outras configurações foram salvas
 BDMA source backend not ready:	BDMA source backend not ready:
-Boot Page	Página de inicialização
-Boot sound	Som de inicialização
 BOOT.ELF failed to launch	BOOT.ELF failed to launch
 BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	BOOT.ELF não encontrado\nverificado mc0:/BOOT e mc1:/BOOT
+Back	Voltar
+Backspace	Backspace
+Boot Page	Página de inicialização
+Boot sound	Som de inicialização
+Both	Both
 Bringing up network...	Ativando a rede...
 Building HDD game list...	Montando lista de jogos do HDD...
 Building USB game list...	Montando lista de jogos do USB...
+CLR	CLR
 Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first	Não é possível desativar com BDMA Adaptativo ligado\nDesligue o BDMA Adaptativo primeiro
 Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	Não é possível desativar com BDMA ativado\nDefina o Modo BDMA como FAT32 (None) primeiro
 Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Não é possível desativar com os módulos SMB instalados\nDefina os módulos SMB como Não instalados primeiro
@@ -47,41 +46,44 @@ Cancel	Cancelar
 Cannot access	Cannot access
 Carousel (default)	Carrossel (padrão)
 Carousel Devices	Dispositivos do carrossel
-Case/Symbols: lower  (R2)	Case/Symbols: lower  (R2)
 Case/Symbols: UPPER  (R2)	Case/Symbols: UPPER  (R2)
+Case/Symbols: lower  (R2)	Case/Symbols: lower  (R2)
 Center aligned	Alinhado ao centro
-check the memory card, or turn Adaptive BDMA off	check the memory card, or turn Adaptive BDMA off
 Code by El_isra	Código por El_isra
 Confirm	Confirmar
 Connecting to SMB...	Conectando ao SMB...
+Could not open the SMB share	Could not open the SMB share
+Could not start MX4SIO	Could not start MX4SIO
+Could not start the internal drive	Could not start the internal drive
 Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	Não foi possível aplicar as configurações de IP do PS2\ntente novamente ou reinicie o adaptador de rede
 Couldn't read that game selection	Não foi possível ler essa seleção de jogo
 Couldn't restore BDMA mode	Couldn't restore BDMA mode
 Couldn't save settings	Couldn't save settings
 Couldn't save settings -- POPSTARTER folder NOT deleted	Não foi possível salvar -- pasta POPSTARTER NÃO excluída
 Couldn't save settings -- POPSTARTER folder NOT restored	Não foi possível salvar -- pasta POPSTARTER NÃO restaurada
+Couldn't save settings\n%s may be read-only	Couldn't save settings\n%s may be read-only
 Couldn't update hidden state	Couldn't update hidden state
 Couldn't write .hide to the HDD	Couldn't write .hide to the HDD
-Cover Art	Capa
-Cover Art disabled	Capa desativada
-Cover Art enabled	Capa ativada
+Cover art	Capa
 Cover/details folder	Pasta de capas/detalhes
 Credits	Créditos
 Cursor: L1 / R1	Cursor: L1 / R1
-Delete the POPSTARTER folder from the memory card?	Excluir a pasta POPSTARTER do cartão de memória?
-Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695
-Device conflict	Device conflict
+DEL	DEL
 DHCP (automatic)	DHCP (automático)
 DHCP failed\nset a static IP in SMB settings	DHCP falhou\ndefina um IP estático nas configurações SMB
+DKWDRV Path	Caminho do DKWDRV
+DKWDRV failed to launch	DKWDRV failed to launch
+DNS	DNS
+DONE	DONE
+Delete the POPSTARTER folder from the memory card?	Excluir a pasta POPSTARTER do cartão de memória?
+Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695
 Disc (DKWDRV)	Disco (DKWDRV)
+Disabled	Desativado
 Discard & Exit	Descartar e Sair
 Display	Tela
 Display reverted -- new mode wasn't confirmed	Tela revertida -- novo modo não confirmado
-DKWDRV failed to launch	DKWDRV failed to launch
-DKWDRV Path	Caminho do DKWDRV
-DNS	DNS
 Don't Save	Não salvar
-DONE	DONE
+Done	Done
 Edit	Edit
 Edit %s	Edit %s
 Edit DKWDRV Path	Editar caminho do DKWDRV
@@ -90,6 +92,7 @@ Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory 
 Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)	Ative a pasta POPSTARTER primeiro\n(módulos SMB devem ficar no cartão de memória)
 Enter	Enter
 Exit	Sair
+FAT32-USB (None)	FAT32-USB (None)
 Failed to connect to SMB	Falha ao conectar ao SMB
 Failed to load HDD	Falha ao carregar HDD
 Failed to load HDD (exFAT)	Falha ao carregar HDD (exFAT)
@@ -98,19 +101,20 @@ Failed to load MX4SIO	Falha ao carregar MX4SIO
 Failed to load USB	Falha ao carregar USB
 Failed to refresh HDD list	Falha ao atualizar lista do HDD
 Failed to refresh list	Falha ao atualizar a lista
-FAT32-USB (None)	FAT32-USB (None)
 First disc only	Apenas o primeiro disco
+Game List	Lista de jogos
 Game details	Detalhes do jogo
 Game file missing	Game file missing
 Game hidden	Jogo ocultado
-Game List	Lista de jogos
 Game list cache	Cache da lista de jogos
 Game shown	Jogo exibido
 Games path (folder holding POPS)	Games path (folder holding POPS)
 Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	O caminho de jogos afeta só a navegação:\nPOPStarter só inicia jogos de <share>/POPS
 Gateway	Gateway
+HDD Alt	HDD Alt
 HDD Alt mode needs POPSTARTER on HDD	Modo HDD Alt precisa do POPSTARTER no HDD
 HDD dir read failed:	HDD dir read failed:
+HDD game-partition write test FAILED (%s)	HDD game-partition write test FAILED (%s)
 HDD list loaded from cache (R1 rescans)	Lista do HDD carregada do cache (R1 rescaneia)
 HDD list refreshed	Lista do HDD atualizada
 HDD list refreshed (no games found)	Lista do HDD atualizada (nenhum jogo encontrado)
@@ -122,13 +126,15 @@ Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	Jogo
 Hidden games filtered out again	Jogos ocultos filtrados novamente
 Hide Text	Ocultar texto
 Hide UI Text	Ocultar texto da interface
-Installed	Instalado
-Internal HDD	HDD interno
 IP address	IP address
 IP assignment	IP assignment
-is active -- restart POPSLoader to browse	is active -- restart POPSLoader to browse
+Install them now?	Install them now?
+Installed	Instalado
+Internal HDD	HDD interno
 Keep this display mode?	Manter este modo de tela?
 Keyboard Layout	Layout do teclado
+LAUNCH FAILED	LAUNCH FAILED
+Language	Language
 Launch	Iniciar
 Launch DKWDRV?	Iniciar DKWDRV?
 Left aligned	Alinhado à esquerda
@@ -143,32 +149,28 @@ Loading MX4SIO...	Carregando MX4SIO...
 Loading USB...	Carregando USB...
 Locating exFAT HDD POPS folder...	Locating exFAT HDD POPS folder...
 Looking for USB drive...	Looking for USB drive...
-manually). Your POPSLoader settings are kept.	manualmente). Suas configurações do POPSLoader são mantidas.
-Memory Card	Cartão de memória
-Missing BDMA source (tried):	Missing BDMA source (tried):
-Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
-Missing SMB module (tried):	Missing SMB module (tried):
 MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE não tem pasta POPS\nesperado mmce0:/POPS/
-MMCE was used this session -- restart to browse MX4SIO
+Memory Card	Cartão de memória
+Missing BDMA UI source (tried):	Missing BDMA UI source (tried):
+Missing BDMA source (tried):	Missing BDMA source (tried):
+Missing SMB module (tried):	Missing SMB module (tried):
 Multi-disc games	Jogos multi-disco
-MX4SIO was used this session -- restart to browse MMCE
 NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor
 NetBIOS name	NetBIOS name
 Netmask	Netmask
 No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9
-No cover. Looked for:	Sem capa. Procurado em:
 No DKWDRV found at this path	No DKWDRV found at this path
-No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)
-No games found	Nenhum jogo encontrado
-No games found on hdd0:\n(__.POPS partitions are empty)	Nenhum jogo encontrado em hdd0:\n(partições __.POPS estão vazias)
-No games found on this device	Nenhum jogo encontrado neste dispositivo
 No MMCE device detected\nchecked mmce0: and mmce1:	Nenhum dispositivo MMCE detectado\nverificado mmce0: e mmce1:
 No MX4SIO device detected	Nenhum dispositivo MX4SIO detectado
-No network link\ncheck the Ethernet cable / adapter	Sem link de rede\nverifique o cabo / adaptador Ethernet
 No POPSTARTER found at this path	No POPSTARTER found at this path
 No Share selected	Nenhum Share selecionado
 No Share set in SMB settings\n(server returned no shares)	Nenhum Share definido nas configurações SMB\n(servidor não retornou shares)
 No USB backend detected\nreseat the drive and try again	Nenhum backend USB detectado\nreconecte o drive e tente novamente
+No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)
+No games found	Nenhum jogo encontrado
+No games found on hdd0:	Nenhum jogo encontrado em hdd0:
+No games found on this device	Nenhum jogo encontrado neste dispositivo
+No network link\ncheck the Ethernet cable / adapter	Sem link de rede\nverifique o cabo / adaptador Ethernet
 Not implemented yet	Ainda não implementado
 Not installed	Não instalado
 Off	Desligado
@@ -178,59 +180,33 @@ On (default)	Ligado (padrão)
 On (per-device)	Ligado (por dispositivo)
 Opening SMB list...	Abrindo lista SMB...
 Overscan (CRT inset)	Overscan (recuo CRT)
-Password	Password
-Path saved, file not found:	Path saved, file not found:
 POPS (beside game)	POPS (ao lado do jogo)
 POPSLoader\nfor POPStarter	POPSLoader\npara POPStarter
 POPSTARTER Folder	Pasta POPSTARTER
+POPSTARTER Path	Caminho do POPSTARTER
 POPSTARTER folder deleted from the memory card	Pasta POPSTARTER excluída do cartão de memória
 POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)
-POPSTARTER Path	Caminho do POPSTARTER
+POPSTARTER needs these filled in first:	POPSTARTER needs these filled in first:
+PS2 IP	PS2 IP
+Password	Password
+Path saved, file not found:	Path saved, file not found:
 Port	Port
+Press %s/%s to continue.	Press %s/%s to continue.
 Press CIRCLE again to discard what you typed	Pressione CIRCLE novamente para descartar o que digitou
 Profile	Perfil
 Profile defaults restored	Padrões do perfil restaurados
-PS2 IP	PS2 IP
-re-select it under Settings > Storage to restage	re-select it under Settings > Storage to restage
 Rebuilding HDD game list...	Reconstruindo lista de jogos do HDD...
 Refreshing HDD list...	Atualizando lista do HDD...
 Refreshing list...	Atualizando lista...
+Report this code -- the card may be fine	Report this code -- the card may be fine
+Report this code -- the drive may be fine	Report this code -- the drive may be fine
 Rescanning HDD partitions...	Rescaneando partições do HDD...
 Reset	Redefinir
 Reset Defaults	Restaurar padrões
 Resolved:	Resolved:
-Restart	Restart
-Restart failed -- power cycle to switch device	Restart failed -- power cycle to switch device
 Retrying USB scan...	Tentando escanear USB novamente...
-return code:	return code:
 Return to OSDSYS?	Voltar ao OSDSYS?
-return until you turn this back On (or re-add them	voltar até você ligar isso de novo (ou readicioná-los
 Right aligned	Alinhado à direita
-Save	Salvar
-Save Changes	Salvar alterações
-Save Settings	Salvar configurações
-Save your changes before leaving?	Salvar suas alterações antes de sair?
-Saved to	Saved to
-Saving settings	Salvando configurações
-Saving...	Salvando...
-Saving/Applying...	Salvando/Aplicando...
-Scanning exFAT HDD games...	Escaneando jogos do HDD exFAT...
-Scanning games...	Escaneando jogos...
-Scanning HDD partitions...	Escaneando partições do HDD...
-Scanning MMCE games...	Escaneando jogos do MMCE...
-Scanning MX4SIO games...	Escaneando jogos do MX4SIO...
-Scanning SMB games...	Escaneando jogos do SMB...
-Select	Selecionar
-Select a share	Selecione um share
-Server IP	Server IP
-Server refused SMBv1\nenable SMBv1 support on the host	Servidor recusou SMBv1\native o suporte a SMBv1 no host
-Settings	Configurações
-Share	Share
-Share not found\ncheck the Share name (host must allow SMB1)	Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)
-Show all discs	Mostrar todos os discos
-Showing hidden games (dimmed) -- press L3 to unhide	Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir
-Shown	Exibido
-Slot:	Slot:
 SMB / Network	SMB / Rede
 SMB connect failed	Falha na conexão SMB
 SMB connection dropped	Conexão SMB perdida
@@ -241,16 +217,44 @@ SMB modules are not installed\nGames will list but won't boot -- install them\nv
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	Módulos SMB não instalados/removidos\nconfiguração de módulos revertida; outras foram salvas
 SMB modules failed to load	Falha ao carregar módulos SMB
 SPACE	SPACE
+Save	Salvar
+Save Changes	Salvar alterações
+Save Settings	Salvar configurações
+Save your changes before leaving?	Salvar suas alterações antes de sair?
+Saved to	Saved to
+Saving settings	Salvando configurações
+Saving...	Salvando...
+Saving/Applying...	Salvando/Aplicando...
+Scanning HDD partitions...	Escaneando partições do HDD...
+Scanning MMCE games...	Escaneando jogos do MMCE...
+Scanning MX4SIO games...	Escaneando jogos do MX4SIO...
+Scanning SMB games...	Escaneando jogos do SMB...
+Scanning exFAT HDD games...	Escaneando jogos do HDD exFAT...
+Scanning games...	Escaneando jogos...
+Select	Selecionar
+Select a share	Selecione um share
+Server IP	Server IP
+Server refused SMBv1\nenable SMBv1 support on the host	Servidor recusou SMBv1\native o suporte a SMBv1 no host
+Settings	Configurações
+Settings > SMB / Network	Settings > SMB / Network
+Share	Share
+Share not found\ncheck the Share name (host must allow SMB1)	Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)
+Show all discs	Mostrar todos os discos
+Showing hidden games (dimmed) -- press L3 to unhide	Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir
+Shown	Exibido
+Slot:	Slot:
 Startup	Inicialização
 Static (manual)	Estático (manual)
-status:	status:
 Storage	Armazenamento
+The SMB modules are not on your memory card.\nGames will list, but none of them will boot.	The SMB modules are not on your memory card.\nGames will list, but none of them will boot.
+The internal drive is still starting\nopen this page again in a moment	A unidade interna ainda está iniciando\nabra esta página novamente em instantes
 This backend isn't implemented yet	Este backend ainda não foi implementado
 This removes the POPSTARTER pack -- including the	Isso remove o pacote POPSTARTER -- incluindo os
 UI text hidden	Texto da interface ocultado
 UI text shown	Texto da interface exibido
 Unknown BDMA mode:	Unknown BDMA mode:
 User	User
+Version	Version
 Video Standard	Padrão de vídeo
 Visible	Visível
 Visible (manage)	Visível (gerenciar)
@@ -260,3 +264,11 @@ X = Select      O = Cancel	X = Selecionar      O = Cancelar
 X = Yes      O = No	X = Sim      O = Não
 Yes	Sim
 You can still add a "<game>.hide" next to the .VCD from a PC.	You can still add a "<game>.hide" next to the .VCD from a PC.
+__.POPS partition %s accepts writes (game-partition RW test)	__.POPS partition %s accepts writes (game-partition RW test)
+adjusted -- using	adjusted -- using
+check the memory card, or turn Adaptive BDMA off	check the memory card, or turn Adaptive BDMA off
+manually). Your POPSLoader settings are kept.	manualmente). Suas configurações do POPSLoader são mantidas.
+re-select it under Settings > Storage to restage	re-select it under Settings > Storage to restage
+return code:	return code:
+return until you turn this back On (or re-add them	voltar até você ligar isso de novo (ou readicioná-los
+status:	status:

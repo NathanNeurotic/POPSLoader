@@ -1,0 +1,287 @@
+<!-- source: https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki/proto -->
+<!-- primary snapshot: 20200812192707  |  4 captures, 2 distinct content version(s) -->
+<!-- other distinct versions retained in _versions/proto/: 20170810221805 -->
+# proto
+
+# **WIP 06 PROTOS :**
+
+______________________________________________________________________________________________________________
+
+**Notes :** These protos came after WIP 06 Beta 17. They are meant to test some new features. They are **NOT** meant to be used as daily gaming version. They refuse to run from OPL, **by design**. More infos [here](http://www.psx-place.com/threads/open-ps2-loader-v0-9-3.13415/page-4#post-84429).
+
+These changelogs are now translated in english and merged into [POPStarter Changelog](https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki/popstarter-changelog).
+
+- **[POPStarter Revision 13, WIP 06, Proto 20171008](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-36-134569.html#post1776249)**
+
+```
+- Fixed a codecache memory leak, which filled up the memory with iterated calls to the exception handler
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20171003](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-33-134569.html#post1776217)**
+
+```
+Can't remember everything I did to POPStarter this summer... Some of the changes :
+- Bugfixed : PS1 codes of type D (aka joker commands) were not working correctly
+- "Support" for old SCEoA license sectors was added
+- GetID (emulated CDROM controller command 0x1A) now returns the proper SCEx, matching the BIOS region and the VCD
+region
+- POPStarter can now parse the ELF name off a full HDD launch argument
+- Workaround to POPS not handling CDDA tracks pregaps/pauses, specifically for Tomb Raider, Tomb Raider II and
+Ninja. One remaining messup on TR2 though : cutscenes (not FMVs) aren't synced with the audio, and the gap between
+audio/video gets worse as the cutscene is runnin, due to animation slowdowns. TR1 looked fine when I tried it.
+Ninja audio should start ~2 seconds too early or too late, because of non-existent pregaps.
+- Did something for the PAL releases of Team Buddies but can't remember what. Perhaps that has something to do with
+the PAL patcher issue that was reported over at ElOtroLado...
+- Proper LibCrypt key injection for NFS: Porsche 2000. Both the UK and the other release have the same volume
+descriptor, but different keys. POPStarter wrongly used the same key for the two versions, because of the VCD
+identifier design. I got that problem solved with a little trick. Now the race should stop resetting every 12
+seconds (the actual LC protection), since the magic word is valid.
+- Added $MUTE_CDDA to mute CDDA. And it's done automatically when you play a physical PS1 CDROM from the disc drive
+- Added $MUTE_VAB to mute VAB/VAG/VB+VH based sounds/music on games. May be useful for these old games which output
+distorted SFX, wrong audio samples or stupid noises.
+- Added $WIDESCREEN $ULTRA_WIDESCREEN and $EYEFINITY. Does not deal with stuff like HUDs, texts/fonts, menus, 2D
+backgrounds...
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170703](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-33-134569.html#post1775856)**
+
+```
+- Encore quelques bugs de patchés sur POPS. Susceptibles d’accroitre la compatibilité.
+- Réécriture des modes de compatibilité. Je me suis rendu compte que le mode 0x05 avait un problème, en laissant
+Colony Wars tourner une quarantaine de minutes, l'intro (FMV) plantait. Alors j'ai tout recodé proprement.
+- Sécurisation de l'ensemble des fonctionnalités de POPStarter accrochées à POPS.
+- Tentative de résolution du crash de Castlevania SOTN.
+- Tentative de résolution du crash de Rayman 2 : semble fonctionner sur la version FR/DE, j'ai des doutes
+concernant la version EN/IT/ES, et ne fonctionne pas sur la version NTSC U/C.
+- Suppression des fixes intégrés à POPStarter pour Metal Gear Solid. Ils servaient à contourner les cutscenes qui
+faisaient crasher POPS. Je pense que le bug de POPS a été corrigé et que nous n'en avons plus besoin...
+- Suppression de l'interdiction d'affichage en PAL pour Driver 2 PAL. Ça semble fonctionner maintenant...
+- Suppression de ExcepTrap.
+- D'autres changements que j'ai oublié...
+$CODECACHE_ADDON_0 automatique sur :
+- Colin McRae Rally 2.0 v1.0 (SLES-02605)
+- Colin McRae Rally 2.0 v1.1 (SLES-02605)
+- Colin McRae Rally 2.0 (SLUS-01222)
+- V-Rally: 97 Championship Edition v1.0 (SLES-00250)
+- V-Rally: 97 Championship Edition v1.1 (SLES-00250)
+- V-Rally: 97 Championship Edition v1.2 (SLES-00250)
+- V-Rally: Championship Edition (SLPS-01149 / SLPS-91099)
+- Need For Speed: V-Rally (SLUS-00590)
+Des jeux qui rament (comme V-Rally autrefois) ou qui se figent temporairement (comme Colin McRae Rally 2.0
+autrefois) ? Essayez $CODECACHE_ADDON_0 dans CHEATS.TXT si le mode de compatibilité 0x04 n'aide pas.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170624](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-32-134569.html#post1775817)**
+
+```
+Vu que les emails d'ASSEMblergames ne fonctionnent toujours pas, j'ai retouché un peu à POPS et patchée une poignée de bugs.
+Certains jeux devraient cesser de crasher maintenant, mais je n'ai pas encore fait de tests...
+Vu la quantité d'opcodes qui load/store sans alignement, $ONY non plus n'avait pas du faire beaucoup de tests...
+----------------------------------
+EDIT : Quelques tests en cours...
+jeux auxquels j'ai pu jouer un peu :
+- Mega Man Legends (USA)
+- Mega Man Legends 2 (USA)
+- Gunfighter - The Legend of Jesse James (Euro)
+- Crash Bandicoot (USA)
+- WarGames: Defcon 1 (version USA je crois)
+jeux qui ne plantent plus mais qui ont des glitches conséquents (pas de mode de compatibilité essayé) :
+- Action Man: Mission Xtreme/Operation Extreme (Euro/USA)
+- Jurassic Park - Warpath (Euro)
+
+```
+
+```
+Some more tests, from SMB :
++ Still not working (crashing/stuck in a endless loop) :
+Viper (Europe).VCD
+The Next Tetris (Europe).VCD
+Soccer Kid (Europe).VCD
+Tobal No. 1 (Europe).VCD
+Street Fighter Alpha 2 (Europe).VCD
+Motor Toon Grand Prix 2 (Europe).VCD
+Looney Tunes Racing (Europe) (En,Fr,De,Es,It).VCD
+Penny Racers (Europe).VCD
+Philosoma (Europe) (En,Fr,De).VCD
+WarCraft II - The Dark Saga (Europe) (En,Fr,De,Es,It).VCD
+Worms Armageddon (Europe).VCD
++ Now working :
+Crisis Beat (Europe).VCD
+The Misadventures of Tron Bonne (Europe).VCD
+I wish I could fix that Dino Crisis syndrome that affects quite a lot of games.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170615](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-31-134569.html#post1775789)**
+
+```
+- Correction d'un bug qui touchait les protos des 27, 30 et 31 mai. Les VCDs ne pouvaient plus être lancés depuis les
+partitions/dossiers POPS#. Il y avait un conflit avec le mode PS1 CD qui faisait planter POPStarter. Ça semble réglé
+maintenant. Je ne m'en suis rendu compte que ce matin, en voulant lancer un jeu dans la partition __.POPS0 de mon HDD.
+Preuve que les protos n'ont pas été suffisamment testé par mes soins pour être digne d'une bêta grand public. Il y a peut
+être d'autres bugs...
+- Ajout de $LOAD_TIMINGS et de $SET_TIMINGS
+LOAD se contente de charger les timings de la VMC, sans squatter les boutons L1/L2/R1/R2 des deux pads (et donc sans
+permettre les changements).
+SET charge depuis la VMC et permet de les changer les timings, comme indiqué dans le post précédent.
+Il me semble que ce SET_TIMINGS intégré est hyper sensible là où je l'ai accroché. Le TROJAN est sans doute mieux pour
+faire des réglages affinés.
+EDIT : Pour en revenir à Tekken 3, j'ai fini de régler la version PAL pour réduire le scintillement au maximum.
+TEKKEN3_PAL.ZIP
+Pertes de trames abominables. Déjà que la version PAL était excessivement lente par rapport à la version NTSC, bidouiller
+le rafraichissement le rend encore plus déplaisant à jouer.
+Quant à la version NTSC, je n'ai même pas voulu conserver la VMC. Parce qu'il n'y a pas de juste milieu entre le
+scintillement et le rafraichissement optimal. Résultat, une motion blur absolument dégueulasse.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170531](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-30-134569.html#post1775752)**
+
+```
+Bon, je suis entrain de corriger les problèmes de flickering sur Crash Bash et les ralentissements. C'est concluant (sauf
+pour les cutscenes), mais j'ai un souci :
+La version US semble avoir d'autres problèmes de plantages, et ils ne sont pas mentionnés dans la liste de compatibilité.
+J'aimerais avoir une confirmation.
+Est-ce que quelqu'un peut tester le gem challenge du niveau Polar Panic et le niveau Papu Pummel ?
+Voilà ma VMC : SLOT0.VMC
+Chez moi, le gem challenge de Polar Panic plante après le chargement (sur un écran noir), et Papu Pummel plante après
+quelques secondes de jeu...
+Je suis en mode SMB. Avec la version PAL, je n'ai pas rencontré de problème.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170530](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-30-134569.html#post1775741)**
+
+```
+En fin de compte, ce n'est pas une si bonne stratégie de faire charger padman_hsync par POPStarter sur reconnaissance des
+MODULE_#.IRX...
+J'ai changé ça, le système refonctionne comme dans la bêta. Libre à vous de donner vos directives dans CHEATS.TXT en
+fonction de vos besoins :
+$LOAD_PADMAN chargera padman_hsync après sio2man.
+$KILL_PADMAN neutralisera padman_hsync complétement, si vous souhaitez utiliser un remplacement...
+Avec aucune de ces deux commandes, ça fonctionnera normalement.
+Le hack de Dave Mirra Freestyle BMX: Maximum Remix (SLUS-01347) a été porté sur :
+- Dave Mirra Freestyle BMX (SLUS-01026)
+- Dave Mirra Freestyle BMX (SLES-02740)
+- Dave Mirra Freestyle BMX: Maximum Remix (SLES-03371)
+accessible avec 0x04 à l'offset 42Fh.
+Je n'ai pas trouvé les versions jap.
+Hier j'ai fait le même genre modif de caméra sur RR et Tony Hawk's, ça glitch toujours à la même position lol.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170527](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-sorties-et-developpements-30-134569.html#post1775718)**
+
+```
++ Modifications sur le chargement des MODULE_#.IRX
+Le nouveau système chargera le padman_hsync de POPS en priorité (juste après le sio2man de POPS) si il trouve "ds3ps2",
+"ds3usb" ou "ds3bt" dans vos modules. En mode SMB, mc#:/POPSTARTER/smsutils.irx sera chargé entre MODULE_4.IRX et
+MODULE_5.IRX.
+Exemple facultatif en mode SMB :
+MODULE_0.IRX = driver USB (USBD.IRX)
+MODULE_1.IRX = driver DS3 (ds3bt.irx, ou ds3usb.irx, ou un pilote BT+USB unifié)
+MODULE_5.IRX = trapper pour sio2man (genre bt_pademu.irx, usb_pademu.irx, ou unifié)
+Avec ce style de setup, j'ai pu assigner ma DS3 câblée au P1. Bien sur les commandes ne répondent pas, vu que ma manette
+est une fausse.
++ Possibilité de lire les CDs de PS1 à partir du lecteur, plutôt que des images VCD
+C'est une fonctionnalité native de POPS, qui s'enclenchait à l'origine si POPS était exécuté sans argument ou sans point
+(.) en troisième caractère du nom de partition. C'est pour ça que POPStarter exige un point derrière les préfixes PP et
+__ .
+$ONY a du implémenter ça pour leurs tests persos. Il n'y avait pas de support VMC (ni MC physique).
+J'ai rajouté le support VMC, le système de TOC refresh et les merdes habituelles de POPStarter dessus. Le seul truc que
+je n'ai pas corrigé, c'est la lecture des pistes CDDA. Le IOPCD de POPS est capable de lire les infos de pistes, mais pas
+capable de lire les pistes correctement. Les jeux qui ont des pistes CDDA feront entendre un bruit HORRIBLE à la place.
+Un peu comme quand vous mettez un disque de données dans un vieux lecteur CD audio. C'est pour cette raison que je n'ai
+jamais rajouté cette fonctionnalité dans POPStarter auparavant.
+Voilà comment ça fonctionne :
+Si le VCD (ou la partition) spécifié dans le nom du ELF n'existe pas, POPStarter interrogera le lecteur. Et si il y a un
+CD de PS1 valide dedans, il l'utilisera. La sauvegarde des VMCs s'effectuera comme à l'accoutumée, en fonction du
+nom/préfixe que vous donnez à votre ELF.
+Exemples :
+PS1CD.ELF sauvegardera dans __common/POPS/PS1CD/SLOT#.VMC
+XX.PS1CD.ELF sauvegardera dans mass:/POPS/PS1CD/SLOT#.VMC
+SB.PS1CD.ELF sauvegardera dans smb:/POPS/PS1CD/SLOT#.VMC
+Pour que ça charge plus vite, je vous conseille PP.PS1CD.ELF plutôt que PS1CD.ELF. POPStarter essaiera juste de monter
+la partition PP.PS1CD au lieu de scanner les 11 partitions __.POPS. Bien sur, la partition PP.PS1CD ne doit pas exister,
+afin que POPStarter interroge le lecteur CDVD.
+Si vous changez de CD, n'oubliez pas de simuler l'ouverture/fermeture du capot (hotkeys Triangle/Carré) comme vous
+feriez d'habitude. Les touches directionnelles ne servent à rien dans ce mode CD.
++ Nouveau type de codes dans CHEATS.TXT, pour la scratchpad memory PS1
+Même syntaxe que pour les codes SPM PS2 ($S), sauf que le préfixe est $T.
+Sur la PS1, la SPM est mappée de 1F800000h à 1F800400h. Sous POPS, c'est de 5F800000h à 5F800400h.
+Exemples de codes simples et fonctionnels pour poker 1 octet par ligne :
+Pour Rage Racer :
+$T0000064 00000006
+$T000006C 00000006
+Pour Ridge Racer Hi-Spec/Turbo :
+$T0000048 00000006
+$T000004C 0000000F
+$T0000050 00000004
+Pour Ridge Racer Revolution :
+$T0000058 00000000
+Ce sont des codes qui décalent les textures lol.
++ Nouvelle valeur dans la config table du ELF
+Il existait déjà 4 valeurs pour l'offset $42F; j'y ai ajouté la valeur 0x04.
+La valeur 0x04 désactive tous les bons modes de compatibilité, fixes, et cracks LibCrypt intégrés à POPStarter, pour
+n'activer que des trucs "inefficaces" indisponibles avec 0x01 0x02 et 0x03. C'est en quelque sorte ma poubelle, pour
+des hacks dont les effets sont éloignés des jeux originaux ou trop pourris pour être considérés comme des correctifs
+de compatibilité
+Dans cette build, il y a :
+- Ridge Racer Revolution (SCES-00242)
+- Ridge Racer Revolution (SLUS-00214)
+- Ridge Racer Revolution v1.0 (SLPS-00150)
+- Ridge Racer Revolution v1.1 (SLPS-00150)
+- Rage Racer (SCES-00650)
+- Rage Racer (SLUS-00403)
+- Rage Racer v1.0 (SLPS-00600)
+- Rage Racer v1.1 (SLPS-00600)
+- Ridge Racer Hi-Spec Demo (SCES-01832)
+- Ridge Racer Bonus Turbo Mode Disc (SLUS-90049)
+- Ridge Racer High Spec Ver. &#38; Namco Catalogue '98 (SLPS-01801)
+[qui ont l'équivalent des codes $T postés plus haut, textures en zigzag]
+et
+- Dave Mirra Freestyle BMX: Maximum Remix (SLUS-01347)
+[qui a l'équivalent d'un vieux TROJAN posté autrefois sur ASSEMblergames, pour éloigner la caméra du rider et limiter
+les glitches]
++ Ajouts de cracks LibCrypt et de mode de compatibilité incorporés
+- Roger Lemerre: La Selection des Champions (SLES-02976) [LibCrypt]
+- This Is Football (SCES-01882) [LibCrypt]
+- World Championship Snooker (SLES-02196) [LibCrypt]
+- Action Man: Destruction X (SLES-03083) [Mode Comp. 0x05]
+- Spyro: Year Of The Dragon v1.1 (SCES-02835) [LibCrypt]
+- Spyro 2: Gateway To Glimmer (SCES-02104) [LibCrypt]
+Les Spyro sont TOUJOURS incompatibles.
+D'après le commentaire dans la liste de compatibilité HDD, Action Man: Destruction X bloque après la course. C'est un
+code de triche qui cause ça.
+=== Problèmes connus ===
+- Si le KELF n'est pas renommé en EXECUTE.KELF, POPStarter utilisera son nom en tant que nom de partition de ressources,
+causant la désactivation des VMCs et probablement des handlers "current game"... Sans doute un truc qui se traine depuis
+la WIP 01. Faudrait imposer EXECUTE.KELF et kicker à l'OSD si le KELF n'a pas été renommé, dans la prochaine beta.
+- Constaté dans la nouvelle implémentation du lecteur CD, sceCdStatus() renvoie une valeur différente en fonction d'où
+POPStarter est lancé (WTF ?). Depuis le HDDOSD avec le tiroir éjecté, ça renvoie 0 et depuis uLe ça renvoie 10; ou
+quelque chose dans ce genre. C'est incompréhensible... Pour le moment, POPStarter jugera le lecteur CDVD inaccessible
+si sceCdStatus() retourne quoi que ce soit d'autre que 1.
+- fileXioChStat échoue sur les sous-dossiers (donc sur les dossiers VMC, pas sur le dossier POPS) si la structure APA
+est hors standard. Ce qui rend infaisable la copie de list.ico &#38; icon.sys ainsi que le changement des propriétés des
+dossiers VMCs par POPStarter (POPS peut néanmoins gérer les VMCs). Avec peut être pour effet collatéral de désactiver
+les handlers "current game"... Pas grave, je dois être le seul sur terre à causer ce bug avec une structure APA hackée
+et des partoches de tailles non multiples de 128 MB.
+
+```
+
+- **[POPStarter Revision 13, WIP 06, Proto 20170210](https://www.assemblergames.com/threads/ps2-pops-stuff-popstarter.45347/page-104#post-934744)**
+
+```
+PS2SDK update, no core changes.
+Gentlemen, I've patched some stuff and need you to try two things, since I don't have the consoles to test it myself :
+- PS3, in USB mode
+- DESR, in internal HDD mode [and SMB mode if possible]
+
+```
+
+______________________________________________________________________________________________________________
+
+### [**Index**](https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki/index)
