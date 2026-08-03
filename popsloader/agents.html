@@ -1,0 +1,197 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AGENTS — orientation &amp; high-risk surfaces · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>AGENTS — orientation &amp; high-risk surfaces</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/AGENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-07-27 (rolling <code>dev</code> = <code>v1.1.1-dev</code>; released line 1.1.0)</p>
+<p>Operational guidance and entry point for AI agents (cloud or interactive) working in this repository. This file is self-contained: it absorbs the former <code>AGENTS_START_HERE.md</code> orientation content. For current code/hardware status, behavioral invariants, preservation contracts, and the canonical known-issues list, defer to <strong><code>STATE.md</code></strong> rather than restating them here.</p>
+<h2 id="start-here-orientation">Start Here / Orientation</h2>
+<p>POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by <strong>embedded Lua</strong> modules (<code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code>). The Lua is bin2c'd into the EE ELF at build time, so a <em>runtime</em> Lua error (nil global, type error, <strong>load-order</strong> error) is invisible to <code>luac -p</code> and to CI and only surfaces on real PS2 / PCSX2. (<code>pops_profiles.lua</code> was removed 2026-07-13 with the profile-preset system.)</p>
+<ul>
+<li>Released line: <strong>1.1.0</strong> (2026-07-21; previously 1.0.1 2026-07-13, 1.0.0 2026-07-10, BETA-12 2026-06-18). Cut from <code>dev</code> via the tree-adopting merge.</li>
+<li>Dev branch: <strong><code>dev</code></strong> (the active/rolling branch; <code>BETA-12-PLAY</code> is now <strong>archival/frozen</strong>). The rolling-release workflow publishes from <code>dev</code>.</li>
+<li>Testers: maintainer + Nuno (primary), CosmicScale (secondary), plus <strong>provato</strong> and <strong>nuno6573</strong>. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+</ul>
+<blockquote>
+<p><strong>Historical note</strong>: Earlier entry-point docs framed D-10 (HDD POPSTARTER + HDD game) as the single urgent unresolved objective. D-10 was resolved by the B2 PFS-unmount fix at commit <code>4ae6679</code> and is now a <strong>preservation contract, not an open blocker</strong> (see <code>STATE.md &gt; Preservation Contracts</code>).</p>
+</blockquote>
+<h3 id="where-to-look-first">Where to look first</h3>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What's there</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="state.html">STATE.md</a></td>
+<td><strong>Canonical.</strong> Current code + hardware status, behavioral invariants, preservation contracts, the single known-issues list, hardware-verification table. Start here for ground truth.</td>
+</tr>
+<tr>
+<td><a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a></td>
+<td>Authoritative detailed hardware/CI run ledger with per-artifact history.</td>
+</tr>
+<tr>
+<td><a href="roadmap.html">ROADMAP.md</a></td>
+<td>Prioritized backlog / open work.</td>
+</tr>
+<tr>
+<td><a href="decisions.html">DECISIONS.md</a></td>
+<td>Decision log with rationale and evidence.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/archive/">docs/archive/</a></td>
+<td>Investigation artifacts: <code>U10_INVESTIGATION.md</code>, <code>LAUNCH_HYGIENE.md</code> (launch-path architecture, V2 mimicry, Layer A/B/C), <code>HDD_POPSTARTER_HANDOFF.md</code>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="source-of-truth-rule">Source-of-Truth Rule</h2>
+<ul>
+<li>Prefer claims tied to current repository files, workflow definitions, and recorded hardware outcomes in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+<li>If a hardware/runtime claim cannot be proven from code or a recorded run result, mark it <code>Unknown (verify on hardware)</code>.</li>
+<li>Separate repo-verified facts from hardware-reported results in task output.</li>
+<li>The 2026-06 HDD/PAL/BDMA features are repo-verified and <strong>boot on PCSX2</strong>; provato confirmed the <strong>HDD is RW-writable on real hardware</strong>, but the full flows are <strong>not yet broadly hardware-confirmed</strong>. Describe them as "implemented / boots on PCSX2 / HDD RW confirmed on hardware (provato) / full flow validating on hardware" — never "confirmed working on hardware", and do not keep calling the shipped HDD save/<code>.hide</code> features "a probe" or "read-only".</li>
+</ul>
+<h2 id="scope">Scope</h2>
+<ul>
+<li>Allowed: task-focused edits to requested files; documentation, tests, and narrow fixes directly tied to the active task.</li>
+<li>Avoid touching unrelated Lua/C/C++ files unless required by task scope.</li>
+<li>Preserve boot/launch and storage detection pipelines unless the task explicitly targets them.</li>
+</ul>
+<h2 id="preservation-contracts-known-issues">Preservation Contracts &amp; Known Issues</h2>
+<p>These are shared, volatile facts maintained in one place. <strong>Do not restate or fork them here.</strong><br />
+- <strong>Preservation contracts</strong> (D-10 / D-14 / D-15 / DKWDRV-MC / BOOT.ELF-USB-booted / <code>EnsureBootPartitionWritable</code>): see <strong><code>STATE.md &gt; Preservation Contracts</code></strong> and the <strong>Reported Hardware Status</strong> table. Write these as contracts hardware-confirmed in the BETA line, not as open failures.<br />
+- <strong>Known issues</strong> (open / in-testing / recently-resolved): see <strong><code>STATE.md &gt; Known Issues</code></strong>. Notable status deltas already reflected there: <strong>U-10 (BOOT.ELF from HDD-boot)</strong> and <strong>DKWDRV from a custom HDD path</strong> are <strong>RESOLVED</strong> (were known-broken); Class-A <strong>HOSDmenu / wLaunchELF</strong> start failures are <strong>resolved</strong>. The old "HDD installs save to <code>mc0:</code> because <code>ps2hdd-osd.irx</code> can't write PFS / needs an IRX swap" claim is <strong>OBSOLETE</strong> — HDD installs now save on the HDD boot partition via the RW mount take-over (single-device parity; see <code>STATE.md &gt; Settings</code>).</p>
+<h2 id="high-risk-surfaces">High-Risk Surfaces</h2>
+<p>Changes in these files can break core behavior and require extra care:<br />
+- <code>bin/POPSLDR/system.lua</code> (LaunchEngine, RunPOPStarterGame, ResolveBootContext, classify_mass_boot, AutoInitStartupBackends, EnsureMmceReadyOnce, <strong><code>PLDR.ResolveLaunchPopstarterPath</code></strong> — the per-device POPSTARTER.ELF resolver: the explicit user-configured absolute path (the "POPSTARTER Path" setting; empty = <strong>Automatic</strong> — the 16-preset profile system was removed 2026-07-13, UI/config layer only, the ladder is untouched) wins first, then for removable devices the game's own <code>&lt;device&gt;:/POPS/POPSTARTER.ELF</code>, then the cwd copy beside POPSLOADER.ELF, then the <code>mc0:</code>→<code>mc1:</code> net (for internal-PFS HDD the device step is <code>hdd0:__common/POPS/POPSTARTER.ELF</code>, resolved through the same <code>__common</code> partition machinery that preserves the D-10/D-15 partition context); the device + cwd steps are existence-gated so a device without a copy falls through. Not yet hardware-tested. And <strong><code>PLDR.HDD.EnsureBootPartitionWritable</code></strong> — the boot pfs-slot unmount→remount-RW "take over the mount" that is now load-bearing for HDD settings save and HDD in-app <code>.hide</code>; a launch-path or mount change must not break it. Note also the <strong>load-order trap</strong>: <code>PLDR.HDD</code> methods must be defined <em>after</em> <code>PLDR.HDD</code> exists — defining them early bricked recent HDD-feature rolling builds, fixed <code>d4b04be</code>. New 2026-07-09 launch-path residents: <strong><code>PLDR.MaybeApplyAdaptiveBdma</code></strong> (launch-time BDMA staging — runs after the launch validations, cancels the launch on a staging failure; nothing queued after exec can render, so don't move its toast past the exec) and the <strong>partition-installed game arm</strong> in <code>RunPOPStarterGame</code> (argv0 = the literal <code>PP.</code>/<code>__.</code> partition label — case-sensitive, never sanitized).)<br />
+- <code>bin/POPSLDR/ui.lua</code> (LaunchSelectedGame — its POPSTARTER <strong>preflight must resolve with the SAME root the <code>RunPOPStarterGame</code> call gets</strong>: the game entry's own device root on encoded-entry pages (USB entries = <code>"&lt;root&gt;POPS/|name.vcd"</code>, <code>PLDR.GAMEPATH</code> deliberately empty there), <code>GAMEPATH</code> on bare-name pages, scene-guarded on GHDD. Resolving the preflight with <code>GAMEPATH</code> blocked every drive-resident-only USB POPSTARTER with "No POPSTARTER.ELF found" while the launch itself would have worked (sAGA/oldman63, fixed 2026-07-16) — do not reintroduce the divergence. Also LaunchBootElf, OpenDKWDRV; <code>BuildCoverCandidates</code> — the per-device cover-art seeker: it returns <strong>exactly ONE candidate</strong> (EXP71, maintainer directive). Removable devices: <code>&lt;device&gt;:/ART/&lt;gamefilename&gt;_COV.png</code>, device root matched with <code>%w+:/</code> so a digit-bearing device name like <code>mx4sio0:</code> still resolves (<code>%a+%d*:</code> did not, and MX4SIO covers were unfindable). APA/PFS: <code>hdd0:__common/POPS/ART/&lt;gamefilename&gt;_COV.png</code> via <code>PLDR.ResolveHddPartitionReadablePath</code>, which existence-confirms. The user-selectable folder (<code>ART_LOCATION</code>, the <em>Cover/details folder</em> row) was REMOVED in EXP35 and the key is inert; the disc-marker-stripped family name, the always-appended <code>POPS/</code> fallback, the legacy <code>&lt;name&gt;.png</code> and the additive legacy families are ALL GONE — a stripped candidate can shadow exact per-disc art and every extra candidate is a full dir-chain walk on a big ART folder. The <code>.txt</code> details sidecar (<code>&lt;device&gt;:/ART/&lt;gamefilename&gt;.txt</code>) is read on the RESIDENT COVER WORKER via <code>Graphics.coverLoadTextPath</code> + <code>coverLoadText</code>, never on the render thread; <code>System.listDirectory</code> on the cover folder must NOT come back (implicated three times). <strong>INVARIANT: selecting a game performs ZERO blocking file reads</strong>, pinned by harness T30/T35/T40; external launches drain the worker first (T39). Canonical detail: <strong>STATE.md &gt; Cover art</strong> plus the EXP71/EXP73 bullets; also <code>UI.Pad.Listen</code>/<code>resolve_nav</code> — the frame-counted nav auto-repeat and the <code>Pads.getMode()</code>-gated analog-stick fold; do not reintroduce wall-clock timing or an ungated stick read — see Gotchas)<br />
+- <code>src/main.cpp</code> (detectBootDeviceHintFromArgv0, parseLaunchArgs, eager IRX load order, conditional mmceman)<br />
+- <code>src/luasystem.cpp</code> (lua_loadELF<em>, EnsureBDM</em>, EnsureMmceman, lua_mx4sio_init with mandatory EnsureUsbMass-first ordering, getMassMountDriver)<br />
+- <code>src/luaplayer.cpp</code><br />
+- <code>src/elf_loader/src/elf.c</code> (LoadELFFromFile<em>, ExecuteViaEmbeddedLoader, ExecuteHddBackedViaEmbeddedLoader, LoadELFFromFileWithPartition)<br />
+- <code>src/elf_loader/src/loader/src/loader.c</code> (BRAM child loader; HDD partition-context branch must preserve B2 dynamic PFS unmount)<br />
+- <code>etc/boot.lua</code> (pfs1: boot mount normalization)<br />
+- <code>Makefile</code><br />
+- <code>.github/workflows/compilation.yml</code><br />
+- <code>.github/workflows/rolling-release.yml</code> (builds and harness-gates on push to <code>dev</code> </em><em>and</em>* on PR events, but the publish step carries <code>if: success() &amp;&amp; github.event_name == 'push'</code> — only a push to <code>dev</code> moves the canonical <code>rolling-release</code> tag and its bare-ELF + zip assets; gated since PR #511, 2026-07-16)</p>
+<h2 id="change-discipline">Change Discipline</h2>
+<ul>
+<li>Keep diffs minimal and localized. One objective per branch/PR when feasible.</li>
+<li>No drive-by refactors or formatting churn.</li>
+<li>Do not rename or move files unless required.</li>
+<li>Prefer additive and reversible changes.</li>
+</ul>
+<h2 id="safety-rules">Safety Rules</h2>
+<ul>
+<li>Never run destructive commands (<code>rm -rf</code>, <code>git reset --hard</code>, force-push) without explicit instruction.</li>
+<li>Do not overwrite user-authored changes outside task scope.</li>
+<li>Pause and report if unexpected repository changes appear during work.</li>
+<li>Avoid adding new runtime logging unless explicitly requested.</li>
+</ul>
+<h2 id="build-test-reality">Build / Test Reality</h2>
+<ul>
+<li>GitHub Actions is the canonical build path. The pinned CI image is <code>ps2dev/ps2dev:v2.0.0</code>.</li>
+<li><strong>The embedded-Lua syntax gate is now LIVE</strong> (<code>luac5.4 -p</code> on <code>bin/POPSLDR/*.lua</code> + <code>etc/boot.lua</code>; the workflows <code>apk add lua5.4</code> and hard-fail on a syntax error). It used to silently skip because the ps2dev image shipped no <code>luac</code>. It catches <strong>SYNTAX only</strong> — runtime nil-global / type / <strong>load-order</strong> errors stay invisible to it (the <code>d4b04be</code> boot brick was exactly such a case).</li>
+<li><strong>A host-execution gate covers the runtime class</strong> (2026-07-10): <code>tools/host_harness.py</code> EXECUTES the real <code>system.lua</code> chunk (ui.lua require'd at its real point) under a mocked PS2 environment on host Lua 5.4 (lupa), then runs a functional battery (Adaptive BDMA staging cycle, partition-game scan, settings round-trips). Both workflows run it after the syntax gate — a real failure hard-fails the build; a container that can't install lupa skips cleanly (check the step log: "skipping host harness" means only the syntax gate ran). Run it locally with <code>python tools/host_harness.py</code>. It executes up to the splash/main-loop handoff only, with mocked I/O — hardware remains the only truth for launch paths.</li>
+<li>Rolling-release publishes the bare <code>POPSLOADER.ELF</code> and the zip from one build to the floating <code>rolling-release</code> GitHub Release; only a push to <code>dev</code> publishes; PR events run the same build and gates but never overwrite the release assets (the publish step is gated on <code>github.event_name == 'push'</code>). <code>POPSTARTER.ELF</code> (the redistributable homebrew launcher — the POPS engine binaries are NOT redistributable) now ships in both the rolling zip and the formal install zip; do not strip it from a packaging step.</li>
+<li>Hardware testing happens on real PS2 hardware via the maintainer and the testers. Agents cannot run hardware tests.</li>
+</ul>
+<h2 id="gotchas-footguns">Gotchas / Footguns</h2>
+<p>High-value traps that have actually burned agents in this repo. Verify the unit/binding from the toolchain or source, never from assumption.</p>
+<ul>
+<li>
+<p><strong><code>Timer.getTime()</code> returns MICROSECONDS, not milliseconds.</strong> <code>lua_time</code> (<code>src/luatimer.cpp:41</code>, registered <code>getTime</code>) returns raw <code>clock() - tick</code> ticks with <em>no</em> conversion, and <code>CLOCKS_PER_SEC == 1e6</code> on the EE toolchain (confirmed by <code>src/main.cpp:243</code>, which multiplies by 1000 then divides by <code>CLOCKS_PER_SEC</code> to get ms). Code that treats a <code>getTime()</code> delta as ms runs <strong>1000x too fast</strong>. The canonical Enceladus idiom is <strong>frame-counting</strong> for any per-frame timing (nav auto-repeat, scroll rate), not wall-clock reads — the UI nav repeat (<code>resolve_nav</code> / <code>NavHoldFrames</code> / <code>nav_fps</code>, <code>bin/POPSLDR/ui.lua:4607</code>) and the description right-stick scroll (<code>DescScrollFrames</code>, <code>ui.lua:2686</code>) are frame-counted. Stock-Lua <code>os.clock()</code> returns SECONDS (pre-converted) but is currently unused in the Lua. The action debounce (formerly <code>MIN_ACTION_MS</code>) has been <strong>removed</strong> — action emits ride the rising edge only (<code>pressed = GPAD &amp; ~OLDPAD</code>), so a held button fires once per press without a timer; the scene-fade / boot-fade / carousel transitions were frame-paced. Don't reintroduce a wall-clock action debounce.</p>
+</li>
+<li>
+<p><strong>Embedding/removing an asset is THREE explicit, hand-coordinated places</strong> (no auto-glob; missing any one fails the build or yields a blank image):<br />
+  1. <code>Makefile</code> — add a <code>BIN2S</code> rule for the file <strong>and</strong> list its <code>.o</code> in <code>EMBEDDED_RSC</code> (<code>Makefile:96</code>).<br />
+  2. <code>src/embed_assets.cpp</code> — add the <code>extern</code> symbol + size, and an <code>ASSET_ENTRY(...)</code> in <strong>both</strong> the bare-name and the <code>POPSLDR/IMG/</code>-prefixed sections of <code>g_embedded_assets[]</code> (<code>src/embed_assets.cpp:97</code>).<br />
+  3. <code>bin/POPSLDR/images.lua</code> — add a row to <code>IMG_REGISTRATIONS</code> (<code>images.lua:11</code>); it looks the asset up by <strong>bare filename</strong>.<br />
+  Removal is the same three places in reverse (the <code>MISSING.png</code> removal also had to drop a <code>default.png</code> fallback hook and <code>IMG_FALLBACKS</code> wiring — grep the whole tree for the bare name before declaring an asset gone).</p>
+</li>
+<li>
+<p><strong>Pad mode: use <code>Pads.getMode()</code>, NOT <code>Pads.getType()</code>.</strong> <code>Pads.getMode</code> → <code>lua_getmode</code> returns <code>padInfoMode(..., PAD_MODECURID, ...)</code> — the <strong>live negotiated</strong> controller mode (high nibble: <code>0x7</code> DualShock, <code>0x5</code> analog, <code>0x4</code> digital, <code>0</code> no-data), and is what the analog-stick→d-pad fold must gate on (<code>bin/POPSLDR/ui.lua:4498</code>). <code>Pads.getType</code> → <code>lua_gettype</code> returns a <code>PAD_MODETABLE</code> <em>capability-table</em> entry and is the wrong signal for "is the stick live" — an ungated fold injected a phantom <code>-127</code> on a digital pad and broke up/down nav.</p>
+</li>
+<li>
+<p><strong>Verify every file:line / function / <code>PLDR.X</code> / <code>UI.X</code> / flag / asset name against the actual source before you write or repeat it.</strong> A prior doc pass's per-doc agents self-reported "zero stale" yet left ~15 wrong anchors. <code>grep</code>/Read the source; do not trust a ledger, an audit report, or a sibling doc's anchor blindly. Codex/audit reports are <em>reference, not fact</em> — verify before acting on them.</p>
+</li>
+</ul>
+<h2 id="testing-expectations">Testing Expectations</h2>
+<ul>
+<li>Choose the smallest test plan that can prove the change.</li>
+<li>Docs-only changes: run lightweight sanity checks when available; otherwise note <code>not run</code>.</li>
+<li>Runtime/build changes: run targeted checks first, then broader checks only if risk requires.</li>
+<li>Hardware-only behavior should be tracked in <code>QA_REGRESSION_MATRIX.md</code> and marked if unverified.</li>
+</ul>
+<h2 id="documentation-evidence-discipline">Documentation / Evidence Discipline</h2>
+<p>When updating status after changes:<br />
+- <strong><code>STATE.md</code> is canonical</strong> for runtime state, invariants, preservation contracts, the known-issues list, and hardware status; the other root docs (<code>README</code>, this file, <code>ROADMAP</code>, <code>DECISIONS</code>) point there instead of duplicating. Treat <code>QA_REGRESSION_MATRIX.md</code> as the detailed hardware/CI run ledger.<br />
+- Hardware pass/fail claims must have a matching <code>QA_REGRESSION_MATRIX.md</code> row with a date and result.<br />
+- In-flight / unreleased work is <code>Unknown (verify on hardware)</code> unless explicitly recorded. <strong>Do not enumerate stale PR numbers here</strong> — for the current in-flight/known-open work list, see <code>STATE.md &gt; Known Open Work</code> (and <code>ROADMAP.md</code>).<br />
+- Released changelog entries should not be retroactively edited; new work goes in <code>[Unreleased]</code> at the top of <code>bin/changelog</code>.<br />
+- Remove stale branch names, stale feature claims, and outdated decisions.<br />
+- Do not silently carry forward old "fixed" claims when the only evidence is a prior chat report. If a regression was reported on hardware, record that result explicitly.</p>
+<h2 id="communication-format">Communication Format</h2>
+<p>Use this report structure in task responses:<br />
+- Summary: what changed and why.<br />
+- Diffstat: file-level change summary.<br />
+- Diff: key hunks or full patch when requested.<br />
+- Test plan: what was run, what passed/failed, and what was not run.</p>
+<h2 id="summary-for-the-next-agent">Summary For The Next Agent</h2>
+<p>POPSLoader's stable backbone (HDD POPSTARTER paths, DKWDRV-MC, BOOT.ELF for USB- and HDD-booted, settings sidecar) is hardware-confirmed in the BETA line. The 2026-06 work — HDD-resident settings save + in-app <code>.hide</code> via the boot-partition RW take-over, PAL native 640×512, the BDMA <code>bdma_mode.txt</code> marker + POPSTARTER-MC-folder toggle/interlock — is implemented and boots on PCSX2, with HDD RW confirmed on hardware (provato) and the full flows still validating on hardware. Your job is most likely: drive doc/feature work, hardware-verify the in-flight HDD/PAL features, complete a queued PR, react to a tester report, or (once D-10/D-14/U-10 and the new features settle) the queued Settings UI redesign. Whatever it is: preserve the contracts in <code>STATE.md</code>, hardware-verify before claiming any new fix, and keep the docs pointed at <code>STATE.md</code> rather than re-duplicating the shared facts.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

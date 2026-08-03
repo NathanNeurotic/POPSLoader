@@ -1,0 +1,814 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Experimental notes · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>Experimental notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/EXPERIMENTAL_NOTES.md">view on GitHub ↗</a></p><p><strong>This is the opt-in EXPERIMENTAL channel.</strong> It exists so testers can try riskier changes in isolation, without them reaching anyone who did not ask for it. The public release (<strong>1.1.0</strong>) and the rolling test build are both untouched by anything here.</p>
+<p><strong>How to tell you are running it:</strong> Settings, then About: the Version row reads <strong>v1.1.1-dev-EXP80</strong>. The check is simple: a version ending in <strong>-EXP80</strong> = this build; <strong>-EXP79</strong> or lower = an older experimental, please update; plain <strong>v1.1.1-dev</strong> = the rolling build; <strong>v1.1.0</strong> = the public release.</p>
+<p><strong>File size check:</strong> if <em>About</em> does not show EXP80, the file on your card was not replaced.</p>
+<p><strong>How to go back:</strong> reinstall the latest entry on the Releases page. Nothing here changes your settings, your <code>POPS</code> folders, or your games, so switching back and forth is safe.</p>
+<hr />
+<h2 id="new-in-exp80-the-network-settings-now-are-the-popstarter-files">New in EXP80: the network settings now ARE the POPSTARTER files</h2>
+<p>Only relevant if you play games off a network share, but if you do, please read<br />
+this one.</p>
+<p>Until now the loader kept its own copy of your network settings and then tried to<br />
+write matching files to the memory card for POPSTARTER. Two copies, and they could<br />
+drift apart. That is what caused the confusion in the last round: one tester typed<br />
+a netmask into the app, a different netmask ended up on his card, and nothing on<br />
+screen could explain why. He only found out by pulling the card and reading it on<br />
+a PC.</p>
+<p>There is only one copy now. The loader reads and writes<br />
+POPSTARTER/IPCONFIG.DAT and POPSTARTER/SMBCONFIG.DAT directly, in POPSTARTER's own<br />
+format. What you see in Settings is literally what POPSTARTER will read, because<br />
+it is the same file.</p>
+<p>Two things follow from that, and both are deliberate:</p>
+<ul>
+<li><strong>The network fields start empty now.</strong> They used to be pre-filled with<br />
+  192.168.1.10, a server address, port 1111, a share called "games" and a user<br />
+  called "guest". None of that was ever your configuration, it was a guess wearing<br />
+  a costume. Blank means blank. If the files are already on your card, the loader<br />
+  loads those values instead.</li>
+<li><strong>Your address is never invented for you.</strong> Even with automatic addressing on for<br />
+  browsing, POPSTARTER still needs a real address written down, and it will only<br />
+  ever be the one you entered or the one already on the card. The last build filled<br />
+  it in from your router, which quietly overwrote what people had typed.</li>
+</ul>
+<p>We also stopped asking for things POPSTARTER does not need. DNS, link mode, games<br />
+path and the NetBIOS options are gone from the screen. POPSTARTER never used them.</p>
+<p>Please check:</p>
+<ul>
+<li>Open Settings and look at the network rows. If you already had working files on<br />
+  your memory card, your real values should appear. If they show blank instead,<br />
+  that is a bug and I need to know immediately.</li>
+<li>Change something, save, then read the files off the card. They should match<br />
+  exactly, including the port, which is now always written out in full<br />
+  (192.168.4.47:445 rather than just 192.168.4.47).</li>
+<li>If you had SMB working before, it should still work. Report it straight away if<br />
+  it does not.</li>
+</ul>
+<p>Not done yet, so do not test for it: the loader does not yet offer to install the<br />
+SMB modules for you when the folder is missing, and does not yet tell you SMB is<br />
+unavailable when there is no memory card at all. Both are coming.</p>
+<h2 id="new-in-exp78-popstarter-now-has-its-own-network-settings">New in EXP78: POPSTARTER now has its own network settings</h2>
+<p>Only relevant if you play games off a network share.</p>
+<p>There are now two network sections in Settings. <strong>SMB / Network</strong> is what the<br />
+loader itself uses to browse your share. The new <strong>POPSTARTER Network</strong> is what<br />
+gets written to the memory card for POPSTARTER to use when it actually runs the<br />
+game. They were the same fields before, and that caused a genuinely confusing<br />
+problem.</p>
+<p>Here is the problem it fixes. The loader can ask your router for an address<br />
+automatically. POPSTARTER cannot, it can only use an address written down for it.<br />
+So if you had it set to automatic and then typed a netmask into the boxes, those<br />
+boxes were ignored and the address from your router was written instead. One<br />
+tester saw a netmask on his memory card that he had never typed, and the only way<br />
+he could find out was to pull the card and read it on a PC.</p>
+<p>Now every row in POPSTARTER Network shows you the value that will actually be<br />
+written, and where it came from. Leave a row blank and it says "Same as browsing"<br />
+with the real value, or "From DHCP lease" when the address came from your router.<br />
+Fill a row in only when POPSTARTER needs something different.</p>
+<p>There is deliberately no automatic option in this section, because POPSTARTER<br />
+cannot use one. It always gets a real address.</p>
+<p>Please check:</p>
+<ul>
+<li>Open Settings and look at POPSTARTER Network. Every row should show a value, not<br />
+  a blank. If a row says "not known until you connect", enter the SMB page once and<br />
+  look again.</li>
+<li>The values shown should match what is actually in POPSTARTER/IPCONFIG.DAT and<br />
+  SMBCONFIG.DAT on your memory card. If they do not match, that is exactly the bug<br />
+  this was built to catch, so please say so.</li>
+<li>If you already had SMB working, it should keep working with nothing filled in.<br />
+  Blank means inherit, so nothing changes unless you change it.</li>
+</ul>
+<p>Also fixed: turning SMB modules on while set to automatic used to delete the<br />
+address file POPSTARTER needs. That was a leftover from the same fix in the last<br />
+build, which only covered one of the two places that write it.</p>
+<h2 id="new-in-exp77-network-games-can-finally-launch-on-automatic-ip">New in EXP77: network games can finally launch on automatic IP</h2>
+<p>Only relevant if you play games off a network share. If you do, this is the big one.</p>
+<p>Browsing a share has worked for a while, but for most people the games would list perfectly and then the screen went black a moment after launching. Here is why. Once you pick a game, POPSLoader hands over to POPStarter, and POPStarter does its own networking. Unlike the menu, it cannot ask your router for an address. It can only read one written down on the memory card. We were deleting that file whenever <em>IP assignment</em> was set to automatic, which is the default, because we assumed POPStarter could get its own address. It cannot. So it took over with no network at all.</p>
+<p>The menu now writes down the address it already got, and POPStarter reuses it. The file is written when you connect, so you have to enter the SMB page once before launching.</p>
+<p>Please check:</p>
+<ul>
+<li>Set <em>IP assignment</em> to <strong>automatic</strong> and connect. Your games should list as before, and now a game should actually boot. This is the single most useful thing to test in this build.</li>
+<li>If you have a fixed address set instead, nothing should change for you. That path already worked. Tell me if it stopped.</li>
+<li>If a game still black screens, say whether the game list appeared first, and roughly how far the loading got. Those two details separate the network problem from a different one.</li>
+</ul>
+<p>Two smaller fixes came with it:</p>
+<ul>
+<li>The message you get when <code>POPSTARTER.ELF</code> cannot be found used to claim it had checked your share. It never does, on purpose, and never has. It now names the three places it really looks.</li>
+<li>Turning on <em>SMB modules</em> only recorded the setting, it did not confirm the files reached the card. If the copy failed, or you swapped cards, the launcher would let you start a game that could not possibly work. It now checks the card itself, and looks at both memory card slots, since POPStarter reads either.</li>
+</ul>
+<h2 id="new-in-exp76-hidden-game-names-are-fainter-again">New in EXP76: hidden game names are fainter again</h2>
+<p>Straight from your feedback on RR74: the hidden names still read too clearly.</p>
+<p>They are now noticeably fainter than in EXP75. The one you have the cursor on is still deliberately more visible than the rest, because that is how you find a hidden game in order to press L3 and bring it back.</p>
+<p>Please check:</p>
+<ul>
+<li>With <em>Settings, Game List, Hidden games</em> set to <strong>Visible</strong>, hide a couple of games. The hidden ones should now sit clearly in the background compared to your normal games.</li>
+<li>Move the cursor onto a hidden game. It should become readable enough that you can tell which one you are on, then press <strong>L3</strong> to unhide it. If you cannot comfortably find and land on a hidden row any more, that is too far and I need to know.</li>
+<li>If it is still not faint enough, say so and I will take it further. The room to go fainter is in the rows you are NOT on, so tell me which of the two is wrong: the general clutter, or the one under the cursor.</li>
+</ul>
+<h2 id="new-in-exp75-bigger-cover-images-are-accepted">New in EXP75: bigger cover images are accepted</h2>
+<p>Only worth testing if you have cover art that never showed up. Everything that works today keeps working, this only widens what is allowed.</p>
+<p>The check that decides whether a cover is too big was measuring every image as though it used four bytes per pixel. Most cover art does not: a picture saved with 256 colours or fewer uses one byte per pixel, so those were being charged four times their real size and thrown away for being "too big" when they were not. Nothing appeared on screen and nothing said why.</p>
+<p>Now the check measures each picture the way it is actually stored. In practice a 256-colour cover can be up to about 1024x1024 instead of roughly 600x600. Full-colour pictures are unchanged.</p>
+<p>Please check:</p>
+<ul>
+<li>Any cover that never appeared, and is <strong>not</strong> a full-colour photo-style image, is worth retrying. If it now shows up, say what size it is.</li>
+<li>Everything that already worked must still work. If a cover that used to display has stopped, that is a problem, please report it immediately.</li>
+<li>Watch for the launcher slowing down or freezing while scrolling a list of games with very large cover images. This check exists partly to stop oversized pictures from filling video memory, so if browsing gets sluggish or locks up with big art, that matters.</li>
+</ul>
+<p>Reminder on naming, since it caught us out this week: the cover must end in <strong>_COV.png</strong> and match the game filename exactly, for example <code>Crash Bandicoot.VCD</code> needs <code>Crash Bandicoot_COV.png</code>. The details text file does <strong>not</strong> take that suffix, it is just <code>Crash Bandicoot.txt</code>. The <code>_COV</code> part is required so the same folder can be shared with OPL.</p>
+<h2 id="new-in-exp74-hiding-games-works-when-the-list-is-set-to-hide-them">New in EXP74: hiding games works when the list is set to hide them</h2>
+<p>Reported by sAGA on the 0727 rolling build. With <em>Settings, Game List, Hidden games</em> set to <strong>Hidden</strong>, pressing <strong>L3</strong> on a game did nothing at all. With it set to <strong>Visible</strong> it worked fine.</p>
+<p>The reason: when the setting is <strong>Hidden</strong>, the launcher already leaves hidden games out of the list, so every game you can see is one that is NOT hidden. The only thing L3 can do there is hide something. The check that was supposed to stop you from unhiding a game you cannot see was stopping that instead, and then telling you to press R3, which is advice for a completely different situation.</p>
+<p>Two things changed. L3 now hides a game whatever that setting is, and once you hide it the game leaves the list straight away so you can see it worked. Before, even after the block was gone, the message said "Game hidden" while the game sat there looking untouched, which is impossible to tell apart from nothing happening.</p>
+<p>Please check:</p>
+<ul>
+<li>With <em>Hidden games</em> set to <strong>Hidden</strong>, press L3 on a game. It should say "Game hidden" and the game should disappear from the list immediately.</li>
+<li>The cursor should stay roughly where it was. It should NOT jump back to the top of the list.</li>
+<li>Press R3 to reveal the hidden games, then L3 on one to unhide it. That should still work exactly as before.</li>
+<li>With <em>Hidden games</em> set to <strong>Visible</strong>, hiding should behave exactly as it always has: the game stays in the list and goes dim. It should NOT vanish in that mode.</li>
+<li>Try it on every device you use. Please say which ones you tested.</li>
+</ul>
+<h2 id="new-in-exp73-game-details-and-messages-that-were-stuck-in-english">New in EXP73: game details, and messages that were stuck in English</h2>
+<p><strong>Game details actually appear now.</strong> The previous build claimed to fix this and did not. Worse, it also broke details for games that DO have cover art, which had been working. If you tried the details feature on EXP72 and saw nothing, that was this.</p>
+<p>Turn it on at <em>Settings, Game List, Game details</em> (it is <strong>Off</strong> by default) and leave <em>Cover art</em> on, then check three cases: a game with cover art and a .txt file, a game with only a .txt file, and a game with neither. Also scroll quickly through a folder of mixed games and make sure a game never shows another game's text.</p>
+<p>The .txt goes next to the cover, in the top level ART folder on your drive, named exactly like the game file.</p>
+<p><strong>Messages that would not translate.</strong> A batch of on screen messages was being put together in a way that threw the translation away before it was looked up, so they stayed English even though a translation existed. On the HDD page the "no games found" and "list refreshed" messages should now appear in your language. The launch failure screen is translated too, and it now names the correct button for your console instead of always saying X and O.</p>
+<p>If any message shows a raw %s, or a message you expected does not appear at all, please report the language and the exact screen.</p>
+<h2 id="new-in-exp69-the-winners-recipe-properly-this-time">New in EXP69: the winners' recipe, properly this time</h2>
+<p>EXP68's answer (load everything at boot, wait) was crude -- and the maintainer<br />
+called it. The launchers that read this drive fine (SMS, wLaunchELF-R3Z, OPL,<br />
+NHDDL) don't do that. What they actually do: <strong>the chip driver (dev9) and the<br />
+filesystem layers load early and fast, and only the drive-probing driver<br />
+(ata_bd) loads later, when you ask for it.</strong> The drive probe was never the<br />
+boot problem -- loading dev9 <em>late</em>, on top of a running USB stack, was the<br />
+hang.</p>
+<p><strong>What EXP69 changes:</strong> dev9 now loads at boot (~0.1s, you'll never notice),<br />
+ata_bd still loads only when you open the HDD page. Boot stays instant like<br />
+EXP66/67, and the page load mirrors SMS exactly -- the one arrangement none<br />
+of the fast launchers ever had trouble with.</p>
+<p><strong>sAGA:</strong> instant boot, then open the HDD page. If your games list, this is<br />
+finally it.</p>
+<hr />
+<h2 id="new-in-exp68-the-driver-loads-at-boot-again-this-time-we-know-why">New in EXP68: the driver loads at boot again -- this time we know why</h2>
+<p>sAGA's EXP67 photos were the breakthrough, not another failure. The boot is<br />
+now instant (2 seconds!), and the HDD page narrates its steps -- but the<br />
+driver load hung <em>there</em>, on a fully serial main thread. That finally proves<br />
+the load was never about threads or races: <strong>his console only completes this<br />
+driver load at boot time</strong> (the 07.18 build proved it all along). Mid-session,<br />
+same bytes, it hangs. We stopped fighting that and moved the load back.</p>
+<p><strong>What EXP68 changes:</strong> the HDD driver chain loads at boot again (serial,<br />
+capped at 20 seconds so it can never hang the console), exactly the window<br />
+that always worked on his machine. Boot stamps now name each module (dev9,<br />
+bdm, bdmfs, ata_bd) so if anything ever sticks, one photo says which one.<br />
+The page keeps its EXP67 narration and retries; the APA and dual-USB fixes<br />
+from EXP67 are untouched.</p>
+<p><strong>sAGA:</strong> boot will take a few seconds longer than EXP67 (the driver load is<br />
+back -- that is the point). Then the HDD page should just open. This is the<br />
+configuration your console has always said yes to.</p>
+<hr />
+<h2 id="new-in-exp67-apa-internal-hdd-works-again-both-usb-drives-list">New in EXP67: APA (internal HDD) works again + both USB drives list</h2>
+<p>Two fixes from the maintainer's EXP66 test:</p>
+<ul>
+<li><strong>APA (PFS) HDD was not detected.</strong> A check added for the exFAT path demanded<br />
+  a FAT-visible "ata" unit, which an APA-formatted drive never has -- so every<br />
+  APA bring-up failed. The check now lives only where it belongs (the exFAT<br />
+  page sweep); the APA path is back to its pre-EXP63 behavior.</li>
+<li><strong>Only one of two USB drives listed.</strong> The USB probe stopped at the first<br />
+  drive it found, so a second stick that mounted a beat later never made the<br />
+  list. It now keeps looking while new drives are still appearing (single-drive<br />
+  users pay one extra second at most).</li>
+</ul>
+<hr />
+<h2 id="new-in-exp66-boot-is-instant-again-the-worker-is-gone">New in EXP66: boot is instant again; the worker is gone</h2>
+<p>EXP65 still black-screened: the boot's 8-second cap let the startup continue<br />
+while the HDD driver was still loading in the background -- same race, shorter<br />
+window. So the experiment is over and the answer is simple: <strong>no background<br />
+storage work at all, anywhere.</strong> That's how SMS (Simple Media System) does it,<br />
+and SMS runs ATA + MX4SIO + MMCE side by side without any of this.</p>
+<p><strong>What EXP66 changes:</strong> boot does zero HDD work -- the background worker is<br />
+deleted outright. The HDD (exFAT) page brings the driver up itself, in the<br />
+foreground, telling you what it's doing ("loading the driver", then up to 10<br />
+"retrying" passes while a slow drive spins up). If the drive still isn't<br />
+there, the next page entry tries fresh.</p>
+<p><strong>Everyone:</strong> boot should be instant and boring again, on every device.<br />
+<strong>sAGA:</strong> the HDD page does the waiting now, out loud. If the page opens and<br />
+lists your games after the retries, the saga is over.</p>
+<hr />
+<h2 id="new-in-exp65-boot-fixed-drive-check-moved-to-the-hdd-page">New in EXP65: boot fixed, drive check moved to the HDD page</h2>
+<p><strong>EXP64 broke the boot (sorry).</strong> The drive check I moved under the splash was<br />
+constantly poking the storage devices at boot -- on the maintainer's own<br />
+console that meant a black screen with the MX4SIO light stuck on. The lesson<br />
+(from the SMS project, which runs ATA+MX4SIO+MMCE side by side without<br />
+issues): do storage work one thing at a time, on the main thread, where the<br />
+screen can say what's happening.</p>
+<p><strong>What EXP65 changes:</strong> boot no longer probes any storage -- the HDD driver<br />
+loads (short, capped) and that's it. The "is the drive awake?" check moved to<br />
+the HDD (exFAT) page itself, where it shows "retrying (pass N of 10)" while a<br />
+slow drive spins up. Fast rigs see nothing new; slow-drive rigs get a narrated<br />
+wait on a page instead of a long black boot.</p>
+<p><strong>Everyone:</strong> boot should be instant and normal again (MC, USB, MX4SIO,<br />
+MMCE). <strong>sAGA:</strong> open the HDD page -- the retry lines should walk up to your<br />
+drive appearing.</p>
+<hr />
+<h2 id="new-in-exp64-the-wait-now-hides-behind-the-intro">New in EXP64: the wait now hides behind the intro</h2>
+<p>EXP63's slow-drive wait worked but sat on the black screen. EXP64 splits the<br />
+startup in two: only the short driver load (~3-4 seconds) still happens before<br />
+the intro; the long "is the drive awake yet?" watch now runs <em>behind</em> the<br />
+splash animation, so a slow drive costs you nothing you can see.</p>
+<p><strong>sAGA + everyone with an internal drive:</strong> boot should feel normal again --<br />
+intro plays right away, and by the time you open the HDD page the drive is<br />
+either listed or says "still starting" (then just re-enter).</p>
+<hr />
+<h2 id="new-in-exp63-wait-for-the-drive-not-just-the-driver-sagas-clue">New in EXP63: wait for the drive, not just the driver (sAGA's clue)</h2>
+<p><strong>sAGA spotted it himself:</strong> the build that works (07.18) boots <em>slowly</em> --<br />
+about 15 seconds. That is not a flaw in that build, it is the point: his 4TB<br />
+drive needs that time to spin up before anyone asks it questions. Fast boots<br />
+asked too early, got no answer, and gave up. SMS (Simple Media System) does<br />
+the same thing on purpose: load the driver, then wait ~10 seconds before<br />
+looking for the drive.</p>
+<p><strong>What EXP63 changes:</strong> after the driver loads, the launcher now watches for<br />
+the drive to actually appear (up to ~10 seconds, checking twice a second,<br />
+instant when the drive is quick) instead of waiting a fixed 1 second and<br />
+hoping. If the drive never appears, the HDD page can retry later instead of<br />
+inheriting a wrong "all good". The boot wait cap was raised to match.</p>
+<p><strong>sAGA, the usual test:</strong> boot (give it up to ~25 seconds of black on the<br />
+first one -- the drive is spinning up), open the HDD page. If your games<br />
+list, this is the one.</p>
+<hr />
+<h2 id="new-in-exp62-boot-again-fix-the-exp61-black-screen">New in EXP62: boot again (fix the EXP61 black screen)</h2>
+<p><strong>EXP61 fixed the wrong half of the problem.</strong> It moved the HDD driver load back<br />
+to boot (the right window), but let it run <em>at the same time</em> as the controller<br />
+and sound drivers loading on the main thread. Two parts of the console talking<br />
+to the co-processor at once is not allowed -- on sAGA's console the boot itself<br />
+jammed: drive spins up, one flash, then a permanent black screen.</p>
+<p><strong>What EXP62 changes:</strong> startup now <em>finishes</em> the HDD driver load (with an<br />
+8-second safety cap) before loading anything else -- exactly the order the<br />
+working 07.18 build always used, just with a timeout so a stuck load can never<br />
+black the console again. If the cap ever trips, the HDD page simply says "The<br />
+internal drive is still starting" instead of freezing.</p>
+<p><strong>sAGA, the usual test, one boot:</strong> it should reach the menu. If the HDD page<br />
+opens and lists your games, the two-month saga is really over. If anything<br />
+still sticks, photograph the screen -- the boot now narrates each step.</p>
+<hr />
+<h2 id="new-in-exp61-load-the-hdd-driver-at-boot-like-the-build-that-worked">New in EXP61: load the HDD driver at boot, like the build that worked</h2>
+<p><strong>We finally diffed the right thing.</strong> sAGA sent the one build his console has<br />
+always liked -- the rolling release from 07.18, still running without problems.<br />
+We compared its source against the current one file by file. The HDD driver<br />
+itself is <strong>byte-for-byte identical</strong> in both. So the driver was never the<br />
+problem, and every build that changed the driver was changing the wrong thing.</p>
+<p>What actually differs is <strong>when</strong> the driver loads:</p>
+<ul>
+<li><strong>The build that works</strong> loads it once, at boot, while the console is still<br />
+  "empty".</li>
+<li><strong>EXP33 through EXP60</strong> load it later, when you open the HDD page, while the<br />
+  console is already busy (controllers, sound, memory cards, USB all running).<br />
+  On his console the load starts and never comes back -- that is the<br />
+<code>status 1</code> line that sits at 10 seconds on every photo he sent.</li>
+</ul>
+<p><strong>What EXP61 changes:</strong> the driver loads at boot again, exactly where the<br />
+working build loads it -- but in the background, so startup stays fast and<br />
+nobody pays the old 5-second black screen we removed back at EXP24. USB,<br />
+MX4SIO, MMCE, and memory-card handling are <strong>untouched</strong>.</p>
+<p>One safety net is included too: if the drive is still starting when you open<br />
+the HDD (PFS) page, the page now says so and lets you back out, instead of<br />
+freezing the whole menu.</p>
+<p><strong>sAGA, one boot, the usual test.</strong> Internal exFAT HDD, open the HDD page.<br />
+It should just open -- no 44%, no "still starting". And please check the USB<br />
+SSD and a memory-card boot too, so we know nothing else moved.</p>
+<p>If it STILL sticks, photograph the screen again -- the fallback (a short wait<br />
+under the boot splash) is ready, but we only reach for it if this fails.</p>
+<hr />
+<h2 id="new-in-exp59-put-the-memory-readout-where-saga-can-actually-see-it">New in EXP59: put the memory readout where sAGA can actually see it</h2>
+<p><strong>sAGA's EXP57 photo did its job.</strong> The screen read:</p>
+<pre><code>exFAT 1c: waiting, status 1, 10.0s
+</code></pre>
+<p>That is a real result, not another dead end. <strong>Status 1 means the driver is still<br />
+running</strong> -- for the whole ten seconds, never finishing. So his drive does not fail<br />
+or get rejected; the start-up simply never returns. That is much narrower than "the<br />
+page hangs", and it rules out everything after start-up.</p>
+<p><strong>What EXP59 changes:</strong> one line. The memory readout (<code>iop128k=ok</code> or <code>NO</code>) was only<br />
+printed on the first and last messages, and his screen ends on the middle one -- so<br />
+the single most useful number scrolled past unseen. It is now on the waiting line<br />
+too, which is the line that stays on screen.</p>
+<p><strong>sAGA, same test as before, one boot.</strong> Open the internal exFAT page and photograph<br />
+the screen. It will now read something like:</p>
+<pre><code>exFAT 1c: status 1, 10.0s [iop128k=NO(...)]
+</code></pre>
+<p>If it says <strong><code>iop128k=NO</code></strong>, we have the cause: the console has run out of the<br />
+specific memory the storage layer needs, and that is <strong>our</strong> fault for loading too<br />
+much, not your drive's. If it says <strong><code>ok</code></strong>, that theory dies too and the problem is<br />
+inside the driver itself.</p>
+<p><strong>One more thing worth knowing, and it costs you nothing to check:</strong> the message says<br />
+"open this page again in a moment" for a reason -- the driver keeps working in the<br />
+background after the page gives up. <strong>Does entering the page a second time work?</strong><br />
+If yes, the drive is merely slow and we can wait longer for it. If no, it is properly<br />
+stuck. Those need completely different fixes, and that answer is free.</p>
+<p>Nothing else changed in this build.</p>
+<hr />
+<h2 id="new-in-exp58-one-cover-loader-instead-of-one-per-game-and-a-clean-handover">New in EXP58: one cover loader instead of one per game, and a clean handover</h2>
+<p><strong>1. The cover loader is now a single resident helper.</strong></p>
+<p>Since EXP49 the loader started a brand-new background helper for <strong>every game you moved</strong><br />
+to, and threw it away afterwards. That is wasteful, and if the console ever refused to<br />
+start one, every later cover request was refused too -- which is what left sAGA's<br />
+"Loading ART..." stuck on screen. EXP57 stopped that turning into a permanent jam; this<br />
+removes the cause. There is now <strong>one</strong> helper, started the first time a cover is needed<br />
+(never during boot) and reused from then on. It is what OPL has always done.</p>
+<p><strong>2. Launching another program now waits for the cover loader to finish first.</strong></p>
+<p>This one is likely <strong>the DKWDRV problem</strong>. When POPSLoader hands the console over to<br />
+another program, it resets the console's I/O processor so the new program gets a clean<br />
+slate. If a cover was still being read from your card at that exact moment, that read was<br />
+left dangling across the reset -- which is the precise situation that leaves the next<br />
+program in a broken state. DKWDRV is the one that suffers most, because it needs a clean<br />
+machine to do anything at all.</p>
+<p>Every handover (a game through POPSTARTER, DKWDRV, or exiting to BOOT.ELF) now settles the<br />
+cover loader first, with a short bounded wait so it can never hang the launch.</p>
+<p><strong>Honest note:</strong> this is a real fault and worth fixing regardless, but it is not confirmed<br />
+to be <em>the</em> DKWDRV cause. If DKWDRV still misbehaves on EXP58, say so -- that rules this<br />
+out cleanly and points elsewhere, which is worth knowing either way.</p>
+<p><strong>What to test on EXP58:</strong><br />
+- <strong>DKWDRV</strong>: launch it and see whether it can actually do things now.<br />
+- <strong>Browsing with covers on</strong> should be unchanged -- same speed, covers still appear.<br />
+- <strong>Launching a game</strong> from any device should be unchanged.<br />
+- <strong>sAGA</strong>: the internal-drive step-1 readout from EXP57 is unchanged here, so a photo<br />
+  from either build is equally useful.</p>
+<hr />
+<h2 id="new-in-exp57-three-fixes-from-testing-saga-maintainer">New in EXP57: three fixes from testing (sAGA + maintainer)</h2>
+<p><strong>1. The internal drive now explains itself properly (sAGA).</strong></p>
+<p>EXP55 got us as far as <em>"exFAT step 1: starting the drive"</em> and then a timeout. That told us<br />
+WHERE it stops -- the driver start-up, not the game scan -- but not why. Step 1 was still one<br />
+message covering the whole thing.</p>
+<p>It now reports, on screen, as it goes:<br />
+- <strong>1a</strong> -- about to load the driver, and whether the console has the memory the storage<br />
+  layer needs (<code>iop128k=ok</code> or <code>NO</code>)<br />
+- <strong>1b</strong> -- what the driver returned<br />
+- <strong>1c</strong> -- a live countdown while waiting, with the current status code and seconds elapsed<br />
+- <strong>1d</strong> -- the final code it gave up on, and how long it took</p>
+<p>So instead of "it timed out", the screen will say something like <em>"gave up at status 1 after<br />
+10s, iop128k=NO"</em>. <strong>sAGA: one boot, photograph whatever it ends on.</strong> That should be enough<br />
+to name the cause.</p>
+<p>Two theories are already dead and worth not chasing: the "phantom slave" fix from EXP40 did<br />
+not help his drive, and the 4TB-capacity idea is refuted -- our driver handles capacity<br />
+identically to the official SDK, so a large drive is not inherently the problem.</p>
+<p><strong>2. Cover loading could get stuck forever (sAGA).</strong></p>
+<p>sAGA saw <em>"Loading ART..."</em> freeze permanently when covers were on and his <code>_COV.png</code> files<br />
+were not under <code>/ART</code>. A cover that cannot be found should give up in a moment. Instead, if a<br />
+request failed to start it retried <strong>forever</strong>, so the loader stayed stuck -- and once that<br />
+happened, no further covers would load for the rest of the session. EXP56 removed the message<br />
+but not the cause, so it simply became invisible. It now gives up after about a second and<br />
+moves on.</p>
+<p><strong>3. Games could be marked hidden on the wrong device (sAGA).</strong></p>
+<p>sAGA opened his <code>.gamecache</code> and found a game recorded as hidden with <strong>no <code>.hide</code> file next<br />
+to it</strong>. He was right that this made no sense. Clearing the game list did not clear the<br />
+hidden-games list, so hidden marks carried over from one scan to the next -- and from one<br />
+device to another -- and were then written into that device's cache. Fixed; a genuinely<br />
+hidden game is still found from its own <code>.hide</code> file during the scan.</p>
+<p><strong>If you have used the game-list cache, delete <code>.gamecache</code> from your devices once</strong> so any<br />
+already-written wrong entries go away.</p>
+<p><strong>What to test on EXP57:</strong><br />
+- <strong>sAGA:</strong> internal exFAT page, one boot, photograph the final step-1 message.<br />
+- Covers: with art present they load; with art missing the box just stays empty and browsing<br />
+  stays smooth. Nothing should stick.<br />
+- Hide a game with L3, then visit another device and come back: only the game you hid should<br />
+  be marked, and only on its own device.</p>
+<hr />
+<h2 id="new-in-exp56-cover-art-finally-loads-and-it-was-mx4sio-only">New in EXP56: cover art finally loads (and it was MX4SIO-only)</h2>
+<p><strong>Three changes, all from the maintainer's testing.</strong></p>
+<p><strong>1. Cover art now loads.</strong> The rule is, and always was:</p>
+<pre><code>device:/POPS/Soul Blade.VCD    -&gt;    device:/ART/Soul Blade_COV.png
+</code></pre>
+<p>The code worked out the <code>device:</code> part with a rule that could not cope with a device whose<br />
+<strong>name contains a digit</strong> -- and <code>mx4sio0:</code> is exactly that. It handled <code>mass0:</code>, <code>ata0:</code> and<br />
+<code>usb0:</code> correctly, so nothing looked wrong until EXP55 started addressing drives by their<br />
+proper names. From then on, on MX4SIO only, we searched <code>device:/POPS/ART/</code> instead of<br />
+<code>device:/ART/</code>. A correctly named, correctly placed cover could never be found.</p>
+<p>That is why <code>Soul Blade_COV.png</code> did not load. Every device name is now handled, and there is<br />
+an automatic check covering all of them so it cannot come back.</p>
+<p>APA/PFS is unchanged and remains the one exception: <code>__common/POPS/ART/&lt;game&gt;_COV.png</code>.</p>
+<p><strong>2. The "Loading art..." line is gone.</strong> It was added when a fetch could stall the screen.<br />
+Now that loading happens in the background it resolves fast enough that the text only<br />
+flickered. Removed.</p>
+<p><strong>3. Hide UI Text now defaults ON</strong> (graphics team). Existing installs are untouched -- your<br />
+saved setting still wins; this only changes what a fresh install starts with. You can still<br />
+switch it in <em>Settings, Display, Hide UI Text</em>.</p>
+<p><strong>What to test on EXP56:</strong><br />
+- <strong>Cover art on MX4SIO.</strong> <code>Soul Blade_COV.png</code> in the card's top-level <code>ART</code> folder should<br />
+  now appear. This is the main thing.<br />
+- Covers on USB and the internal exFAT drive should be unaffected.<br />
+- Each device page still lists its own device only (EXP55).<br />
+- A fresh install starts with UI text hidden; an existing one keeps whatever you had.</p>
+<p><strong>Confirmed still broken, and next:</strong> entering the <strong>exFAT (ATA)</strong> page and then going to the<br />
+<strong>APA</strong> page reports the drive as not connected. Entering APA first works. The exFAT page<br />
+takes ownership of the drive in a way the APA page cannot recover from. Also still open: the<br />
+brief pause when pressing START on a game list, and DKWDRV's exit option.</p>
+<hr />
+<h2 id="new-in-exp55-devices-are-now-asked-for-by-name">New in EXP55: devices are now asked for BY NAME</h2>
+<p><strong>This is the fix the maintainer asked for at the very start, and it is the structural one.</strong></p>
+<p><strong>What was wrong.</strong> POPSLoader identified your drives by <em>slot number</em> -- "device 0", "device<br />
+1" and so on. Those numbers are handed out in the order things happen to connect, and they are<br />
+shared by every kind of drive. So "the MX4SIO is device 1" could quietly stop being true, and<br />
+the MX4SIO page would faithfully list whatever was actually sitting in that slot -- your<br />
+internal drive.</p>
+<p><strong>What changed.</strong> The PlayStation 2 SDK gives every drive a proper name: <strong><code>mx4sio0:</code></strong>,<br />
+<strong><code>ata0:</code></strong>, <strong><code>usb0:</code></strong>. Ask for <code>mx4sio0:</code> and the system can only ever hand back an MX4SIO<br />
+card -- it checks the drive's own identity, not its position in a queue. POPSLoader now asks by<br />
+name. The old slot-number search is kept only as a fallback for the case where a named device<br />
+has not appeared yet, and it is skipped entirely the moment a named one answers.</p>
+<p>These names have been available in the build the whole time. We simply were not using them.</p>
+<p><strong>This should also fix cover art.</strong> Art is looked for in the <code>ART</code> folder <em>of the drive the game<br />
+came from</em>. When the page resolved to the wrong drive, we searched the wrong drive's <code>ART</code><br />
+folder -- which is exactly why <code>Soul Blade_COV.png</code> did not load despite being correctly named<br />
+and correctly placed. <code>mx4sio0:/POPS/</code> and <code>mx4sio0:/ART/</code> are guaranteed to be the same card.</p>
+<p><strong>What to test on EXP55:</strong><br />
+- <strong>MX4SIO must list the MX4SIO card</strong>, never the internal drive. Same for USB and the internal<br />
+  exFAT drive -- each page shows its own device only.<br />
+- <strong>Cover art:</strong> with a correctly named cover such as <code>Soul Blade_COV.png</code> in the card's <code>ART</code><br />
+  folder, it should now appear.<br />
+- <strong>Rescan (R1) and leaving/re-entering a page</strong> should keep working rather than reporting the<br />
+  device missing. If the earlier "no MX4SIO detected" was the slot search losing track, this<br />
+  removes the cause; if it persists, it is something else and worth saying.<br />
+- Nothing should vanish: if a device listed before, it must still list.</p>
+<p><strong>Still open:</strong> the brief pause when pressing START on a game list, and DKWDRV's exit option.</p>
+<hr />
+<h2 id="new-in-exp54-found-the-actual-thing-that-was-freezing-the-list">New in EXP54: found the actual thing that was freezing the list</h2>
+<p><strong>EXP53 moved cover loading into the background and the list still froze. This is why.</strong></p>
+<p>There were <strong>two</strong> things reading the card while you navigated, and I only moved one of them.<br />
+The second was the per-game description file (the <code>.txt</code> that goes with a cover). It was still<br />
+being read on the drawing thread, once or twice for every new title, in the same big <code>ART</code><br />
+folder -- and looking for a file that is not there is the slow case. That is the freeze.</p>
+<p>Your report is what pinned it: the screen was <strong>completely static, even long titles stopped<br />
+scrolling</strong>. That means drawing itself was stopped, not just input -- so something was still<br />
+blocking on that thread after the covers were moved off it. And it happened only on MX4SIO and<br />
+USB, the two devices with a big <code>ART</code> folder, never on the internal drive, APA or SMB.</p>
+<p><strong>What changed.</strong> The description file is no longer read while you navigate. It is now read<br />
+only <em>after</em> a cover has actually loaded -- at which point that folder entry is already in hand<br />
+and the read is cheap. A game with no cover never pays for it at all, so a card with no art<br />
+(which is your case) now does <strong>zero</strong> card reads per title instead of two slow ones.</p>
+<p><strong>Nothing was added to do this.</strong> It is one read removed from the drawing path.</p>
+<p><strong>A guard against this class of bug.</strong> Four builds in a row missed this because every one of<br />
+them only looked at the cover loader. There is now an automatic check that selecting a game<br />
+performs <strong>no</strong> blocking card read of any kind -- not an image, not a text file. It was<br />
+verified to fail against EXP53 (it caught three reads) and pass here, so this cannot silently<br />
+come back.</p>
+<p><strong>What to test on EXP54:</strong><br />
+- <strong>MX4SIO and USB with cover art ON.</strong> First page entry and moving between titles should no<br />
+  longer freeze. This is the whole point.<br />
+- If you have <em>Game details</em> switched on, try it both ways.<br />
+- Drop in one correctly named cover (<code>&lt;game name&gt;_COV.png</code> in the device's top-level <code>ART/</code>)<br />
+  and confirm it still appears after you settle on that game.</p>
+<p><strong>Honest caveat:</strong> this fully explains the freeze if <em>Settings, Game List, Game details</em> is<br />
+switched <strong>On</strong>. If you have it <strong>Off</strong>, that code was already being skipped and something<br />
+else is blocking -- in which case the next build stops guessing and reports where the frame<br />
+actually stalls.</p>
+<p><strong>Still not fixed:</strong> MX4SIO reporting "no MX4SIO detected" after a rescan until you unplug and<br />
+replug, and DKWDRV's exit option. Both are next.</p>
+<hr />
+<h2 id="new-in-exp53-background-cover-loading-second-attempt">New in EXP53: background cover loading, second attempt</h2>
+<p><strong>The art stutter is the target. This is the fix, rebuilt carefully after the last attempt would not boot.</strong></p>
+<p><strong>What was wrong.</strong> Looking for a cover happens on the same thread that draws the screen, so<br />
+while the console asks the card "is this picture here?", the screen is frozen. On a folder<br />
+shared with OPL, holding thousands of files, a lookup that comes back <strong>no</strong> is the slowest<br />
+possible answer, because the card has to be read to the end to be sure. That is the hang.</p>
+<p><strong>What changed.</strong> Cover lookups now happen in the background. The list draws immediately and<br />
+never waits. This is what OPL does, and it is why OPL is instant with the same folder.</p>
+<p><strong>Why this should boot when the last attempt did not.</strong> EXP49 introduced this and <strong>booted</strong>.<br />
+EXP51 added one small follow-up written in C, and that build black-screened. The program code<br />
+in EXP53 is <strong>byte-for-byte the same as EXP49</strong> -- the follow-up has been rewritten in the<br />
+script layer instead, where it cannot affect startup.</p>
+<p><strong>Also added: a "Loading art..." line.</strong> While a cover is being fetched, the box says so.<br />
+A silent empty box for a second reads as broken, and a user who thinks it is broken stops<br />
+waiting. It only appears while a fetch is actually in progress.</p>
+<p><strong>The bug it also fixes.</strong> Leaving a game list mid-fetch (pressing START, launching, backing<br />
+out) used to leave the loader jammed, and <strong>covers would stop appearing for the rest of the<br />
+session</strong>. It now clears itself.</p>
+<p><strong>What to test on EXP53:</strong><br />
+- <strong>Does it boot?</strong> That is the first and most important question. If it black-screens, stop<br />
+  and go back to EXP52; that tells us the background loading itself is at fault, not the C<br />
+  follow-up, and it is the last thing I need to know.<br />
+- <strong>USB with cover art ON:</strong> first page entry and moving between titles should no longer hang.<br />
+- <strong>MX4SIO with cover art ON:</strong> same.<br />
+- Drop in one correctly named cover (<code>&lt;game name&gt;_COV.png</code> in the device's top-level <code>ART/</code><br />
+  folder) and confirm it appears shortly after you stop on that game.<br />
+- Move onto a game, press <strong>START</strong> immediately, come back, keep browsing: covers must still<br />
+  appear.</p>
+<p><strong>Known and NOT fixed here:</strong> after a rescan (R1) or leaving and re-entering the MX4SIO page,<br />
+the card can report "no MX4SIO detected" until it is physically unplugged and replugged.<br />
+That is a separate device bug with a clean reproduction, and it is next.</p>
+<hr />
+<h2 id="exp52-exp49-and-exp51-are-removed-exp51-would-not-boot">EXP52: EXP49 and EXP51 are removed -- EXP51 would not boot</h2>
+<p><strong>EXP51 black-screened on boot. Both it and EXP49 are completely gone from this build.</strong></p>
+<p>EXP49 introduced background cover loading, which is the right fix for the MX4SIO stutter and<br />
+is how OPL stays instant with a shared <code>ART</code> folder. EXP51 added a small follow-up to it.<br />
+EXP51 does not boot, so both are out until the fault is found and fixed properly.</p>
+<p><strong>EXP52 is EXP48's code exactly</strong> -- every source file is byte-identical; only the version<br />
+stamp differs. EXP48 is a build that boots.</p>
+<p><strong>What this means for you right now:</strong><br />
+- Booting is restored.<br />
+- The <strong>MX4SIO cover stutter is back</strong>, because the fix for it was in EXP49. If you want a<br />
+  smooth list today, set <em>Settings, Game List, Cover art</em> to <strong>Off</strong>.<br />
+- Everything else still works: the MX4SIO page fix (EXP41), the cover-art setting (EXP42),<br />
+  the exFAT freeze messages (EXP43), and the game-details fix (EXP48).</p>
+<p><strong>The goal has not changed:</strong> covers in a shared <code>ART</code> folder, loading instantly, exactly as<br />
+OPL does it. That needs the background loading from EXP49, done correctly. Two faults in that<br />
+code have already been identified: the worker's memory was reserved as a fixed block that<br />
+grows the program image, and its priority was set higher than the main program rather than<br />
+lower. Both are fixable without changing the approach.</p>
+<p><strong>What to test on EXP52:</strong> only that it boots and behaves like EXP48. That confirms the fault<br />
+was in EXP49/EXP51 and nothing older, which is what decides where to look next.</p>
+<hr />
+<h2 id="new-in-exp48-one-more-thing-was-reading-your-card-on-every-single-move">New in EXP48: one more thing was reading your card on every single move</h2>
+<p><strong>If you have <em>Game details</em> turned ON, read this.</strong> Separate from the cover picture, the<br />
+loader also looks for a <code>.txt</code> description file next to it. That lookup was checking<br />
+<strong>nothing</strong> first -- it did not remember folders it already knew were missing, and it did not<br />
+remember files it had already failed to find. So it went to the card <strong>every time you landed<br />
+on a game, including games you had already visited</strong>, which the cover lookup never did.</p>
+<p>It also ran <em>before</em> the cover lookup, which is why none of the last three attempts touched<br />
+it: they all only changed the cover code.</p>
+<p>It now uses the same two rules the covers use: skip a folder already known to be missing, and<br />
+remember a file that was not there so it is never asked for twice. <strong>This adds no new reading<br />
+of your card, it only removes reading.</strong></p>
+<p><strong>If you have <em>Game details</em> set to Off</strong> (the default), this changes nothing for you, because<br />
+that whole path was already skipped.</p>
+<p><strong>This still does not fix the main stutter.</strong> That fix is the background-loading change<br />
+described under EXP47 below, and it is being built properly rather than rushed.</p>
+<p><strong>What to test on EXP48:</strong> if you use <em>Game details</em>, moving around the list should be<br />
+noticeably less heavy, especially going back to games you already looked at. If you do not<br />
+use it, just confirm nothing got worse.</p>
+<hr />
+<h2 id="new-in-exp47-we-found-the-real-cause-of-the-cover-stutter-and-undid-a-wrong-fix">New in EXP47: we found the real cause of the cover stutter (and undid a wrong fix)</h2>
+<p><strong>EXP46 is undone.</strong> It tried to read your whole <code>ART</code> folder once instead of looking for each<br />
+cover as you moved. Measuring the console's actual behaviour afterwards showed that reading a<br />
+folder that size costs one round-trip to the card <strong>per file in it</strong> -- so on your shared OPL<br />
+art folder that is thousands of round-trips, which is worse than what it replaced. It is out.</p>
+<p><strong>You were right: there is no reason to scan the art at all.</strong> The loader is back to doing<br />
+exactly what you described, and what OPL does: look for one file, load it if it is there, skip<br />
+it if it is not.</p>
+<p><strong>So why is it slow?</strong> Not because of <em>how many</em> times we look. Because of <em>where</em> we look from.<br />
+The lookup happens on the same thread that draws the screen, so while the card is being asked,<br />
+the picture on your TV is frozen. On a small folder that is invisible. On your shared OPL art<br />
+folder, a single "is this file here?" that comes back <strong>no</strong> takes roughly half a second,<br />
+because the console has to read the folder to the end before it can answer. One of those per<br />
+title is all it takes, which is why every attempt at making it look <em>fewer</em> times changed<br />
+nothing.</p>
+<p><strong>OPL actually looks up MORE art than we do</strong> (a picture for every row on screen, not just the<br />
+selected one) and never stutters, because it does the looking on a <strong>background thread</strong> and<br />
+draws a placeholder in the meantime. That is the entire difference between the two programs<br />
+here, and it is the fix.</p>
+<p><strong>Honest status:</strong> that background-loading change is the next thing, and it is a real change<br />
+rather than a one-line tweak, so it is not being rushed into this build after three misses in<br />
+one night. <strong>EXP47 does not fix the stutter.</strong> It removes a change that was probably making<br />
+things worse and puts the simple behaviour back.</p>
+<p><strong>What to test on EXP47:</strong> only that nothing got worse. With cover art <strong>off</strong>, MX4SIO should<br />
+be smooth. With it <strong>on</strong>, expect the same stutter as EXP43/EXP45 -- if it is noticeably<br />
+<em>worse</em> than that, say so, because that would be important. Everything else in the build (the<br />
+MX4SIO page fix, the cover-art setting, the exFAT freeze messages) is untouched.</p>
+<hr />
+<h2 id="new-in-exp45-exp44s-cover-art-change-is-reverted-exp46-also-reverted-see-exp47">~~New in EXP45: EXP44's cover-art change is reverted~~ (EXP46 also reverted; see EXP47)</h2>
+<p><strong>EXP44 did not work and is undone.</strong> The MX4SIO stutter with cover art on is still there, and EXP44's attempt at it is out of this build. The cover code is back to exactly what EXP43 had.</p>
+<p><strong>Why it is being pulled rather than adjusted.</strong> EXP44 made the loader read the whole <code>ART</code> folder once and remember its contents. That same approach was tried before, in EXP34, and removed in EXP35 because it caused stutter and out-of-memory crashes on MX4SIO. Putting it back was a mistake, and the honest read is that this technique has now been implicated twice on this exact hardware. It stays out.</p>
+<p><strong>Where this actually stands: the cause is still not known.</strong> Two separate fixes have now been aimed at this and both missed. Rather than guess a third time, the code is back to its last known state while the cause is properly investigated. The current leading idea, which is <strong>not yet confirmed</strong>, is that looking for a cover that is not there is the slowest possible operation on this kind of card, and it happens while the screen is trying to draw. If that turns out to be right, the fix is to look for covers <strong>in the background</strong> instead of making the list wait, which is what OPL does.</p>
+<p><strong>What to test on EXP45 (MX4SIO):</strong><br />
+- <strong>With cover art OFF</strong>, browsing should be smooth. Please confirm this is still true.<br />
+- <strong>With cover art ON</strong>, expect the stutter to still be there. That is not a regression from EXP44, it is EXP43's behaviour restored. Confirming it is unchanged (not worse) is genuinely useful.<br />
+- Everything else in this build (the MX4SIO page fix, the cover-art setting, the exFAT freeze messages) is untouched and still worth testing.</p>
+<p><strong>One question that would settle a lot:</strong> does your MX4SIO card have an <code>ART</code> folder at the root, even an empty one? If there is no <code>ART</code> folder at all, the loader is supposed to skip cover lookups entirely, and the fact that it still stutters would tell us something important.</p>
+<hr />
+<h2 id="new-in-exp44-cover-art-is-fast-again-on-mx4sio-reverted-in-exp45">~~New in EXP44: cover art is fast again on MX4SIO~~ (REVERTED in EXP45)</h2>
+<p><strong>The report:</strong> MX4SIO stutters when the list first appears and again on every title you move to, with cover art on. Turn cover art off and it is perfectly smooth. It never used to do this.</p>
+<p><strong>That is exactly right, and the cause was ours.</strong></p>
+<p><strong>What was happening.</strong> Cover art used to live next to your game files, in the same <code>POPS</code> folder the loader had just read to build the list. Because it had just read that folder, finding a picture in it was almost free, and there was only ever <strong>one</strong> file to look for.</p>
+<p>When art moved to its own <code>ART</code> folder, that stopped being true. The loader now had to go read a <strong>different</strong> folder, and it did that <strong>for every single game you moved to</strong>. Worse, when a picture is <em>missing</em>, the console has to read the folder <strong>all the way to the end</strong> to be sure it is not there, while finding one lets it stop early. Multi-disc games looked twice. On an SD card over the memory card port, which is a slow connection, that adds up to exactly the stutter you described.</p>
+<p>Turning art off skipped all of it, which is why it looked fine, and that was the clue that settled it.</p>
+<p><strong>What changed.</strong> The loader now reads the <code>ART</code> folder <strong>once</strong>, remembers what is in it, and after that every game is answered instantly from memory. Present or missing, there is no more folder reading while you navigate. Pictures that exist still load exactly as before.</p>
+<p><strong>Why this is not a repeat of an earlier attempt.</strong> A few builds back we tried reading the folder once and it caused out-of-memory crashes, so it was pulled out. That crash was real, but the reason was that the folder reading built a large amount of temporary data with no limit on it. It comes back now with that limit in place, and the temporary data is thrown away immediately. If a folder is unusually large the loader simply goes back to the old behaviour instead, so it can never crash the way it did before.</p>
+<p><strong>What to test on EXP44:</strong><br />
+- <strong>MX4SIO with cover art ON:</strong> browse your list and hold on titles. The stutter on first list and on each title should be gone.<br />
+- <strong>Your pictures still show.</strong> Same folder, same names, nothing to change on your card.<br />
+- <strong>Games with no picture</strong> should now be <em>instant</em>, showing the plain empty case with no pause at all. This was the slowest case before.<br />
+- <strong>Add a new cover while the loader is running,</strong> then press <strong>R1</strong> to refresh: it should be picked up.<br />
+- <strong>USB, MMCE and the internal drive</strong> should be unchanged.</p>
+<hr />
+<h2 id="new-in-exp43-if-the-internal-drive-freezes-the-screen-now-tells-us-where">New in EXP43: if the internal drive freezes, the screen now tells us where</h2>
+<p><strong>sAGA, this one is for you, and it is the important part of this build.</strong></p>
+<p><strong>Nothing about the drive fix changed.</strong> EXP40's "phantom slave" fix is in this build exactly as it was. What changed is what happens <strong>if it does not work</strong>.</p>
+<p><strong>The problem with the last three builds.</strong> EXP38, EXP39 and EXP40 all tried to fix the internal exFAT freeze, and all three asked you to boot, and none of them could tell us anything when they failed. The screen just sat on <strong>"Locating exFAT HDD POPS folder..."</strong> forever. That single message covered about a dozen separate internal steps, so "it froze" narrowed nothing down. Three of your test rounds produced no usable information, and that is our fault, not yours.</p>
+<p>We had solved this once. Back in EXP11 that step was split into numbered sub-steps so a frozen screen named the exact stuck call. When the device layer was rebuilt a few builds ago, that got quietly dropped and nobody noticed.</p>
+<p><strong>What changed.</strong> It is back, and better placed. The bring-up now paints a specific message <strong>before</strong> each step that can hang:</p>
+<ul>
+<li><strong>exFAT step 1: starting the drive</strong></li>
+<li><strong>exFAT step 2.N: checking massN:</strong></li>
+<li><strong>exFAT step 3.N: identifying massN:</strong></li>
+<li><strong>exFAT step 4: reading the device list</strong></li>
+</ul>
+<p>A frozen console cannot redraw the screen, so whatever message is showing when it stops <strong>is</strong> the answer. It tells us which call hung and, for the numbered ones, which drive slot.</p>
+<p><strong>What to do (sAGA, one boot):</strong> open the <strong>HDD (exFAT)</strong> page and give it up to two minutes, since some failure paths are slow rather than truly stuck.</p>
+<ul>
+<li><strong>If it lists your games:</strong> the phantom-slave fix worked. That is the win we have been chasing, please say so.</li>
+<li><strong>If it freezes: photograph the screen.</strong> The message on it, word for word including the number, is the whole diagnosis. That single photo is worth more than every report on the last three builds combined.</li>
+<li><strong>If you see "No exFAT HDD detected" after a few seconds:</strong> that is a clean answer too, not a freeze. Tell us.</li>
+</ul>
+<p>Also included, unchanged from the previous builds: the <strong>MX4SIO page fix</strong> (EXP41) and the <strong>cover art setting</strong> (EXP42), both described below.</p>
+<hr />
+<h2 id="new-in-exp42-cover-art-is-a-saved-setting-now">New in EXP42: cover art is a saved setting now</h2>
+<p>Two small interface changes. <strong>EXP41's device fix is included in this build</strong>, so if you have not tested EXP41 yet, testing EXP42 covers both. The EXP41 section below is still the important one.</p>
+<p><strong>Cover art is now in Settings.</strong> It used to be the <strong>Square</strong> button on a game list, which meant it reset to on every time you rebooted and there was nothing on screen telling you the button existed. It now lives in <strong>Settings, Game List, Cover art</strong>, defaults to <strong>On</strong>, and is saved with the rest of your settings. Turning it off shows the plain empty case instead of loading each game's picture, which is a little quicker on a big list. <strong>Square now does nothing on a game list.</strong></p>
+<p><strong>The "No cover. Looked for:" line is gone.</strong> When a game had no picture, the box used to print the exact path it had checked. That was added as a self-check aid back when you could choose where covers lived; EXP35 locked that location down, so the line had stopped earning its space.</p>
+<p><strong>What to test on EXP42 (interface):</strong><br />
+- <strong>Settings, Game List, Cover art</strong> turns pictures on and off, and the game list changes as soon as you save without needing to leave Settings.<br />
+- Set it to <strong>Off</strong>, save, reboot: it should still be <strong>Off</strong>. Then set it back to <strong>On</strong> and confirm that sticks too.<br />
+- <strong>Reset Defaults</strong> puts it back to <strong>On</strong>.<br />
+- A game with no picture shows the plain empty case and <strong>no path text</strong> underneath.<br />
+- Your existing settings still load normally after updating (this adds a new saved value, so an older settings file simply defaults cover art to On).</p>
+<hr />
+<h2 id="new-in-exp41-the-mx4sio-page-was-showing-the-internal-drives-games">New in EXP41: the MX4SIO page was showing the internal drive's games</h2>
+<p><strong>One bug, one fix, nothing else changed.</strong> This build deliberately contains a single change so there is only one variable to judge.</p>
+<p><strong>The report.</strong> Boot POPSLoader from a memory card, open the internal exFAT page and it works, then plug in an MX4SIO card and open the MX4SIO page: it lists the <strong>internal drive's</strong> games, not the SD card's. Re-scanning does not help.</p>
+<p><strong>What was actually wrong.</strong> When POPSLoader asks the system what storage is connected, each drive comes back with a small set of numbers attached. EXP36 (a few builds ago) started using one of those numbers as "which drive slot is this." That number is not a drive slot. It is a partition-type marker, and for a whole drive it is always <strong>zero</strong>, for every device, on every console.</p>
+<p>So the internal drive said zero, the SD card said zero, and both got filed as "slot 0". Slot 0 is whatever was plugged in first, which when you boot with the internal drive present is the internal drive. The MX4SIO page then faithfully listed slot 0, which was the HDD. It was not random or flaky: it was the same wrong answer every single time, which is exactly why re-scanning never helped.</p>
+<p>The same mistake had a second symptom worth mentioning: on a drive using the older MBR partition style, that number is the filesystem-type byte instead, so a drive could be filed as a slot that does not exist and <strong>disappear from its page entirely</strong>.</p>
+<p><strong>The fix.</strong> POPSLoader now asks each drive slot directly what it is, which is the reliable answer and the one the loader used before EXP36. The reason EXP36 changed this was speed: the old method could stall the menu on a drive that was still waking up. That protection is kept, because slots that are not mounted yet are skipped before anything slow happens, so we only ask the slots that are genuinely ready.</p>
+<p><strong>A note on how this got through.</strong> The automated test that was supposed to cover this made up numbers the real hardware never produces, so it passed while the real thing was broken. That test has been rewritten to use the real values, and it now fails if anyone reintroduces the mistake.</p>
+<p><strong>Honest status, please read this part.</strong> This does <strong>not</strong> touch the internal exFAT freeze. EXP40's "phantom slave" fix is still the live theory there and is completely unchanged in this build. If your exFAT page froze on EXP40, expect it to behave exactly the same here. This build fixes which games show up on which page, nothing more.</p>
+<p><strong>What to test on EXP41:</strong><br />
+- <strong>The reported bug:</strong> boot from your memory card, open the internal exFAT page, then plug in your MX4SIO card and open the MX4SIO page. It should now list the <strong>SD card's</strong> games. This is the one that matters.<br />
+- <strong>Every device is on its own page:</strong> check USB, MX4SIO, MMCE and the internal drive each list their own games and nothing borrowed from another device.<br />
+- <strong>Nothing vanished:</strong> if you have a drive that previously showed up, confirm it still does. This change moves how drives are matched to pages, so a device going missing is the failure mode to watch for.<br />
+- <strong>sAGA / internal exFAT:</strong> unchanged from EXP40. If you get a chance, the EXP40 question still stands (does the exFAT page list games, or still freeze), but nothing in EXP41 was aimed at it.</p>
+<hr />
+<h2 id="new-in-exp40-the-phantom-device-1-and-back-to-lazy">New in EXP40: the phantom "device 1" — and back to lazy</h2>
+<p>Two things: undo a wrong turn, and finally test a real fix we wrote months ago but never ran on hardware.</p>
+<p><strong>Back to lazy.</strong> EXP38/39 loaded the internal drive <strong>at boot</strong> whenever the Internal-HDD setting was <code>EXFAT</code>/<code>BOTH</code> — but that setting only controls <strong>which pages are visible</strong>, not "use the drive now." That broke POPSLoader's lazy-by-design behavior and was never how the drive should come up. EXP40 undoes it: a normal MC/USB boot <strong>no longer touches the internal drive at all</strong> — it loads <strong>only when you open the exFAT HDD page</strong> (or launch straight to it). Every other device stays exactly as it was.</p>
+<p><strong>The real fix — the phantom slave.</strong> A deep byte-level + source investigation found a concrete mechanism for the freeze. The internal-ATA driver probes <strong>two</strong> devices, a "master" (your drive) and a "slave." A retail PS2 has no slave — but a 4TB drive behind a SATA adapter can float the bus so the driver <em>thinks</em> a slave is present. When it does, the storage layer tries to allocate a <strong>second ~129 KB cache</strong> (an allocation it never checks — if it fails, it crashes) <strong>and</strong> runs two sets of drive commands at once over one shared channel. POPSLoader loads more IOP modules than the lean reference tools, so it's the most likely to have no room left for that phantom second buffer — which is exactly why it hangs where R3Z/OPL don't, on the same drive.</p>
+<p><strong>We already wrote the fix — and never tested it.</strong> Back in EXP21 we made the driver tell itself <em>"there is no slave"</em> on a retail PS2 before it probes, which removes both the phantom buffer and the command collision (genuine dual-drive DVR consoles are left alone). It was buried under EXP22 ~40 minutes later, before anyone ran it on hardware. EXP40 revives it — the driver is now <strong>built from source</strong> with that one change — and puts it on the drive, on the correct lazy path.</p>
+<p><strong>Honest status:</strong> this is a <strong>real fix attached to a testable hypothesis</strong>, not a guaranteed win. If sAGA's exFAT page finally lists games → the phantom slave was the culprit and we've cracked it. If it still freezes → the device-1 theory is cleanly refuted, and the next build adds on-screen instrumentation to catch the exact line. Either way, it's decisive.</p>
+<p><strong>What to test on EXP40:</strong><br />
+- <strong>sAGA / internal exFAT:</strong> boot normally from MC/USB (no more boot-time drive load), then open the <strong>exFAT HDD</strong> page — does it list your games instead of hanging at ~42%?<br />
+- <strong>MX4SIO / MMCE / USB:</strong> all unchanged — please confirm they're still healthy (this build recompiles the ATA driver from source, so a quick sanity pass matters).</p>
+<hr />
+<h2 id="new-in-exp39-the-exfat-freeze-one-clean-variable-the-boot-chime">New in EXP39: the exFAT freeze — one clean variable (the boot chime)</h2>
+<p>EXP38 froze on the splash. A deep source-level comparison (byte-hashing every driver against the loaders that read sAGA's drive) settled two things for good, then found the real lead:</p>
+<p><strong>It is NOT the drivers.</strong> Our <code>ata_bd</code> is byte-identical to the one wLaunchELF R3Z and official OPL ship. We already shipped the <em>complete</em> byte-exact reference driver set (an earlier experiment) and it still froze — and RiptOPL ships an <em>older</em> ATA driver than ours and reads the drive fine. So the module bytes are fully exonerated. GPT parsing and 48-bit addressing are both present and working. Chasing the drivers is over.</p>
+<p><strong>The real difference is something only POPSLoader does:</strong> it starts the <strong>boot chime</strong> <em>before</em> it brings the internal drive up, and the chime keeps playing <em>through</em> the drive load. So the drive comes up while the audio hardware is actively streaming. <strong>No other loader does this</strong> — R3Z has no boot sound, NHDDL loads storage on a freshly-reset console, OPL/wOPL start their sound <em>after</em> storage. And it's the one thing that differs between the placement that <strong>works</strong> (EXP22 — drive loads before any audio) and the one that <strong>froze</strong> (EXP38 — drive loads during the chime).</p>
+<p><strong>The change:</strong> EXP39 keeps everything from EXP38 exactly the same, and moves <strong>one thing</strong> — the boot chime now starts <strong>after</strong> the internal drive is up, not before. The splash still covers the load; the only difference is the chime begins a moment later, in silence-then-sound instead of sound-through-load.</p>
+<p>This is a deliberate <strong>one-variable test.</strong> If it works, the audio-during-storage collision was the freeze and we finally have the mechanism. If it still freezes, we've cleanly ruled audio out and the next suspect (the controller-adapter drivers initializing at the same time) is already lined up.</p>
+<p><strong>What to test on EXP39:</strong><br />
+- <strong>sAGA / internal exFAT drive:</strong> boot to the menu. The splash may still sit a few seconds while the drive loads (that's expected — don't power off). Does it reach the menu now, and does the exFAT HDD page list your games instead of hanging on the splash? You'll notice the boot chime starts a touch later than before — that's the fix, not a bug.<br />
+- <strong>MX4SIO / MMCE / USB:</strong> confirm all still behave exactly as they did on EXP37/38.</p>
+<hr />
+<h2 id="new-in-exp38-the-internal-exfat-drive-freeze-stop-diverging-from-opl">New in EXP38: the internal exFAT drive freeze — stop diverging from OPL</h2>
+<p>This is the fix for the internal <strong>exFAT HDD freeze</strong> — sAGA's 4TB GPT drive that stalls at <em>"Locating exFAT HDD POPS folder… 42%"</em> (and, on the boot-warm-up path, black-screened before the menu). It is <strong>not</strong> a module problem, a memory problem, or a "can't read GPT" problem — the drivers that read his drive are already in the build, byte-for-byte the same ones that read it on EXP22.</p>
+<p><strong>What was actually wrong.</strong> Every working loader — OPL, wLaunchELF R3Z, NHDDL — brings its whole storage stack up <strong>the same way: together, in one go, under a loading screen, before anything else touches the drive bus.</strong> POPSLoader had drifted into doing the opposite — loading the internal-drive driver (<code>ata_bd</code>) <strong>late and by itself</strong>, either mid-session when you open the page or on a background worker racing other startup work. On a big drive that late/split bring-up <strong>wedges the drive bus</strong> — which is the 42% hang (and, when it raced boot, the black screen). Same driver, wrong moment.</p>
+<p><strong>The fix — do what the reference loaders do.</strong> When the internal drive is enabled (Internal HDD = <strong>exFAT</strong> or <strong>Both</strong>, the default), POPSLoader now brings the <code>ata_bd</code> stack up <strong>at boot, in one shot, while the welcome splash is on screen</strong> — before the menu, before anything else uses the bus. This is the <em>exact</em> arrangement sAGA confirmed reads his drive ("works just fine" on EXP22), with the two reasons it was pulled last time both removed:<br />
+- <strong>No black screen</strong> — it runs under the splash (the picture is already up), so the few seconds the drive needs show the splash, not a black panel.<br />
+- <strong>No race</strong> — it finishes completely before the menu appears, instead of a background worker still churning as the menu loads (that race was the earlier black-screen).</p>
+<p><strong>Scope — what this does <em>not</em> touch.</strong> <code>ata_bd</code> lives on the dev9 (ATA) bus. This change <strong>does not load or touch MMCE</strong> (that's <code>mmceman</code> on the SIO2 bus — a completely separate thing) and does not change how MX4SIO or USB load. PFS-only setups skip it entirely and pay nothing.</p>
+<p><strong>Honest status.</strong> This restores the one configuration your drive is <em>known</em> to read, moved to a spot where it can't black-screen and can't race. I can't prove it on your hardware from here — so this build is the test. The one thing worth a second look is <strong>MX4SIO</strong> (it shares the block-device core with <code>ata_bd</code>): it was collateral damage the <em>last</em> time this was tried, but that was bundled with a driver swap we've since settled on, and the SDK drivers we now ship are the same ones OPL runs with <code>ata_bd</code> and MX4SIO resident together. If MX4SIO regresses, that's the next thread — but I expect it to be clean.</p>
+<p><strong>What to test on EXP38:</strong><br />
+- <strong>sAGA / internal exFAT drive:</strong> boot to the menu (no black screen), then open the <strong>exFAT HDD</strong> page — does the game list finally come up instead of hanging at 42%? (The splash may sit a few seconds longer at boot while the drive comes up — that's the drive loading, and it's expected.)<br />
+- <strong>MX4SIO:</strong> browse the MX4SIO list as usual and confirm it's still healthy — no new hang or crash.<br />
+- <strong>MMCE and USB:</strong> confirm they behave exactly as they did on EXP37 (they shouldn't change at all).<br />
+- <strong>PFS-only users:</strong> boot should be as fast as before (this doesn't run for you).</p>
+<hr />
+<h2 id="new-in-exp37-the-mx4sio-cover-art-lagcrash-hardware-confirmed-and-fixed">New in EXP37: the MX4SIO cover-art lag/crash — hardware-confirmed and fixed</h2>
+<p>The MX4SIO "browse a few games and it lags then crashes with <em>not enough memory</em>" bug is <strong>found and fixed</strong>, and this time it was confirmed on hardware before shipping: turning <strong>Cover Art off (Square)</strong> made the lag and the crash both vanish — which proved the cost was the per-game cover <em>lookup</em>, not the drive.</p>
+<p><strong>What was happening.</strong> When your covers aren't in the folder the app now reads (<code>&lt;device&gt;:/ART/&lt;name&gt;_COV.png</code>), <em>every</em> game you scroll to triggers a <strong>failed file open</strong> — and on MX4SIO a failed open of a file in a folder that isn't there is a slow driver dir-walk. Doing that for game after game piled up into the lag, and eventually the crash.</p>
+<p><strong>The fix.</strong> POPSLoader now checks whether the cover <strong>folder</strong> exists <strong>once</strong> (a single cheap check, remembered), and if it's not there it <strong>skips the cover lookup for every game instantly</strong> — no per-game file opens at all. If the folder <em>is</em> there, covers load exactly as before. So a device with no <code>ART</code> folder browses as fast as with Cover Art off, automatically.</p>
+<p><strong>Also in EXP37:</strong> the USB page no longer hunts for a drive <strong>12 times</strong> when there's none — it makes a reasonable, bounded try and fails fast and clean (you flagged the ~12-second hang crawling 38%→44%).</p>
+<p><strong>What to test:</strong><br />
+- <strong>MX4SIO:</strong> browse the game list with Cover Art <strong>on</strong> — smooth now, no crash? (If you <em>want</em> covers, put them at <code>&lt;device&gt;:/ART/&lt;gamename&gt;_COV.png</code>.)<br />
+- <strong>USB with no drive plugged:</strong> opening the USB page should fail quickly and cleanly, not hang for ~12 seconds.</p>
+<hr />
+<h2 id="new-in-exp36-devices-identify-themselves-directly-no-more-per-slot-probing">New in EXP36: devices identify themselves directly (no more per-slot probing)</h2>
+<p>This is a device-layer cleanup that should make the MX4SIO and exFAT pages both <strong>faster and steadier</strong>, and is the right way to have done it from the start.</p>
+<p><strong>The change.</strong> When POPSLoader opens the MX4SIO page (or the exFAT page), it already knows which driver it just loaded — so it now asks the driver <strong>directly</strong> which storage slot it owns, using the enumeration the PS2 SDK already provides. Previously it did the opposite: it opened <em>every</em> <code>mass0:</code>…<code>mass9:</code> slot in turn and asked each one "who are you?" That per-slot interrogation is slow, and on a drive that's still spinning up it could <strong>stall the console</strong> — a plausible contributor to the "carousel appears then freezes" report. The per-slot interrogation is gone from these pages; the slower query now survives in exactly one place where it's genuinely needed (working out what an <em>old launcher</em> handed us when it boots us from a generic <code>mass:</code> path).</p>
+<p><strong>Why it's safe.</strong> Same drives, same files, same folders — only <em>how the page finds the right slot</em> changed, from "scan and ask everyone" to "ask the one driver we loaded." CosmicScale's exFAT drive is reached the same way, just directly. If the direct enumeration is ever unavailable, it falls back to the old scan, so nothing hard-breaks. The device layer now has 30 host-side tests (up from 29), including one that proves the page resolves its slot from the enumeration with <strong>zero</strong> per-slot probing.</p>
+<p><strong>What to test on EXP36:</strong><br />
+- <strong>MX4SIO and exFAT pages:</strong> do they open at least as quickly as before, and steadily? (This change is aimed squarely at the freeze/stall path.)<br />
+- Everything from EXP35 still applies — the boot no longer probes exFAT, covers live at <code>&lt;device&gt;:/ART/&lt;name&gt;_COV.png</code>.</p>
+<hr />
+<h2 id="new-in-exp35-two-exp34-regressions-fixed-boot-black-screen-mx4sio-memory-crash-cover-art-hard-locked">New in EXP35: two EXP34 regressions fixed (boot black-screen, MX4SIO memory crash) + cover art hard-locked</h2>
+<p>EXP34's testing turned up two regressions the new defaults introduced. EXP35 fixes both and simplifies the cover system so it can't misbehave again.</p>
+<p><strong>Boot no longer probes the internal exFAT drive.</strong> EXP34 made <em>Internal HDD = Both</em> the default, and a leftover rule warmed up the exFAT drive <strong>at every boot</strong> because of it. On at least one console (a 4TB GPT exFAT internal drive) that boot-time probe <strong>black-screened the machine before the menu</strong> — an unrecoverable boot. EXP35 stops probing exFAT at boot entirely: the exFAT page brings the drive up <strong>when you open it</strong> (screen stays alive; if the drive is slow it says "still starting" instead of freezing), exactly like every other device. A normal boot never touches the internal drive now. <em>(If you deliberately launch straight to the exFAT page with a <code>-page=ata</code> argument, that still pre-warms it — you asked for that page.)</em></p>
+<p><strong>MX4SIO no longer lags-then-crashes on cover art.</strong> EXP34 added a folder-listing step to the cover lookup; on MX4SIO that step could run away and end in an <strong>"Enceladus ERROR! not enough memory"</strong> crash after browsing a few games. That step is <strong>removed</strong>. Combined with the change below, looking up a cover is now a single, bounded file check per game.</p>
+<p><strong>Cover art is hard-locked to one place and one name.</strong> No more folder setting. Covers are read from <strong><code>&lt;device&gt;:/ART/&lt;gamename&gt;_COV.png</code></strong> — the OPL layout — full stop. (The internal HDD keeps its fixed <code>__common/POPS/ART/</code> location.) One folder, one name, so put <code>&lt;GameID&gt;_COV.png</code> files in <code>&lt;device&gt;:/ART/</code> and they show. The <em>Cover/details folder</em> setting is gone (it did nothing useful and was a foot-gun).</p>
+<p><strong>Honest status:</strong> the boot-probe removal directly addresses the black-screen mechanism, and the cover crash's most likely cause (the new listing step) is gone. Both are the kind of fault only your consoles can fully confirm — so this build is the test. If MX4SIO still misbehaves <em>with cover art turned off</em> (Square), that points past the art code at the device layer, and that's the next thread to pull.</p>
+<p><strong>What to test on EXP35:</strong><br />
+- <strong>sAGA / anyone with an internal exFAT drive:</strong> does it boot to the menu now (no black screen)? Then open the exFAT page and see if the drive lists.<br />
+- <strong>MX4SIO:</strong> browse the game list — does it stay responsive without the memory crash? If it still stalls, try it again with <strong>Cover Art OFF (Square)</strong> and say whether that changes anything.<br />
+- <strong>Covers:</strong> put your art at <code>&lt;device&gt;:/ART/&lt;name&gt;_COV.png</code> and confirm it shows.</p>
+<hr />
+<h2 id="new-in-exp34-cover-art-that-stops-stalling-opl-art-out-of-the-box-and-better-defaults">New in EXP34: cover-art that stops stalling, OPL art out of the box, and better defaults</h2>
+<p>EXP33's testing surfaced two things at once: the APA "no games" report turned out to be <strong>an accidentally-hidden game</strong> (not a bug — the EXP33 readout is what exposed it), and the real remaining pain was <strong>cover-art lookup lagging</strong> on MX4SIO and USB. EXP34 fixes the lag, adopts OPL's art layout, and sets a batch of more useful defaults.</p>
+<p><strong>Cover-art no longer stalls the list.</strong> The old code checked for each cover by <em>trying to open several candidate files per game</em> — and on SD-over-SIO2 or USB 1.1 a missing file is a slow directory walk, done over and over. EXP34 lists each art folder <strong>once</strong> and then every check is instant, so a device with no art (or a game with none) never stalls the browser again. Covers that <em>are</em> present still load; they just don't drag the whole list down first.</p>
+<p><strong>One art location, honored exactly — no more guessing.</strong> Cover art is read from the single folder you choose in Settings (nothing else is probed):<br />
+- <strong><code>ART</code> (new default)</strong> — a top-level <code>&lt;device&gt;:/ART/</code> folder. This is <strong>OPL's layout</strong>, so if you already have an OPL <code>ART</code> folder it just works.<br />
+- <strong><code>POPS/ART</code></strong> — an <code>ART/</code> subfolder next to your games.<br />
+- <strong><code>POPS</code></strong> — right beside the <code>.vcd</code>.</p>
+<p><strong>OPL-compatible art naming.</strong> Covers are now read as <strong><code>&lt;gamename&gt;_COV.png</code></strong> (OPL's convention) first, with the older plain <code>&lt;gamename&gt;.png</code> still accepted as a fallback so nothing you already have disappears. Put OPL's <code>&lt;ID&gt;_COV.png</code> files in <code>&lt;device&gt;:/ART/</code> and they show up.</p>
+<p><strong>New defaults (all still changeable in Settings):</strong><br />
+- <strong>Internal HDD = Both</strong> (PFS <em>and</em> exFAT pages shown) instead of PFS-only.<br />
+- <strong>i.Link page hidden</strong> by default (re-show it under Settings → Device List if you use it).<br />
+- <strong>Cover/details folder = <code>ART</code></strong> (see above).<br />
+- <strong>Network/SMB defaults</strong> refreshed to a common home-LAN layout: PS2 IP <code>192.168.1.10</code>, gateway/DNS <code>192.168.1.1</code>, server <code>192.168.1.100</code>, share <code>games</code>, user <code>guest</code>, port <code>1111</code>. (DHCP is still ON by default — flip it off in Settings if you want these static values used as-is.)</p>
+<p><strong>APA "no games" now says <em>why</em>.</strong> If a scan finds <code>.vcd</code> files but lists zero games, the message now tells you the reason — e.g. <em>"1 part, 5 files, 1 VCD (1 hidden — Global Hide is on)"</em> — so an accidentally-hidden game (exactly what EXP33 turned up) reads as "hidden," not "broken."</p>
+<p><strong>These changes only affect NEW installs / unset options.</strong> If you already saved settings, your existing choices (art folder, HDD filesystem, network, device list) are kept — the new defaults apply where you never set one.</p>
+<p><strong>What to test on EXP34:</strong><br />
+- <strong>Cover-art speed:</strong> open MX4SIO and USB, scroll the list. It should stay responsive whether or not art is present. If you have OPL art, drop it in <code>&lt;device&gt;:/ART/</code> as <code>&lt;name&gt;_COV.png</code> and confirm it shows.<br />
+- <strong>Existing covers:</strong> if you were using plain <code>&lt;name&gt;.png</code> in your chosen folder, confirm they still appear (the legacy name is still accepted).<br />
+- <strong>Defaults:</strong> on a fresh install (or after a settings reset) confirm Internal HDD shows both pages, i.Link is hidden, and the SMB settings show the new values.</p>
+<hr />
+<h2 id="new-in-exp33-the-two-exp32-field-bugs-apa-no-games-and-re-entry-stalls">New in EXP33: the two EXP32 field bugs — APA "no games" and re-entry stalls</h2>
+<p><strong>EXP32 rebuilt the device layer correctly, but two tester reports came back that the rebuild didn't cover.</strong> EXP33 does not touch the EXP32 architecture — it fixes those two specific reports and, where a cause could not be proven off-console, makes the build <em>tell us what it saw</em> instead of failing silently.</p>
+<p><strong>Report 1 — APA (internal PFS) lists no games, even on a fresh boot straight to APA.</strong> "There should be at least 1 game." The partitions mount, but the game list comes back empty. Two things could cause this and EXP33 addresses both:<br />
+- <strong>A boot-vs-page race on the internal drive.</strong> In EXP32 the internal drive can be brought up from <em>two</em> places at once — the background boot warm-up and the moment you open the APA page — and if they overlap, the second one re-resets the live ATA bus mid-scan (the same class of fault as the old 42% freeze). EXP33 serializes the two: the page waits, screen alive, for the background warm-up to finish before it touches the drive, backed by a native lock so they can never both drive the bus at once.<br />
+- <strong>A single dropped re-mount.</strong> During the scan each POPS partition is mounted a second time to read its files; if that one attempt loses a race with the coexisting drive stack, that partition silently contributed zero games. EXP33 retries that mount once (after a 1-second settle) — but <em>only</em> for partitions already known to be present, so it can never reintroduce a stall hunting for a partition that isn't there.<br />
+- <strong>And if it's neither of those:</strong> the "no games" message now <em>reports what the scan actually saw</em> — how many partitions mounted, how many files and how many <code>.vcd</code> files it counted, or which partition's re-mount failed and with what error code. So the next report from hardware is self-diagnosing: "mounted 2/2, 40 files, 0 VCD" means the folder truly has no games; "mounted 1/2, remount-fail" means we caught the drop. No more opaque "partitions are empty."</p>
+<p><strong>Report 2 — leave the MX4SIO (or USB) page and come back, and it stalls: only the background shows, activity light stuck on, then the list finally pops in.</strong> Two causes, both fixed:<br />
+- <strong>Cover-art probe firing during the screen transition.</strong> Reading a cover is a synchronous file read, and a <em>missing</em> cover is a full directory walk (seconds on SD-over-SIO2 or USB 1.1). EXP32 could kick that off while the fade-in was still running, so the render loop blocked on the opaque overlay — exactly the "only the background shows" symptom. EXP33 holds the cover probe until the list has painted and the transition has finished.<br />
+- <strong>The "this cover is missing" memory was thrown away on exit.</strong> The first visit walks the disk for every missing cover and remembers the misses; EXP32 discarded that memory when you left the page, so re-entering walked the whole disk <em>again</em>. EXP33 keeps the negative-cover memory across a page exit (while still freeing the decoded images, so memory doesn't grow) — a re-entry no longer re-walks the disk for covers it already knows are absent. A manual refresh (R1) or switching to a different device still does a full, clean rescan.</p>
+<p><strong>Honest status:</strong> the re-entry stall fixes address the reported mechanism directly and are testable off-console (the regression net now has 27 host-side tests). The APA fixes are a mix: the race serialization and retry-once are real defensive fixes, but whether they <em>are</em> sAGA's / the reporter's exact cause is not something we can prove without the hardware — which is why the self-diagnosing readout is in this build. If APA still shows no games on EXP33, the message it prints tells us precisely where to look next.</p>
+<p><strong>What to test on EXP33:</strong><br />
+- <strong>APA no-games (whoever hit it):</strong> boot straight to APA (MC boot is fine), open the internal PFS page. If games appear — good. If it still says "no games found," <strong>read the second line of that message and send it verbatim</strong> — that line is the whole point of this build.<br />
+- <strong>MX4SIO / USB re-entry stall:</strong> open the MX4SIO page, go into a game or another page, come back to MX4SIO. Then do the same for USB. Expected: the list repaints promptly, no long "only background, light stuck on" pause on the return. If you can, try it once with Cover Art on and once with it off (Settings) — that isolates whether covers are the culprit.<br />
+- <strong>Everyone:</strong> MC, MMCE, controllers and saves should behave exactly as EXP32; boot time unchanged.</p>
+<hr />
+<h2 id="new-in-exp32-the-device-layer-rebuilt-the-way-the-working-launchers-do-it">New in EXP32: the device layer rebuilt the way the working launchers do it</h2>
+<p><strong>This is the rebuild.</strong> After sAGA's report (SCPH-30004, internal exFAT frozen at 42% on EXP30 <em>and</em> EXP31 — builds that carry every previous "fix"), we stopped patching and rebuilt the storage layer to match the launchers that actually work on your consoles: OPL/RiptOPL, wLaunchELF-R3Z and NHDDL. Their sources were read line-by-line for this; POPSLoader now follows their rules instead of its own inventions.</p>
+<p><strong>What the comparison found.</strong> The working launchers don't have <em>more</em> code for these problems — they have <em>less</em>. None of them has a "who owns the bus" latch, a restart dialog, a crash marker file, or per-device retry ladders. What they have instead: drivers load in one coordinated window into a near-empty system, every wait is short and bounded, a missing device is reported plainly, and a failed driver load is retried on the next visit instead of poisoning the session. On sAGA's exact case the evidence was decisive: the drive driver bytes are <strong>identical</strong> between the old build that worked on his console and the current one that freezes — what changed is <em>when</em> the driver loads (boot window vs mid-session) and how much traffic is in flight around it. The EXP22-era build that worked for him loaded it at boot; every reference does the equivalent.</p>
+<p><strong>What EXP32 changes:</strong><br />
+- <strong>Storage drivers load lazily, when you engage their device</strong> — exactly wLaunchELF-R3Z's model (read from its source, now that it's available to us). The MX4SIO driver loads on your first visit to the MX4SIO page (or an MX4SIO boot), never for users who don't use it. Opening the page after that is a short, bounded check that cannot freeze the console.<br />
+- <strong>MMCE and MX4SIO coexist — no gate.</strong> Official OPL runs both drivers resident together in the field and it works; this build carries the same freesio2 bus manager OPL uses (from EXP31), so we follow OPL's model (maintainer decision). For the record: the wLE-R3Z author advises gating them (the adapters wire a memcard-port pin differently) and R3Z resets between them — if hardware testing ever shows cross-device weirdness with both adapters installed, that's the recorded fallback position.<br />
+- <strong>A boot from an old launcher that says <code>mass</code> now finds its real device.</strong> If your settings live on a <code>mass</code>-path cwd that isn't actually USB (an MX4SIO card or the internal exFAT drive handed to us by an older launcher), the boot-time search now escalates: USB first, then the MX4SIO driver, then the internal drive — bounded, a few seconds — instead of assuming USB and losing your settings.<br />
+- <strong>The internal exFAT drive starts at boot, in the background</strong> (behind the splash — boot stays fast), but <em>only</em> when your Internal HDD setting includes exFAT — no device is probed at boot that you didn't opt into. If it's still spinning up when you open the page, the wait is capped at ~10 seconds — screen alive — then <em>"the internal drive is still starting, open this page again in a moment"</em> instead of freezing. The old silent freeze paths (a synchronous fallback load and a re-entered 90-second wait) are gone entirely. APA (PFS) and exFAT internal remain fully coexisting — no gate between them (confirmed against R3Z source: <em>"ATA_BD + APA stack can coexist in one IOP session"</em>).<br />
+- <strong>Deleted, wholesale:</strong> the "device conflict / restart" <em>dialog</em>, the MX4SIO crash-marker files and the boot-skip logic that read them, the per-device 6/4-try retry ladders, the cross-page "cascade guard", and the custom bdm_query polling on the MX4SIO/exFAT paths. The one thing that returned in better form is the MMCE/MX4SIO gate above — as a simple decline-with-message, not the old marker/dialog machinery.<br />
+- <strong>A regression net, finally:</strong> the device layer now has host-side tests (26/26 passing — including the coexistence contract and the bounded-wait rules) so this layer can't silently regress again in a future build.</p>
+<p><strong>Honest status:</strong> the <em>architecture</em> now matches the launchers that work on your hardware, and everything testable off-console passes. What only your consoles can prove: sAGA's SCPH-30004 exFAT drive and FifthFox's MMCE+MX4SIO slim. No victory claims — this build is the test.</p>
+<p><strong>What to test:</strong><br />
+- <strong>sAGA (SCPH-30004, internal exFAT):</strong> update to EXP32, make sure Settings → Device List → Internal HDD is set to <strong>exFAT</strong> (or Both), then open the exFAT page. Expected: your games list, or at worst the "drive is still starting" message once, then the list on re-entry. Please also confirm MC, MMCE and USB still behave.<br />
+- <strong>FifthFox (SCPH-70012, MMCE + MX4SIO both installed, back on the 25th):</strong> update to EXP32, open the MX4SIO page with both adapters in. Expected: your games list within a few seconds. Then MMCE in the same session (both are allowed together now, like OPL), plus controllers and memory-card saves. If anything acts strange only when <em>both</em> adapters are in, say so explicitly — that specific detail decides a recorded fallback plan.<br />
+- <strong>Anyone:</strong> boot time should feel unchanged (the drive spin-up hides behind the splash; PFS-only installs skip it completely).</p>
+<hr />
+<h2 id="new-in-exp31-mx4sio-that-still-freezes-at-42-with-an-mmce-adapter-also-plugged-in">New in EXP31: MX4SIO that still freezes at 42% with an MMCE adapter also plugged in</h2>
+<p><strong>This is for FifthFox's report: the MX4SIO page stuck forever at "Locating MX4SIO POPS folder... 42%", on a slim (SCPH-70012) that has BOTH an MMCE memory-card adapter AND an MX4SIO/SD2PS2TD SD adapter installed at the same time. The same card works in RiptOPL and wLaunchELF-R3Z on that exact console, so the card is fine — this is us.</strong></p>
+<p><strong>What we found.</strong> The MX4SIO SD driver does not own the SIO2 bus by itself; it <em>hooks</em> the shared <code>sio2man</code> module and lets <code>sio2man</code> take turns between it and everything else on that bus — the controller, the memory-card reader, MMCE. POPSLoader ships Sony's stock <code>sio2man</code>, which does not arbitrate those turns. So when a <strong>second</strong> SIO2 device is physically in the console (your MMCE adapter sitting alongside the MX4SIO adapter), the memory-card reader and the MX4SIO card talk over each other on the bus and the read never comes back — the screen is frozen on the last thing it painted, "…42%". That is why the earlier driver-matching fix did not help you: it fixed a different 42% cause and never touched the bus manager. Single-adapter rigs (only MX4SIO, or only MMCE) do not hit it, which is why it did not reproduce here.</p>
+<p><strong>What changed.</strong> EXP31 swaps the SIO2 bus manager to <strong>freesio2</strong> (and its matching <strong>freepad</strong>), the queue-based versions that <strong>OPL, wLaunchELF-R3Z and RiptOPL all use</strong> — the launchers where your card already works. That is the whole change: same driver binaries the working references run, nothing else. It is a build-time blob swap, so it is easy to pull back if it misbehaves.</p>
+<p><strong>Honest status:</strong> this is the fix the <em>working</em> launchers use, not yet a fix we have watched clear your console — SIO2 timing is only provable on real hardware, so EXP31 is exactly that test.</p>
+<p><strong>What to test (FifthFox, whenever you are back):</strong> update to EXP31 with <strong>both</strong> adapters installed as before, open the <strong>MX4SIO</strong> page, and give it up to two minutes.<br />
+- If your games list appears — that is the win we are after.<br />
+- If it says <strong>"No MX4SIO device detected"</strong> after a few seconds instead of freezing — tell us; that means the deadlock is gone but detection still needs work (a different, smaller step), not another hard freeze.<br />
+- If it still freezes at 42% — tell us that too; then freesio2 is not the whole story and the next build adds a safety net so the page can never hard-freeze.</p>
+<p>Because this swaps the bus manager that <em>everything</em> on SIO2 shares, please also give these a quick confirm on EXP31: <strong>controllers still navigate the menu</strong>, <strong>memory-card save/settings still work</strong>, <strong>MMCE still lists games</strong>, and (if you use it) <strong>USB-pad / DualShock emulation still works</strong>. If any of those regressed, that is important — say so and we pair freesio2 back with the stock pad driver.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>
