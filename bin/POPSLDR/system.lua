@@ -2601,6 +2601,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Conception par Berion\nScripts par nuno6573 et Ripto\nBasé sur Enceladus par Daniel Santos\nTests par P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k et la communauté\n\nRemerciements spéciaux à :\nkrHACKen pour avoir créé POPStarter\nuyjulian, fjtrujy, HWC et d'autres pour leur aide constante\n\nCe programme est libre et open source\nSi vous l'avez payé, vous avez été arnaqué\n\nProblèmes de compatibilité ? Visitez :\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Liste des appareils",
     ["Disc (DKWDRV)"] = "Disque (DKWDRV)",
+    ["Disabled"] = "Désactivé",
     ["Discard & Exit"] = "Abandonner et quitter",
     ["Display"] = "Affichage",
     ["Display reverted -- new mode wasn't confirmed"] = "Affichage rétabli -- nouveau mode non confirmé",
@@ -2834,6 +2835,7 @@ PLDR.I18N = {
     ["Delete the POPSTARTER folder from the memory card?"] = "POPSTARTER-Ordner von der Memory Card löschen?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design von Berion\nSkripte von nuno6573 und Ripto\nBasiert auf Enceladus von Daniel Santos\nGetestet von P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k und Community\n\nBesonderer Dank an:\nkrHACKen für POPStarter\nuyjulian, fjtrujy, HWC und andere für die stete Hilfe\n\nDieses Programm ist frei und Open Source\nWenn du dafür bezahlt hast, wurdest du betrogen\n\nKompatibilitätsprobleme? Besuche:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Geräteliste",
+    ["Disabled"] = "Deaktiviert",
     ["Discard & Exit"] = "Verwerfen & Beenden",
     ["Display"] = "Anzeige",
     ["Display reverted -- new mode wasn't confirmed"] = "Anzeige zurückgesetzt -- neuer Modus nicht bestätigt",
@@ -3063,6 +3065,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Desativado",
     ["Discard & Exit"] = "Descartar e Sair",
     ["Display"] = "Tela",
     ["Display reverted -- new mode wasn't confirmed"] = "Tela revertida -- novo modo não confirmado",
@@ -3297,6 +3300,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Diseño de Berion\nScripts de nuno6573 y Ripto\nBasado en Enceladus de Daniel Santos\nPruebas de P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k y la comunidad\n\nAgradecimientos especiales a:\nkrHACKen por crear POPStarter\nuyjulian, fjtrujy, HWC y otros por ayudar siempre\n\nEste programa es libre y de código abierto\nSi lo compraste, te estafaron\n\n¿Problemas de compatibilidad? Visita:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Desactivado",
     ["Discard & Exit"] = "Descartar y salir",
     ["Display"] = "Pantalla",
     ["Display reverted -- new mode wasn't confirmed"] = "Pantalla revertida -- el nuevo modo no se confirmó",
@@ -3526,6 +3530,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design di Berion\nScript di nuno6573 e Ripto\nBasato su Enceladus di Daniel Santos\nTest di P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e la Community\n\nRingraziamenti speciali a:\nkrHACKen per aver creato POPStarter\nuyjulian, fjtrujy, HWC e altri per l'aiuto costante\n\nQuesto programma è gratuito e open source\nSe l'hai pagato, sei stato truffato\n\nProblemi di compatibilità? Visita:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Elenco dispositivi",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Disattivato",
     ["Discard & Exit"] = "Scarta ed esci",
     ["Display"] = "Schermo",
     ["Display reverted -- new mode wasn't confirmed"] = "Schermo ripristinato -- nuova modalità non confermata",
@@ -3776,6 +3781,7 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automatikus)",
     ["DHCP failed\nset a static IP in SMB settings"] = "A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban",
     ["Disc (DKWDRV)"] = "Fizikai lemez (DKWDRV)",
+    ["Disabled"] = "Kikapcsolva",
     ["Discard & Exit"] = "Elvetés & Kilépés",
     ["Display"] = "Megjelenés",
     ["Display reverted -- new mode wasn't confirmed"] = "A kijelzőmód visszaállt -- az új mód nem került megerősítésre",
@@ -4838,11 +4844,12 @@ end
 -- silently collapses any third value back to PFS. Anything unrecognized -- and a
 -- MISSING key -- still resolves to PFS, so no existing install changes until the
 -- user opts in (the back-compat contract from 1f2d7ca).
-PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH"}
+PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH", "DISABLED"}
 function PLDR.NormalizeHddFs(v)
   local u = string.upper(tostring(v or ""))
   if u == "EXFAT" then return "EXFAT" end
   if u == "BOTH" then return "BOTH" end
+  if u == "DISABLED" or u == "NONE" or u == "OFF" then return "DISABLED" end
   return "PFS"
 end
 
@@ -4852,7 +4859,7 @@ function PLDR.IsDeviceHidden(key)
   local ukey = string.upper(tostring(key))
   -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
   -- BOTH (the default since EXP34) shows both; PFS or EXFAT shows exactly one (R3Z3N:
-  -- APA-Jail and PFS can coexist). This is ONLY a visibility rule -- it has never gated a
+  -- APA-Jail and PFS can coexist); DISABLED hides both. This is ONLY a visibility rule -- it has never gated a
   -- driver, mount or IRX. The stacks were already unified onto ONE load-once ata_bd serving
   -- APA/PFS and exFAT together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH
   -- luaHDD.cpp's Load_HDD_IRX and lua_ata_init, carrying R3Z3N's two 1s settles).
@@ -4871,6 +4878,7 @@ function PLDR.IsDeviceHidden(key)
     end
     local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
     if fs == "BOTH" then return false end
+    if fs == "DISABLED" then return true end
     return ukey ~= fs
   end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))

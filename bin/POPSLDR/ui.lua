@@ -4691,6 +4691,19 @@ UI = {
           function() UI.SetHideTextMode(not UI.HideTextMode, false) end,
           HideTextDirty
         )
+        AddCycle(
+          "Overscan (CRT inset)",
+          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
+          function()
+            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function()
+            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
+            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
+          end,
+          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
+        )
 
         AddSection("Startup")
         AddCycle(
@@ -4767,12 +4780,12 @@ UI = {
         end
 
         -- Internal-HDD page(s) on the carousel: Sony APA/PFS (default), APA-Jail exFAT,
-        -- or BOTH. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
+        -- BOTH, or Disabled. "Both" is new (R3Z3N: the two can coexist) and is purely a visibility
         -- choice -- the driver stacks were already unified onto one shared, load-once
         -- ata_bd that serves APA/PFS and exFAT together, settles included. A -page=ata
         -- launch still auto-enters exFAT and hides PFS regardless of this setting.
-        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH"}
-        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both"}
+        local HDD_FS_SEQ = {"PFS", "EXFAT", "BOTH", "DISABLED"}
+        local HDD_FS_TXT = {PFS = "APA / PFS (default)", EXFAT = "exFAT", BOTH = "Both", DISABLED = "Disabled"}
         local function HddFsStep(cur, dir)
           local idx = 1
           for i = 1, #HDD_FS_SEQ do
@@ -4782,7 +4795,7 @@ UI = {
         end
         AddCycle(
           "Internal HDD",
-          function() return HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)" end,
+          function() return PLDR.L(HDD_FS_TXT[UI.HddFs] or "APA / PFS (default)") end,
           function() UI.HddFs = HddFsStep(UI.HddFs, -1) end,
           function() UI.HddFs = HddFsStep(UI.HddFs, 1) end,
           function() return tostring(UI.HddFs) ~= tostring(UI.SettingsEntryHddFs) end
@@ -4866,19 +4879,6 @@ UI = {
           function() UI.RetroGemGameId = not UI.RetroGemGameId end,
           function() UI.RetroGemGameId = not UI.RetroGemGameId end,
           function() return (UI.RetroGemGameId == true) ~= (UI.SettingsEntryRetroGemGameId == true) end
-        )
-        AddCycle(
-          "Overscan (CRT inset)",
-          function() return (UI.Overscan or 0) == 0 and "Off" or tostring(UI.Overscan) end,
-          function()
-            UI.Overscan = math.min((UI.Overscan or 0) + 5, 100)
-            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
-          end,
-          function()
-            UI.Overscan = math.max((UI.Overscan or 0) - 5, 0)
-            if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, UI.Overscan) end
-          end,
-          function() return (UI.Overscan or 0) ~= (UI.SettingsEntryOverscan or 0) end
         )
 
         -- SMB / Network (Stage 1: config only -- the network stack loads lazily on

@@ -733,6 +733,10 @@ t18 = E('''function()
     {"PFS",       "ATA",  true,  true,  "-page=ata REVEALS exFAT when set to PFS -- and must NOT hide PFS"},
     {"BOTH",      "ATA",  true,  true,  "-page=ata never removes a page from BOTH (CosmicScale 2026-07-28)"},
     {"EXFAT",     "ATA",  false, true,  "set to exFAT + -page=ata: unchanged, PFS stays hidden by the SETTING"},
+    {"DISABLED",  nil,    false, false, "DISABLED hides both PFS and exFAT"},
+    {"disabled",  nil,    false, false, "DISABLED is case-insensitive"},
+    {"OFF",       nil,    false, false, "OFF alias resolves to DISABLED"},
+    {"NONE",      nil,    false, false, "NONE alias resolves to DISABLED"},
   }
   for _, c in ipairs(cases) do
     local p, e = vis(c[1], c[2])
