@@ -3203,6 +3203,7 @@ PLDR.I18N = {
     ["Static (manual)"] = "Estático (manual)",
     ["Storage"] = "Armazenamento",
     ["This backend isn't implemented yet"] = "Este backend ainda não foi implementado",
+    ["This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept."] = "Isso remove o pacote POPSTARTER -- incluindo os\nmódulos BDMA e SMB -- de mc0: / mc1:. Não vão\nvoltar até você ligar isso de novo (ou readicioná-los\nmanualmente). Suas configurações do POPSLoader são mantidas.",
     ["UI text hidden"] = "Texto da interface ocultado",
     ["UI text shown"] = "Texto da interface exibido",
     ["Video Standard"] = "Padrão de vídeo",
@@ -3988,7 +3989,7 @@ PLDR.I18N = {
     ["DONE"] = "KÉSZ",
     -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
     ["Edit %s"] = "%s szerkesztése",
-    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a \"Rejtett játékok elrejtése\" opciót, hogy kiszűrje őket",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a „Rejtett játékok elrejtése” opciót, hogy kiszűrje őket",
     ["Resolved:"] = "Megoldva:",
     ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy kis idő múlva",
     -- PR #559 (oldman63, 2026-07-27): strings made translatable by the

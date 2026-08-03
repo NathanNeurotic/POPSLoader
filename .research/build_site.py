@@ -668,6 +668,7 @@ DL_NOTES = [
     ('radhostclient', 'Recovered above as RadHostClient_1.8a.7z.'),
     ('compatibility_modes', 'POPStarter compatibility-mode PATCH_#.BIN bundle.'),
     ('compatibility', 'POPStarter compatibility-mode PATCH_#.BIN bundle.'),
+    ('trojan_7', 'krHACKen\'s final cumulative game-fix patch bundle (TROJAN_7.BIN, r7 2020-05-20).'),
     ('game_fixes', 'Per-game fix bundle.'),
     ('igr_behaviour', 'TROJAN_#.BIN IGR-behaviour modifiers.'),
     ('igr_textures', 'IGR menu texture pack (language-specific).'),
@@ -776,7 +777,7 @@ DL_GROUPS = [
     ("When one game misbehaves",
      "Drop-in files for a single problem game that glitches, crashes, or comes out at the wrong speed. Put one in that game's VMC folder to affect only that game, or in the POPS folder to affect all of them, and try one at a time.",
      "PS2",
-     ["Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "NOPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
+     ["TROJAN_7.zip", "Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "NOPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
     ("Optional add-ons",
      "None of this is needed to play a game. Come back once your setup is running.",
      "PS2",
@@ -800,6 +801,7 @@ DL_CARD_NOTES = {
     "pfsshell-0.2a.zip": "The same pfsshell 0.2a program and DLLs, byte for byte, without those two .bat helper scripts. Preserved because this is the copy the original archive served as a .zip.",
     "RadHostClient_1.8a.7z": "Drag .VCD files onto a window on your PC and they appear under host:/ on the PS2, ready to copy into __.POPS from uLaunchELF. Version 1.8a, the one the wiki's transfer guide assumes and the one bundled in the HDD pack.",
     "RadHostClient.zip": "Not a repackaging of the file above but the earlier 1.8 build, a genuinely different executable, and the only copy that still carries radad's original ReadMe explaining what the program does.",
+    "TROJAN_7.zip": "TROJAN_7.BIN, krHACKen's cumulative per-game fix bundle (2020-04-02 / 2020-05-20 r7). Patches POPStarter globally for titles that glitch or freeze (e.g. Speedball 2100). Place in POPS/ or a game's VMC folder. Do not stack with Hugopocked per-game fixes.",
     "Compatibility_Modes.zip": "PATCH_1.BIN to PATCH_7.BIN, one per compatibility mode 0x01 to 0x07, with the README explaining what each mode fixes. Try one at a time; modes 1, 2, 3 and 5 are variants of the same hack and must never be combined.",
     "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
     "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
@@ -824,6 +826,32 @@ DL_CARD_PILL = {
     "pfsshell-0.2a.zip": "PC",
     "RadHostClient_1.8a.7z": "PC",
     "RadHostClient.zip": "PC",
+    "TROJAN_7.zip": "PS2",
+    "Compatibility_Modes.zip": "PS2",
+    "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
+    "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
+    "CHEATS.TXT": "Every $ command POPStarter understands in one file, with the $ deliberately stripped so nothing fires by accident. Put it in your POPS folder and add the $ back to the lines you want, or copy those lines into a single game's CHEATS.TXT.",
+    "SAMPLE_CHEATS.TXT": "A real filled-in cheat file (Crash Bash, annotated in Italian) showing how GameShark and Action Replay codes are laid out inside one game's folder. The worked example, not a command list.",
+    "network_modules.7z": "The whole mc0:/POPSTARTER folder for network play: the six SMB modules, the two .DAT files to edit with your network settings, and a memory-card icon. It goes on the memory card, not next to your games. Newer than the copy inside the SMB pack, which has no icon and no 2023-dated usbd.irx / usbhdfsd.irx.",
+    "DS3_modules_USB_20171017.7z": "DualShock 3 over a USB cable. Two IRX files that go loose in your POPS folder exactly as they are, never inside a game's VMC folder. Documented as working on the WIP 06 and RIP 06 launchers only, and not on the prototypes.",
+    "DS3_modules_BT_20171017.7z": "The same thing over Bluetooth; only MODULE_2.IRX differs between the two packs. Same POPS-folder placement and the same launcher caveat as the USB pack.",
+    "IGR_textures_-_Chinese_pack.7z": "Puts the \"return to the PlayStation 2 main menu?\" confirmation screen into Chinese. It is a .ppf you apply on your PC over your own POPS.ELF with a PPF patcher, not a folder drop-in. The only one of the seven language packs the wiki listed that survived.",
+    "POPStarter_r13_Beta_20190605.zip": "Rev 13 Beta, 5 June 2019, the last public release. Its POPSTARTER.ELF is byte-identical to the one in all three packs above; what it adds is POPSTARTER.KELF, for installing a game into the PS2 Browser 2.00 (HDDOSD) as its own PP. partition, plus the full 38 KB changelog.",
+    "POPStarter_r13_RIP_06.zip": "Rev 13 RIP 06, October 2017: the previous public release, and the exact launcher the 2017 hard-drive pack ships. The only package carrying FIXES.TXT, the list of games POPStarter auto-patches.",
+    "POPStarter_r13_WIP_06_OBT_20170128.zip": "Rev 13 WIP 06 Beta 17, January 2017, the pre-RIP development line. Also the only surviving source of DEBUG_AND_HALT.PPF, and it bundles a CUE2POPS with POPS2CUE plus the SMB sample .DAT files.",
+    "POPStarter_HDD_Quickstarter_Pack_20171027.7z": "The 2017 edition of the hard-drive pack, built on the RIP 06 launcher. Use the 2020 .zip instead; this is kept because it is the only place the older uLE_kHn 2016-07-23 browser survives.",
+}
+DL_CARD_PILL = {
+    "POPStarter_USB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
+    "POPStarter_HDD_Quickstarter_Pack_20200209.zip": "PS2 + PC",
+    "POPStarter_SMB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
+    "CUE2POPS_2.3.zip": "PC",
+    "cdmage1-02-1b5.zip": "PC",
+    "pfsshell-0.2a.7z": "PC",
+    "pfsshell-0.2a.zip": "PC",
+    "RadHostClient_1.8a.7z": "PC",
+    "RadHostClient.zip": "PC",
+    "TROJAN_7.zip": "PS2",
     "Compatibility_Modes.zip": "PS2",
     "FORCEPAL_PATCH.7z": "PS2",
     "NOPAL_PATCH.7z": "PS2",
@@ -1097,9 +1125,9 @@ def build_sections():
          'compatibility-mode patch <i>and</i> the custom <b>IGR texture pack</b> shipped in El_isra\'s POPSLoader. '
          'Confirm which one you have.</div>'
          '<div class="callout info"><div class="h">TROJAN_7.BIN — the farewell cumulative</div>'
-         '<code>TROJAN_7.BIN</code> (2020-04-02) bundles krHACKen\'s + Hugopocked\'s per-game fixes. Although '
-         'cumulative, it is applied <b>per game</b> — placed in that game\'s VMC folder, not stacked with separate '
-         'Hugopocked patches for the same title. The digit is a slot, not a version; POPStarter validates the file '
+         '<code><a href="downloads/TROJAN_7.zip" download>TROJAN_7.zip</a></code> (containing <code>TROJAN_7.BIN</code>, 2020-04-02 / 2020-05-20 r7) bundles krHACKen\'s + Hugopocked\'s per-game fixes. Although '
+         'cumulative, it is applied <b>per game</b> — placed in that game\'s VMC folder (or the POPS folder), not stacked with separate '
+         'Hugopocked patches for the same title. Download it from the <a href="downloads.html">Downloads</a> page or <a href="downloads/TROJAN_7.zip" download>directly here</a>. The digit is a slot, not a version; POPStarter validates the file '
          'header against the filename. Compatibility modes map to config bytes <code>$418</code>–<code>$41F</code> '
          '(the force-mode array) — see the <a href="config.html">Config Table</a>.</div>'
          '<h2 id="hardware-caveats">Hardware caveats — when the console itself is the problem</h2>'
