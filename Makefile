@@ -83,7 +83,7 @@ EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
 # ftmin.o overrides FT_Init_FreeType/FT_Done_FreeType so libfreetype's ftinit.c
 # (which names EVERY font driver) never enters the link -- see src/ftmin.c.
-APP_CORE = main.o system.o pad.o graphics.o \
+APP_CORE = main.o system.o pad.o graphics.o retrogem.o \
 		   atlas.o fntsys.o embed_assets.o \
 		   sound.o ftmin.o
 
@@ -267,6 +267,29 @@ IRXTAG = $(subst -,_,$(notdir $(addsuffix _irx, $(basename $<))))
 $(EE_ASM_DIR)ps2ip.c: ps2ip-nm.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ ps2ip_irx
 
+# EXP31 -- SIO2 arbitration for MX4SIO coexistence.
+# mx4sio_bd is an SD-over-SPI block device that does NOT raw-drive SIO2: it hooks the
+# sio2man MODULE (sio2man_hook_init, confirmed in the mx4sio_bd.irx imports) and relies
+# on sio2man to serialize its transfers against the other SIO2 clients -- mcman's
+# memory-card polling, padman's per-vblank controller reads, mmceman. Stock ps2sdk
+# sio2man does no such arbitration, so when a SECOND SIO2/MC-slot device is physically
+# present (a tester's MMCE adapter alongside the MX4SIO/SD2PS2TD adapter) the MX4SIO
+# probe collides with mcman on the shared bus and the fileXio call never returns --
+# the "Locating MX4SIO POPS folder... 42%" freeze that SURVIVES the matched-BDM-set fix
+# (that fix only unified bdm/bdmfs_fatfs/usbmass_bd/mx4sio_bd; it never touched sio2man).
+# OPL / wLaunchELF_R3Z / RiptOPL all ship freesio2 (the queue-based sio2man
+# reimplementation) paired with freepad, and run mmceman+mx4sio_bd concurrently with no
+# exclusion. Build sio2man_irx / padman_irx from those blobs -- a MATCHED pair, exactly
+# as open-ps2-loader does; shipping freesio2 with stock padman would be a novel untested
+# combo (the same class of mistake as the c1debd1 half-swap). The C externs
+# (sio2man_irx / padman_irx in main.cpp) are UNCHANGED -- only the source blob differs.
+# Explicit rules override the generic %.c:%.irx below; sources resolve via the vpath.
+$(EE_ASM_DIR)sio2man.c: freesio2.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ sio2man_irx
+
+$(EE_ASM_DIR)padman.c: freepad.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ padman_irx
+
 $(EE_ASM_DIR)%.c: %.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ $(IRXTAG)
 
@@ -294,6 +317,20 @@ iop/bdm_query/bdm_query.irx: iop/bdm_query
 
 $(EE_ASM_DIR)bdm_query.c: iop/bdm_query/bdm_query.irx | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ bdm_query_irx
+
+# ata_bd.irx is PINNED to the repository copy iop/embed/ata_bd.irx -- R3Z v4.70's
+# ata_bd with the "atad: fix device probing" fix (SHA-256 16c5d9f0...f742f4,
+# pinned since e69d9ba/EXP17). This exact binary was embedded when internal
+# exFAT on a 4TB GPT drive was HW-confirmed (2026-07-20 storage wave, 806b789);
+# the pinned ps2dev:v2.0.0 SDK snapshot predates the probing fix, so the SDK
+# copy must NOT win here. CI validates the checksum on every build (see the
+# workflows) so the pin cannot silently drift. The iop/ata_bd_fast vendored
+# source and its build rule below are kept but unused.
+iop/ata_bd_fast/ata_bd.irx: iop/ata_bd_fast
+	$(MAKE) -C $<
+
+$(EE_ASM_DIR)ata_bd.c: iop/embed/ata_bd.irx | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ata_bd_irx
 
 # mx4sio_bd.irx now resolves via the generic %.irx rule + vpath, i.e. from the
 # SAME ps2sdk that provides bdm/bdmfs_fatfs/usbmass_bd -- BDM drivers must be one

@@ -63,8 +63,49 @@ outdated/
 # Local reference clones pulled by audit agents (ps2sdk / OPL / gsKit / ps2-packer)
 .codex_refs/
 
-# POPStarter-docs research working material (first-party notes + agent corpus)
-.research/
+# POPStarter-docs site source.
+#
+# The generator and the corpus it needs ARE tracked (negations below) so the
+# published site can be rebuilt by anyone, not just one machine. Until 2026-07-28
+# build_site.py existed in no branch at all: the popsloader/*.html doc mirrors had
+# gone a full release era stale because only one person could regenerate them, and
+# a disk failure would have made the recovered POPStarter archive unrebuildable.
+#
+# Tracked set verified sufficient: a clean-room rebuild from exactly these files
+# reproduced all 246 published files byte-for-byte (only the archive .zip differs,
+# because zips embed timestamps).
+#
+# Everything else here is bulky research scratch (_codex_archive, _compare,
+# _mergebak, _merged, _audit, _thread, _tmp working files, the vendored nhddl
+# reference, and the generated site/ output) and stays ignored.
+.research/*
+!.research/build_site.py
+!.research/audit_site.py
+!.research/README.md
+!.research/wiki/
+!.research/research/
+!.research/firstparty/
+!.research/assets/
+!.research/assets/**
+# The global *.7z / archive rules above would otherwise eat 9 of the 22 recovered
+# downloads, and a clone missing them rebuilds a site that quietly serves fewer
+# files than the archive is supposed to preserve. Re-include everything here.
+!.research/downloads/
+!.research/downloads/**
+!.research/_srcassets/
+!.research/_state/
+# _html/ (the 34 MB of raw Wayback snapshots) is deliberately NOT tracked: 186 of its
+# 526 files carry an AWS-key-shaped token, two apiece, i.e. archive.org wrapper
+# boilerplate rather than any POPStarter secret -- but GitHub push protection rightly
+# refuses credential-shaped data in a public repo, and bypassing it is not the answer.
+# The only thing the build took from those files was the per-page image galleries, now
+# pre-extracted into _state/galleries.json. Verified: a rebuild with _html/ absent
+# reproduces all 246 published files byte-for-byte. Keep the snapshots locally if you
+# have them; re-running the build with _html/ present just refreshes the cache.
+!.research/_tmp/
+.research/_tmp/*
+!.research/_tmp/dl_manifest.tsv
+!.research/_tmp/found_mirrors.tsv
 
 # Ensure specific tracked binary assets stay visible
 !bin/POPSLDR/POPSTARTER.ELF

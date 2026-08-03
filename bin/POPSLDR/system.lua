@@ -76,6 +76,59 @@ local function MassSlot0PathAliases(path)
   return out
 end
 
+-- ============================================================================
+-- DEVICE-KIND LABEL -> REAL MOUNT. Pure name regulation, no device init.
+--
+-- Launchers hand us argv0 rooted at a device KIND label rather than a mount:
+-- ata:/, usb:/, mx4sio:/ (and their numbered spellings). After the startup IOP
+-- reset those labels do not exist -- the same media comes back on the BDM 'mass'
+-- bus once our own drivers enumerate it. Every write aimed at the label lands
+-- nowhere, which is not a permissions problem: the path simply names a device
+-- POPSLoader does not have.
+--
+-- This kept being solved one launcher at a time: MX4SIO got a special case in
+-- 2026-05 (Nuno, "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only"), and the
+-- identical bug then arrived for ata (CosmicScale, 2026-07-29, settings resolving
+-- to ata0:/POPS/.pldrs). Fold the NAME instead, once, and every current and future
+-- BDM backend is covered without another case.
+--
+-- Identification is by ioctl DRIVER NAME, the PR #472 rule, matching the C-side
+-- ClassifyMassRootDriver exactly -- including that "ata" is an EXACT match
+-- (strcmp + strlen==3, mirroring OPL bdmsupport.c); a substring test there would
+-- false-match other drivers.
+--
+-- PROBE ONLY. This NEVER initialises a backend. Bringing ATA up from here would
+-- add another concurrent EnsureAtaBdm caller, and two atad copies re-initing the
+-- live bus is the 42% scan freeze with the drive light latched (CosmicScale
+-- APA-Jail, 2026-06-25). If the mount is not up yet we return the path unchanged
+-- and the caller's existing fallback handles it.
+local BDM_LABEL_KINDS = {
+  { pat = "^ata%d*:",    match = function(d) return d == "ata" end },
+  { pat = "^mx4sio%d*:", match = function(d) return string.find(d, "mx4", 1, true) ~= nil or string.find(d, "sdc", 1, true) ~= nil end },
+  { pat = "^usb%d*:",    match = function(d) return string.find(d, "usb", 1, true) ~= nil end },
+}
+
+function PLDR.ResolveDeviceLabelRoot(path)
+  if type(path) ~= "string" or path == "" then return path end
+  local lower = string.lower(path)
+  local kind = nil
+  for i = 1, #BDM_LABEL_KINDS do
+    if string.match(lower, BDM_LABEL_KINDS[i].pat) ~= nil then kind = BDM_LABEL_KINDS[i] break end
+  end
+  if kind == nil then return path end
+  if type(System) ~= "table" or type(System.getMassMountDriver) ~= "function" then return path end
+  for slot = 0, 9 do
+    local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
+    local ok, driver = pcall(System.getMassMountDriver, root)
+    if ok and type(driver) == "string" and driver ~= "" and kind.match(string.lower(driver)) then
+      -- Swap the label root for the real one, keeping the rest of the path.
+      local rest = string.match(path, "^%a+%d*:/*(.*)$") or ""
+      return root..rest
+    end
+  end
+  return path
+end
+
 local function NormalizeHostPath(path)
   if path == nil or path == "" then return path end
   if not string.match(path, "^host:") then
@@ -135,16 +188,23 @@ local function ResolveAppDirLocal()
   if IsPfsMountedPath(current_dir) and IsRawHddPartitionPath(app_dir) then
     return current_dir
   end
-  -- MX4SIO boot: argv0 prefix mx4sio:/ is the BDM device-kind label,
-  -- not a writable fileXio mount. etc/boot.lua translates cwd to the
-  -- actual mass*:/ slot (identified by sdc/mx4 ioctl driver name --
-  -- the same PR #472 rule). When that translation succeeded, prefer
-  -- the cwd over the raw mx4sio:/-rooted APP_DIR so the settings
-  -- sidecar at APP_DIR/.pldrs and other write paths target the
-  -- writable mass*:/ root. Hardware regression 2026-05-28 PM:
-  -- "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only" (Nuno).
+  -- BDM DEVICE-KIND LABEL boot: mx4sio:/, ata:/ and usb:/ in argv0 are device-KIND
+  -- labels, not writable fileXio mounts. etc/boot.lua translates cwd to the real
+  -- mass*:/ slot (identified by ioctl driver name, the PR #472 rule). When that
+  -- translation succeeded, prefer the cwd over the label-rooted APP_DIR so the
+  -- settings sidecar at APP_DIR/.pldrs and every other write targets the writable
+  -- root.
+  --
+  -- This used to test mx4sio ONLY, which is why the identical bug arrived twice:
+  -- "mx4sio:/APPS/PS1_POPSLOADER/.pldrs may be read-only" (Nuno, 2026-05-28) and
+  -- then settings resolving to ata0:/POPS/.pldrs on an ata:/ boot (CosmicScale,
+  -- 2026-07-29). Matching the SHAPE -- any device-kind label with a real mass*:/
+  -- cwd underneath it -- fixes ata and usb now and the next backend for free.
   local app_dir_lower = string.lower(app_dir or "")
-  if string.match(app_dir_lower, "^mx4sio%d*:") and string.match(current_dir, "^mass%d*:/") then
+  local is_bdm_label = string.match(app_dir_lower, "^mx4sio%d*:") ~= nil
+     or string.match(app_dir_lower, "^ata%d*:") ~= nil
+     or string.match(app_dir_lower, "^usb%d*:") ~= nil
+  if is_bdm_label and string.match(current_dir, "^mass%d*:/") then
     return current_dir
   end
   return EnsureTrailingSlashNormRaw(app_dir)
@@ -1145,21 +1205,10 @@ function PLDR.EnsureMmceReadyOnce()
     return true
   end
 
-  -- SIO2 EXCLUSION (NHDDL's model): mmceman and mx4sio_bd cannot coexist --
-  -- both drive the shared SIO2 bus, and sustained reads from one hang with the
-  -- other resident (HW: the MMCE scan froze at 48% after an MX4SIO page visit,
-  -- 2026-07-20; wLaunchELF_R3Z IOP-resets between these two for the same
-  -- reason). If MX4SIO already claimed the bus this session, DECLINE the MMCE
-  -- bring-up with a clear message instead of loading into a hang.
-  if type(System) == "table" and type(System.getSio2Owner) == "function" then
-    local ok_o, owner = pcall(System.getSio2Owner)
-    if ok_o and owner == "MX4SIO" then
-      if UI ~= nil and UI.Notif_queue ~= nil then
-        UI.Notif_queue.add(PLDR.L("MX4SIO was used this session -- restart to browse MMCE\n(the two share a bus and cannot run together)"), "warn")
-      end
-      return false
-    end
-  end
+  -- NO MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs both
+  -- drivers resident together in the field on the same freesio2 bus manager
+  -- we now carry (EXP31). See the matching note in EnsureMassBackendsReady's
+  -- mx4sio branch for the recorded R3Z3N tradeoff.
 
   -- Layer C lazy load: mmceman.irx is only loaded eagerly when boot
   -- device is MMCE (see src/main.cpp). For USB / MC / MX4SIO / HDD
@@ -1851,7 +1900,18 @@ function PLDR.ParseHddExecMountAndRelpath(path)
   return ParseHddExecMountAndRelpath(path)
 end
 
+-- EXP58: never hand the machine over with a cover load still in flight -- see
+-- CoverCache:Quiesce. Both prep paths do it, so every external ELF launch
+-- (POPSTARTER, DKWDRV, BOOT.ELF) is covered by one call each.
+local function QuiesceCoverWorker()
+  if type(UI) == "table" and type(UI.CoverCache) == "table"
+     and type(UI.CoverCache.Quiesce) == "function" then
+    pcall(function() UI.CoverCache:Quiesce() end)
+  end
+end
+
 function PLDR.PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
+  QuiesceCoverWorker()
   return PrepareForExternalELFLaunch(path, extra_keep_slots, keep_slots_after_load)
 end
 
@@ -1877,6 +1937,7 @@ function PLDR.BuildPartitionScopedExecPath(path)
 end
 
 function PLDR.PrepareForColdExternalELFLaunch()
+  QuiesceCoverWorker()
   return PrepareForColdExternalELFLaunch()
 end
 
@@ -2029,7 +2090,24 @@ local function ResolveBootContext()
   -- real-world case via OPL/uLE network launches.)
   local sidecar = nil
   if type(APP_DIR_LOCAL) == "string" and APP_DIR_LOCAL ~= "" then
-    local lower = string.lower(APP_DIR_LOCAL)
+    -- NAME REGULATION FIRST. ata:/ usb:/ mx4sio:/ are device-KIND LABELS, not
+    -- mounts; the same media is on the mass bus once our drivers enumerate it.
+    -- Resolve the label to its real mass*:/ root and the path becomes perfectly
+    -- writable -- so it earns a sidecar like any other removable device instead of
+    -- being excluded. Excluding was always a workaround for not normalising: it
+    -- pushed a user who booted from their own drive onto mc0:, and on the ata boot
+    -- it did not even manage that (CosmicScale, 2026-07-29).
+    local resolved = APP_DIR_LOCAL
+    if type(PLDR.ResolveDeviceLabelRoot) == "function" then
+      local ok_res, r = pcall(PLDR.ResolveDeviceLabelRoot, APP_DIR_LOCAL)
+      if ok_res and type(r) == "string" and r ~= "" then resolved = r end
+    end
+    local lower = string.lower(resolved)
+    -- hdd/pfs/apa stay excluded on their own merits: they are APA/PFS mounts, not
+    -- BDM mass devices, and have their own settings route (the HDD-cwd block
+    -- below). smb: has no local filesystem at all. Only the BDM labels normalise.
+    -- A label that did NOT resolve (drive not enumerated yet) still matches its
+    -- own pattern here and is correctly excluded, exactly as before.
     local is_unwritable_boot = string.match(lower, "^hdd%d*:") ~= nil
        or string.match(lower, "^pfs%d*:") ~= nil
        or string.match(lower, "^ata%d*:") ~= nil
@@ -2037,7 +2115,7 @@ local function ResolveBootContext()
        or string.match(lower, "^usb%d*:") ~= nil
        or string.match(lower, "^smb%d*:") ~= nil
     if not is_unwritable_boot then
-      sidecar = JoinPath(CanonicalizeMassSlot0(APP_DIR_LOCAL), ".pldrs")
+      sidecar = JoinPath(CanonicalizeMassSlot0(resolved), ".pldrs")
     end
   end
 
@@ -2328,6 +2406,8 @@ PLDR.LAUNCH_ARGS = PLDR.LAUNCH_ARGS or {
   page = nil,
   page_raw = nil,
   game = nil,
+  bdma_raw = nil,   -- normalised at point of use; see PLDR.LaunchArgBdmaMode
+  retrogem_raw = nil,
   debug = false,
 }
 if type(System) == "table" and type(System.getLaunchArgs) == "function" then
@@ -2348,6 +2428,22 @@ if type(System) == "table" and type(System.getLaunchArgs) == "function" then
         PLDR.LAUNCH_ARGS.game = game_raw
       end
     end
+    local bdma_raw = tostring(args.bdma or "")
+    if bdma_raw ~= "" then
+      -- Stored RAW on purpose: NormalizeBdmaModeKey is a chunk-local declared far
+      -- below this point, so calling it here would resolve to a nil global.
+      PLDR.LAUNCH_ARGS.bdma_raw = bdma_raw
+    end
+    local retrogem_raw = tostring(args.retrogem or "")
+    if retrogem_raw ~= "" then
+      PLDR.LAUNCH_ARGS.retrogem_raw = retrogem_raw
+      local raw = string.lower(retrogem_raw)
+      if raw == "1" or raw == "true" or raw == "yes" or raw == "on" then
+        PLDR.RETROGEM_GAMEID = true
+      elseif raw == "0" or raw == "false" or raw == "no" or raw == "off" then
+        PLDR.RETROGEM_GAMEID = false
+      end
+    end
     PLDR.LAUNCH_ARGS.debug = (args.debug == true)
     -- Recover a -debug that was written on the same CNF arg line as the
     -- page flag ("-page=hdd -debug" arrives as ONE argv token; the C parse
@@ -2366,6 +2462,23 @@ function PLDR.IsExplicitATASession()
   end
   local page = string.upper(tostring(PLDR.LAUNCH_ARGS.page or ""))
   return page == "ATA" or page == "EXFAT"
+end
+
+-- EXP40: RESTORE LAZY. TRUE only when the session EXPLICITLY requests the ATA
+-- backend, in which case ATA is warmed at boot (under the splash). The Internal-HDD
+-- setting (EXFAT/BOTH) is a VISIBILITY control -- which HDD pages the carousel shows
+-- -- NOT a "use the ATA device now" signal, so it must NOT trigger a boot-time load.
+-- EXP38's mistake was conflating those: HDD_FS=BOTH (the default) boot-loaded ATA on
+-- every MC/USB boot, which both violated the CWD/page-lazy architecture and was the
+-- wrong device state (a normal boot never requested ATA). A normal boot now brings
+-- ATA up LAZILY when the user opens the exFAT page (InitATAPopsRoot), exactly like
+-- every other device. Only an explicit -page=ata / -page=exfat launch warms it early
+-- (the user opted straight into that page). APA/PFS boots load ATAD separately via
+-- boot.lua -> HDD.Initialize (pfs1: needs it), unchanged. Named + pure so the host
+-- harness can lock the gate (EXP38 broadened it by mistake; keep it explicit-only).
+function PLDR.WantExfatBootBringup()
+  return (type(PLDR.IsExplicitATASession) == "function")
+         and (PLDR.IsExplicitATASession() == true)
 end
 
 PLDR.VIDEO_STANDARD_AUTO = "AUTO"
@@ -2488,9 +2601,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Impossible de lire cette sélection de jeu",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Échec d'enregistrement -- dossier POPSTARTER NON supprimé",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Échec d'enregistrement -- dossier POPSTARTER NON restauré",
-    ["Cover Art"] = "Jaquettes",
-    ["Cover Art disabled"] = "Jaquettes désactivées",
-    ["Cover Art enabled"] = "Jaquettes activées",
+    ["Cover art"] = "Jaquettes",
     ["Cover/details folder"] = "Dossier jaquettes/détails",
     ["Credits"] = "Crédits",
     ["DHCP (automatic)"] = "DHCP (automatique)",
@@ -2501,6 +2612,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Conception par Berion\nScripts par nuno6573 et Ripto\nBasé sur Enceladus par Daniel Santos\nTests par P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k et la communauté\n\nRemerciements spéciaux à :\nkrHACKen pour avoir créé POPStarter\nuyjulian, fjtrujy, HWC et d'autres pour leur aide constante\n\nCe programme est libre et open source\nSi vous l'avez payé, vous avez été arnaqué\n\nProblèmes de compatibilité ? Visitez :\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Liste des appareils",
     ["Disc (DKWDRV)"] = "Disque (DKWDRV)",
+    ["Disabled"] = "Désactivé",
     ["Discard & Exit"] = "Abandonner et quitter",
     ["Display"] = "Affichage",
     ["Display reverted -- new mode wasn't confirmed"] = "Affichage rétabli -- nouveau mode non confirmé",
@@ -2564,10 +2676,9 @@ PLDR.I18N = {
     ["No Share selected"] = "Aucun partage sélectionné",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Aucun partage défini dans réglages SMB\n(le serveur n'a renvoyé aucun partage)",
     ["No USB backend detected\nreseat the drive and try again"] = "Aucun backend USB détecté\nreconnectez le lecteur et réessayez",
-    ["No cover. Looked for:"] = "Aucune jaquette. Recherché :",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Aucun HDD exFAT détecté\nformatez le disque interne en exFAT (Mode BDMA = ATA)",
     ["No games found"] = "Aucun jeu trouvé",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Aucun jeu trouvé sur hdd0:\n(partitions __.POPS vides)",
+    ["No games found on hdd0:"] = "Aucun jeu trouvé sur hdd0:",
     ["No games found on this device"] = "Aucun jeu trouvé sur cet appareil",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Aucun lien réseau\nvérifiez le câble / l'adaptateur Ethernet",
     ["Not implemented yet"] = "Pas encore implémenté",
@@ -2636,6 +2747,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visible (gérer)",
     ["Working..."] = "En cours...",
     ["Yes"] = "Oui",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(échec de l'enregistrement -- annulé au redémarrage)",
+    ["(the usual settings location wasn't writable)"] = "(l'emplacement habituel des réglages n'était pas accessible en écriture)",
+    ["-- launch cancelled"] = "-- lancement annulé",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptatif n'a pas pu préparer",
+    ["Applying SMB modules"] = "Application des modules SMB",
+    ["BDMA source backend not ready:"] = "Backend source BDMA non prêt :",
+    ["BOOT.ELF failed to launch"] = "Échec du lancement de BOOT.ELF",
+    ["Booted from:"] = "Démarré depuis :",
+    ["Cannot access"] = "Accès impossible",
+    ["Case/Symbols: UPPER  (R2)"] = "Casse/Symboles : MAJ  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Casse/Symboles : min  (R2)",
+    ["Couldn't restore BDMA mode"] = "Impossible de restaurer le mode BDMA",
+    ["Couldn't save settings"] = "Impossible d'enregistrer les réglages",
+    ["Couldn't update hidden state"] = "Impossible de mettre à jour l'état masqué",
+    ["Couldn't write .hide to the HDD"] = "Impossible d'écrire .hide sur le disque dur",
+    ["Cursor: L1 / R1"] = "Curseur : L1 / R1",
+    ["DKWDRV failed to launch"] = "Échec du lancement de DKWDRV",
+    ["Edit"] = "Modifier",
+    ["Edit %s"] = "Modifier %s",
+    ["Game file missing"] = "Fichier de jeu manquant",
+    ["HDD dir read failed:"] = "Échec de lecture du dossier du disque dur :",
+    ["HDD not usable"] = "Disque dur inutilisable",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Les jeux masqués sont déjà affichés ici (grisés)\nActivez « Masquer les jeux cachés » dans les Réglages pour les filtrer",
+    ["Locating exFAT HDD POPS folder..."] = "Localisation du dossier POPS du disque exFAT...",
+    ["Looking for USB drive..."] = "Recherche d'un lecteur USB...",
+    ["Missing BDMA UI source (tried):"] = "Source d'interface BDMA manquante (essayé) :",
+    ["Missing BDMA source (tried):"] = "Source BDMA manquante (essayé) :",
+    ["Missing SMB module (tried):"] = "Module SMB manquant (essayé) :",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Aucune partition '__.POPS' sur hdd0:\nformatez-en une avec __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Aucun DKWDRV trouvé à ce chemin",
+    ["No POPSTARTER found at this path"] = "Aucun POPSTARTER trouvé à ce chemin",
+    ["Path saved, file not found:"] = "Chemin enregistré, fichier introuvable :",
+    ["Resolved:"] = "Résolu :",
+    ["Reverting in"] = "Annulation dans",
+    ["Saved to"] = "Enregistré dans",
+    ["Slot:"] = "Emplacement :",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "Le disque interne démarre encore\nrouvrez cette page dans un instant",
+    ["Triangle"] = "Triangle",
+    ["Unknown BDMA mode:"] = "Mode BDMA inconnu :",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Vous pouvez toujours ajouter un « <jeu>.hide » à côté du .VCD depuis un PC.",
+    ["adjusted -- using"] = "ajusté -- utilise",
+    ["check the memory card, or turn Adaptive BDMA off"] = "vérifiez la carte mémoire, ou désactivez le BDMA adaptatif",
+    ["if not confirmed"] = "si non confirmé",
+    ["re-select it under Settings > Storage to restage"] = "resélectionnez-le dans Réglages > Stockage pour le repréparer",
+    ["return code:"] = "code de retour :",
+    ["status:"] = "état :",
   },
   DE = {
     ["(not set)"] = "(nicht gesetzt)",
@@ -2678,9 +2836,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Spielauswahl nicht lesbar",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Einstellungen nicht gespeichert -- POPSTARTER-Ordner NICHT gelöscht",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Einstellungen nicht gespeichert -- POPSTARTER-Ordner NICHT wiederhergestellt",
-    ["Cover Art"] = "Coverbild",
-    ["Cover Art disabled"] = "Coverbild deaktiviert",
-    ["Cover Art enabled"] = "Coverbild aktiviert",
+    ["Cover art"] = "Coverbild",
     ["Cover/details folder"] = "Cover-/Detailordner",
     ["Credits"] = "Mitwirkende",
     ["DHCP (automatic)"] = "DHCP (automatisch)",
@@ -2690,6 +2846,7 @@ PLDR.I18N = {
     ["Delete the POPSTARTER folder from the memory card?"] = "POPSTARTER-Ordner von der Memory Card löschen?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design von Berion\nSkripte von nuno6573 und Ripto\nBasiert auf Enceladus von Daniel Santos\nGetestet von P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k und Community\n\nBesonderer Dank an:\nkrHACKen für POPStarter\nuyjulian, fjtrujy, HWC und andere für die stete Hilfe\n\nDieses Programm ist frei und Open Source\nWenn du dafür bezahlt hast, wurdest du betrogen\n\nKompatibilitätsprobleme? Besuche:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Geräteliste",
+    ["Disabled"] = "Deaktiviert",
     ["Discard & Exit"] = "Verwerfen & Beenden",
     ["Display"] = "Anzeige",
     ["Display reverted -- new mode wasn't confirmed"] = "Anzeige zurückgesetzt -- neuer Modus nicht bestätigt",
@@ -2751,10 +2908,9 @@ PLDR.I18N = {
     ["No Share selected"] = "Keine Freigabe ausgewählt",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Keine Freigabe in SMB-Einstellungen gesetzt\n(Server lieferte keine Freigaben)",
     ["No USB backend detected\nreseat the drive and try again"] = "Kein USB-Backend erkannt\nLaufwerk neu einstecken und erneut versuchen",
-    ["No cover. Looked for:"] = "Kein Cover. Gesucht nach:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Keine exFAT-HDD erkannt\ninternes Laufwerk als exFAT formatieren (BDMA-Modus = ATA)",
     ["No games found"] = "Keine Spiele gefunden",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Keine Spiele auf hdd0: gefunden\n(__.POPS-Partitionen sind leer)",
+    ["No games found on hdd0:"] = "Keine Spiele auf hdd0: gefunden",
     ["No games found on this device"] = "Keine Spiele auf diesem Gerät gefunden",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Keine Netzwerkverbindung\nEthernet-Kabel / Adapter prüfen",
     ["Not implemented yet"] = "Noch nicht implementiert",
@@ -2824,6 +2980,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Sichtbar (verwalten)",
     ["Working..."] = "Arbeite...",
     ["Yes"] = "Ja",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(konnte NICHT speichern -- wird beim Neustart verworfen)",
+    ["(the usual settings location wasn't writable)"] = "(der übliche Einstellungsort war nicht beschreibbar)",
+    ["-- launch cancelled"] = "-- Start abgebrochen",
+    ["Adaptive BDMA couldn't stage"] = "Adaptives BDMA konnte nicht bereitstellen",
+    ["Applying SMB modules"] = "SMB-Module werden angewendet",
+    ["BDMA source backend not ready:"] = "BDMA-Quell-Backend nicht bereit:",
+    ["BOOT.ELF failed to launch"] = "BOOT.ELF konnte nicht gestartet werden",
+    ["Booted from:"] = "Gestartet von:",
+    ["Cannot access"] = "Kein Zugriff auf",
+    ["Case/Symbols: UPPER  (R2)"] = "Groß/Zeichen: GROSS  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Groß/Zeichen: klein  (R2)",
+    ["Couldn't restore BDMA mode"] = "BDMA-Modus konnte nicht wiederhergestellt werden",
+    ["Couldn't save settings"] = "Einstellungen konnten nicht gespeichert werden",
+    ["Couldn't update hidden state"] = "Verborgen-Status konnte nicht aktualisiert werden",
+    ["Couldn't write .hide to the HDD"] = "Konnte .hide nicht auf die HDD schreiben",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "DKWDRV konnte nicht gestartet werden",
+    ["Edit"] = "Bearbeiten",
+    ["Edit %s"] = "%s bearbeiten",
+    ["Game file missing"] = "Spieldatei fehlt",
+    ["HDD dir read failed:"] = "HDD-Verzeichnis konnte nicht gelesen werden:",
+    ["HDD not usable"] = "HDD nicht verwendbar",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Verborgene Spiele werden hier bereits angezeigt (abgedunkelt)\nAktiviere \"Verborgene Spiele ausblenden\" in den Einstellungen, um sie zu filtern",
+    ["Locating exFAT HDD POPS folder..."] = "exFAT-HDD-POPS-Ordner wird gesucht...",
+    ["Looking for USB drive..."] = "USB-Laufwerk wird gesucht...",
+    ["Missing BDMA UI source (tried):"] = "BDMA-UI-Quelle fehlt (versucht):",
+    ["Missing BDMA source (tried):"] = "BDMA-Quelle fehlt (versucht):",
+    ["Missing SMB module (tried):"] = "SMB-Modul fehlt (versucht):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Keine '__.POPS'-Partitionen auf hdd0:\nlege eine mit __.POPS / __.POPS0...9 an",
+    ["No DKWDRV found at this path"] = "Kein DKWDRV unter diesem Pfad gefunden",
+    ["No POPSTARTER found at this path"] = "Kein POPSTARTER unter diesem Pfad gefunden",
+    ["Path saved, file not found:"] = "Pfad gespeichert, Datei nicht gefunden:",
+    ["Resolved:"] = "Aufgelöst:",
+    ["Reverting in"] = "Zurücksetzen in",
+    ["Saved to"] = "Gespeichert in",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "Das interne Laufwerk startet noch\nöffne diese Seite gleich erneut",
+    ["Triangle"] = "Dreieck",
+    ["Unknown BDMA mode:"] = "Unbekannter BDMA-Modus:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Du kannst weiterhin eine \"<Spiel>.hide\" neben die .VCD vom PC aus hinzufügen.",
+    ["adjusted -- using"] = "angepasst -- verwende",
+    ["check the memory card, or turn Adaptive BDMA off"] = "prüfe die Memory Card oder schalte adaptives BDMA aus",
+    ["if not confirmed"] = "wenn nicht bestätigt",
+    ["re-select it under Settings > Storage to restage"] = "wähle es unter Einstellungen > Speicher erneut, um es neu bereitzustellen",
+    ["return code:"] = "Rückgabecode:",
+    ["status:"] = "Status:",
   },
   PT = {
     ["(not set)"] = "(não definido)",
@@ -2862,9 +3065,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Não foi possível ler essa seleção de jogo",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Não foi possível salvar -- pasta POPSTARTER NÃO excluída",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Não foi possível salvar -- pasta POPSTARTER NÃO restaurada",
-    ["Cover Art"] = "Capa",
-    ["Cover Art disabled"] = "Capa desativada",
-    ["Cover Art enabled"] = "Capa ativada",
+    ["Cover art"] = "Capa",
     ["Cover/details folder"] = "Pasta de capas/detalhes",
     ["Credits"] = "Créditos",
     ["DHCP (automatic)"] = "DHCP (automático)",
@@ -2875,6 +3076,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Desativado",
     ["Discard & Exit"] = "Descartar e Sair",
     ["Display"] = "Tela",
     ["Display reverted -- new mode wasn't confirmed"] = "Tela revertida -- novo modo não confirmado",
@@ -2936,10 +3138,9 @@ PLDR.I18N = {
     ["No Share selected"] = "Nenhum Share selecionado",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Nenhum Share definido nas configurações SMB\n(servidor não retornou shares)",
     ["No USB backend detected\nreseat the drive and try again"] = "Nenhum backend USB detectado\nreconecte o drive e tente novamente",
-    ["No cover. Looked for:"] = "Sem capa. Procurado em:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nenhum HDD exFAT detectado\nformate o drive interno em exFAT (Modo BDMA = ATA)",
     ["No games found"] = "Nenhum jogo encontrado",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nenhum jogo encontrado em hdd0:\n(partições __.POPS estão vazias)",
+    ["No games found on hdd0:"] = "Nenhum jogo encontrado em hdd0:",
     ["No games found on this device"] = "Nenhum jogo encontrado neste dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Sem link de rede\nverifique o cabo / adaptador Ethernet",
     ["Not implemented yet"] = "Ainda não implementado",
@@ -3002,6 +3203,7 @@ PLDR.I18N = {
     ["Static (manual)"] = "Estático (manual)",
     ["Storage"] = "Armazenamento",
     ["This backend isn't implemented yet"] = "Este backend ainda não foi implementado",
+    ["This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept."] = "Isso remove o pacote POPSTARTER -- incluindo os\nmódulos BDMA e SMB -- de mc0: / mc1:. Não vão\nvoltar até você ligar isso de novo (ou readicioná-los\nmanualmente). Suas configurações do POPSLoader são mantidas.",
     ["UI text hidden"] = "Texto da interface ocultado",
     ["UI text shown"] = "Texto da interface exibido",
     ["Video Standard"] = "Padrão de vídeo",
@@ -3009,6 +3211,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visível (gerenciar)",
     ["Working..."] = "Trabalhando...",
     ["Yes"] = "Sim",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(NÃO foi possível salvar -- revertido ao reiniciar)",
+    ["(the usual settings location wasn't writable)"] = "(o local usual das configurações não era gravável)",
+    ["-- launch cancelled"] = "-- lançamento cancelado",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptativo não pôde preparar",
+    ["Applying SMB modules"] = "Aplicando módulos SMB",
+    ["BDMA source backend not ready:"] = "Backend de origem BDMA não está pronto:",
+    ["BOOT.ELF failed to launch"] = "Falha ao iniciar BOOT.ELF",
+    ["Booted from:"] = "Iniciado a partir de:",
+    ["Cannot access"] = "Não é possível acessar",
+    ["Case/Symbols: UPPER  (R2)"] = "Maiúsc./Símbolos: MAIÚSC  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Maiúsc./Símbolos: minúsc  (R2)",
+    ["Couldn't restore BDMA mode"] = "Não foi possível restaurar o modo BDMA",
+    ["Couldn't save settings"] = "Não foi possível salvar as configurações",
+    ["Couldn't update hidden state"] = "Não foi possível atualizar o estado oculto",
+    ["Couldn't write .hide to the HDD"] = "Não foi possível gravar .hide no HDD",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "Falha ao iniciar DKWDRV",
+    ["Edit"] = "Editar",
+    ["Edit %s"] = "Editar %s",
+    ["Game file missing"] = "Arquivo do jogo ausente",
+    ["HDD dir read failed:"] = "Falha ao ler o diretório do HDD:",
+    ["HDD not usable"] = "HDD não utilizável",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Os jogos ocultos já são exibidos aqui (esmaecidos)\nAtive \"Ocultar jogos ocultos\" nas Configurações para filtrá-los",
+    ["Locating exFAT HDD POPS folder..."] = "Localizando a pasta POPS do HDD exFAT...",
+    ["Looking for USB drive..."] = "Procurando unidade USB...",
+    ["Missing BDMA UI source (tried):"] = "Origem da interface BDMA ausente (tentado):",
+    ["Missing BDMA source (tried):"] = "Origem BDMA ausente (tentado):",
+    ["Missing SMB module (tried):"] = "Módulo SMB ausente (tentado):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nenhuma partição '__.POPS' em hdd0:\nformate uma com __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Nenhum DKWDRV encontrado neste caminho",
+    ["No POPSTARTER found at this path"] = "Nenhum POPSTARTER encontrado neste caminho",
+    ["Path saved, file not found:"] = "Caminho salvo, arquivo não encontrado:",
+    ["Resolved:"] = "Resolvido:",
+    ["Reverting in"] = "Revertendo em",
+    ["Saved to"] = "Salvo em",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "A unidade interna ainda está iniciando\nabra esta página novamente em instantes",
+    ["Triangle"] = "Triângulo",
+    ["Unknown BDMA mode:"] = "Modo BDMA desconhecido:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Você ainda pode adicionar um \"<jogo>.hide\" ao lado do .VCD a partir de um PC.",
+    ["adjusted -- using"] = "ajustado -- usando",
+    ["check the memory card, or turn Adaptive BDMA off"] = "verifique o cartão de memória ou desative o BDMA adaptativo",
+    ["if not confirmed"] = "se não confirmado",
+    ["re-select it under Settings > Storage to restage"] = "selecione-o novamente em Configurações > Armazenamento para repreparar",
+    ["return code:"] = "código de retorno:",
+    ["status:"] = "status:",
   },
   ES = {
     ["(not set)"] = "(sin definir)",
@@ -3052,9 +3301,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "No se pudo leer esa selección de juego",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "No se pudieron guardar los ajustes -- carpeta POPSTARTER NO eliminada",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "No se pudieron guardar los ajustes -- carpeta POPSTARTER NO restaurada",
-    ["Cover Art"] = "Carátulas",
-    ["Cover Art disabled"] = "Carátulas desactivadas",
-    ["Cover Art enabled"] = "Carátulas activadas",
+    ["Cover art"] = "Carátulas",
     ["Cover/details folder"] = "Carpeta de carátulas/detalles",
     ["Credits"] = "Créditos",
     ["DHCP (automatic)"] = "DHCP (automático)",
@@ -3065,6 +3312,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Diseño de Berion\nScripts de nuno6573 y Ripto\nBasado en Enceladus de Daniel Santos\nPruebas de P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k y la comunidad\n\nAgradecimientos especiales a:\nkrHACKen por crear POPStarter\nuyjulian, fjtrujy, HWC y otros por ayudar siempre\n\nEste programa es libre y de código abierto\nSi lo compraste, te estafaron\n\n¿Problemas de compatibilidad? Visita:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Lista de dispositivos",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Desactivado",
     ["Discard & Exit"] = "Descartar y salir",
     ["Display"] = "Pantalla",
     ["Display reverted -- new mode wasn't confirmed"] = "Pantalla revertida -- el nuevo modo no se confirmó",
@@ -3127,10 +3375,9 @@ PLDR.I18N = {
     ["No Share selected"] = "Sin recurso seleccionado",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Sin recurso definido en ajustes SMB\n(el servidor no devolvió recursos)",
     ["No USB backend detected\nreseat the drive and try again"] = "No se detectó backend USB\nreconecta la unidad e inténtalo de nuevo",
-    ["No cover. Looked for:"] = "Sin carátula. Se buscó:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "No se detectó HDD exFAT\nformatea la unidad interna en exFAT (Modo BDMA = ATA)",
     ["No games found"] = "No se encontraron juegos",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "No se encontraron juegos en hdd0:\n(las particiones __.POPS están vacías)",
+    ["No games found on hdd0:"] = "No se encontraron juegos en hdd0:",
     ["No games found on this device"] = "No se encontraron juegos en este dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Sin enlace de red\nrevisa el cable / adaptador Ethernet",
     ["Not implemented yet"] = "Aún no implementado",
@@ -3199,6 +3446,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visible (gestionar)",
     ["Working..."] = "Trabajando...",
     ["Yes"] = "Sí",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(NO se pudo guardar -- se revierte al reiniciar)",
+    ["(the usual settings location wasn't writable)"] = "(la ubicación habitual de ajustes no admitía escritura)",
+    ["-- launch cancelled"] = "-- lanzamiento cancelado",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adaptativo no pudo preparar",
+    ["Applying SMB modules"] = "Aplicando módulos SMB",
+    ["BDMA source backend not ready:"] = "Backend de origen BDMA no está listo:",
+    ["BOOT.ELF failed to launch"] = "No se pudo iniciar BOOT.ELF",
+    ["Booted from:"] = "Arrancado desde:",
+    ["Cannot access"] = "No se puede acceder",
+    ["Case/Symbols: UPPER  (R2)"] = "Mayús/Símbolos: MAYÚS  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Mayús/Símbolos: minús  (R2)",
+    ["Couldn't restore BDMA mode"] = "No se pudo restaurar el modo BDMA",
+    ["Couldn't save settings"] = "No se pudieron guardar los ajustes",
+    ["Couldn't update hidden state"] = "No se pudo actualizar el estado oculto",
+    ["Couldn't write .hide to the HDD"] = "No se pudo escribir .hide en el HDD",
+    ["Cursor: L1 / R1"] = "Cursor: L1 / R1",
+    ["DKWDRV failed to launch"] = "No se pudo iniciar DKWDRV",
+    ["Edit"] = "Editar",
+    ["Edit %s"] = "Editar %s",
+    ["Game file missing"] = "Falta el archivo del juego",
+    ["HDD dir read failed:"] = "Error al leer el directorio del HDD:",
+    ["HDD not usable"] = "HDD no utilizable",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Los juegos ocultos ya se muestran aquí (atenuados)\nActiva \"Ocultar juegos ocultos\" en Ajustes para filtrarlos",
+    ["Locating exFAT HDD POPS folder..."] = "Localizando la carpeta POPS del HDD exFAT...",
+    ["Looking for USB drive..."] = "Buscando unidad USB...",
+    ["Missing BDMA UI source (tried):"] = "Falta la fuente de interfaz BDMA (probado):",
+    ["Missing BDMA source (tried):"] = "Falta la fuente BDMA (probado):",
+    ["Missing SMB module (tried):"] = "Falta el módulo SMB (probado):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "No hay particiones '__.POPS' en hdd0:\nformatea una con __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "No se encontró DKWDRV en esta ruta",
+    ["No POPSTARTER found at this path"] = "No se encontró POPSTARTER en esta ruta",
+    ["Path saved, file not found:"] = "Ruta guardada, archivo no encontrado:",
+    ["Resolved:"] = "Resuelto:",
+    ["Reverting in"] = "Revirtiendo en",
+    ["Saved to"] = "Guardado en",
+    ["Slot:"] = "Ranura:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "La unidad interna aún está iniciando\nabre esta página de nuevo en un momento",
+    ["Triangle"] = "Triángulo",
+    ["Unknown BDMA mode:"] = "Modo BDMA desconocido:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Aún puedes añadir un \"<juego>.hide\" junto al .VCD desde un PC.",
+    ["adjusted -- using"] = "ajustado -- usando",
+    ["check the memory card, or turn Adaptive BDMA off"] = "comprueba la tarjeta de memoria o desactiva el BDMA adaptativo",
+    ["if not confirmed"] = "si no se confirma",
+    ["re-select it under Settings > Storage to restage"] = "vuelve a seleccionarlo en Ajustes > Almacenamiento para reprepararlo",
+    ["return code:"] = "código de retorno:",
+    ["status:"] = "estado:",
   },
   IT = {
     ["(not set)"] = "(non impostato)",
@@ -3237,9 +3531,7 @@ PLDR.I18N = {
     ["Couldn't read that game selection"] = "Impossibile leggere la selezione del gioco",
     ["Couldn't save settings -- POPSTARTER folder NOT deleted"] = "Impossibile salvare le impostazioni -- cartella POPSTARTER NON eliminata",
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "Impossibile salvare le impostazioni -- cartella POPSTARTER NON ripristinata",
-    ["Cover Art"] = "Copertine",
-    ["Cover Art disabled"] = "Copertine disattivate",
-    ["Cover Art enabled"] = "Copertine attivate",
+    ["Cover art"] = "Copertine",
     ["Cover/details folder"] = "Cartella copertine/dettagli",
     ["Credits"] = "Crediti",
     ["DHCP (automatic)"] = "DHCP (automatico)",
@@ -3250,6 +3542,7 @@ PLDR.I18N = {
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design di Berion\nScript di nuno6573 e Ripto\nBasato su Enceladus di Daniel Santos\nTest di P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e la Community\n\nRingraziamenti speciali a:\nkrHACKen per aver creato POPStarter\nuyjulian, fjtrujy, HWC e altri per l'aiuto costante\n\nQuesto programma è gratuito e open source\nSe l'hai pagato, sei stato truffato\n\nProblemi di compatibilità? Visita:\nyoutube.com/@hugopocked6695",
     ["Device List"] = "Elenco dispositivi",
     ["Disc (DKWDRV)"] = "Disco (DKWDRV)",
+    ["Disabled"] = "Disattivato",
     ["Discard & Exit"] = "Scarta ed esci",
     ["Display"] = "Schermo",
     ["Display reverted -- new mode wasn't confirmed"] = "Schermo ripristinato -- nuova modalità non confermata",
@@ -3312,10 +3605,9 @@ PLDR.I18N = {
     ["No Share selected"] = "Nessuna condivisione selezionata",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Nessuna condivisione impostata nelle impostazioni SMB\n(il server non ha restituito condivisioni)",
     ["No USB backend detected\nreseat the drive and try again"] = "Nessun backend USB rilevato\nreinserisci l'unità e riprova",
-    ["No cover. Looked for:"] = "Nessuna copertina. Cercata in:",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nessun HDD exFAT rilevato\nformatta l'unità interna in exFAT (Modalità BDMA = ATA)",
     ["No games found"] = "Nessun gioco trovato",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nessun gioco trovato su hdd0:\n(le partizioni __.POPS sono vuote)",
+    ["No games found on hdd0:"] = "Nessun gioco trovato su hdd0:",
     ["No games found on this device"] = "Nessun gioco trovato su questo dispositivo",
     ["No network link\ncheck the Ethernet cable / adapter"] = "Nessun collegamento di rete\ncontrolla il cavo / adattatore Ethernet",
     ["Not implemented yet"] = "Non ancora implementato",
@@ -3385,6 +3677,53 @@ PLDR.I18N = {
     ["Visible (manage)"] = "Visibile (gestisci)",
     ["Working..."] = "Elaborazione...",
     ["Yes"] = "Sì",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["(could NOT save -- reverts on reboot)"] = "(salvataggio NON riuscito -- annullato al riavvio)",
+    ["(the usual settings location wasn't writable)"] = "(la posizione abituale delle impostazioni non era scrivibile)",
+    ["-- launch cancelled"] = "-- avvio annullato",
+    ["Adaptive BDMA couldn't stage"] = "BDMA adattivo non è riuscito a preparare",
+    ["Applying SMB modules"] = "Applicazione dei moduli SMB",
+    ["BDMA source backend not ready:"] = "Backend di origine BDMA non pronto:",
+    ["BOOT.ELF failed to launch"] = "Avvio di BOOT.ELF non riuscito",
+    ["Booted from:"] = "Avviato da:",
+    ["Cannot access"] = "Impossibile accedere",
+    ["Case/Symbols: UPPER  (R2)"] = "Maiusc/Simboli: MAIUSC  (R2)",
+    ["Case/Symbols: lower  (R2)"] = "Maiusc/Simboli: minusc  (R2)",
+    ["Couldn't restore BDMA mode"] = "Impossibile ripristinare la modalità BDMA",
+    ["Couldn't save settings"] = "Impossibile salvare le impostazioni",
+    ["Couldn't update hidden state"] = "Impossibile aggiornare lo stato nascosto",
+    ["Couldn't write .hide to the HDD"] = "Impossibile scrivere .hide sull'HDD",
+    ["Cursor: L1 / R1"] = "Cursore: L1 / R1",
+    ["DKWDRV failed to launch"] = "Avvio di DKWDRV non riuscito",
+    ["Edit"] = "Modifica",
+    ["Edit %s"] = "Modifica %s",
+    ["Game file missing"] = "File di gioco mancante",
+    ["HDD dir read failed:"] = "Lettura della cartella HDD non riuscita:",
+    ["HDD not usable"] = "HDD non utilizzabile",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "I giochi nascosti sono già mostrati qui (in grigio)\nAttiva \"Nascondi giochi nascosti\" nelle Impostazioni per filtrarli",
+    ["Locating exFAT HDD POPS folder..."] = "Ricerca della cartella POPS dell'HDD exFAT...",
+    ["Looking for USB drive..."] = "Ricerca dell'unità USB...",
+    ["Missing BDMA UI source (tried):"] = "Origine UI BDMA mancante (tentato):",
+    ["Missing BDMA source (tried):"] = "Origine BDMA mancante (tentato):",
+    ["Missing SMB module (tried):"] = "Modulo SMB mancante (tentato):",
+    ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nessuna partizione '__.POPS' su hdd0:\nformattane una con __.POPS / __.POPS0...9",
+    ["No DKWDRV found at this path"] = "Nessun DKWDRV trovato in questo percorso",
+    ["No POPSTARTER found at this path"] = "Nessun POPSTARTER trovato in questo percorso",
+    ["Path saved, file not found:"] = "Percorso salvato, file non trovato:",
+    ["Resolved:"] = "Risolto:",
+    ["Reverting in"] = "Ripristino tra",
+    ["Saved to"] = "Salvato in",
+    ["Slot:"] = "Slot:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "L'unità interna si sta ancora avviando\nriapri questa pagina tra un momento",
+    ["Triangle"] = "Triangolo",
+    ["Unknown BDMA mode:"] = "Modalità BDMA sconosciuta:",
+    ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Puoi comunque aggiungere un \"<gioco>.hide\" accanto al .VCD da un PC.",
+    ["adjusted -- using"] = "regolato -- in uso",
+    ["check the memory card, or turn Adaptive BDMA off"] = "controlla la memory card oppure disattiva il BDMA adattivo",
+    ["if not confirmed"] = "se non confermato",
+    ["re-select it under Settings > Storage to restage"] = "riselezionalo in Impostazioni > Archiviazione per ripreparare",
+    ["return code:"] = "codice di ritorno:",
+    ["status:"] = "stato:",
   },
   HU = {
     ["(could NOT save -- reverts on reboot)"] = "(NEM sikerült menteni -- újraindításkor visszaáll az eredeti állapotra)",
@@ -3443,9 +3782,7 @@ PLDR.I18N = {
     ["Couldn't save settings -- POPSTARTER folder NOT restored"] = "A beállítások mentése nem sikerült -- a POPSTARTER mappa NEM került visszaállításra",
     ["Couldn't update hidden state"] = "A rejtett állapotot nem sikerült frissíteni",
     ["Couldn't write .hide to the HDD"] = "Nem sikerült a .hide fájlt a HDD-re írni",
-    ["Cover Art"] = "Borítókép",
-    ["Cover Art disabled"] = "Borítóképek letiltva",
-    ["Cover Art enabled"] = "Borítóképek engedélyezve",
+    ["Cover art"] = "Borítókép",
     ["Cover/details folder"] = "Borító/Részletek mappa",
     ["Credits"] = "Közreműködők",
     ["Cursor: L1 / R1"] = "Kurzor: L1 / R1",
@@ -3456,6 +3793,7 @@ PLDR.I18N = {
     ["DHCP (automatic)"] = "DHCP (automatikus)",
     ["DHCP failed\nset a static IP in SMB settings"] = "A DHCP nem sikerült\nÁllítson be statikus IP-címet az SMB-beállításokban",
     ["Disc (DKWDRV)"] = "Fizikai lemez (DKWDRV)",
+    ["Disabled"] = "Kikapcsolva",
     ["Discard & Exit"] = "Elvetés & Kilépés",
     ["Display"] = "Megjelenés",
     ["Display reverted -- new mode wasn't confirmed"] = "A kijelzőmód visszaállt -- az új mód nem került megerősítésre",
@@ -3504,7 +3842,7 @@ PLDR.I18N = {
     ["Keep"] = "Megtart",
     ["Keep this display mode?"] = "Megtartja ezt a megjelenítési módot?",
     ["Keyboard Layout"] = "Billentyűzetkiosztás",
-    ["L3 on the game list"] = "L3 a játéklistán",
+    ["L3 on the game list"] = "L3 a játéklistában",
     ["Launch"] = "Indítás",
     ["Launch DKWDRV?"] = "Elindítja a DKWDRV-t?",
     ["Left aligned"] = "Balra igazítva",
@@ -3528,11 +3866,10 @@ PLDR.I18N = {
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "A NetBIOS nem támogatott\nállítsa be a címtípust: IP + egy szerver IP-címe",
     ["No"] = "Nem",
     ["No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9"] = "Nincs '__.POPS' partíció a hdd0-on:\nHozzon létre egyet __.POPS / __.POPS0...9 néven",
-    ["No cover. Looked for:"] = "Nincs borító. Itt keresve:",
     ["No DKWDRV found at this path"] = "Ezen az elérési úton nincs DKWDRV",
     ["No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)"] = "Nincs észlelt exFAT HDD\nformázza le a belső HDD-t exFAT formátumra (BDMA mód = ATA)",
     ["No games found"] = "Nincsenek játékok",
-    ["No games found on hdd0:\n(__.POPS partitions are empty)"] = "Nincsenek játékok a hdd0-n:\n(a __.POPS partíciók üresek)",
+    ["No games found on hdd0:"] = "Nincsenek játékok a hdd0-n:",
     ["No games found on this device"] = "Az eszközön nem találhatóak játékok",
     ["No MMCE device detected\nchecked mmce0: and mmce1:"] = "Nem észlelhető MMCE-eszköz\nellenőrizve itt: mmce0: és mmce1:",
     ["No MX4SIO device detected"] = "Nem észlelhető MX4SIO eszköz",
@@ -3541,7 +3878,7 @@ PLDR.I18N = {
     ["No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:"] = "Nem található a POPSTARTER.ELF fájl\nellenőrizve itt: a játék eszköze, az indító mappája és mc0:/mc1:",
     ["No Share selected"] = "Nincs kiválasztott megosztás",
     ["No Share set in SMB settings\n(server returned no shares)"] = "Az SMB-beállításokban nincs megadva megosztás\n(a szerver nem adott vissza megosztásokat)",
-    ["No USB backend detected\nreseat the drive and try again"] = "Nem észlelhető USB-háttérrendszer\nHelyezze be ismételten a meghajtót, majd próbálja újra",
+    ["No USB backend detected\nreseat the drive and try again"] = "Nem észlelhető USB-háttérrendszer\nHelyezze be újból a meghajtót, majd próbálja újra",
     ["Not implemented yet"] = "Jelenleg nincs megvalósítva",
     ["Not installed"] = "Nincs telepítve",
     ["Off"] = "Ki",
@@ -3594,10 +3931,10 @@ PLDR.I18N = {
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "A szerver elutasította az SMBv1-et\nEngedélyezze az SMBv1 támogatást a gazdagépen",
     ["Settings"] = "Beállítások",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "A megosztás nem található\nEllenőrizze a megosztás nevét (a gazdagépnek engedélyeznie kell az SMB1-et)",
-    ["Show all discs"] = "Összes lemez",
+    ["Show all discs"] = "Összes lemez látható",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Rejtett játékok megjelenítése (elhalványítva) -- az L3 megnyomásával láthatóvá tehetők",
     ["Shown"] = "Megjelenítés",
-    ["Slot:"] = "Nyílás:",
+    ["Slot:"] = "Foglalat:",
     ["SMB / Network"] = "SMB / Hálózat",
     ["SMB connect failed"] = "Az SMB-kapcsolat sikertelen",
     ["SMB connection dropped"] = "Az SMB-kapcsolat megszakadt",
@@ -3628,6 +3965,46 @@ PLDR.I18N = {
     ["X = Yes      O = No"] = "X = Igen      O = Nem",
     ["Yes"] = "Igen",
     ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "PC-ről továbbra is hozzáadhat egy \"<game>.hide\" fájlt a .VCD mellé.",
+    -- EXP72: SMB settings labels + keyboard word-keys + the Language row (sAGA:
+    -- these screens stayed English under Magyar).
+    ["Language"] = "Nyelv",
+    ["IP assignment"] = "IP-cím hozzárendelése",
+    ["PS2 IP"] = "PS2 IP-cím",
+    ["Netmask"] = "Netmaszk",
+    ["Gateway"] = "Átjáró",
+    ["DNS"] = "DNS",
+    ["Link mode"] = "Link mód",
+    ["Address type"] = "Címtípus",
+    ["NetBIOS name"] = "NetBIOS név",
+    ["Server IP"] = "Szerver IP",
+    ["Port"] = "Port",
+    ["Share"] = "Megosztás",
+    ["User"] = "Felhasználó",
+    ["Password"] = "Jelszó",
+    ["Games path (folder holding POPS)"] = "A játékok elérési útvonala (a POPS fájlokat tartalmazó mappa)",
+    ["SPACE"] = "SZÓKÖZ",
+    ["DEL"] = "TÖRLÉS",
+    ["CLR"] = "ÜRÍTÉS",
+    ["BACK"] = "VISSZA",
+    ["DONE"] = "KÉSZ",
+    -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
+    ["Edit %s"] = "%s szerkesztése",
+    ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a „Rejtett játékok elrejtése” opciót, hogy kiszűrje őket",
+    ["Resolved:"] = "Megoldva:",
+    ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy kis idő múlva",
+    -- PR #559 (oldman63, 2026-07-27): strings made translatable by the
+    -- EXP73 i18n sweep, plus rows that had never been offered to a translator.
+    [" (%d hidden -- Global Hide is on)"] = " (%d rejtett -- A Globális elrejtés be van kapcsolva)",
+    [" (%d multi-disc collapsed)"] = " (%d többlemezesek kibontva)",
+    ["Both"] = "Mindegyik",
+    ["Couldn't save settings\n%s may be read-only"] = "A beállításokat nem sikerült menteni\nLehet, hogy a %s írásvédett",
+    ["Done"] = "Kész",
+    ["HDD game-partition write test FAILED (%s)"] = "A HDD játékpartíciójára történt írási teszt MEGHIÚSULT (%s)",
+    ["IP address"] = "IP cím",
+    ["LAUNCH FAILED"] = "SIKERTELEN INDÍTÁS",
+    ["Press %s/%s to continue."] = "Folytatáshoz nyomja meg a %s/%s gombot.",
+    ["Version"] = "Verzió",
+    ["__.POPS partition %s accepts writes (game-partition RW test)"] = "__.POPS %s partíció írási műveleteket fogad (játékpartíció RW-teszt)",
   },
 }
 function PLDR.L(s)
@@ -3640,6 +4017,25 @@ function PLDR.L(s)
     if t ~= nil then return t end
   end
   return s
+end
+
+-- Translate a FORMAT TEMPLATE, then fill it -- string.format(PLDR.L(t), ...), never
+-- PLDR.L(string.format(t, ...)): the latter hands PLDR.L a string with runtime values
+-- already substituted, which can never match a table key. That inversion is why
+-- several toasts rendered English even though their translation shipped.
+--
+-- Protected, because the placeholders now live in translator-editable text: a
+-- volunteer who drops or reorders a %s would otherwise raise a Lua error inside the
+-- very toast (or the launch-failure screen) that is reporting the original problem.
+-- On a bad translation we fall back to the English template, which is always well
+-- formed, rather than taking the app down.
+function PLDR.LFmt(template, ...)
+  local translated = PLDR.L(template)
+  local ok, out = pcall(string.format, translated, ...)
+  if ok then return out end
+  local ok_en, out_en = pcall(string.format, template, ...)
+  if ok_en then return out_en end
+  return tostring(template)
 end
 
 local function BuildVideoStandardSpec(standard)
@@ -4329,27 +4725,19 @@ function PLDR.EnsurePopstarterDir()
   return EnsurePopstarterPackDir(PLDR.POPSTARTER_DIR)
 end
 
--- MX4SIO auto-enter crash-marker. MX4SIO's card probe lives in a vendored IOP
--- driver (mx4sio_bd.irx) that can BLOCK when no card is present (notably PCSX2
--- with MX4SIO emulated but no card image). A blocked IOP module cannot be timed
--- out from the EE, so instead we bound the blast radius: mark "MX4SIO entry
--- pending" right before the probe and clear it once the probe returns. If a
--- later boot still finds the marker set, the previous MX4SIO entry never
--- returned (it hung) -- so the persisted-Boot-Page auto-enter skips MX4SIO that
--- boot, and a single stall cannot brick every boot. All ops are best-effort
--- (pcall) so the marker machinery can never itself error or wedge the boot.
+-- EXP32: the MX4SIO auto-enter crash-marker is GONE (no reference launcher
+-- persists failure state -- grep OPL/NHDDL for crash markers: zero). The hang
+-- it bounded (a page-entry driver load that never returned) no longer exists:
+-- mx4sio_bd loads lazily via the matched-vintage SDK set (the wedge was the
+-- c1debd1 mismatched core, fixed), the load returns promptly (card detection
+-- runs on the driver's own IOP thread), and every enumeration wait after it
+-- is bounded (settle-retry budget, never an unbounded probe). One legacy duty
+-- remains:
+-- an install upgrading from a marker-era build may have the marker file on
+-- the memory card; clear it opportunistically so it cannot confuse anything.
 local MX4SIO_PENDING_MARKER = PLDR.POPSTARTER_DIR.."/.mx4sio_autoenter_pending"
-function PLDR.SetMx4sioAutoEnterPending(pending)
-  if pending then
-    pcall(PLDR.EnsurePopstarterDir)
-    pcall(WriteAtomic, MX4SIO_PENDING_MARKER, "1")
-  else
-    pcall(System.removeFile, MX4SIO_PENDING_MARKER)
-  end
-end
-function PLDR.IsMx4sioAutoEnterPending()
-  local ok, exists = pcall(doesFileExist, MX4SIO_PENDING_MARKER)
-  return ok and exists == true
+function PLDR.ClearLegacyMx4sioMarker()
+  pcall(System.removeFile, MX4SIO_PENDING_MARKER)
 end
 
 local function RecursiveRemoveDir(dir, preserve_path, depth)
@@ -4468,11 +4856,12 @@ end
 -- silently collapses any third value back to PFS. Anything unrecognized -- and a
 -- MISSING key -- still resolves to PFS, so no existing install changes until the
 -- user opts in (the back-compat contract from 1f2d7ca).
-PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH"}
+PLDR.HDD_FS_VALUES = {"PFS", "EXFAT", "BOTH", "DISABLED"}
 function PLDR.NormalizeHddFs(v)
   local u = string.upper(tostring(v or ""))
   if u == "EXFAT" then return "EXFAT" end
   if u == "BOTH" then return "BOTH" end
+  if u == "DISABLED" or u == "NONE" or u == "OFF" then return "DISABLED" end
   return "PFS"
 end
 
@@ -4481,19 +4870,27 @@ function PLDR.IsDeviceHidden(key)
   if key == nil then return false end
   local ukey = string.upper(tostring(key))
   -- Which internal-HDD page(s) the carousel shows: Settings > Device List > Internal HDD.
-  -- PFS (default) or EXFAT shows exactly one; BOTH shows both (R3Z3N: APA-Jail and PFS can
-  -- coexist). This is ONLY a visibility rule -- it has never gated a driver, mount or IRX.
-  -- The stacks were already unified onto ONE load-once ata_bd that serves APA/PFS and exFAT
-  -- together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH luaHDD.cpp's Load_HDD_IRX and
-  -- lua_ata_init, and it already carries R3Z3N's two 1s settles). So BOTH needs no C change.
-  -- An explicit -page=ata launch is still an exFAT session regardless of this setting: that
-  -- isolation is launch-arg-scoped and deliberately unchanged.
+  -- BOTH (the default since EXP34) shows both; PFS or EXFAT shows exactly one (R3Z3N:
+  -- APA-Jail and PFS can coexist); DISABLED hides both. This is ONLY a visibility rule -- it has never gated a
+  -- driver, mount or IRX. The stacks were already unified onto ONE load-once ata_bd serving
+  -- APA/PFS and exFAT together (`EnsureAtaBdm`, src/luasystem.cpp; called by BOTH
+  -- luaHDD.cpp's Load_HDD_IRX and lua_ata_init, carrying R3Z3N's two 1s settles).
+  --
+  -- The launch-arg rule is now ADDITIVE (2026-07-28). An explicit -page=ata session
+  -- REVEALS the exFAT page even when the setting would hide it -- otherwise the argument
+  -- cannot open the very page it names -- but it no longer HIDES PFS. The old rule did
+  -- both, which made sense only while the two pages were mutually exclusive. Since EXP34
+  -- made BOTH the default, hiding PFS meant arg-launching to ATA silently deleted a device
+  -- from the carousel, and left it uninitialised too. CosmicScale reported precisely that
+  -- as "arg launching doesn't work" on his ATA setup.
   if ukey == "EXFAT" or ukey == "PFS" then
-    if type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession() then
-      return ukey ~= "EXFAT"
+    if ukey == "EXFAT" and type(PLDR.IsExplicitATASession) == "function"
+       and PLDR.IsExplicitATASession() then
+      return false
     end
     local fs = PLDR.NormalizeHddFs(PLDR.HDD_FS)
     if fs == "BOTH" then return false end
+    if fs == "DISABLED" then return true end
     return ukey ~= fs
   end
   local csv = string.upper(tostring(PLDR.HIDDEN_DEVICES or ""))
@@ -4524,13 +4921,23 @@ end
 -- strings stay intact (only newline is forbidden, and the on-screen keyboard
 -- can't produce one). SMB never touches the boot path: the network stack is
 -- brought up lazily on SMB-page entry (a later stage), never here or at boot.
+-- NO DEFAULT VALUES for anything POPSTARTER reads. Every one of these used to ship
+-- a guess (192.168.1.10, server 192.168.1.100, port 1111, share "games", user
+-- "guest") presented to the user as though it were their configuration. Blank now
+-- means blank: we load what is on the card, or leave the field empty for the user
+-- to fill. A wrong value that looks deliberate is worse than an empty one.
+--
+-- DNS / LINKMODE / PATH / ADDR_TYPE / NB_ADDR are hidden = true: POPSTARTER needs
+-- none of them, so neither should the user have to supply them. They stay in the
+-- spec with safe constants purely so the C connect binding keeps receiving the
+-- keys it reads; they are not user-facing configuration any more.
 PLDR.SMB_FIELDS = {
-  { key = "DHCP",      kind = "bool", default = true },
-  { key = "PS2_IP",    kind = "str",  default = "192.168.0.10" },
-  { key = "NETMASK",   kind = "str",  default = "255.255.255.0" },
-  { key = "GATEWAY",   kind = "str",  default = "192.168.0.1" },
-  { key = "DNS",       kind = "str",  default = "192.168.0.1" },
-  { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" } },
+  { key = "DHCP",      kind = "bool", default = false },
+  { key = "PS2_IP",    kind = "str",  default = "" },
+  { key = "NETMASK",   kind = "str",  default = "" },
+  { key = "GATEWAY",   kind = "str",  default = "" },
+  { key = "DNS",       kind = "str",  default = "", hidden = true },
+  { key = "LINKMODE",  kind = "enum", default = "auto", choices = { "auto", "100full", "100half", "10full", "10half" }, hidden = true },
   -- ADDR_TYPE/NB_ADDR are kept in the spec so old sidecar lines still parse, but
   -- HIDDEN from the settings UI: the connect binding hard-rejects "netbios"
   -- (nbns.irx is OPL-custom, deliberately not built), so offering it was selling a
@@ -4538,12 +4945,12 @@ PLDR.SMB_FIELDS = {
   -- makes SmbSanitize's enum branch coerce any persisted value back to "ip".
   { key = "ADDR_TYPE", kind = "enum", default = "ip",   choices = { "ip" }, hidden = true },
   { key = "NB_ADDR",   kind = "str",  default = "", hidden = true },
-  { key = "SERVER",    kind = "str",  default = "192.168.0.1" },
-  { key = "PORT",      kind = "str",  default = "1111" },
+  { key = "SERVER",    kind = "str",  default = "" },
+  { key = "PORT",      kind = "str",  default = "" },
   { key = "SHARE",     kind = "str",  default = "" },
   { key = "USER",      kind = "str",  default = "" },
   { key = "PASS",      kind = "str",  default = "" },
-  { key = "PATH",      kind = "str",  default = "" },
+  { key = "PATH",      kind = "str",  default = "", hidden = true },
 }
 
 -- Normalize one field value to its kind: bool -> boolean, enum -> a valid choice
@@ -4669,8 +5076,10 @@ local function EncodeSettings()
     "DETAILS_ALIGN="..((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     "ART_LOCATION="..((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     "HDD_FS="..PLDR.NormalizeHddFs(PLDR.HDD_FS),
+    "COVER_ART="..((PLDR.COVER_ART ~= false) and "1" or "0"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
+    "RETROGEM_GAMEID="..((PLDR.RETROGEM_GAMEID ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
     "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
   }
@@ -4718,8 +5127,10 @@ local function SnapshotSettingsState()
     details_align = ((PLDR.DETAILS_ALIGN == "center" or PLDR.DETAILS_ALIGN == "right") and PLDR.DETAILS_ALIGN or "left"),
     art_location = ((PLDR.ART_LOCATION == "pops" or PLDR.ART_LOCATION == "art") and PLDR.ART_LOCATION or "pops_art"),
     hdd_fs = PLDR.NormalizeHddFs(PLDR.HDD_FS),
+    cover_art = (PLDR.COVER_ART ~= false),
     gamelist_cache = (PLDR.GAMELIST_CACHE == true),
     boot_sound = (PLDR.BOOT_SOUND ~= false),
+    retrogem_gameid = (PLDR.RETROGEM_GAMEID ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     smb = PLDR.SmbCopy(PLDR.SMB),
     smb_modules = (PLDR.SMB_MODULES == true)
@@ -4776,11 +5187,22 @@ local function ApplySettingsState(state)
   if type(state.hdd_fs) == "string" then
     PLDR.HDD_FS = PLDR.NormalizeHddFs(state.hdd_fs)
   end
+  if type(state.cover_art) == "boolean" then
+    PLDR.COVER_ART = state.cover_art
+    -- Keep the live list in step, including on the rollback path (a failed save
+    -- re-applies the previous state and the preview box must follow it back).
+    if type(UI) == "table" and type(UI.SetCoverPreview) == "function" then
+      UI.SetCoverPreview(state.cover_art)
+    end
+  end
   if type(state.gamelist_cache) == "boolean" then
     PLDR.GAMELIST_CACHE = state.gamelist_cache
   end
   if type(state.boot_sound) == "boolean" then
     PLDR.BOOT_SOUND = state.boot_sound
+  end
+  if type(state.retrogem_gameid) == "boolean" then
+    PLDR.RETROGEM_GAMEID = state.retrogem_gameid
   end
   if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
@@ -4940,7 +5362,15 @@ function PLDR.LoadSettingsNonFatal()
   -- the user's choice and the folder (+ its OSD icons) was rebuilt on EVERY boot even when
   -- toggled OFF (provato HW report). The ensure now happens AFTER the load, at the call site.
   PLDR.BDMA_MODE_KEY = "FAT32"
-  PLDR.BDMA_ADAPTIVE = false  -- per-launch BDMA variant staging (issue #509); default OFF, user opts in
+  -- Default ON (maintainer, 2026-07-28). CosmicScale reported that BDM Assault
+  -- drivers were never installed for ATA; the machinery was all present and
+  -- correct, it simply never ran, because MaybeApplyAdaptiveBdma returns
+  -- immediately unless this is true and it shipped false. Users were expected to
+  -- find a setting they did not know existed. Known trade-off, accepted: every
+  -- device now gets a BDMA variant staged unless the user opts OUT (Settings >
+  -- Adaptive BDMA), including the exFAT pair on a FAT32 USB stick -- that pair
+  -- reads FAT32 too, so one variant serves every stick.
+  PLDR.BDMA_ADAPTIVE = true   -- per-launch BDMA variant staging (issue #509)
   PLDR.POPSTARTER_PATH = ""  -- "" = Automatic (the launch ladder); a path = custom-first
   PLDR.STRICT_HDD_PREEXEC_GATE = false
   PLDR.VIDEO_STANDARD = PLDR.VIDEO_STANDARD_AUTO
@@ -4951,21 +5381,30 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.COLLAPSE_MULTIDISC = false
   PLDR.GLOBAL_HIDE = false
   PLDR.POPSTARTER_MC_FOLDER = true
-  PLDR.HIDDEN_DEVICES = ""
+  PLDR.HIDDEN_DEVICES = "ILINK"  -- EXP34: hide the i.Link page by default (maintainer); users re-show it in Settings > Device List
   PLDR.SHOW_DETAILS = false
   PLDR.DETAILS_ALIGN = "left"  -- left|center|right; alignment of the game-details box (used only when SHOW_DETAILS)
-  PLDR.ART_LOCATION = "pops_art"  -- pops|pops_art|art; where REMOVABLE-device cover .png + details .txt live (HDD uses __common/POPS/ART)
-  PLDR.HDD_FS = "PFS"  -- PFS|EXFAT|BOTH; which internal-HDD page(s) the carousel shows. Default PFS: an install with no HDD_FS= line must not change.
+  PLDR.ART_LOCATION = "art"  -- EXP34 default "art" = <device-root>/ART/ (matches OPL's mass:/ART layout); pops|pops_art|art. Cover .png + details .txt live here on REMOVABLE devices (HDD uses __common/POPS/ART)
+  PLDR.HDD_FS = "BOTH"  -- EXP34 default BOTH (maintainer): show both internal-HDD pages (PFS + exFAT). PFS|EXFAT|BOTH. BOTH means the exFAT boot warm-up runs each boot (EXP33 cascade-bound + sema make that safe).
+  PLDR.COVER_ART = true  -- draw cover art in the game-list preview box (default ON; was a session-only Square toggle until EXP42 made it a saved setting)
   PLDR.GAMELIST_CACHE = false  -- opt-in persistent per-device USB/MMCE/MX4SIO list cache (OFF = always live scan)
+  -- Retro GEM Game ID: read the PS1 title ID out of the VCD at launch and emit it
+  -- optically so a Retro GEM applies that game's per-game profile. Default ON
+  -- (maintainer, 2026-07-29; R3Z3N calls it a must-have). Harmless without the
+  -- mod: it draws a few small sprites for a moment during the launch overlay.
+  PLDR.RETROGEM_GAMEID = true
   PLDR.BOOT_SOUND = true  -- play the boot/splash chime (default ON; oldman63 #501 wanted an off switch)
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
   PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
+  -- EXP56: Hide UI Text now defaults ON (graphics team). It is a DEFAULT-ON boolean,
+  -- so an absent HIDE_TEXT= line must mean ON -- see the parse site, which only
+  -- applies the sidecar value when the key is actually present.
   if type(UI) == "table" then
     if type(UI.SetHideTextMode) == "function" then
-      UI.SetHideTextMode(false, false)
+      UI.SetHideTextMode(true, false)
     else
-      UI.HideTextMode = false
+      UI.HideTextMode = true
     end
   end
   -- Resolve actual settings source: prefer per-device sidecar
@@ -5011,8 +5450,20 @@ function PLDR.LoadSettingsNonFatal()
     -- (BuildUsbIdentityDeferred). Only a mass*: sidecar needs it -- MC/HDD/MMCE
     -- are already mounted at boot, so they skip the retry (and its sleep).
     if loaded_path == nil and string.match(string.lower(sidecar), "^mass%d*:/") ~= nil then
-      for _ = 1, 3 do
+      -- Legacy-mass boot-device resolution (maintainer, 2026-07-21): an old
+      -- launcher can hand us a mass* argv0 that is REALLY an MX4SIO card or
+      -- the internal exFAT drive, not USB -- and that slot only exists once
+      -- ITS driver is loaded. So the heal ladder escalates: pass 1 = USB only
+      -- (the common case, unchanged); passes 2-3 also lazy-load mx4sio_bd
+      -- (cheap; its slot then mounts and the ioctl names it "sdc") and kick
+      -- the ata worker (non-blocking; an exFAT-backed cwd resolves once the
+      -- drive registers). Bounded: 3 passes x 1s, same as before.
+      for attempt = 1, 3 do
         if type(PLDR.EnsureUsbMassReadyOnce) == "function" then pcall(PLDR.EnsureUsbMassReadyOnce) end
+        if attempt >= 2 and type(System) == "table" then
+          if type(System.initMX4SIO) == "function" then pcall(System.initMX4SIO) end
+          if type(System.initATAAsync) == "function" then pcall(System.initATAAsync) end
+        end
         if type(PLDR.RefreshMassBackends) == "function" then pcall(PLDR.RefreshMassBackends) end
         if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
         loaded_path = ProbeSidecarAliases()
@@ -5075,6 +5526,7 @@ function PLDR.LoadSettingsNonFatal()
   local details_align = string.match(data, "\nDETAILS_ALIGN=([^\n]+)") or string.match(data, "^DETAILS_ALIGN=([^\n]+)")
   local art_location = string.match(data, "\nART_LOCATION=([^\n]+)") or string.match(data, "^ART_LOCATION=([^\n]+)")
   local hdd_fs = string.match(data, "\nHDD_FS=([^\n]+)") or string.match(data, "^HDD_FS=([^\n]+)")
+  local cover_art = string.match(data, "\nCOVER_ART=([^\n]+)") or string.match(data, "^COVER_ART=([^\n]+)")
   local gamelist_cache = string.match(data, "\nGAMELIST_CACHE=([^\n]+)") or string.match(data, "^GAMELIST_CACHE=([^\n]+)")
   local boot_sound = string.match(data, "\nBOOT_SOUND=([^\n]+)") or string.match(data, "^BOOT_SOUND=([^\n]+)")
   local overscan = string.match(data, "\nOVERSCAN=([^\n]+)") or string.match(data, "^OVERSCAN=([^\n]+)")
@@ -5107,6 +5559,11 @@ function PLDR.LoadSettingsNonFatal()
     PLDR.DKWDRV_PATH = dkwdrv_path
   end
   local strict_gate_enabled = ParseBooleanSetting(strict_hdd_preexec_gate)
+  local retrogem_gameid = string.match(data, "\nRETROGEM_GAMEID=([^\n]+)") or string.match(data, "^RETROGEM_GAMEID=([^\n]+)")
+  local retrogem_enabled = ParseBooleanSetting(retrogem_gameid)
+  if retrogem_enabled ~= nil then
+    PLDR.RETROGEM_GAMEID = retrogem_enabled
+  end
   if strict_gate_enabled ~= nil then
     PLDR.STRICT_HDD_PREEXEC_GATE = strict_gate_enabled == true
   end
@@ -5155,6 +5612,10 @@ function PLDR.LoadSettingsNonFatal()
   if hdd_fs ~= nil then
     PLDR.HDD_FS = PLDR.NormalizeHddFs(hdd_fs)
   end
+  local ca = ParseBooleanSetting(cover_art)
+  if ca ~= nil then
+    PLDR.COVER_ART = ca == true
+  end
   local glc = ParseBooleanSetting(gamelist_cache)
   if glc ~= nil then
     PLDR.GAMELIST_CACHE = glc == true
@@ -5182,6 +5643,17 @@ function PLDR.LoadSettingsNonFatal()
   if type(PLDR.SmbParse) == "function" then
     PLDR.SMB = PLDR.SmbParse(data)
   end
+  -- The .DAT on the memory card are the SOURCE OF TRUTH for the eight values
+  -- POPSTARTER reads. The sidecar copy is only a fallback for a console with no
+  -- usable memory card, so whatever the card actually holds wins here. This is
+  -- what makes the settings screen and POPSTARTER agree by construction: they are
+  -- reading the same bytes, not two stores kept in step by hand (issue #560).
+  if type(PLDR.LoadPopstarterDat) == "function" then
+    local ok_dat, dat = pcall(PLDR.LoadPopstarterDat)
+    if ok_dat and type(dat) == "table" then
+      for k, v in pairs(dat) do PLDR.SMB[k] = v end
+    end
+  end
   local smb_modules = string.match(data, "\nSMB_MODULES=([^\n]+)") or string.match(data, "^SMB_MODULES=([^\n]+)")
   local smb_modules_enabled = ParseBooleanSetting(smb_modules)
   if smb_modules_enabled ~= nil then
@@ -5197,11 +5669,21 @@ function PLDR.LoadSettingsNonFatal()
   end
   PLDR.ApplyVideoStandardRuntime(PLDR.VIDEO_STANDARD)
   if type(UI) == "table" then
+    -- Only override the default when the sidecar actually carries the key. The old
+    -- `== true` collapsed a MISSING key to false, which would have silently forced
+    -- the new default back off for every existing install.
     local hide_text_enabled = ParseBooleanSetting(hide_text)
-    if type(UI.SetHideTextMode) == "function" then
-      UI.SetHideTextMode(hide_text_enabled == true, false)
+    if hide_text_enabled ~= nil then
+      if type(UI.SetHideTextMode) == "function" then
+        UI.SetHideTextMode(hide_text_enabled == true, false)
+      else
+        UI.HideTextMode = (hide_text_enabled == true)
+      end
+    end
+    if type(UI.SetCoverPreview) == "function" then
+      UI.SetCoverPreview(PLDR.COVER_ART ~= false)
     else
-      UI.HideTextMode = (hide_text_enabled == true)
+      UI.CoverPreviewEnabled = (PLDR.COVER_ART ~= false)
     end
   end
   return true
@@ -5231,10 +5713,16 @@ function PLDR.CommitSettingsChanges(opts)
   if opts.art_location == "pops" or opts.art_location == "pops_art" or opts.art_location == "art" then next_art_location = opts.art_location end
   local next_hdd_fs = PLDR.NormalizeHddFs(prev.hdd_fs)
   if opts.hdd_fs ~= nil then next_hdd_fs = PLDR.NormalizeHddFs(opts.hdd_fs) end
+  -- Default-ON boolean, so the fallback is `~= false` (mirrors next_boot_sound).
+  local next_cover_art = (prev.cover_art ~= false)
+  if type(opts.cover_art) == "boolean" then next_cover_art = opts.cover_art end
   local next_gamelist_cache = (prev.gamelist_cache == true)
   if type(opts.gamelist_cache) == "boolean" then next_gamelist_cache = opts.gamelist_cache end
   local next_boot_sound = (prev.boot_sound ~= false)
   if type(opts.boot_sound) == "boolean" then next_boot_sound = opts.boot_sound end
+  -- Default-ON boolean, so the fallback is `~= false` (mirrors next_boot_sound).
+  local next_retrogem = (prev.retrogem_gameid ~= false)
+  if type(opts.retrogem_gameid) == "boolean" then next_retrogem = opts.retrogem_gameid end
   local next_bdma_adaptive = (prev.bdma_adaptive == true)
   if type(opts.bdma_adaptive) == "boolean" then next_bdma_adaptive = opts.bdma_adaptive end
   local next_overscan = math.floor(tonumber(prev.overscan) or 0)
@@ -5273,8 +5761,10 @@ function PLDR.CommitSettingsChanges(opts)
     details_align = next_details_align,
     art_location = next_art_location,
     hdd_fs = next_hdd_fs,
+    cover_art = next_cover_art,
     gamelist_cache = next_gamelist_cache,
     boot_sound = next_boot_sound,
+    retrogem_gameid = next_retrogem,
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
@@ -5507,8 +5997,24 @@ local function CollectStartupBackendTargets()
   local seen_hdd_paths = {}
   local seen_roots = {}
   local boot_name = select(1, DetectBootDevice())
-  local explicit_ata_session = type(PLDR.IsExplicitATASession) == "function" and PLDR.IsExplicitATASession()
   targets.boot_name = boot_name
+  -- boot_name == "HDD" is NOT the same as "booted from an APA/PFS drive".
+  -- ResolveBootContext folds BOTH the APA prefixes (hdd:/pfs:/apa:) AND the BDM
+  -- exFAT one (ata:) into kind "HDD", so an exFAT boot reports "HDD" too --
+  -- CosmicScale's -debug toast on an ata:/POPS/ boot read `kind: HDD`.
+  --
+  -- That distinction is load-bearing here. Gating APA startup on kind alone made an
+  -- exFAT boot bring up the APA backend and go looking through APA partitions for
+  -- settings -- reported 2026-07-29 as "it tried to find settings on __.POPS when
+  -- booted from ATA". Discriminate on the PREFIX: only a real APA/PFS boot owns the
+  -- APA startup path. (The old `not explicit_ata_session` guard is NOT the fix and
+  -- must stay removed -- dropping it is what made -page=ata stop deleting the PFS
+  -- page, locked by T18/T49. This is about the BOOT DEVICE, not the launch arg.)
+  local boot_prefix = string.lower(tostring(ResolveBootContext().prefix or ""))
+  local boot_is_apa = string.match(boot_prefix, "^hdd%d*$") ~= nil
+     or string.match(boot_prefix, "^pfs%d*$") ~= nil
+     or string.match(boot_prefix, "^apa%d*$") ~= nil
+  targets.boot_is_apa = boot_is_apa
 
   if boot_name == "USB" then
     targets.usb = true
@@ -5516,7 +6022,14 @@ local function CollectStartupBackendTargets()
     targets.mmce = true
   elseif boot_name == "MX4SIO" then
     targets.mx4sio = true
-  elseif boot_name == "HDD" and not explicit_ata_session then
+  elseif boot_is_apa then
+    -- The `and not explicit_ata_session` guard here is GONE (2026-07-28). It skipped
+    -- APA/PFS startup init whenever the session was arg-launched with -page=ata, which
+    -- paired with the old visibility isolation: the PFS page was hidden, so leaving it
+    -- uninitialised cost nothing. Now that visibility follows the setting alone and BOTH
+    -- is the default, that page is VISIBLE on an ATA arg-launch -- and skipping its init
+    -- would leave a visible page that lists nothing, which is worse than the bug it
+    -- replaced. An HDD boot initialises its APA backend regardless of the launch arg.
     targets.hdd = true
   end
 
@@ -5534,10 +6047,20 @@ local function CollectStartupBackendTargets()
       targets.mx4sio = true
     elseif string.match(normalized, "^mmce%d*:/") ~= nil then
       targets.mmce = true
-    elseif not explicit_ata_session and (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
+    -- The `not explicit_ata_session` guards that used to sit on these two branches are
+    -- GONE (2026-07-28), for the same reason as the visibility rule above. They stopped
+    -- HDD/PFS POPSTARTER.ELF paths being registered whenever the session was arg-launched
+    -- with -page=ata. That was coherent while an ATA session also HID the PFS page: an
+    -- unreachable page needs no paths. Now that PFS stays visible and initialised, leaving
+    -- its paths unregistered would give a page you can open, browse and launch from, whose
+    -- POPSTARTER.ELF then cannot be found -- the L-09 failure shape all over again.
+    -- A launch argument says which PAGE to open. It does not say which devices exist.
+    elseif (string.match(normalized, "^pfs%d*:/") ~= nil or string.match(normalized, "^hdd%d:") ~= nil) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, paths[i])
-    elseif not explicit_ata_session and targets.boot_name == "HDD" and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
+    -- APA-only, not kind "HDD": an ata: (exFAT) boot also reports kind "HDD", and
+    -- registering APA POPSTARTER paths for it sent settings hunting through __.POPS.
+    elseif targets.boot_is_apa and (IsDefaultRelativePopstarterPath(raw) or IsLegacyDefaultPopstarterPath(raw)) then
       targets.hdd = true
       AddUniqueStartupPath(targets.hdd_paths, seen_hdd_paths, raw)
     else
@@ -5697,7 +6220,13 @@ function PLDR.AutoInitStartupBackends()
     else
       pcall(EnsureHddRuntimeReadyForExec)
     end
-    if targets.boot_name == "HDD" then
+    -- APA-only for the same reason as above: this readies the APA BOOT PARTITION
+    -- mount, which only exists when we actually booted from an APA/PFS drive. An
+    -- ata: (exFAT) boot also reports kind "HDD", and asking it to ready a boot
+    -- partition it does not have is how settings ended up hunting through __.POPS.
+    -- targets.hdd can still be true here from a pfs:-rooted POPSTARTER path on an
+    -- exFAT boot, so the outer guard is not sufficient.
+    if targets.boot_is_apa then
       EnsureBootHddMountReady()
     end
     WarmStartupHddTargetPaths(targets.hdd_paths)
@@ -5756,86 +6285,99 @@ local function PaceScanFrame()
   end
 end
 
-local function EnsureMassBackendsReady(mode)
+-- EXP32: the reference-parity dispatcher. Returns TRUE when the mode's
+-- transport is ready to ENUMERATE, false when it is not -- and a caller that
+-- gets false must NOT sweep (NHDDL's rule: never probe a device class whose
+-- driver isn't up; the sweep's fileXio RPCs against a half-registered core
+-- were one of the wedge channels). No branch here loads a module on the UI
+-- thread, ever, beyond the LAZY first-engagement load: usbmass_bd is boot-
+-- resident, mx4sio_bd loads on first engagement (quick, detection async on
+-- its own IOP thread), and ata loads only on its worker (main.cpp kicks it at
+-- boot, EXP61; page entry is a bounded status poll, never a load).
+-- `step(msg)` is the EXP43 freeze channel, now threaded in so the ATA bring-up can
+-- narrate itself. sAGA's EXP55 screen sat on "exFAT step 1: starting the drive" and
+-- timed out, which told us WHERE but not WHY -- one message covered the whole poll.
+local function EnsureMassBackendsReady(mode, step)
+  if type(step) ~= "function" then step = function() end end
   if mode == "mx4sio" then
-    -- SIO2 EXCLUSION (mirror of the guard in EnsureMmceReadyOnce): if mmceman
-    -- already claimed the SIO2 bus this session, DECLINE loading mx4sio_bd --
-    -- the two cannot coexist (shared-bus hang at 48%, HW 2026-07-20).
-    if type(System) == "table" and type(System.getSio2Owner) == "function" then
-      local ok_o, owner = pcall(System.getSio2Owner)
-      if ok_o and owner == "MMCE" then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add(PLDR.L("MMCE was used this session -- restart to browse MX4SIO\n(the two share a bus and cannot run together)"), "warn")
-        end
-        return
-      end
-    end
-    -- CASCADE GUARD: if the lazy ata bring-up is in flight, its load owns the
-    -- IOP module loader. Queueing System.initMX4SIO behind it would block this
-    -- page forever if that load ever wedges (the one-wedge-two-pages "42%"
-    -- cascade). Wait screen-alive up to ~20s for it to finish; if it is STILL
-    -- running after that, decline this scan pass instead of queueing blind --
-    -- the next page entry retries cleanly.
+    -- CASCADE BOUND: the ata worker loads its modules through the SAME IOP
+    -- module loader a page-entry initMX4SIO uses. If that load is in flight
+    -- (exFAT boot kick still running, or another page kicked it), wait
+    -- screen-alive -- BOUNDED -- instead of queueing a synchronous load
+    -- behind a possibly-wedged loader (the one-wedge-two-pages class). Still
+    -- running after the budget -> report not-ready; the next entry retries.
+    -- (Lazy loading re-opened this window; rev1's boot-time load had closed
+    -- it, so the bound returns with the laziness.)
     if type(System) == "table" and type(System.initATAStatus) == "function" then
       local ok_st, st = pcall(System.initATAStatus)
       if ok_st and st == 1 then
-        for _ = 1, (20 * 60) do
+        for _ = 1, (10 * 60) do
           PaceScanFrame()
           local ok2, s2 = pcall(System.initATAStatus)
-          if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+          if ok2 and type(s2) == "number" and s2 ~= 1 then st = s2 break end
         end
-        local ok3, s3 = pcall(System.initATAStatus)
-        if ok3 and s3 == 1 then
-          return
-        end
+        if st == 1 then return false end
       end
     end
+    -- LAZY load on first engagement (maintainer directive; OPL loads
+    -- transports at first BDM init, R3Z loads stacks when engaged). NO
+    -- MMCE<->MX4SIO gate (maintainer, 2026-07-21): official OPL runs mmceman
+    -- and mx4sio_bd resident together in the field and it works; we carry the
+    -- same freesio2 bus manager OPL does (EXP31). [Recorded tradeoff: R3Z3N
+    -- advises gating -- the adapters tie the memcard port's /ACK differently
+    -- -- and R3Z full-IOP-resets between the stacks; the maintainer weighed
+    -- OPL's field evidence and chose coexistence.] A failed load never
+    -- latches -- the next entry retries (OPL's success-only latch rule).
+    -- Latched no-op once loaded.
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
-      pcall(System.initMX4SIO)
+      local ok_c, loaded = pcall(System.initMX4SIO)
+      return ok_c and loaded ~= false
     end
-    return
+    return true
   end
 
   if mode == "ata" then
-    -- LAZY ASYNC bring-up (OPL's arrangement -- its "ps2atad" embed is the same
-    -- ata_bd blob loaded mid-session on a worker thread). NO boot-time load
-    -- anymore (the ~5-6s black-screen cost was unacceptable); the page pays for
-    -- the drive it is opening, screen alive. Frame-count the timeout, NOT
-    -- Timer.getTime (MICROSECONDS trap). A working bring-up takes seconds
-    -- (spin-up included); ~90s is a generous ceiling before we give up and the
-    -- page reports no drive. The APA/PFS hdd0: boot path is separate and
-    -- synchronous (luaHDD) and latches the same load-once flag.
+    -- EXP65: SMS-proven shape -- module bring-up runs on the MAIN thread,
+    -- serial (SMS_IOPStartATA loads ata_bd lazily the same way, with
+    -- ATA/MX4SIO/MMCE coexisting). Every worker-based variant raced main-thread
+    -- SIF traffic and wedged: EXP32-60 page freeze ("status 1" forever), EXP61
+    -- boot black (modload vs modload), EXP64 boot black + MX4SIO light stuck
+    -- (worker fileXio verification vs boot traffic). NEVER spawn the worker
+    -- here: initATAModules loads serially (or short-circuits when the boot
+    -- kick already brought the modules up). Drive-readiness then comes from
+    -- the sweep below (BuildMassRootIdentity probes the ata unit by driver
+    -- name) under the EXP63/BuildBoundedIdentityDeferred retry budget, whose
+    -- per-pass "retrying" reports narrate the slow-drive wait.
     local S = System
-    local have_async = type(S) == "table"
-      and type(S.initATAAsync) == "function"
-      and type(S.initATAStatus) == "function"
-    if have_async then
-      local started = -1
-      pcall(function() started = S.initATAAsync() end)
-      -- started: -1 spawn-failed, 1 running, 2 done-ok (already loaded)
-      if type(started) == "number" and started >= 0 then
-        local st = started
-        for _ = 1, (90 * 60) do
-          if st == 2 or st == 3 then break end
-          PaceScanFrame()
-          local ok2, s2 = pcall(S.initATAStatus)
-          if ok2 and type(s2) == "number" then st = s2 end
-        end
-        return
+    if type(S) ~= "table" or type(S.initATAModules) ~= "function" then
+      return false
+    end
+    -- EXP57: report the IOP memory headroom BEFORE the load. If the storage layer
+    -- cannot get its buffer this is where a 4TB drive dies, and it is OUR module
+    -- footprint at fault, not the drive.
+    local heap = "?"
+    if type(S.iopHeapProbe) == "function" then
+      local ok_h, h = pcall(S.iopHeapProbe)
+      if ok_h and type(h) == "table" then
+        heap = h.can_alloc_128k and "ok" or ("NO("..tostring(h.largest or "?")..")")
       end
-      -- async couldn't start (thread create failed) -- fall through to sync.
     end
-    if type(S) == "table" and type(S.initATA) == "function" then
-      pcall(S.initATA)
+    step("exFAT 1a: loading the driver [iop128k="..heap.."]")
+    local ok_m, res_m, why_m = pcall(S.initATAModules)
+    if not (ok_m and res_m == true) then
+      -- STILL_STARTING: the boot kick is mid-flight -- report not-ready; the next
+      -- page entry usually finds the modules already resident.
+      step("exFAT 1b: driver not ready ("..tostring(why_m or res_m)..") [iop128k="..heap.."]")
+      return false
     end
-    return
+    step("exFAT 1b: driver loaded, checking for the drive [iop128k="..heap.."]")
+    return true
   end
 
   if type(PLDR) == "table" and type(PLDR.EnsureUsbMassReadyOnce) == "function" then
     pcall(PLDR.EnsureUsbMassReadyOnce)
-    return
   end
-
+  return true
 end
 
 local function WaitMassProbeRetry(attempt, max_attempts)
@@ -5847,53 +6389,168 @@ local function WaitMassProbeRetry(attempt, max_attempts)
   end
 end
 
-local function BuildMassRootIdentity(mode)
-  EnsureMassBackendsReady(mode)
+-- `report(msg)` is OPTIONAL and exists for ONE reason: the internal-exFAT freeze.
+-- A hung IOP call never returns, so the only evidence a tester can give us is the
+-- message that was ALREADY on screen when it stopped. Every step below is therefore
+-- painted BEFORE the call it names. This is the EXP11 numbered-step channel, which
+-- the EXP32 device-layer rebuild dropped -- without it a failed sAGA round tells us
+-- nothing, which is exactly what happened on EXP38/39/40.
+local function BuildMassRootIdentity(mode, report)
+  local function step(msg)
+    if type(report) == "function" then pcall(report, msg) end
+  end
+  step("exFAT step 1: starting the drive")
+  local ready = EnsureMassBackendsReady(mode, step)
 
   local identity = {
     usb = {},
     mx4sio = {},
     ata = {},
-    present_roots = {}
+    present_roots = {},
+    -- EXP41 diagnostics. `drivers` is the raw GET_DRIVERNAME string per mounted
+    -- root; `bdm_devices` is what the block layer says is connected. Together
+    -- they answer "the page is empty / wrong -- which half is lying?" without a
+    -- serial cable, which is the question that has cost the most test cycles.
+    drivers = {},
+    bdm_devices = {}
   }
+
+  -- Not ready = do NOT sweep (NHDDL: never probe a class whose driver isn't
+  -- up). Return the empty identity plus the flag so callers can distinguish
+  -- "drive still starting" from "no device found".
+  if ready == false then
+    return identity, false
+  end
   local seen_present = {}
   local seen_usb = {}
   local seen_mx4 = {}
   local seen_ata = {}
 
-  for slot = 0, 9 do
+  local function record(normalized, kind)
+    if normalized == nil then return end
+    if seen_present[normalized] ~= true then
+      seen_present[normalized] = true
+      table.insert(identity.present_roots, normalized)
+    end
+    if kind == "mx4sio" then
+      if seen_mx4[normalized] ~= true then seen_mx4[normalized] = true; table.insert(identity.mx4sio, normalized) end
+    elseif kind == "ata" then
+      if seen_ata[normalized] ~= true then seen_ata[normalized] = true; table.insert(identity.ata, normalized) end
+    else
+      if seen_usb[normalized] ~= true then seen_usb[normalized] = true; table.insert(identity.usb, normalized) end
+    end
+  end
+
+  -- EXP55: ASK THE SDK FOR THE DEVICE BY NAME. This is the maintainer's original
+  -- proposal from the start of this work, and it is the structural fix.
+  --
+  -- ps2sdk gives every BDM block device a `path` prefix and bdmfs_fatfs registers a
+  -- real iomanX device per unique value: ata0:, usb0:, mx4sio0:, ilink0:
+  --   ps2atad.c:358 -> "ata"      usbmass_bd/scsi.c:303 -> "usb"
+  --   mx4sio spi_sdcard_driver.c:65 -> "mx4sio"   IEEE1394_bd/scsi.c:321 -> "ilink"
+  -- and fs_driver_resolve_volume's typed branch (fs_driver.c:255-264) matches the
+  -- MOUNTED bd's path, so mx4sio0: can only ever be an MX4SIO volume. The legacy
+  -- "mass" branch (fs_driver.c:249-253) returns the requested unit VERBATIM with no
+  -- mounted-device check, over indices handed out first-free across ALL device types
+  -- (fs_driver.c:131-134, :277) -- i.e. raw connection order. Every "MX4SIO page shows
+  -- the ATA drive" report traces to that. Typed names make it IMPOSSIBLE rather than
+  -- unlikely, and they are already live in the shipped ELF: the pinned CI image
+  -- ps2dev:v2.0.0 contains both 6ac0d1da (bd->path) and 5d64b0eb (typed registration).
+  --
+  -- Also fixes cover art by construction: the art folder is derived from the game
+  -- root's device prefix, so resolving to the wrong disk meant reading the wrong
+  -- ART/ folder. mx4sio0:/POPS/ and mx4sio0:/ART/ are guaranteed the same card.
+  --
+  -- The legacy mass walk below stays as a FALLBACK only: a typed device does not
+  -- exist in iomanX until the first device of its type has connected (fs_ensure_typed
+  -- _driver runs from connect_bd), so an absent one is "not here yet", never fatal.
+  -- Unit numbers are a per-path ORDINAL recomputed on every call, so they are
+  -- resolved fresh here and never persisted.
+  local TYPED_PREFIX = { mx4sio = "mx4sio", ata = "ata", usb = "usb" }
+  local typed = TYPED_PREFIX[mode]
+  local typed_found = false
+  if typed ~= nil then
+    for unit = 0, 3 do
+      local troot = typed..tostring(unit)..":/"
+      step("checking "..troot)
+      local ok_t, present = pcall(doesFolderExist, troot)
+      if ok_t and present == true then
+        identity.drivers[troot] = typed.." (typed)"
+        record(troot, mode)
+        typed_found = true
+      end
+    end
+  end
+
+  -- EXP41: `parId` IS NOT A MASS UNIT. EXP36 mapped each enumerated BDM device to
+  -- a slot with `mass<parId>:/`, on the stated premise that "each connected block
+  -- device already carries its own mass unit (parId)". That premise is false, and
+  -- it is the MX4SIO-page-shows-ATA-files bug.
+  --
+  -- What parId actually is, in ps2sdk:
+  --   ps2atad.c:361            g_ata_bd[i].parId  = 0x00   (whole disk)
+  --   usbmass_bd/scsi.c:336    g_scsi_bd[i].parId = 0x00   (whole disk)
+  --   IEEE1394_bd/scsi.c:354   g_scsi_bd[i].parId = 0x00   (whole disk)
+  --   mx4sio spi_sdcard_driver.c:56           0x00         (whole disk)
+  --   part_driver_mbr.c:126    parId = the MBR PARTITION-TYPE byte (0x07, 0x0B...)
+  --   part_driver_gpt.c:146    parId = 0
+  -- So parId is 0 for every whole-disk device and every GPT partition, and a
+  -- filesystem-type byte for MBR partitions. It is never an index.
+  --
+  -- The consequence was deterministic, not flaky: ATA and MX4SIO both report
+  -- parId 0, so BOTH resolved to "mass:/" and BOTH were recorded -- ATA into
+  -- identity.ata and MX4SIO into identity.mx4sio. mass:/ is slot 0, i.e. whatever
+  -- connected first. Boot from MC with the internal drive present and slot 0 is
+  -- ATA, so GetMX4SIOMassRootNow returned mass:/ and the MX4SIO page listed the
+  -- ATA drive's games. Re-scanning could never help: parId is 0 every time.
+  -- (On an MBR drive it also mapped a FAT32 partition to "mass12:/", which does
+  -- not exist, so that device silently vanished instead.)
+  --
+  -- There is NO correct BDM-device -> massN mapping available to us: bdm_get_bd
+  -- exposes BDM's own mount order, which mixes whole-disk devices with partition
+  -- pseudo-devices and is unrelated to bdmfs_fatfs's volume index. So we ask the
+  -- slot itself what it is, which is authoritative by construction.
+  --
+  -- EXP36's real goal -- don't stall the carousel on a mid-bringup ATA slot -- is
+  -- preserved by the doesFolderExist() gate below: an absent or not-yet-mounted
+  -- slot is skipped WITHOUT the ioctl, so we only pay a devctl for slots that are
+  -- actually mounted (a handful), never for the flaky/absent ones that caused the
+  -- stall. The BDM enumeration is kept, but only to record what the block layer
+  -- believes exists, for the diagnostic -- never to derive a slot number.
+  -- Legacy fallback ONLY. Skipped entirely once a typed device answered, so a
+  -- correctly-registered card never touches the connection-ordered mass namespace.
+  for slot = 0, (typed_found and -1 or 9) do
     local root = (slot == 0) and "mass:/" or ("mass"..tostring(slot)..":/")
     local normalized = NormalizeMassRoot(root)
+    -- Painted before the dopen: a slot backed by a wedged drive hangs HERE, and
+    -- the slot number on screen is then the whole diagnosis.
+    step("exFAT step 2."..tostring(slot)..": checking "..tostring(root))
     if normalized ~= nil and doesFolderExist(normalized) then
-      if seen_present[normalized] ~= true then
-        seen_present[normalized] = true
-        table.insert(identity.present_roots, normalized)
-      end
-
-      -- Only classify mounted roots. Probing absent slots can be slow and can
-      -- produce unstable driver readings on some hardware.
+      step("exFAT step 3."..tostring(slot)..": identifying "..tostring(root))
       local driver = PLDR.GetMassMountDriver(normalized)
-      local kind = ClassifyMassRootDriver(driver)
-      if kind == "mx4sio" then
-        if seen_mx4[normalized] ~= true then
-          seen_mx4[normalized] = true
-          table.insert(identity.mx4sio, normalized)
-        end
-      elseif kind == "ata" then
-        if seen_ata[normalized] ~= true then
-          seen_ata[normalized] = true
-          table.insert(identity.ata, normalized)
-        end
-      else
-        if seen_usb[normalized] ~= true then
-          seen_usb[normalized] = true
-          table.insert(identity.usb, normalized)
+      identity.drivers[normalized] = (type(driver) == "string" and driver ~= "") and driver or "(none)"
+      record(normalized, ClassifyMassRootDriver(driver))
+    end
+  end
+
+  -- Diagnostic only: what the BDM layer says is connected, independent of which
+  -- mass slot each one landed on. A device that appears here but in no slot above
+  -- is enumerated-but-not-mounted, which is the single most useful thing to know
+  -- when a page comes up empty.
+  step("exFAT step 4: reading the device list")
+  if type(System) == "table" and type(System.bdmList) == "function" then
+    local ok, list = pcall(System.bdmList)
+    if ok and type(list) == "table" then
+      for i = 1, #list do
+        local d = list[i]
+        if type(d) == "table" and d.name ~= nil then
+          table.insert(identity.bdm_devices, tostring(d.name))
         end
       end
     end
   end
 
-  return identity
+  return identity, true
 end
 
 -- Turn System.getUsbDiag()'s raw IRX return codes into one short line for the
@@ -6028,22 +6685,35 @@ end
 -- quit permanently. A drive that enumerates at t=6s is found by R3Z and is
 -- invisible to us no matter how many times the tester retries.
 -- We cannot literally loop forever (this is a blocking scan on page entry, not a
--- UI loop), so bound it -- but bound it at "slower than any plausible drive"
--- rather than at 2 seconds. A working setup still returns on attempt 1 and pays
--- nothing; only an already-failing setup ever waits.
-local USB_PROBE_ATTEMPTS = 12
+-- UI loop), so bound it. EXP37: a REASONABLE bound (3), not 12 -- a present USB
+-- returns on attempt 1 and pays nothing, so the only thing the old 12 did was make
+-- a NO-USB page hang ~12s (progress crawling 38%..44%) before failing (maintainer:
+-- "shouldn't have to look for usb 12 fucking times... reasonable try and gracefully
+-- fail"). 3 attempts (matches the ata/default settle budget) still covers a slow
+-- enumerate but fails fast and clean when there is simply no drive.
+local USB_PROBE_ATTEMPTS = 3
 
 local function BuildUsbIdentityDeferred(progress)
+  -- EXP67: "found one" is NOT "found all". A second USB stick mounts LATER than
+  -- the first, and the old early-return on ANY non-empty pass handed back just
+  -- the first drive -- dual-USB setups listed one drive's games (maintainer).
+  -- Keep probing while the root set is still growing (or empty); settle when a
+  -- pass adds nothing new (single-drive users pay one extra settle second).
   local attempts = 0
-  local identity = nil
-  while attempts < USB_PROBE_ATTEMPTS do
+  local best_identity = nil
+  local best_count = 0
+  local prev_count = -1
+  local settled = false
+  while attempts < USB_PROBE_ATTEMPTS and not settled do
     attempts = attempts + 1
     -- BuildMassRootIdentity -> EnsureMassBackendsReady("usb") -> EnsureUsbMassReadyOnce
     -- re-attempts the module load every pass. EnsureUsbMass only latches on
     -- SUCCESS, so a failed load is retried here the way R3Z retries it.
-    identity = BuildMassRootIdentity("usb")
-    if type(identity) == "table" and type(identity.usb) == "table" and #identity.usb > 0 then
-      return identity
+    local identity = BuildMassRootIdentity("usb")
+    local count = (type(identity) == "table" and type(identity.usb) == "table") and #identity.usb or 0
+    if count > best_count then
+      best_count = count
+      best_identity = identity
     end
     local hook = progress
     if type(hook) ~= "function" and type(PLDR.UsbProbeProgress) == "function" then
@@ -6053,112 +6723,105 @@ local function BuildUsbIdentityDeferred(progress)
       pcall(hook, attempts, USB_PROBE_ATTEMPTS)
     end
     WaitMassProbeRetry(attempts, USB_PROBE_ATTEMPTS)
-    if attempts < USB_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
+    if attempts < USB_PROBE_ATTEMPTS then
+      if best_count == 0 or count > prev_count then
+        -- still looking (nothing yet, or the set just grew): give a late stick a beat
+        if type(System) == "table" and type(System.sleep) == "function" then
+          pcall(System.sleep, 1)
+        end
+      else
+        settled = true
+      end
     end
+    prev_count = count
   end
-  return identity or BuildMassRootIdentity("usb")
+  return best_identity or BuildMassRootIdentity("usb")
 end
 
--- MX4SIO gets the LARGEST retry budget of the deferred mass builders (USB 3,
--- ATA 4, MX4SIO 6): the SD-over-SPI bridge (MX4SIO / SD2PS2TD) is the slowest and
--- flakiest to mount, and FifthFox reported intermittent "not detected" on real
--- hardware that a manual R1 rescan (a whole fresh set of attempts) reliably fixed
--- -- i.e. the card just needs more init+settle cycles than 3. Each attempt re-runs
--- the init (EnsureMassBackendsReady -> System.initMX4SIO) and WaitMassProbeRetry
--- re-pokes (refreshMassBackends) before the 1s settle, so more attempts = more of
--- exactly the bring-up work R1 does, without making the user press R1.
-local function BuildMX4IdentityDeferred()
-  -- SIO2 exclusion short-circuit: when MMCE owns the bus, the driver load was
-  -- DECLINED (EnsureMassBackendsReady) -- nothing will ever enumerate, so skip
-  -- the 6x1s retry ladder and return one no-retry scan (empty; the guard's
-  -- toast already told the user why).
-  if type(System) == "table" and type(System.getSio2Owner) == "function" then
-    local ok_o, owner = pcall(System.getSio2Owner)
-    if ok_o and owner == "MMCE" then
-      return BuildMassRootIdentity("mx4sio")
-    end
-  end
-  -- FUNCTION-local (not chunk-level): system.lua's main chunk is near Lua's 200-local cap.
-  local MX4_PROBE_ATTEMPTS = 6
-  -- Bounded retry masks the first-entry quirk: mx4sio_bd self-detects the SD card on its
-  -- own IOP thread AFTER the IRX loads, so the EE side must SETTLE between re-scans or it
-  -- races the still-mounting FAT volume and finds nothing. Sleep 1s between attempts -- the
-  -- same pattern BuildUsbIdentityDeferred and BuildATAIdentityDeferred use. (7462a41 dropped
-  -- the old InitMX4SIOPopsRoot retry/settle loop and left THIS builder as the only deferred
-  -- one without a delay, so a cold first entry kicked out at "Locating MX4SIO..." 42% because
-  -- identity.mx4sio was still empty -- regression reported ~2026-06-17.)
+-- EXP32: ONE bounded deferred builder for the lazily-loaded transports
+-- (mx4sio, ata) -- one settle-retry MECHANISM replacing the two divergent
+-- ladder implementations, with a per-mode BUDGET where hardware demanded it
+-- (see the budget note inside). A pass is just cheap opendir+ioctl sweeps.
+-- The old ladders' WaitMassProbeRetry re-poke (a bdm_query RPC that could
+-- land mid-module-registration -- one of the wedge channels) is gone from
+-- these paths. Second return distinguishes "transport not ready" (worker
+-- still starting / load declined or failed) from "swept clean, nothing
+-- there", so the page can say the truthful thing instead of a generic
+-- no-device toast. (USB keeps its own builder unchanged above: its attempt
+-- ladder + diag flow is HW-confirmed since the #508 fix, no freeze channel.)
+local function BuildBoundedIdentityDeferred(mode, report)
+  -- ONE mechanism (settle-retry sweep), per-mode BUDGET where hardware
+  -- demanded it: mx4sio keeps its 6 passes -- the SD-over-SPI bridge is the
+  -- slowest/flakiest to mount, the budget was raised 3->6 precisely because
+  -- FifthFox hit intermittent "not detected" at 3 on real hardware, and the
+  -- maintainer reports zero misses since (2026-07-21: "I haven't had a no
+  -- MX4SIO detected in a long time"). The settle exists because mx4sio_bd
+  -- self-detects the card on its own IOP thread AFTER the IRX loads; an
+  -- immediate sweep races the still-mounting volume (the old two-entries-to-
+  -- see-the-card quirk). ata gets 10 (EXP65): the sweep itself IS the
+  -- drive-readiness verification now -- a slow drive (sAGA's 4TB) is not
+  -- ready when ata_bd's _start returns (SMS waits ~10s post-load before
+  -- scanning; rr0718's ~15s boot bought the same time), so the retry passes
+  -- double as the spin-up window, each narrated by the "retrying" report.
+  local budget = (mode == "mx4sio") and 6 or (mode == "ata") and 10 or 3
+  local identity, ready
   local attempts = 0
-  while attempts < MX4_PROBE_ATTEMPTS do
+  while attempts < budget do
     attempts = attempts + 1
-    local identity = BuildMassRootIdentity("mx4sio")
-    if type(identity) == "table" and type(identity.mx4sio) == "table" and #identity.mx4sio > 0 then
-      return identity
+    if type(report) == "function" and attempts > 1 then
+      pcall(report, "exFAT: retrying (pass "..tostring(attempts).." of "..tostring(budget)..")")
     end
-    WaitMassProbeRetry(attempts, MX4_PROBE_ATTEMPTS)
-    if attempts < MX4_PROBE_ATTEMPTS and type(System) == "table" and type(System.sleep) == "function" then
+    identity, ready = BuildMassRootIdentity(mode, report)
+    if ready == false then
+      return identity, false
+    end
+    if type(identity) == "table" and type(identity[mode]) == "table" and #identity[mode] > 0 then
+      return identity, true
+    end
+    if attempts < budget and type(System) == "table" and type(System.sleep) == "function" then
       pcall(System.sleep, 1)
     end
   end
-  return BuildMassRootIdentity("mx4sio")
+  -- Return the LAST attempt's result -- re-sweeping here would be a redundant
+  -- extra pass of the same probes (review finding on the EXP32 PR).
+  -- EXP66: an exhausted ata sweep with no unit found resets the resident latch,
+  -- so the next page entry RELOADS ata_bd and re-probes the (now more spun-up)
+  -- drive instead of trusting a stale "loaded" flag from a self-exited driver.
+  if mode == "ata" and type(identity) == "table"
+     and (type(identity.ata) ~= "table" or #identity.ata == 0)
+     and type(System) == "table" and type(System.clearATA) == "function" then
+    pcall(System.clearATA)
+  end
+  return identity, ready
 end
 
+-- Both Now-getters return (root|nil, status): "ready" with a root, or nil with
+-- "notready" (transport still starting -- ata worker mid-probe) / "nodevice"
+-- (swept, nothing present). Callers that ignore the second value keep working.
 function PLDR.GetMX4SIOMassRootNow()
-  local identity = BuildMX4IdentityDeferred()
-  if type(identity) == "table" and type(identity.mx4sio) == "table" then
-    return identity.mx4sio[1] or nil
+  local identity, ready = BuildBoundedIdentityDeferred("mx4sio")
+  if type(identity) == "table" and type(identity.mx4sio) == "table" and identity.mx4sio[1] ~= nil then
+    return identity.mx4sio[1], "ready"
   end
-  return nil
+  return nil, (ready == false) and "notready" or "nodevice"
 end
 
-local function BuildATAIdentityDeferred()
-  -- If the lazy async bring-up did not finish (load failed, no drive, or the
-  -- worker timed out in EnsureMassBackendsReady), there is nothing to
-  -- enumerate: skip the 4x1s retry ladder and do one no-retry scan to keep the
-  -- return shape. The page then reports no drive promptly.
-  if type(System) == "table" and type(System.ataReady) == "function" then
-    local ok, ready = pcall(System.ataReady)
-    if ok and ready == false then
-      return BuildMassRootIdentity("ata")
-    end
+function PLDR.GetATAMassRootNow(report)
+  local identity, ready = BuildBoundedIdentityDeferred("ata", report)
+  if type(identity) == "table" and type(identity.ata) == "table" and identity.ata[1] ~= nil then
+    return identity.ata[1], "ready"
   end
-  -- The internal HDD via ata_bd/BDM enumerates ASYNCHRONOUSLY and is slower to appear
-  -- than MX4SIO/USB (dev9 bring-up + HDD spin-up + BDM registration all take time).
-  -- The old retry re-scanned with NO delay, racing that enumeration -> "No exFAT HDD
-  -- detected" on real hardware (CosmicScale 2026-06-23). Retry WITH a 1s settle between
-  -- attempts -- the same pattern the USB path uses, and NHDDL's devices_bdm.c retry loop
-  -- (the authoritative exFAT-HDD launcher: it re-opendir's mass: spaced apart, not once).
-  local attempts = 0
-  while attempts < 4 do
-    attempts = attempts + 1
-    local identity = BuildMassRootIdentity("ata")
-    if type(identity) == "table" and type(identity.ata) == "table" and #identity.ata > 0 then
-      return identity
-    end
-    WaitMassProbeRetry(attempts, 4)
-    if attempts < 4 and type(System) == "table" and type(System.sleep) == "function" then
-      pcall(System.sleep, 1)
-    end
-  end
-  return BuildMassRootIdentity("ata")
-end
-
-function PLDR.GetATAMassRootNow()
-  local identity = BuildATAIdentityDeferred()
-  if type(identity) == "table" and type(identity.ata) == "table" then
-    return identity.ata[1] or nil
-  end
-  return nil
+  return nil, (ready == false) and "notready" or "nodevice"
 end
 
 function PLDR.GetRootsByType(kind, _mass_snapshot)
   local wanted = string.lower(tostring(kind or ""))
   if wanted == "mx4sio" then
-    local identity = BuildMX4IdentityDeferred()
+    local identity = BuildBoundedIdentityDeferred("mx4sio")
     return identity.mx4sio
   end
   if wanted == "ata" then
-    local identity = BuildATAIdentityDeferred()
+    local identity = BuildBoundedIdentityDeferred("ata")
     return identity.ata
   end
 
@@ -6180,10 +6843,8 @@ function PLDR.EnsureBackendForAppDir()
     return true
   end
   if string.match(path, "^mx4sio%d*:/") then
-    if type(_G.ensureMx4sioInit) == "function" then
-      local ok = pcall(_G.ensureMx4sioInit)
-      if ok then return true end
-    end
+    -- (EXP32: the dead _G.ensureMx4sioInit fallback is gone -- nothing has
+    -- defined it since the PR #476 era; System.initMX4SIO is the one path.)
     if type(System) == "table" and type(System.initMX4SIO) == "function" then
       local ok = pcall(System.initMX4SIO)
       return ok
@@ -6207,10 +6868,6 @@ function PLDR.EnsureBackendForAppDir()
       and (string.find(driver, "sdc", 1, true) ~= nil or string.find(driver, "mx4", 1, true) ~= nil)
 
     if is_mx4_mass_path then
-      if type(_G.ensureMx4sioInit) == "function" then
-        local ok = pcall(_G.ensureMx4sioInit)
-        if ok then return true end
-      end
       if type(System) == "table" and type(System.initMX4SIO) == "function" then
         local ok = pcall(System.initMX4SIO)
         if ok then return true end
@@ -6420,7 +7077,21 @@ end
 -- and, per the design ask, only after an equipped check so an already-correct
 -- card takes ZERO memory-card writes.
 
+-- The -bdma=<mode> launch argument, normalised, or nil when absent/unrecognised.
+-- Deliberately tolerant: an unknown value is ignored rather than pinning
+-- something bogus and staging the wrong driver pair.
+function PLDR.LaunchArgBdmaMode()
+  if type(PLDR.LAUNCH_ARGS) ~= "table" then return nil end
+  local raw = PLDR.LAUNCH_ARGS.bdma_raw
+  if raw == nil or raw == "" then return nil end
+  return NormalizeBdmaModeKey(raw)
+end
+
 function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
+  -- An explicit -bdma= pin WINS over the per-device choice: the user has said
+  -- exactly which variant they want staged, so do not second-guess it.
+  local pinned = PLDR.LaunchArgBdmaMode()
+  if pinned ~= nil then return pinned end
   -- exFAT internal HDD launches masquerade as USB (mass:) by design; the scene
   -- is the only reliable discriminator, so check it first.
   if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GBDMHDD then
@@ -6429,15 +7100,13 @@ function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if device_page == "MX4SIO" then return "MX4SIO" end
   if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
   if device_page == "USB" then
-    -- FAT32-vs-exFAT USB is not detectable from here (identical driver name),
-    -- so honor the user's saved USB-family preference: a user whose drive needs
-    -- the exFAT modules has BDMA Mode = exFAT-USB saved (it never worked any
-    -- other way). Any other saved mode says their USB drive is FAT32 -> remove
-    -- the modules so POPStarter's built-in USB stack takes over.
-    if NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY) == "USBEXFAT" then
-      return "USBEXFAT"
-    end
-    return "FAT32"
+    -- AUTO (Adaptive) ALWAYS stages USBEXFAT for USB (maintainer directive
+    -- 2026-07-25): the exFAT BDMA pair reads FAT32 too, so ONE variant plays
+    -- every USB stick and nobody has to guess the filesystem. FAT32/no-BDMA
+    -- (POPStarter's built-in USB stack) is a MANUAL-only choice now -- BDMA
+    -- Mode = FAT32 with Adaptive OFF. The old saved-preference gate is gone:
+    -- a saved FAT32 mode no longer strips the modules under Adaptive.
+    return "USBEXFAT"
   end
   -- HDD (PFS), net-SMB, DKWDRV, unknown: POPStarter doesn't consume the BDMA
   -- pair for these; leave whatever is staged alone.
@@ -6512,22 +7181,50 @@ end
 -- recovered POPStarter docs but only a real PS2 + this smbman.irx confirm it.
 -- ============================================================================
 
--- IPCONFIG.DAT body, or nil when DHCP (caller deletes any stale file instead).
--- Format: "<PS2_IP> <NETMASK> <GATEWAY>" (single line, no trailing newline).
+-- IPCONFIG.DAT body: "<PS2_IP> <NETMASK> <GATEWAY>", or nil when the address is
+-- blank. Emits exactly what is configured -- nothing is synthesised.
+--
+-- THERE IS NO DHCP BRANCH, ON PURPOSE, AND NO INVENTED ADDRESS. POPSTARTER cannot
+-- lease an address, so it needs literal numbers no matter what the menu does for
+-- its own browsing. Earlier versions got this wrong in both directions: first by
+-- DELETING this file whenever the menu was set to DHCP (which stranded POPSTARTER
+-- with no network at all -- issue #560), then by writing the address the menu had
+-- leased (which silently overrode what the user had typed, and was how elvengf
+-- ended up staring at a netmask he never entered). The rule now is simple: these
+-- values come from the user or from the card, and nowhere else.
+--
+-- nil means blank, which the writers treat as leave-the-card-alone -- NEVER as
+-- delete. An absent IPCONFIG.DAT is not a valid state for POPSTARTER.
 function PLDR.RenderSmbIpconfig(cfg)
-  if cfg.DHCP == true then return nil end
-  return tostring(cfg.PS2_IP or "").." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
+  local ip = tostring((cfg and cfg.PS2_IP) or "")
+  if ip == "" then return nil end
+  return ip.." "..tostring(cfg.NETMASK or "").." "..tostring(cfg.GATEWAY or "")
 end
 
 -- SMBCONFIG.DAT body. Line 1 = "<SERVER>[:<PORT>] <SHARE>" (the colon-port only
 -- when PORT != 445; the colon binds to the server, never the share). Lines 2/3
 -- (CRLF-separated) carry USER then plaintext PASS, omitted entirely for guest.
 function PLDR.RenderSmbConfig(cfg)
-  local server = tostring(cfg.SERVER or "")
-  -- Canonicalize PORT numerically so "0445"/" 445 "/non-numeric all collapse to the
-  -- default (no :port emitted), keeping the .DAT and the C connect path in agreement.
+  local server = tostring((cfg and cfg.SERVER) or "")
+  -- A BLANK SERVER MEANS WE HAVE NOTHING WORTH WRITING. Return nil so the caller
+  -- leaves the file on the card exactly as it is, instead of stamping an empty
+  -- config over a working one.
+  --
+  -- This is the "I'm polluting the format with a write" failure (issue #560):
+  -- elvengf hand-added his credentials, launched a game, and the file came back a
+  -- single line with the credentials gone. Any path that reaches a write with an
+  -- unpopulated config -- the memory card not readable yet at boot, a load that
+  -- silently failed, a first run before anything is configured -- would otherwise
+  -- destroy a file the user had made correct by hand. Writing nothing is always
+  -- recoverable; overwriting is not.
+  if server == "" then return nil end
+  -- PORT IS ALWAYS WRITTEN EXPLICITLY, including 445. This used to suppress :445
+  -- as "implied" (a deliberate call recorded in DECISIONS.md), but these files are
+  -- now the single source of truth that we READ BACK as well as write, and a
+  -- suppressed port is a value that silently changes meaning on the round trip.
+  -- The maintainer's reference format (issue #560) is explicit: "192.168.4.47:445 PS2".
   local pnum = tonumber(cfg.PORT)
-  local portpart = (pnum ~= nil and pnum ~= 445) and (":"..tostring(pnum)) or ""
+  local portpart = (pnum ~= nil) and (":"..tostring(pnum)) or ""
   local line1 = server..portpart.." "..tostring(cfg.SHARE or "")
   local user = tostring(cfg.USER or "")
   local pass = tostring(cfg.PASS or "")
@@ -6536,10 +7233,105 @@ function PLDR.RenderSmbConfig(cfg)
   -- password-with-blank-User config must reach POPStarter too, or the menu
   -- browses fine while in-game streaming silently lacks the proven-needed
   -- credentials. Both-blank stays guest (line 1 only).
-  if user ~= "" or pass ~= "" then
-    return line1.."\r\n"..user.."\r\n"..pass
+  -- ALWAYS THREE LINES. Blank User and Password in the settings mean lines 2 and 3
+  -- exist and are EMPTY -- that is the guest form, and it is what the recovered
+  -- POPSTARTER docs describe ("for guest access, don't write anything to line 2
+  -- and 3": the lines are there, holding nothing).
+  --
+  -- This used to collapse to a single line whenever both were blank, which quietly
+  -- rewrote the user's declared credential state and is half of issue #560. Empty
+  -- is not the same as absent, and POPSLOADER's job is to leave these files in a
+  -- POPSTARTER-correct shape every time it touches them -- including normalising a
+  -- one-line file it found into the full form.
+  return line1.."\r\n"..user.."\r\n"..pass
+end
+
+-- ===========================================================================
+-- POPSTARTER's .DAT files are the SINGLE SOURCE OF TRUTH for SMB config.
+--
+-- We do not keep a parallel copy in the settings sidecar and then try to keep the
+-- two in step -- that is precisely what produced issue #560, where a user typed a
+-- netmask into the app, a different netmask reached the card, and no screen could
+-- explain the difference. POPSLOADER now READS these files for its own browsing
+-- and WRITES them back in POPSTARTER's format. What you see in the app is what
+-- POPSTARTER gets, because it is the same bytes.
+--
+-- We also require no more information than POPSTARTER itself does. Eight values,
+-- and nothing invented: there are NO built-in defaults for any of them. A field
+-- with nothing on the card reads back blank for the user to fill, rather than a
+-- guess like 192.168.1.10 presented as though it were configuration.
+--
+--   IPCONFIG.DAT   "<PS2_IP> <NETMASK> <GATEWAY>"          (single line)
+--   SMBCONFIG.DAT  "<SERVER>:<PORT> <SHARE>"               (line 1)
+--                  "<USER>" / "<PASS>"                     (lines 2/3, guest omits)
+--
+-- SHARE may contain spaces ("My Shared Folder"), so line 1 splits on the FIRST
+-- space only: everything after it is the share name, verbatim.
+function PLDR.ParseIpconfigDat(text)
+  local cfg = {}
+  local line = string.match(tostring(text or ""), "^[^\r\n]*") or ""
+  local ip, mask, gw = string.match(line, "^%s*(%S+)%s+(%S+)%s+(%S+)%s*$")
+  if ip ~= nil then
+    cfg.PS2_IP, cfg.NETMASK, cfg.GATEWAY = ip, mask, gw
   end
-  return line1
+  return cfg
+end
+
+function PLDR.ParseSmbconfigDat(text)
+  local cfg = {}
+  local s = tostring(text or "")
+  local l1 = string.match(s, "^([^\r\n]*)") or ""
+  local rest = string.match(s, "^[^\r\n]*\r?\n(.*)$") or ""
+  local l2 = string.match(rest, "^([^\r\n]*)") or ""
+  local l3 = string.match(rest, "^[^\r\n]*\r?\n([^\r\n]*)") or ""
+  local head, share = string.match(l1, "^%s*(%S+)%s+(.-)%s*$")
+  if head == nil then head = string.match(l1, "^%s*(%S+)%s*$") end
+  if head ~= nil then
+    local srv, port = string.match(head, "^(.-):(%d+)$")
+    if srv ~= nil then
+      cfg.SERVER, cfg.PORT = srv, port
+    else
+      -- No explicit port. POPSTARTER's documented default is 445; surface that
+      -- rather than leaving the field blank, so what the app shows matches what
+      -- POPSTARTER will actually do with this file.
+      cfg.SERVER, cfg.PORT = head, "445"
+    end
+    cfg.SHARE = share or ""
+  end
+  -- Lines 2 and 3 always map straight to USER and PASS, blank included. A blank
+  -- credential line is an explicit "guest, no password", NOT a missing line, and a
+  -- one-line file simply reads as blank-blank. Nothing here treats empty as absent
+  -- -- that conflation is what let a write collapse the file and drop the user's
+  -- declared credential state (issue #560).
+  cfg.USER, cfg.PASS = l2, l3
+  return cfg
+end
+
+-- Read both files from wherever the pack actually is (mc0 preferred, mc1 fallback,
+-- matching POPSTARTER's own per-file order). Returns a partial config -- only keys
+-- actually present on the card -- plus the root it read from, or nil when there is
+-- no POPSTARTER folder to read.
+function PLDR.LoadPopstarterDat()
+  local root = PLDR.ResolveStagedPackRoot()
+  if root == nil then
+    for _, r in ipairs({ POPSTARTER_PACK_ROOT, "mc0:/POPSTARTER", "mc1:/POPSTARTER" }) do
+      if r ~= nil and type(doesFileExist) == "function" then
+        local ok, present = pcall(doesFileExist, r.."/SMBCONFIG.DAT")
+        if ok and present == true then root = r break end
+      end
+    end
+  end
+  if root == nil then return nil, nil end
+  local cfg = {}
+  local ip_txt = ReadWholeFile(root.."/IPCONFIG.DAT")
+  if type(ip_txt) == "string" then
+    for k, v in pairs(PLDR.ParseIpconfigDat(ip_txt)) do cfg[k] = v end
+  end
+  local smb_txt = ReadWholeFile(root.."/SMBCONFIG.DAT")
+  if type(smb_txt) == "string" then
+    for k, v in pairs(PLDR.ParseSmbconfigDat(smb_txt)) do cfg[k] = v end
+  end
+  return cfg, root
 end
 
 -- ON: install the SMB pack into mc:/POPSTARTER. Stages the 6 IRX (filesystem
@@ -6559,6 +7351,7 @@ function PLDR.ApplySmbModules(progress)
   local function step(i, name)
     if type(progress) == "function" then pcall(progress, i, total, name) end
   end
+  -- Same source SyncSmbDat uses, so install and backfill cannot disagree.
   local cfg = PLDR.SmbCopy(PLDR.SMB)
   for i = 1, #PLDR.SMB_IRX_FILES do
     local name = PLDR.SMB_IRX_FILES[i]
@@ -6597,37 +7390,67 @@ function PLDR.ApplySmbModules(progress)
       if not CopyExternalAtomicBounded(source, dest, want_size) then return false end
     end
   end
-  -- IPCONFIG.DAT: write the static line, or delete any stale file when on DHCP.
+  -- IPCONFIG.DAT: write the static line, or leave any existing file alone.
+  -- NEVER delete it. This path had the same defect bb62f2be fixed in SyncSmbDat
+  -- and was missed: installing the modules while IP assignment was DHCP deleted
+  -- the one file POPSTARTER needs to have a network at all. nil here means "the
+  -- address is not knowable yet" (no lease, no override), not "there should be
+  -- no address".
   step(#PLDR.SMB_IRX_FILES + 1, "IPCONFIG.DAT")
   local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
   local ip_body = PLDR.RenderSmbIpconfig(cfg)
-  if ip_body == nil then
-    if not DeleteIfExists(ip_dest) then return false end
-  else
+  if ip_body ~= nil then
     if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
   end
-  -- SMBCONFIG.DAT: always generated from the current settings.
+  -- SMBCONFIG.DAT: generated from the current settings, but NEVER blanked. Same
+  -- rule as IPCONFIG.DAT above -- nil means "nothing worth writing", so leave any
+  -- existing file alone rather than replacing a hand-made working config with an
+  -- empty one. Installing the modules must not cost the user their credentials.
   step(total, "SMBCONFIG.DAT")
-  if not WriteBytesAtomicBounded(PLDR.RenderSmbConfig(cfg), POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
-    return false
+  local smb_body = PLDR.RenderSmbConfig(cfg)
+  if smb_body ~= nil then
+    if not WriteBytesAtomicBounded(smb_body, POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
+      return false
+    end
   end
   return true
 end
 
--- OFF: delete ONLY the 8 SMB-exclusive files from mc:/POPSTARTER, trying them all
--- (so a partial/never-installed pack still cleans up). Leaves icon.sys / *.icn and
--- the BDMA usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
+-- OFF: delete ONLY the 8 SMB-exclusive files, trying them all (so a partial or
+-- never-installed pack still cleans up). Leaves icon.sys / *.icn and the BDMA
+-- usbd/usbhdfsd modules intact. NEVER calls RemovePopstarterMcFolder.
+--
+-- BOTH memory card slots, always. POPSTARTER reads its pack from mc0:/POPSTARTER
+-- with a per-file mc1:/POPSTARTER fallback, so deleting from the resolved root
+-- alone left a live copy on the other card: OFF then looked like it had worked
+-- while POPSTARTER still found modules and a stale SMBCONFIG.DAT carrying the
+-- user's server, share and PLAINTEXT PASSWORD. Off must mean gone (maintainer,
+-- 2026-07-29: "SMB modules off should literally remove them... We can't be
+-- leaving a mess"). RemovePopstarterMcFolder already sweeps both roots; this is
+-- the same rule for the targeted removal.
+PLDR.POPSTARTER_PACK_ROOTS = { "mc0:/POPSTARTER", "mc1:/POPSTARTER" }
+
 function PLDR.RemoveSmbModules()
   if not PLDR.EnsurePopstarterDir() then
     if UI ~= nil and UI.Notif_queue ~= nil then UI.Notif_queue.add(PLDR.L("Cannot access").." "..tostring(PLDR.POPSTARTER_DIR)) end
     return false
   end
   local ok = true
-  for i = 1, #PLDR.SMB_IRX_FILES do
-    if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/"..PLDR.SMB_IRX_FILES[i]) then ok = false end
+  local seen = {}
+  local roots = { POPSTARTER_PACK_ROOT, PLDR.POPSTARTER_PACK_ROOTS[1], PLDR.POPSTARTER_PACK_ROOTS[2] }
+  for r = 1, #roots do
+    local root = roots[r]
+    if root ~= nil and seen[root] ~= true then
+      seen[root] = true
+      -- A card that isn't present just has nothing to delete; DeleteIfExists is a
+      -- no-op on a missing file, so an absent mc1 costs nothing and never fails.
+      for i = 1, #PLDR.SMB_IRX_FILES do
+        if not DeleteIfExists(root.."/"..PLDR.SMB_IRX_FILES[i]) then ok = false end
+      end
+      if not DeleteIfExists(root.."/IPCONFIG.DAT") then ok = false end
+      if not DeleteIfExists(root.."/SMBCONFIG.DAT") then ok = false end
+    end
   end
-  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT") then ok = false end
-  if not DeleteIfExists(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then ok = false end
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     UI.Notif_queue.add("Failed to remove some SMB modules")
   end
@@ -6641,14 +7464,101 @@ end
 -- if-changed to spare the memory card. Called on every settings commit so the .DAT always
 -- track the saved settings -- even if the modules were installed or the files removed out
 -- of band (the install/remove path itself still owns the full pack via Apply/RemoveSmbModules).
+-- Are the SMB modules ACTUALLY on the memory card? PLDR.SMB_MODULES is only a saved
+-- preference, and it can outlive the files: a failed or partial install, a card swap,
+-- a user tidying mc0:/POPSTARTER by hand. SyncSmbDat already tests the filesystem
+-- before it will write SMBCONFIG.DAT, so the launch gate must test the same thing or
+-- the two disagree and a launch is allowed that POPStarter cannot complete (#560).
+-- smbman.irx is the marker SyncSmbDat itself uses; keep them on the same check.
+-- Where is the pack ACTUALLY staged? POPStarter reads every pack file from
+-- mc0:/POPSTARTER with a per-file mc1:/POPSTARTER fallback, so a pack on EITHER
+-- card is live. POPSTARTER_PACK_ROOT is not that answer: it resolves to mc0
+-- whenever slot 1 holds any card at all, whether or not the pack is on it. So on
+-- a two-card console with the pack hand-staged on mc1, POPStarter streams fine
+-- while a probe of the root alone reports "not installed".
+-- Returns the root holding smbman.irx (mc0 first, matching POPStarter's own
+-- order), or nil when neither card has it.
+function PLDR.ResolveStagedPackRoot()
+  if type(doesFileExist) ~= "function" then return nil end
+  local seen = {}
+  local roots = { POPSTARTER_PACK_ROOT, "mc0:/POPSTARTER", "mc1:/POPSTARTER" }
+  for i = 1, #roots do
+    local root = roots[i]
+    if root ~= nil and seen[root] ~= true then
+      seen[root] = true
+      local ok, present = pcall(doesFileExist, root.."/smbman.irx")
+      if ok and present == true then return root end
+    end
+  end
+  return nil
+end
+
+-- Which values POPSTARTER must have, and does not? Returns a list of missing field
+-- KEYS (empty = ready to launch).
+--
+-- WE INVENT NOTHING NOW, so every one of these starts blank on a fresh install.
+-- That is deliberate -- a guess dressed as configuration is what hid the real
+-- problem in issue #560 -- but it means "blank" is reachable, and a blank address
+-- makes RenderSmbIpconfig emit nothing, so IPCONFIG.DAT never gets written and
+-- POPSTARTER launches with no network at all. Same black screen as the original
+-- bug, by a new route. So the launch path MUST require these rather than let the
+-- user discover it as a hang.
+--
+-- PORT is deliberately NOT required: POPSTARTER defaults to 445 when no port is
+-- present, so a blank one is a valid config rather than a missing answer. USER and
+-- PASS are not required either -- blank is the guest form.
+function PLDR.MissingPopstarterNetFields()
+  local cfg = PLDR.SmbCopy(PLDR.SMB)
+  local missing = {}
+  for _, key in ipairs({ "PS2_IP", "NETMASK", "GATEWAY", "SERVER", "SHARE" }) do
+    if tostring(cfg[key] or "") == "" then missing[#missing + 1] = key end
+  end
+  return missing
+end
+
+-- Is there a memory card at all? POPSTARTER reads its entire SMB pack AND both
+-- .DAT from mc0:/POPSTARTER (with a per-file mc1: fallback), so with no card in
+-- either slot there is nowhere for that configuration to live and an SMB game can
+-- never launch -- however well browsing works, since the menu browses on its own
+-- embedded stack and needs no memory card for that. Worth saying out loud: the
+-- failure otherwise looks like a working feature right up to the black screen.
+--
+-- Fails SAFE: if the probe itself is unavailable we report "yes" rather than
+-- blocking someone on a guess.
+function PLDR.HasMemoryCard()
+  if type(doesFolderExist) ~= "function" then return true end
+  for _, root in ipairs({ "mc0:/", "mc1:/" }) do
+    local ok, present = pcall(doesFolderExist, root)
+    if ok and present == true then return true end
+  end
+  return false
+end
+
+function PLDR.AreSmbModulesStaged()
+  if type(doesFileExist) ~= "function" then return PLDR.SMB_MODULES == true end
+  local ok, root = pcall(PLDR.ResolveStagedPackRoot)
+  if not ok then return PLDR.SMB_MODULES == true end   -- probe failed: don't block on a guess
+  return root ~= nil
+end
+
 function PLDR.SyncSmbDat()
-  if not doesFileExist(POPSTARTER_PACK_ROOT.."/smbman.irx") then
+  -- Write beside the modules POPStarter will actually load, not beside a root
+  -- that merely has a card in it. Identical to the old behaviour whenever mc0
+  -- holds the pack; the only changed branch is "pack lives on mc1", which
+  -- previously wrote the .DAT nowhere at all.
+  local root = PLDR.ResolveStagedPackRoot()
+  if root == nil then
     return false
   end
+  -- PLDR.SMB IS the POPSTARTER config: these very files are where it is stored
+  -- and loaded from, so there is nothing to reconcile.
   local cfg = PLDR.SmbCopy(PLDR.SMB)
   local function write_if_changed(dest, body)
     if body == nil then
-      return DeleteIfExists(dest)        -- DHCP: no static IPCONFIG.DAT should exist
+      -- "We cannot determine the correct contents right now" -- NOT "delete it".
+      -- Deleting IPCONFIG.DAT is never correct: POPStarter cannot lease an address,
+      -- so an absent file leaves it with no network and a launch that dies silently.
+      return true
     end
     if ReadWholeFile(dest) == body then
       return true                        -- already current; skip the mc write
@@ -6656,8 +7566,8 @@ function PLDR.SyncSmbDat()
     return WriteBytesAtomicBounded(body, dest)
   end
   local ok = true
-  if not write_if_changed(POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
-  if not write_if_changed(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT", PLDR.RenderSmbConfig(cfg)) then ok = false end
+  if not write_if_changed(root.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
+  if not write_if_changed(root.."/SMBCONFIG.DAT", PLDR.RenderSmbConfig(cfg)) then ok = false end
   return ok
 end
 
@@ -6937,25 +7847,27 @@ function PLDR.InitMX4SIOPopsRoot()
   -- probe / System.sleep re-poke loop / _G.ensureMx4sioInit: that synchronous
   -- card-hunting is exactly what stalled a no-card MX4SIO on PCSX2. With no card
   -- this just returns nil (empty list) instead of blocking.
-  local root = PLDR.GetMX4SIOMassRootNow()
+  local root, status = PLDR.GetMX4SIOMassRootNow()
   if type(root) == "string" and root ~= "" then
     PLDR.SetMX4SIORoot(root)
     return root.."POPS/"
   end
-  return nil
+  return nil, status
 end
 
-function PLDR.InitATAPopsRoot()
+function PLDR.InitATAPopsRoot(report)
   -- HDD (exFAT) is a BDM mass device read via ata_bd. It enumerates under the
-  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). The driver comes
-  -- up LAZILY on page entry via the async worker (EnsureMassBackendsReady "ata"
-  -- branch, screen alive); BuildATAIdentityDeferred then observes
-  -- System.ataReady() and classifies slots, skipping retries after a failure.
-  local root = PLDR.GetATAMassRootNow()
+  -- mass: namespace with ioctl driver-name "ata" (NOT ata0:/). EXP32: the
+  -- worker is kicked in the BOOT window (main.cpp, unconditional since EXP61);
+  -- page entry polls it BOUNDED (EnsureMassBackendsReady "ata", 10s max,
+  -- screen alive, never a synchronous load) and then runs the bounded sweep.
+  -- Second return: "notready" while the drive is still starting, "nodevice"
+  -- after a clean empty sweep -- the page toasts accordingly.
+  local root, status = PLDR.GetATAMassRootNow(report)
   if type(root) == "string" and root ~= "" then
     return root.."POPS/"
   end
-  return nil
+  return nil, status
 end
 
 -- Menu-side SMB (Increment 1). LAZY: brings up the network + connects/opens the share
@@ -7095,17 +8007,35 @@ local function AppendHddGameList(partition, list_path, on_progress, partition_in
   end
   local hide_set = CollectHideBasenames(DIR)
   local total_entries = #DIR
+  -- EXP33 diag: raw counts so a zero-games scan can report "N files, M VCD"
+  -- (mounted-but-empty vs had-VCDs-but-all-filtered) -- see BuildGameList.
+  if type(PLDR.HDD.SCAN_DIAG) == "table" then
+    PLDR.HDD.SCAN_DIAG.entries = (PLDR.HDD.SCAN_DIAG.entries or 0) + total_entries
+  end
   for i = 1, #DIR do
     if not DIR[i].directory then
-      if string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
-         and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-        local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
-        if not (PLDR.GLOBAL_HIDE and is_hidden) then
-          local encoded = EncodeHddGameEntry(partition, DIR[i].name)
-          if encoded ~= nil then
-            if is_hidden then PLDR.HIDDEN[encoded] = true end
-            table.insert(PLDR.GAMES, encoded)
-            PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+      local is_vcd_file = string.lower(string.sub(DIR[i].name, -4)) == ".vcd"
+      local diag = (type(PLDR.HDD.SCAN_DIAG) == "table") and PLDR.HDD.SCAN_DIAG or nil
+      if is_vcd_file and diag then
+        diag.vcds = (diag.vcds or 0) + 1
+      end
+      if is_vcd_file then
+        -- EXP34: count WHY a counted VCD becomes zero games -- collapsed (multi-disc)
+        -- vs hidden (Global Hide) -- so the "no games" toast can say so instead of
+        -- reading as a device fault (the FifthFox/APA "hidden by accident" case).
+        if PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name) then
+          if diag then diag.collapsed = (diag.collapsed or 0) + 1 end
+        else
+          local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+          if PLDR.GLOBAL_HIDE and is_hidden then
+            if diag then diag.hidden = (diag.hidden or 0) + 1 end
+          else
+            local encoded = EncodeHddGameEntry(partition, DIR[i].name)
+            if encoded ~= nil then
+              if is_hidden then PLDR.HIDDEN[encoded] = true end
+              table.insert(PLDR.GAMES, encoded)
+              PLDR.HDD.GAMEPARTS[encoded] = "hdd0:"..partition
+            end
           end
         end
       end
@@ -7271,6 +8201,15 @@ function PLDR.HDD.BuildGameList(on_progress)
   PLDR.HIDDEN = {}
   PLDR.HDD.GAMEPARTS = {}
   PLDR.HDD.FROM_CACHE = false
+  -- EXP33: scan diagnostics. When the scan yields zero games on a drive whose
+  -- __.POPS partitions DID mount in pass 1 (the "partitions are empty" report),
+  -- these counters let the page say WHY -- a silent pass-2 re-mount failure vs a
+  -- mounted-but-empty listing vs everything filtered -- so the next hardware
+  -- report is self-diagnosing instead of opaque. (entries/vcds are added by
+  -- AppendHddGameList.)
+  PLDR.HDD.SCAN_DIAG = { avail = 0, remounted = 0, remount_fail = 0,
+                         last_fail_part = nil, last_fail_rc = nil,
+                         entries = 0, vcds = 0, hidden = 0, collapsed = 0 }
   PLDR.GAMEPATH = BuildMountedPfsPrefix(GetActiveHddGameSlot())
   if not PLDR.HDD.FOUNDANY then return end
   local ordered_partitions = GetOrderedHddPopsPartitions()
@@ -7278,12 +8217,31 @@ function PLDR.HDD.BuildGameList(on_progress)
   for i = 1, total_partitions do
     local partition = ordered_partitions[i]
     if PLDR.HDD.AVAILABLE[partition] == true then
-      local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      PLDR.HDD.SCAN_DIAG.avail = PLDR.HDD.SCAN_DIAG.avail + 1
+      local mounted, prefix, slot, mrc = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      -- Retry ONCE: this partition mounted in pass 1, so a pass-2 miss is
+      -- transient (the warm single-attempt mount -- hdd_spinup_waited latched --
+      -- lost a race with the coexisting BDM/exFAT stack on the same drive). This
+      -- is a leading suspect for the silent-zero-games report. Scoped to
+      -- AVAILABLE partitions ONLY, so it can never reintroduce the
+      -- absent-partition scan stall the single-attempt mode exists to prevent.
+      if not (mounted and prefix ~= nil) then
+        if type(System) == "table" and type(System.sleep) == "function" then pcall(System.sleep, 1) end
+        mounted, prefix, slot, mrc = MountHddGamePartitionTracked("hdd0:"..partition, FIO_MT_RDONLY)
+      end
       if mounted and prefix ~= nil then
+        PLDR.HDD.SCAN_DIAG.remounted = PLDR.HDD.SCAN_DIAG.remounted + 1
         PLDR.GAMEPATH = prefix
         AppendHddGameList(partition, prefix, on_progress, i, total_partitions)
         if slot ~= nil then
           UMountHddPartitionTracked(slot)
+        end
+      else
+        PLDR.HDD.SCAN_DIAG.remount_fail = PLDR.HDD.SCAN_DIAG.remount_fail + 1
+        PLDR.HDD.SCAN_DIAG.last_fail_part = partition
+        PLDR.HDD.SCAN_DIAG.last_fail_rc = mrc
+        if type(on_progress) == "function" then
+          pcall(on_progress, i / math.max(total_partitions, 1))
         end
       end
     elseif type(on_progress) == "function" then
@@ -7318,6 +8276,35 @@ function PLDR.HDD.BuildGameList(on_progress)
 end
 
 function PLDR.LoadHDDModules()
+  -- EXP33 cascade bound: the boot-time ata worker (main.cpp's KickAtaAsyncBoot,
+  -- fired every boot since EXP61; previously do_boot_init's gated kick) and this
+  -- APA path BOTH call the native EnsureAtaBdm. Before EXP33 they raced the
+  -- load-once latches -> double ata_bd load, whose 2nd _start re-resets the live
+  -- ATA bus (CosmicScale APA-Jail 42% class; a leading suspect for the fresh-boot
+  -- "APA lists no games" report). Wait screen-alive for the worker to finish so
+  -- HDD.Initialize's EnsureAtaBdm runs AFTER it (then it's a latched no-op). A
+  -- native mutex (EnsureAtaBdm sema) backs this up if the wait ever times out.
+  if type(System) == "table" and type(System.initATAStatus) == "function" then
+    local ok_st, st = pcall(System.initATAStatus)
+    if ok_st and st == 1 then
+      for _ = 1, (10 * 60) do
+        PaceScanFrame()
+        local ok2, s2 = pcall(System.initATAStatus)
+        if ok2 and type(s2) == "number" and s2 ~= 1 then break end
+      end
+      -- EXP61: still running after the bound means the worker is wedged inside
+      -- the IOP module-load RPC. Falling through into HDD.Initialize here would
+      -- block forever on the EnsureAtaBdm sema the worker holds -> full UI
+      -- freeze (the exFAT page's wedge used to become the APA page's freeze).
+      -- Report not-ready instead; a later re-entry finds the latch or retries.
+      local ok3, s3 = pcall(System.initATAStatus)
+      if ok3 and s3 == 1 then
+        PLDR.HDD.LOADSTATE = -1
+        UI.Notif_queue.add("The internal drive is still starting\nopen this page again in a moment")
+        return
+      end
+    end
+  end
   local ID, RET, SUCCESS, MODULE
   if PLDR.HDD.LOADSTATE == 0 then
     SUCCESS, MODULE, ID, RET = HDD.Initialize()
@@ -7361,6 +8348,14 @@ end
 function PLDR.CleanupGameList()
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
+  -- EXP57: clear the hidden map too. It used to survive here, so hidden state LEAKED
+  -- across scans and across devices: every fresh scan re-saved whatever was already in
+  -- PLDR.HIDDEN into that device's .gamecache. sAGA found the evidence -- an `H` line
+  -- for a game with no .hide file next to it. ApplyGameListCache already resets it
+  -- (PLDR.HIDDEN = {} before repopulating from the cache); the fresh-scan path never
+  -- did, and every scan calls through here first. A genuinely hidden game is re-found
+  -- from its .hide sidecar during the scan that follows, so nothing is lost.
+  PLDR.HIDDEN = {}
 end
 
 -- ============================================================================
@@ -7628,7 +8623,14 @@ function PLDR.HDD.EnsureGameList(partition_progress, game_progress, force)
       -- never sees it -- it has to be surfaced HERE or it stays undebuggable.
       local detail = tostring(err)
       if #detail > 180 then detail = string.sub(detail, 1, 180).."..." end
-      UI.Notif_queue.add("Failed to load HDD ["..tostring(where).."]\n"..detail, "error")
+      -- Translate the TITLE before appending the diagnostic. UI.Notif_queue.add
+      -- runs PLDR.L on the whole string it receives, and PLDR.L is an exact-key
+      -- lookup, so concatenating first means the "Failed to load HDD" translation
+      -- that ships in all six languages is never reached. Same fix ui.lua's
+      -- RunBusyTask already carries; it was never swept to this reporter, which is
+      -- the one the user actually sees (EnsureGameList pcalls the scan itself, so
+      -- RunBusyTask's own failure path never fires for this fault).
+      UI.Notif_queue.add(PLDR.L("Failed to load HDD").." ["..tostring(where).."]\n"..detail, "error")
     end
     PLDR.HDD.LIST_BUILT = false
   end
@@ -7972,7 +8974,7 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
   local boot_label_disp = (context and type(context.boot_device_label) == "string" and context.boot_device_label ~= "")
     and context.boot_device_label or "?"
   local body = string.format(
-    "LAUNCH RETURNED\nrc=%s\nDev:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s\nPress X/O to continue.",
+    "LAUNCH RETURNED\nrc=%s\nDev:%s Rt:%s\nGate:%s Open:%s/%s\nPOP:%s\nCfg:%s (%s)\nEff:%s (%s)\nExec:%s\nAPP:%s\nBoot:%s [%s]\nPath:Hdd=%s Reboot=%s Cold=%s API:%s\nCtx:%s\nArg0:%s\nGame:%s%s",
     tostring(rc),
     tostring(device_page),
     tostring(launch_route or "default"),
@@ -7997,9 +8999,19 @@ local function BlockLaunchFailure(rc, popstarter, device_page, argv0, game_path,
     tostring(game_path),
     diag_block
   )
+  -- The "press this to continue" line is the only translatable prose in the body,
+  -- and it hardcoded X/O -- wrong on a Japanese-ROM console, where confirm/back are
+  -- swapped. Append it as its own key (so a translator never has to reproduce the
+  -- 20-placeholder diagnostic template, where one dropped %s would raise an error on
+  -- exactly the failure path this screen exists to report) and fill the glyphs from
+  -- the ROM-aware helpers. The rc=/Dev:/Cfg:/Exec:/Arg0: dump above stays English on
+  -- purpose: field labels, paths and return codes (README rule 3).
+  local confirm_letter = (type(UI.ConfirmGlyphLetter) == "function") and UI.ConfirmGlyphLetter() or "X"
+  local back_letter = (type(UI.BackGlyphLetter) == "function") and UI.BackGlyphLetter() or "O"
+  body = body.."\n"..PLDR.LFmt("Press %s/%s to continue.", confirm_letter, back_letter)
   while true do
     UI.BottomDraw.Play()
-    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, "LAUNCH FAILED", UI.CCOL.YELLOW)
+    Font.ftPrintMultiLineAligned(LFONT, UI.SCR.X_MID, 120, 20, UI.SCR.X, UI.SCR.Y, PLDR.L("LAUNCH FAILED"), UI.CCOL.YELLOW)
     Font.ftPrintMultiLineAligned(BFONT, UI.SCR.X_MID, 170, 18, UI.SCR.X, UI.SCR.Y, body, UI.CCOL.GREY)
     Input_GetEvent()
     if UI.Pad.Events.CONFIRM or UI.Pad.Events.BACK or UI.Pad.Events.EXIT then
@@ -8785,16 +9797,27 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
   elseif (page == "EXFAT" or page == "ATA") and UI.SCENES.GBDMHDD ~= nil then
     scene = UI.SCENES.GBDMHDD
-    local ata_root = nil
+    local ata_root, ata_status = nil, nil
     if type(PLDR.InitATAPopsRoot) == "function" then
-      local ok_root, root = pcall(PLDR.InitATAPopsRoot)
-      if ok_root and type(root) == "string" and root ~= "" then
-        ata_root = root
+      -- Capture the STATUS as well as the root. InitATAPopsRoot has always returned
+      -- (root|nil, status); this call site discarded the status and replaced it with a
+      -- fixed "reformat your drive" guess, so an auto-launch that failed for any other
+      -- reason reported a cause that was very likely wrong.
+      local ok_root, root, status = pcall(PLDR.InitATAPopsRoot)
+      if ok_root then
+        ata_status = status
+        if type(root) == "string" and root ~= "" then ata_root = root end
       end
     end
     if ata_root == nil then
+      PLDR.LAST_ATA_STATUS = tostring(ata_status or "<none>")
       if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-        UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+        if ata_status ~= nil and ata_status ~= "" and ata_status ~= "nodev" then
+          UI.Notif_queue.add(PLDR.L("Could not start the internal drive").."\n"
+            ..tostring(ata_status).."\n"..PLDR.L("Report this code -- the drive may be fine"), "warn")
+        else
+          UI.Notif_queue.add("No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)", "warn")
+        end
       end
       return false
     end
@@ -8806,6 +9829,33 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
     local mmce_prefix = (type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX) or "mmce0:/"
     gamelocation = mmce_prefix.."POPS"
+  elseif page == "SMB" and UI.SCENES.GSMBNET ~= nil then
+    -- SMB auto-launch. This branch simply never existed: every other page could be
+    -- driven by -page= plus -game= and SMB alone toasted "Auto-launch page not
+    -- supported", which is a gap rather than a decision -- the launch handoff
+    -- itself has worked since 68f9ed5.
+    --
+    -- Connect FIRST, exactly like the browse path: the network stack is lazy and
+    -- nothing is up at this point. InitSMBPopsRoot returns the share's POPS root or
+    -- nil + an error code, and UI.SmbErrorMessage already maps every code to a
+    -- sentence, so a failed auto-launch says WHY (no link, refused SMBv1, logon,
+    -- share) instead of dropping silently to the menu.
+    scene = UI.SCENES.GSMBNET
+    local smb_root, smb_err = nil, nil
+    if type(PLDR.InitSMBPopsRoot) == "function" then
+      local ok_smb, root, err = pcall(PLDR.InitSMBPopsRoot)
+      if ok_smb then smb_root, smb_err = root, err end
+    end
+    if type(smb_root) ~= "string" or smb_root == "" then
+      if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
+        local msg = (type(UI.SmbErrorMessage) == "function") and UI.SmbErrorMessage(smb_err) or nil
+        UI.Notif_queue.add(msg or (PLDR.L("Could not open the SMB share").."\n"..tostring(smb_err or "")), "warn")
+      end
+      return false
+    end
+    -- The SMB launch gates (modules staged, required fields) live in the ui.lua
+    -- dispatch this path feeds, so they still apply to an auto-launch.
+    gamelocation = smb_root
   else
     if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
       UI.Notif_queue.add("Auto-launch page not supported: "..tostring(page), "warn")
@@ -8895,7 +9945,33 @@ function PLDR.SurfaceLaunchArgsDebug()
     lines[#lines+1] = "video: "..UI.VIDEO_READBACK
   end
   lines[#lines+1] = "args.page: "..tostring(PLDR.LAUNCH_ARGS.page or "<nil>")
+    .." (raw: "..tostring(PLDR.LAUNCH_ARGS.page_raw or "<nil>")..")"
   lines[#lines+1] = "args.game: "..tostring(PLDR.LAUNCH_ARGS.game or "<nil>")
+  lines[#lines+1] = "args.bdma: "..tostring(PLDR.LAUNCH_ARGS.bdma_raw or "<nil>")
+  -- WHAT THE ARGS ACTUALLY DID, not just what parsed. Every launch-arg bug reported so
+  -- far (2026-06-09, 2026-06-12, 2026-07-28) was invisible because the toast proved the
+  -- argument ARRIVED and then said nothing about whether it took effect. These four
+  -- lines are the difference between "the arg is fine" and "the arg is fine AND the
+  -- page opened", which is the question every one of those reports actually needed.
+  if type(UI.MainMenu) == "table" then
+    lines[#lines+1] = "menu.OPT: "..tostring(UI.MainMenu.OPT or "<nil>")
+      .."  autoEnter: "..tostring(UI.MainMenu.PendingAutoEnter)
+  end
+  lines[#lines+1] = "scene: "..tostring(UI.CURSCENE or "<nil>")
+  lines[#lines+1] = "bdma: "..tostring(PLDR.BDMA_MODE_KEY or "<nil>")
+    .."  adaptive: "..tostring(PLDR.BDMA_ADAPTIVE == true)
+  -- Set by the exFAT page-entry and auto-launch paths when the drive fails to come up.
+  -- Without it a failed ATA session reports only a guess ("format the drive"), which is
+  -- how three separate people were pointed at the wrong cause.
+  if PLDR.LAST_ATA_STATUS ~= nil then
+    lines[#lines+1] = "ata_status: "..tostring(PLDR.LAST_ATA_STATUS)
+  end
+  -- Same idea widened past ATA: MX4SIO and MMCE record why they failed too, so a
+  -- device that refuses to open reports a reason from whichever page the user was
+  -- on, not just the exFAT one.
+  if PLDR.LAST_DEVICE_STATUS ~= nil then
+    lines[#lines+1] = "dev_status: "..tostring(PLDR.LAST_DEVICE_STATUS)
+  end
   UI.Notif_queue.add(table.concat(lines, "\n"), "info")
 end
 
@@ -8925,6 +10001,44 @@ end
 -- below as an upvalue). Inner block kept at its original indentation for a clean diff.
 local function do_boot_init()
 PLDR.AutoInitStartupBackends()
+-- EXP38: bring the internal exFAT block stack (ata_bd) up HERE, SYNCHRONOUSLY,
+-- under the welcome splash -- the REFERENCE model. OPL, wLaunchELF_R3Z and NHDDL
+-- all load their whole block-device stack together in ONE serial window under a
+-- loading screen, before anything else touches the bus. POPSLoader diverged into
+-- lazy per-page loading, and THAT divergence is the exFAT freeze: ata_bd loaded
+-- late (mid-session, onto a busy IOP) OR async (a worker racing other IOP traffic)
+-- wedges its own bring-up (EXP24: "the IOP census at load time IS the variable;
+-- no reference loads BDM-atad late onto a full IOP").
+--
+-- This is the EXP22 arrangement sAGA confirmed reads his 4TB GPT drive ("works
+-- just fine"), with the two reasons it was reverted BOTH removed:
+--   * NO black screen -- do_boot_init runs UNDER the splash (graphics already up),
+--     so the seconds ata_bd needs show the frozen splash, not a black panel. That
+--     is exactly why the "slow device bring-up" belongs here (see the header note).
+--   * NO async race -- the EXP32/35 kick used initATAAsync (a WORKER) that kept
+--     running past do_boot_init and wedged the splash->menu transition on sAGA's
+--     drive (the 2026-07-22 black screen the EXP35 gate was chasing). A SYNCHRONOUS
+--     load blocks do_boot_init and finishes BEFORE the transition: serial, no
+--     concurrent bus traffic, exactly the EXP22 condition that worked.
+--
+-- Gated on exFAT actually being enabled (Internal HDD = EXFAT/BOTH, or a -page=ata
+-- session) so PFS-only installs pay nothing; and ata_bd self-exits fast when SPD
+-- reports no ATA device, so a driveless console barely notices. ata_bd is dev9-only
+-- -- this does NOT load or touch mmceman/SIO2 (MMCE) or the MX4SIO stack, and it
+-- shares the load-once EnsureAtaBdm with the APA/PFS boot path. The exFAT PAGE then
+-- finds the stack already up (initATA is load-once) and just reads it.
+do
+  local want_ata_boot = (type(PLDR.WantExfatBootBringup) == "function")
+                        and (PLDR.WantExfatBootBringup() == true)
+  if want_ata_boot and type(System) == "table" and type(System.initATA) == "function" then
+    pcall(System.initATA)
+  end
+end
+-- One-time hygiene: clear a leftover crash-marker file from marker-era builds
+-- (the marker system is gone in EXP32; see ClearLegacyMx4sioMarker).
+if type(PLDR.ClearLegacyMx4sioMarker) == "function" then
+  pcall(PLDR.ClearLegacyMx4sioMarker)
+end
 -- LATE START re-poll: the pre-splash poll above covers wired port-0 pads (pad_init
 -- blocks until stable), but DS3/DS4 over ds34usb/ds34bt enumerate asynchronously
 -- over seconds -- a user holding START on such a pad through boot was MISSED by
@@ -8983,21 +10097,9 @@ if type(PLDR.LAUNCH_ARGS) ~= "table"
       UI.Notif_queue.add("Boot Page device is hidden -- landed on the carousel.\nCheck Settings > Boot Page / Internal HDD.", "warn")
     end
   end
-  -- MX4SIO crash-loop guard: its probe can stall in a vendored IOP driver when
-  -- no card is present. If a prior MX4SIO entry left the pending marker set it
-  -- hung -- skip the auto-enter this boot and warn, so one stall cannot brick
-  -- every boot. When NOT auto-entering MX4SIO (opt 2), clear any stale marker so
-  -- a later working MX4SIO can auto-enter again.
-  if opt == 2 then
-    if type(PLDR.IsMx4sioAutoEnterPending) == "function" and PLDR.IsMx4sioAutoEnterPending() then
-      opt = nil
-      if type(UI) == "table" and type(UI.Notif_queue) == "table" then
-        UI.Notif_queue.add("MX4SIO auto-enter skipped: it stalled last boot.\nInsert a card or change Boot Page in Settings.", "warn")
-      end
-    end
-  elseif type(PLDR.SetMx4sioAutoEnterPending) == "function" then
-    PLDR.SetMx4sioAutoEnterPending(false)
-  end
+  -- EXP32: the MX4SIO crash-loop boot guard is gone with the marker system --
+  -- page entry no longer loads drivers (boot does), so there is no unbounded
+  -- probe for a marker to bound. Auto-enter proceeds for every device alike.
   if opt ~= nil and type(UI) == "table" and type(UI.MainMenu) == "table" then
     local carousel = type(UI.MainMenu.Carousel) == "table" and UI.MainMenu.Carousel or nil
     if carousel ~= nil then carousel.allowOptWrite = true end

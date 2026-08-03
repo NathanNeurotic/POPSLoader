@@ -10,7 +10,7 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **1.0.1** (released 2026-07-13). Rolling test artifacts continue to be published from the `dev` branch (see [Development & Building](#development--building)).
+The current public release is **1.1.0** (released 2026-07-21). Rolling test artifacts continue to be published from the `dev` branch (see [Development & Building](#development--building)).
 
 ---
 
@@ -43,7 +43,7 @@ POPSLoader's main menu exposes the following backends:
 *   **Disc (DKWDRV)** (boot DKWDRV to play PS1 discs)
 
 > [!NOTE]
-> The main menu also lists **i.Link**, but that flow is not implemented yet — selecting it shows a "not implemented" notice. **SMB (v1)** network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (**HDD (exFAT)** is likewise implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
+> The main menu can also list **i.Link**, but that flow is not implemented yet — it **ships Hidden by default** (show it under *Settings → Device List* if you want it), and selecting it shows a "not implemented" notice. **SMB (v1)** network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (**HDD (exFAT)** is likewise implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
 
 > [!NOTE]
 > Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
@@ -73,7 +73,7 @@ Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0
 | File Path | Description |
 | :--- | :--- |
 | `<device>:/POPS/GameName.VCD` | Your PS1 game image |
-| `<device>:/POPS/ART/GameName.png` | Optional cover art (200x200 8-bit PNG recommended). The `POPS/ART/` subfolder is the default location, checked first; a `<device>:/POPS/GameName.png` beside the VCD always works as a fallback. You can pick where covers (and the matching `GameName.txt` *Game details* sidecar) are looked for first in *Settings → Game List → Cover/details folder*: **device:/POPS/ART** (default), **device:/POPS** (beside the game), or **device:/ART** at the device root. |
+| `<device>:/ART/GameName_COV.png` | Optional cover art (200x200 8-bit PNG recommended). **One location, one name, no alternatives:** a top-level `ART/` folder at the device root, with the **OPL `_COV.png` convention**, so an existing OPL `ART` folder works as-is. There is no setting to change this and no fallback location — a cover anywhere else, or without the `_COV` suffix, simply will not show (it costs nothing to look for, so it will not slow anything down either). The matching `GameName.txt` *Game details* sidecar lives in the same folder. |
 | `<device>:/POPS/IOPRP252.IMG` | Required POPS support file |
 | `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary. A `POPSTARTER.ELF` dropped here is used automatically for that device's games (so you can keep, say, a USB-delay build on the USB drive without forcing it everywhere) — unless you set an explicit **POPSTARTER Path**, which always wins. See [Settings](#other-settings). |
 | `<device>:/POPS/POPS.ELF` | POPS emulator engine binary |
@@ -87,14 +87,14 @@ This layout is for the classic **HDD (PFS)** drive (Sony APA partitions via the 
 | :--- | :--- |
 | `hdd:/__.POPS/GameName.VCD` | Your PS1 game image (can also use partitions `__.POPS0` through `__.POPS9`) |
 | `hdd:/PP.GameName/IMAGE0.VCD` | *(new, validating on hardware)* A **partition-installed** game (HDDOSD / PSBBN style: one partition per game, `PP.` visible or `__.` hidden, image always named `IMAGE0.VCD`). These are listed on the HDD page under the partition's name and launched with POPStarter's `PP.GameName.ELF` convention. |
-| `hdd:/__common/POPS/ART/GameName.png` | Cover art folder (partition-installed games use the partition name minus its `PP.` / `__.` prefix) |
+| `hdd:/__common/POPS/ART/GameName_COV.png` | Cover art folder (OPL `_COV.png` naming; partition-installed games use the partition name minus its `PP.` / `__.` prefix) |
 | `hdd:/__common/POPS/IOPRP252.IMG` | Required POPS support file |
 | `hdd:/__common/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
 | `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
 | `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
 | `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
 
-> **An exFAT internal drive is set up differently (like a USB drive, not like this).** The **HDD (exFAT)** drive (BDMA Mode `ATA`) mounts as `mass:` and uses the **same flat layout as a USB / removable drive**, not APA partitions. Put a single `POPS/` folder at the drive's root holding your `.VCD` games and the POPS system files (`PATCH_5.BIN`, `IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`, `POPSTARTER.ELF`), exactly like the **USB / removable** table above (`<device>:/POPS/...`), with covers under `POPS/ART/`. Do **not** create `__.POPS` partitions or a `__common/` folder on an exFAT drive.
+> **An exFAT internal drive is set up differently (like a USB drive, not like this).** The **HDD (exFAT)** drive (BDMA Mode `ATA`) mounts as `mass:` and uses the **same flat layout as a USB / removable drive**, not APA partitions. Put a single `POPS/` folder at the drive's root holding your `.VCD` games and the POPS system files (`PATCH_5.BIN`, `IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`, `POPSTARTER.ELF`), exactly like the **USB / removable** table above (`<device>:/POPS/...`), with covers under a top-level `ART/` folder at the drive root (same as any removable device). Do **not** create `__.POPS` partitions or a `__common/` folder on an exFAT drive.
 
 ---
 
@@ -115,7 +115,6 @@ Navigate POPSLoader using a standard PS2 controller.
 | **Circle (O)** | Go back to the Main Menu / Cancel (Cross on a Japanese-ROM console) |
 | **Start** | Open Settings |
 | **Select** | Toggle "Hide Text Mode" (clears the UI for a clean view of cover art). Works on the device list and the game lists; on the Settings page use *Display → Hide UI Text* instead. |
-| **Square (□)** | Toggle cover-art preview on / off (in the game list) |
 | **Right Analog Stick (up / down)** | Scroll a long game description that doesn't fully fit on screen (when *Game details* are enabled and a `<game>.txt` is present). |
 | **L3 (left stick click)** | Hide / unhide the selected game (writes/removes a `<name>.hide` marker — works on every device, including the internal HDD). Set *Settings → Game List → Hidden games* to *Visible (manage)* to show hidden games dimmed, then press **L3** on a dimmed entry to unhide it. |
 | **R3 (right stick click)** | Reveal / re-hide this device's hidden games — a **temporary view for this session only**. When *Settings → Game List → Hidden games* is set to *Hidden* (games filtered out of the list), press **R3** to rebuild the list with them shown dimmed so you can manage them (then **L3** unhides); press **R3** again to hide them. Nothing is saved: the persisted setting lives in *Settings → Game List → Hidden games* and comes back in force when you leave the page or reboot. |
@@ -148,17 +147,18 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | **Shown** (default) · Hidden | Hide or show each entry on the main device carousel. Set unused or not-yet-implemented backends (e.g. i.Link) to **Hidden** to remove them from the wheel. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
-| **Internal HDD** | **PFS (default)** · exFAT (APA-Jail) | Picks which of the two internal-HDD pages shows on the carousel — the classic Sony APA/PFS page, or the APA-Jail **exFAT** page (BDMA ATA backend). They are **mutually exclusive**: one shows, the other hides (saved as `HDD_FS`). A `-page=ata` (or `exfat`) launch argument still opens the exFAT page regardless of this setting. |
+| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | Shown · Hidden (**i.Link ships Hidden**) | Hide or show each entry on the main device carousel. **i.Link is Hidden by default** (its flow isn't implemented yet); every other device defaults to Shown. Set unused backends to **Hidden** to remove them from the wheel, or show i.Link if you want it. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **Internal HDD** | PFS · exFAT (APA-Jail) · **Both (default)** | Picks which internal-HDD page(s) show on the carousel — the classic Sony APA/PFS page, the APA-Jail **exFAT** page (BDMA ATA backend), or **both** (the default). PFS (APA) and exFAT **coexist** — showing both does not gate either one (saved as `HDD_FS`). A `-page=ata` (or `exfat`) launch argument still opens the exFAT page regardless of this setting. |
 
 ### Game List
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
 | **Multi-disc games** | **Show all discs** (default) · First disc only | *First disc only* hides the secondary discs of multi-disc games so only disc 1 shows. **Detection is purely by filename** — a disc is hidden if its name contains `(Disc 2)`, `(Disc 3)`, `(CD 2)`, `(Disk 2)`… (any number ≥ 2). So it **only works if you name your files with that convention**, e.g. `Final Fantasy IX (Disc 1).VCD` / `Final Fantasy IX (Disc 2).VCD`. Launch disc 1 and swap discs in-game via your VMC. (PS1 discs carry no shared "this is the same game" metadata, so the filename is the only signal.) Applies to every device. |
-| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`, exactly like the `<name>.png` cover. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
-| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). The `.txt` is sought right alongside the cover (in whichever location *Cover/details folder* is set to, `POPS/ART/` by default, with the game's own `POPS/` folder always also checked), and the disc-marker-stripped name is tried first so one file serves every disc of a multi-disc game. Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
-| **Cover/details folder** | **POPS/ART** (default) · POPS (beside game) · ART (at root) | Picks where each game's cover `.png` and its `.txt` details sidecar are looked for **first** on removable devices (USB / MX4SIO / MMCE): a `POPS/ART/` subfolder, the game's own `POPS/` folder beside the `.VCD`, or a top-level `<device>:/ART/` folder. The game's own `POPS/` folder is always also checked as a fallback, so art beside the `.VCD` never stops showing. The internal HDD keeps its fixed `__common/POPS/ART/` layout. |
+| **Hidden games** | **Visible (manage)** (default) · Hidden | Per-game hide layer. Press **L3** on any game to hide or unhide it — hiding writes (or removes) a tiny `<name>.hide` marker next to the game's `.VCD`. *Hidden* filters tagged games out of the list; *Visible (manage)* shows them **dimmed** so you can manage them with L3. In-app hiding works on **every device** — USB / MX4SIO / MMCE / Memory Card **and the internal HDD** (POPSLoader writes the `.hide` on the HDD via its read-write boot-partition mount). |
+| **Game details** | **Off** (default) · Left · Center · Right | Shows a per-game blurb from a `<game>.txt` sidecar in a small panel under the cover, in the chosen text alignment (*Off* hides it). The `.txt` lives in the same fixed top-level `ART/` folder as the cover and is named after the **exact** game filename, so a multi-disc game needs one `.txt` per disc. (The internal PFS HDD is the one exception: there the disc-marker-stripped name is still tried first.) Authored line breaks are preserved; scroll a long blurb with the **right analog stick**. |
+| **Retro GEM Game ID** | **On** | Reads the PS1 title ID out of the `.VCD` — from `SYSTEM.CNF` **inside the disc image**, not from the filename — and emits it optically at launch so a **Retro GEM** applies that game's per-game profile. There is no data channel for this: the ID is drawn as a small pattern of coloured sprites that the mod decodes off the video output, so it appears briefly at the bottom of the launch overlay. Harmless without the mod, and a disc with no readable title ID simply emits nothing rather than a guess. Format credit: CosmicScale's Retro-GEM tools and saildot4k's wLaunchELF_R3Z. |
+| **Cover art** | **On** (default) · Off | Draws each game's cover in the preview box beside the list. **Off** shows the plain jewel-case placeholder instead. Covers are always read from one fixed place — a top-level `<device>:/ART/` folder, named `<name>_COV.png` (the OPL convention) — with no folder choice and no fallback. Each cover is fetched by a background worker, so browsing never stalls waiting on the card, and a cover that genuinely is not there is remembered as missing and not looked for again that session. The internal HDD keeps its fixed `__common/POPS/ART/` layout. |
 | **Game list cache** | **Off** (default) · On | When **On**, USB / MMCE / MX4SIO **and the internal HDD (PFS)** save their scanned game list per device so the "Building game list…" rescan only runs once (rebuild it with **R1**). **Off** = always live-scan (the default, unchanged behavior). |
 
 ### Other settings
@@ -169,26 +169,24 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 - **Overscan (CRT inset)** — **Off** (default) up to a numeric inset, adjusted in steps of **5** (OPL-style render inset, same math as OPL's overscan). Pulls the whole UI slightly toward the center of the screen so nothing is lost in a CRT's overscan border. The change previews live as you adjust it; backing out of Settings without saving restores the previous value. *(Mainly useful on a real CRT; on a flat panel you'll usually leave it Off.)*
 - **Boot sound** — **On** (default) / Off. Plays the startup chime over the boot splash. Turn it **Off** for a silent boot. (Hardware-confirmed to save and survive a reboot.)
 - **BDMA Mode** — mass-storage backend mode: **FAT32** (`FAT32-USB (None)`) / **USBEXFAT** (`exFAT-USB`) / **MX4SIO** / **MMCE** / **ATA** (`exFAT-HDD (ata)` — an internal SATA/IDE drive formatted exFAT; *new, validating on hardware*). The installed mode is recorded in a `bdma_mode.txt` marker file in the POPSTARTER pack folder (older `.pldr_bdma_mode` markers are still read for compatibility).
-- **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. The USB page can't tell FAT32 from exFAT drives, so there your saved **BDMA Mode** decides: `exFAT-USB` keeps the exFAT drivers for USB launches, anything else means your USB drive is FAT32 (drivers removed, POPStarter's built-in stack used). Default **Off**.
+- **Adaptive BDMA** — *(new, validating on hardware)* stages the right BDMA drivers for the **game you launch**, automatically, so MMCE and USB (and MX4SIO / exFAT-HDD) games can coexist without flipping BDMA Mode between launches. It checks first and skips the write when the correct drivers are already on the card. With Adaptive BDMA on, USB launches always stage the exFAT-USB pair (`USBEXFAT`). That pair reads FAT32 drives too, so one variant plays every USB stick and nothing has to guess the filesystem. Using POPStarter's own built-in FAT32 stack is a manual-only choice now: set **BDMA Mode** to `FAT32` with Adaptive **Off**. Default **On** — changed 2026-07-28 after a tester reported the BDM Assault drivers were never installed for ATA. They never were, for any device: the staging machinery was complete and correct, it simply never ran, because it sat behind a setting nobody knew to turn on. The cost of On is that every device gets a variant staged unless you opt out.
 - **POPSTARTER Memory Card Folder** — toggles the `mc:/POPSTARTER` folder. Turning it **off deletes** `mc:/POPSTARTER` (with a confirm prompt). It is **interlocked with BDMA Mode**: you can't turn this folder off while BDMA Mode is on (or while Adaptive BDMA is on), and you can't enable either while this folder is off.
-- **Hide UI Text** — **On/Off**; clears on-screen text for a clean cover-art view (also toggled with **Select**).
+- **Hide UI Text** — **On** (default) / Off; clears on-screen text for a clean cover-art view (also toggled with **Select**). It ships **On**, so a fresh install starts with the on-screen text hidden.
 - **Keyboard Layout** — on-screen keyboard layout for the path editor: **QWERTY** (default) / DVORAK / ABC / AZERTY / QWERTZ / ABNT. This is the only place the layout is chosen; the keyboard itself no longer carries a layout strip.
 - **Credits** — *Settings → About → Credits*. (It used to be a Triangle shortcut advertised in every footer.)
 
 ### SMB / Network
 
-Browse and launch PS1 games from an **SMBv1** network share via the **SMB** carousel entry. Networking is **lazy**: nothing network-related runs at boot; the stack comes up only when you open the SMB page. *(New feature — validating on hardware.)*
+Browse and launch PS1 games from an **SMBv1** network share via the **SMB** carousel entry. Networking is **lazy**: nothing network-related runs at boot; the stack comes up only when you open the SMB page. *(Browsing and launching are confirmed working on a **static** IP setup. **DHCP** needs a build newer than `bb62f2be` — earlier builds deleted the address file POPStarter depends on, so a DHCP setup would list games and then fail to boot them.)*
 
 | Setting | Default | What it does |
 | :--- | :--- | :--- |
-| **SMB modules** | Not installed | Installs the in-game SMB streaming pack (6 IRX + `SMBCONFIG.DAT`/`IPCONFIG.DAT`) into `mc:/POPSTARTER` on Save. **Required to LAUNCH games** — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the *POPSTARTER Memory Card Folder* toggle. |
-| **IP assignment** | DHCP | DHCP or Static. Static uses the **PS2 IP / Netmask / Gateway / DNS** rows (validated as dotted quads). |
-| **Link mode** | Auto | Ethernet negotiation (Auto / 100 full / 100 half / 10 full / 10 half). |
-| **Server IP** | 192.168.0.1 | The SMB server's IP address. (NetBIOS names are not supported — use the IP.) |
-| **Port** | **1111** | The server's SMB TCP port. **Stock SMB servers listen on 445** — the 1111 default suits alternate-port SMBv1 setups (e.g. the PS2-Servers configs); set it to whatever your server actually listens on. Written into `SMBCONFIG.DAT` as `SERVER:PORT` (445 is implied and omitted). |
-| **Share** | *(not set)* | The share name. **Leave it blank** and the SMB page lists the server's shares in an in-app picker; your choice is saved. |
+| **SMB modules** | Not installed | Installs the in-game SMB streaming pack (6 IRX + `SMBCONFIG.DAT`/`IPCONFIG.DAT`) into `mc:/POPSTARTER` on Save. Turning it **off removes those 8 files from BOTH memory card slots** — POPSTARTER reads mc0 with a per-file mc1 fallback, so a half-removal would leave it still finding modules and a stale `SMBCONFIG.DAT` holding your server, share and plaintext password. **Required to LAUNCH games** — browsing works without it, and the loader warns (and blocks a launch) when it's missing. Interlocked with the *POPSTARTER Memory Card Folder* toggle. |
+| **IP assignment** | Static | DHCP or Static, and this controls **browsing only**. POPSTARTER cannot obtain an address itself, so the **PS2 IP / Netmask / Gateway** rows must be filled in either way — they are what gets written to `IPCONFIG.DAT` for the game to use. Nothing is invented for you; blank means blank. |
+| **Server IP** | *(blank)* | The SMB server's IP address. (NetBIOS names are not supported — use the IP.) **No defaults are supplied for any network field.** They used to be pre-filled with a guessed home-LAN layout, which read as configuration the user had chosen and hid the real values; on first run every field is now empty, and existing `IPCONFIG.DAT`/`SMBCONFIG.DAT` on the memory card are loaded instead. |
+| **Port** | *(blank)* | The server's SMB TCP port. **Stock SMB servers listen on 445**; leave blank and POPSTARTER uses 445. Written into `SMBCONFIG.DAT` as `SERVER:PORT` — **always explicit**, including `:445`, because these files are read back as well as written. |
+| **Share** | *(blank)* | The share name. **Leave it blank** and the SMB page lists the server's shares in an in-app picker; your choice is saved. |
 | **User / Password** | *(guest)* | Credentials, when the share needs them (either one set = credentials are used, in-app and in-game). Values are trimmed except the password; the R2 symbol shift types `@ # $ %` etc. |
-| **Games path (folder holding POPS)** | *(share root)* | Optional folder under the share that CONTAINS your `POPS/` folder. **Browsing only**: POPStarter launches from `<share>/POPS`, so prefer sharing the folder itself and leaving this blank. |
 
 Share layout: `\\server\share\POPS\Game.VCD` (plus the usual POPS support files). Launches hand POPStarter an `SB.<name>.ELF` selector and it streams the `.VCD` from the share using the installed pack's `SMBCONFIG.DAT`.
 
@@ -222,6 +220,19 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ---
 
+## Loading extra IRX drivers
+
+At boot POPSLoader loads **every `.irx` file sitting in its own folder**, next to `POPSLOADER.ELF`, in directory order. If it finds none there it then tries an `IRX/` subfolder. That is how you add a driver POPSLoader does not ship — put the `.irx` beside the ELF and it is loaded.
+
+There is no allow-list and no prompt, so **anything** with an `.irx` extension in that folder is loaded, whether or not you meant it. Two consequences worth knowing:
+
+*   Keep the folder tidy. A driver you copied there once to test is still being loaded every boot, months later.
+*   A driver that hangs waiting on hardware you do not have will hang the boot. The most common way to hit this is running POPSLoader from a **downloads folder** that still contains loose drivers, or under an **emulator** where the hardware a driver probes is only a stub. If POPSLoader boots on a real console but hangs in an emulator, move the loose `.irx` files out of the folder and try again — that is the first thing to check.
+
+Use the `IRX/` subfolder if you want the drivers kept but not tangled up with whatever else lands in your download directory.
+
+---
+
 ## Troubleshooting
 
 ### Game does not appear in the menu list
@@ -239,9 +250,9 @@ HDD-installed POPSLoader saves its `.pldrs` settings file **on the HDD itself**,
 
 ### Cover art is not showing up
 *   Check that the cover image is in `.png` format.
-*   The PNG filename must match the `.VCD` game filename (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot.png`). For a multi-disc game, the disc-marker-stripped name (`Crash Bandicoot.png`) is tried first so one cover serves every disc; an exact per-disc name still works.
-*   Place the cover in the folder chosen by *Settings → Game List → Cover/details folder* (default `POPS/ART/`, also **POPS** beside the game or a top-level **ART** at the device root). A PNG sitting beside the `.VCD` always works as a fallback regardless of that setting. On the internal HDD covers live in `__common/POPS/ART/`.
-*   Confirm cover-art preview is enabled — press **Square (□)** in the game list to toggle it.
+*   **This is the most common reason art does not appear after updating.** The PNG filename must match the `.VCD` game filename with the OPL `_COV` suffix (e.g. `Crash Bandicoot.VCD` requires `Crash Bandicoot_COV.png`). **The `_COV` is not optional and will not be made optional:** it is OPL's convention, and matching it is what lets one art folder serve both OPL and POPSLoader. Accepting a bare `<name>.png` here would break that sharing. Note the details sidecar does NOT take the suffix -- it is `<name>.txt` -- so it is easy to get one right and the other wrong. Only the exact game filename is tried, so a multi-disc game needs one cover **per disc** (`Game (Disc 1)_COV.png`, `Game (Disc 2)_COV.png`). A single shared cover for the whole set no longer works.
+*   Place the cover in a top-level **`ART/`** folder at the device root. That is the only location that is read; there is no setting and no fallback, so a cover in `POPS/` or `POPS/ART/` will not show. On the internal HDD covers live in `__common/POPS/ART/`.
+*   Confirm cover-art preview is enabled in *Settings → Game List → Cover art* (default **On**). Square is not bound in the game list.
 *   For best compatibility and performance, use 200x200 pixel images.
 
 ### BOOT.ELF exit option fails or hangs
@@ -259,7 +270,7 @@ Planned for subsequent updates:
 *   **GUI Themes**: Customizable colors / skins / fonts and a setting to skip the boot splash.
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
-*   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **validating on hardware**.
+*   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **browse + launch hardware-confirmed on a static IP config**; the DHCP path was fixed in `bb62f2be` and is not yet confirmed.
 *   **`i.Link`** menu flow: currently surfaces as "Not Implemented Yet" until feature work lands.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
@@ -288,7 +299,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Development & Building
 
-GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `dev` and on pull request events. CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
+GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`. Every change must pass the CI workflow in `.github/workflows/compilation.yml` before merging; rolling release artifacts for testing are produced by `.github/workflows/rolling-release.yml` on push to `dev`. Pull-request events build and run the same gates but no longer publish: the publish step is gated on `github.event_name == 'push'` (PR #511, 2026-07-16). CI now runs a live `luac` syntax gate over the embedded Lua (`bin/POPSLDR/*.lua` + `etc/boot.lua`) and hard-fails on a syntax error — note this catches **syntax** only; runtime and load-order errors still only surface on real PS2 / PCSX2.
 
 POPSLoader is an EE C/C++ application (`src/`) with the entire front-end UI and launch logic written as embedded Lua (`bin/POPSLDR/*.lua`, `etc/boot.lua`) and an embedded IOP-side child ELF loader (`src/elf_loader/`). The Lua scripts, PNG art, IRX modules, and the child loader are all baked directly into the EE ELF at build time via `bin2c`, so the on-card scripts are not read at runtime — building from source is required to change them.
 
