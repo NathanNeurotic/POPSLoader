@@ -40,8 +40,145 @@
 #define ISO_PVD_SEARCH        16
 #define ISO_ROOT_RECORD_OFF   156
 #define ISO_MAX_ROOT_SECTORS  64
+#define ISO_PVD_TIMESTAMP_OFF 0x32D
+#define ISO_PVD_TIMESTAMP_LEN 16
 
 #define RG_GAMEID_MAX 11
+
+typedef struct {
+	const char *volume_timestamp;
+	const char *game_id;
+} RG_PS1_GENERIC_GAME_ID;
+
+/* PVD timestamp mappings for PS1 discs whose boot executable is generic
+ * PSX.EXE or whose SYSTEM.CNF is missing. Derived from OSDMenu / wLaunchELF_R3Z. */
+static const RG_PS1_GENERIC_GAME_ID ps1_generic_game_ids[] = {
+    {"1994111009000000", "SLPS_000.01"},
+    {"1994110702000000", "SLPS_000.02"},
+    {"1994102615231700", "SLPS_000.03"},
+    {"1994110218594700", "SLPS_000.04"},
+    {"1995030218052000", "SLPS_000.04"},
+    {"1994110722360400", "SLPS_000.05"},
+    {"1994120610494900", "SLPS_000.05"},
+    {"1994110407000000", "SLPS_000.06"},
+    {"1994111419300000", "SLPS_000.07"},
+    {"1994121808190700", "SLPS_000.08"},
+    {"1994121917000000", "SLPS_000.09"},
+    {"1995052918000000", "SLPS_000.10"},
+    {"1994110220020600", "SLPS_000.11"},
+    {"1994121518000000", "SLPS_000.13"},
+    {"1994103000000000", "SLPS_000.14"},
+    {"1994101813262400", "SLPS_000.15"},
+    {"1994112617300000", "SLPS_000.16"},
+    {"1994121517300000", "SLPS_000.16"},
+    {"1994111013000000", "SLPS_000.17"},
+    {"1994111522183200", "SLPS_000.18"},
+    {"1994112918000000", "SLPS_000.19"},
+    {"1994111721302100", "SLPS_000.20"},
+    {"1994100617242100", "SLPS_000.21"},
+    {"1995030215000000", "SLPS_000.22"},
+    {"1994122718351900", "SLPS_000.23"},
+    {"1994092920284600", "SLPS_000.24"},
+    {"1994113012000000", "SLPS_000.25"},
+    {"1995012512000000", "SLPS_000.25"},
+    {"1995041921063500", "SLPS_000.26"},
+    {"1994121500000000", "SLPS_000.27"},
+    {"1994121017582300", "SLPS_000.28"},
+    {"1995022623000000", "SLPS_000.29"},
+    {"1995050116000000", "SLPS_000.30"},
+    {"1995060613000000", "SLPS_000.30"},
+    {"1995021802000000", "SLPS_000.31"},
+    {"1995021615022900", "SLPS_000.32"},
+    {"1995080809000000", "SLPS_000.33"},
+    {"1995100209000000", "SLPS_000.33"},
+    {"1995071821394900", "SLPS_000.34"},
+    {"1995042506300000", "SLPS_000.35"},
+    {"1995011411551700", "SLPS_000.37"},
+    {"1995041311392800", "SLPS_000.38"},
+    {"1995031205000000", "SLPS_000.40"},
+    {"1995061612000000", "SLPS_000.40"},
+    {"1995040509000000", "SLPS_000.41"},
+    {"1995052612000000", "SLPS_000.43"},
+    {"1995042500000000", "SLPS_000.44"},
+    {"1995033100003000", "SLPS_000.47"},
+    {"1995041400000000", "SLPS_000.48"},
+    {"1995040509595900", "SLPS_000.51"},
+    {"1995030103150000", "SLPS_000.52"},
+    {"1995100409235300", "SLPS_000.53"},
+    {"1995060504013600", "SLPS_000.55"},
+    {"1995060319142200", "SLPS_000.55"},
+    {"1995060402110800", "SLPS_000.55"},
+    {"1995081612000000", "SLPS_000.59"},
+    {"1995051201000000", "SLPS_000.60"},
+    {"1995051700000000", "SLPS_000.61"},
+    {"1995051002471900", "SLPS_000.63"},
+    {"1995083112000000", "SLPS_000.65"},
+    {"1995111700000000", "SLPS_000.65"},
+    {"1996033100000000", "SLPS_000.65"},
+    {"1995051816000000", "SLPS_000.66"},
+    {"1995061418000000", "SLPS_000.67"},
+    {"1995061911303400", "SLPS_000.68"},
+    {"1995072800300000", "SLPS_000.68"},
+    {"1995061207000000", "SLPS_000.69"},
+    {"1995062922000000", "SLPS_000.70"},
+    {"1995040719355400", "SLPS_000.71"},
+    {"1995061806364400", "SLPS_000.73"},
+    {"1995051015300000", "SLPS_000.77"},
+    {"1995070302000000", "SLPS_000.78"},
+    {"1995070523450000", "SLPS_000.83"},
+    {"1995072522004900", "SLPS_000.85"},
+    {"1995070613170000", "SLPS_000.88"},
+    {"1995082517551900", "SLPS_000.89"},
+    {"1995082109402500", "SLPS_000.90"},
+    {"1995053117000000", "SLPS_000.91"},
+    {"1995081100000000", "SLPS_000.92"},
+    {"1995071011035200", "SLPS_000.93"},
+    {"1995090510000000", "SLPS_000.94"},
+    {"1995083123000000", "SLPS_000.94"},
+    {"1995100601300000", "SLPS_000.99"},
+    {"1995081001450000", "SLPS_001.01"},
+    {"1995080316000000", "SLPS_001.03"},
+    {"1995081020000000", "SLPS_001.04"},
+    {"1995090722000000", "SLPS_001.08"},
+    {"1995090516062841", "SLPS_001.13"},
+    {"1995082016003000", "SLPS_001.28"},
+    {"1995102101350000", "SLPS_001.33"},
+    {"1995102102521200", "SLPS_001.33"},
+    {"1995102105003200", "SLPS_001.33"},
+    {"1995100910002200", "SLPS_001.37"},
+    {"1995101801325900", "SLPS_001.42"},
+    {"1995113010450000", "SLPS_001.46"},
+    {"1995092205430500", "SLPS_001.52"},
+    {"1995121620000000", "SLPS_001.73"},
+    {"1995122811000000", "SLPS_001.90"},
+    {"1995111622323000", "SLPS_002.01"},
+    {"1995121418400300", "SLPS_002.30"},
+    {"1996010800000000", "SLPS_002.61"},
+    {"1996022700000000", "SLPS_003.21"},
+    {"1996020413401600", "SLPS_003.36"},
+    {"1996030619500500", "SLPS_003.37"},
+    {"1996072211000000", "SLPS_005.49"},
+    {"1997011500000000", "SLPS_007.19"},
+    {"1997031012200700", "SLPS_008.78"},
+    {"1997050817540700", "SLPS_008.95"},
+    {"1998061000000000", "SLPS_013.34"},
+    {"1998040820350000", "SLPS_015.58"},
+    {"1994112112000000", "SCPS_100.01"},
+    {"1995011010000000", "SCPS_100.01"},
+    {"1995030717020700", "SCPS_100.02"},
+    {"1994103110000000", "SCPS_100.03"},
+    {"1995022100000000", "SCPS_100.04"},
+    {"1995032500000000", "SCPS_100.06"},
+    {"1995032400000000", "SCPS_100.07"},
+    {"1995052420065100", "SCPS_100.08"},
+    {"1995061723590000", "SCPS_100.09"},
+    {"1995080914422700", "SCPS_100.10"},
+    {"1995071219364500", "SCPS_100.12"},
+    {"1995092719000000", "SCPS_100.14"},
+    {"1995103122331500", "SCPS_100.16"},
+};
+
+static const size_t ps1_generic_game_ids_count = sizeof(ps1_generic_game_ids) / sizeof(ps1_generic_game_ids[0]);
 
 static uint32_t rg_le32(const unsigned char *p)
 {
@@ -96,6 +233,28 @@ static int rg_read_pvd(int fd, unsigned char *pvd)
 			}
 			if (sector[0] == 255)            /* terminator: no PVD */
 				return 0;
+		}
+	}
+	return 0;
+}
+
+static int rg_read_pvd_timestamp(int fd, char *out, int out_size)
+{
+	unsigned char pvd[CD_SECTOR_DATA_SIZE] __attribute__((aligned(16)));
+	size_t i;
+
+	if (out == NULL || out_size <= 0)
+		return 0;
+
+	if (!rg_read_pvd(fd, pvd))
+		return 0;
+
+	for (i = 0; i < ps1_generic_game_ids_count; i++) {
+		if (!memcmp(pvd + ISO_PVD_TIMESTAMP_OFF,
+		            ps1_generic_game_ids[i].volume_timestamp,
+		            ISO_PVD_TIMESTAMP_LEN)) {
+			snprintf(out, out_size, "%s", ps1_generic_game_ids[i].game_id);
+			return 1;
 		}
 	}
 	return 0;
@@ -217,6 +376,18 @@ static int rg_id_from_name(const char *path, char *out, int out_size)
 	if (name[0] == '\0')
 		return 0;
 
+	/* If the filename is IMAGE0.VCD (partition-installed POPStarter VCD),
+	 * extract the ID from the partition/folder component preceding it. */
+	if (!strcasecmp(name, "IMAGE0.VCD")) {
+		char parent[256];
+		int plen = (int)(name - 1 - path);
+		if (plen > 0 && (size_t)plen < sizeof(parent)) {
+			memcpy(parent, path, plen);
+			parent[plen] = '\0';
+			return rg_id_from_name(parent, out, out_size);
+		}
+	}
+
 	/* XX. (USB/BDM), __. (hidden APA), PP. (partition-installed), SB. (SMB) */
 	if (!strncasecmp(name, "XX.", 3) || !strncasecmp(name, "__.", 3) ||
 	    !strncasecmp(name, "PP.", 3) || !strncasecmp(name, "SB.", 3))
@@ -228,7 +399,7 @@ static int rg_id_from_name(const char *path, char *out, int out_size)
 	return (i > 0);
 }
 
-/* Resolve the Game ID for a VCD: SYSTEM.CNF first, filename as a fallback.
+/* Resolve the Game ID for a VCD: SYSTEM.CNF first, PVD timestamp second, filename/partition fallback third.
  * Returns 1 and fills out[] (NUL-terminated, <= 11 chars) or 0. */
 extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size)
 {
@@ -242,7 +413,6 @@ extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size
 	fd = open(path, O_RDONLY);
 	if (fd >= 0) {
 		int got = rg_read_system_cnf(fd, cnf, (int)sizeof(cnf));
-		close(fd);
 		if (got) {
 			/* Find the BOOT= line and take the ID off its value. */
 			const char *line = cnf;
@@ -265,8 +435,10 @@ extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size
 								value[vlen++] = *p++;
 							value[vlen] = '\0';
 							if (rg_id_from_name(value, out, out_size) &&
-							    rg_is_title_id(out))
+							    rg_is_title_id(out)) {
+								close(fd);
 								return 1;
+							}
 							out[0] = '\0';
 						}
 					}
@@ -275,9 +447,18 @@ extern "C" int retrogem_gameid_for_vcd(const char *path, char *out, int out_size
 				while (*line == '\r' || *line == '\n') line++;
 			}
 		}
+
+		/* If SYSTEM.CNF carried no valid Title ID (e.g. BOOT = cdrom:\PSX.EXE;1),
+		 * check the Primary Volume Descriptor creation timestamp. */
+		if (rg_read_pvd_timestamp(fd, out, out_size) && rg_is_title_id(out)) {
+			close(fd);
+			return 1;
+		}
+
+		close(fd);
 	}
 
-	/* Fallback: the filename, only if it really looks like an ID. */
+	/* Fallback: the filename or partition name, only if it really looks like an ID. */
 	if (rg_id_from_name(path, out, out_size) && rg_is_title_id(out))
 		return 1;
 	out[0] = '\0';
