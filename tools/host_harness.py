@@ -2189,6 +2189,92 @@ check("T53 APA startup gates on the boot PREFIX, so an exFAT boot never probes A
       _t53_ok, _t53_why)
 
 
+# T54 issue #570: the cover/details path starts at the JOIN, not at an already-joined
+# literal. MMCE and MX4SIO store game-list entries as BARE filenames plus the live
+# PLDR.GAMEPATH (system.lua's cache-format note), and ResolveSelectedVcdPath is what
+# rejoins them. IsDevicePath gated that join on "^[%a]+%d*:/", which cannot match
+# mx4sio0: -- the one backend whose name carries a digit in the MIDDLE -- so the join
+# fell through to `return entry` and every consumer got a bare filename: the cover
+# probe became the RELATIVE "ART/<name>_COV.png" and the details .txt was never
+# requested at all. Listing and launching were unaffected (they concatenate
+# PLDR.GAMEPATH directly), which is exactly why it read as "art only" in the field.
+#
+# T37 already existed to pin this device and stayed GREEN throughout, because it feeds
+# cc:UpdateSelection() a fully-qualified literal -- it starts one step AFTER the step
+# that breaks. This test starts at the entry + GAMEPATH pair, drives the real join, and
+# asserts BOTH probes: the cover fails OPEN (wrong path, looks absent) while the
+# details fail CLOSED (no request at all), so checking only one of them can miss a
+# future divergence. Verified to FAIL on the pre-fix tree.
+t54 = E('''function()
+  local cc = UI.CoverCache
+  if type(cc) ~= "table" then return false, "UI.CoverCache missing" end
+  if type(UI.ResolveSelectedVcdPath) ~= "function" then
+    return false, "UI.ResolveSelectedVcdPath is not exported -- the join step is untestable again"
+  end
+  local real_begin, real_tpath = Graphics.coverLoadBegin, Graphics.coverLoadTextPath
+  local real_dfe = doesFolderExist
+  local saved_details, saved_gamepath = PLDR.SHOW_DETAILS, PLDR.GAMEPATH
+  local asked_cover, asked_text = nil, nil
+  Graphics.coverLoadTextPath = function(p) asked_text = (p ~= nil and p ~= "") and p or nil; return true end
+  Graphics.coverLoadBegin = function(path, token) asked_cover = path; return true end
+  doesFolderExist = function(p) return true end
+  PLDR.SHOW_DETAILS = true
+
+  -- { GAMEPATH, entry, expected vcd_path, expected cover probe, expected details probe }
+  local cases = {
+    -- The bug. mx4sio0: is the ONLY device name with an embedded digit.
+    { "mx4sio0:/POPS/", "Soul Blade.VCD", "mx4sio0:/POPS/Soul Blade.VCD",
+      "mx4sio0:/ART/Soul Blade_COV.png", "mx4sio0:/ART/Soul Blade.txt" },
+    -- The control: same bare-entry contract, name the old pattern could express.
+    { "mmce0:/POPS/", "Soul Blade.VCD", "mmce0:/POPS/Soul Blade.VCD",
+      "mmce0:/ART/Soul Blade_COV.png", "mmce0:/ART/Soul Blade.txt" },
+    { "mass:/POPS/", "Soul Blade.VCD", "mass:/POPS/Soul Blade.VCD",
+      "mass:/ART/Soul Blade_COV.png", "mass:/ART/Soul Blade.txt" },
+    { "mass0:/POPS/", "Soul Blade.VCD", "mass0:/POPS/Soul Blade.VCD",
+      "mass0:/ART/Soul Blade_COV.png", "mass0:/ART/Soul Blade.txt" },
+    { "ata0:/POPS/", "Soul Blade.VCD", "ata0:/POPS/Soul Blade.VCD",
+      "ata0:/ART/Soul Blade_COV.png", "ata0:/ART/Soul Blade.txt" },
+    { "usb0:/POPS/", "Soul Blade.VCD", "usb0:/POPS/Soul Blade.VCD",
+      "usb0:/ART/Soul Blade_COV.png", "usb0:/ART/Soul Blade.txt" },
+    { "ilink0:/POPS/", "Soul Blade.VCD", "ilink0:/POPS/Soul Blade.VCD",
+      "ilink0:/ART/Soul Blade_COV.png", "ilink0:/ART/Soul Blade.txt" },
+    -- A USB-style entry that embeds its OWN root must still win over GAMEPATH.
+    { "mass0:/POPS/", "mass1:/POPS/|Soul Blade.VCD", "mass1:/POPS/Soul Blade.VCD",
+      "mass1:/ART/Soul Blade_COV.png", "mass1:/ART/Soul Blade.txt" },
+  }
+  local bad = nil
+  for i = 1, #cases do
+    local gp, entry = cases[i][1], cases[i][2]
+    local want_vcd, want_cov, want_txt = cases[i][3], cases[i][4], cases[i][5]
+    PLDR.GAMEPATH = gp
+    cc:Clear()
+    asked_cover, asked_text = nil, nil
+    local vcd = UI.ResolveSelectedVcdPath(entry, gp)
+    if vcd ~= want_vcd then
+      bad = gp.." + "..entry.." joined to "..tostring(vcd).." (expected "..want_vcd..")"
+      break
+    end
+    cc:UpdateSelection(vcd, false, entry)
+    if asked_cover ~= want_cov then
+      bad = gp.." cover probe was "..tostring(asked_cover).." (expected "..want_cov..")"
+      break
+    end
+    if asked_text ~= want_txt then
+      bad = gp.." details probe was "..tostring(asked_text).." (expected "..want_txt..")"
+      break
+    end
+  end
+
+  Graphics.coverLoadBegin, Graphics.coverLoadTextPath = real_begin, real_tpath
+  doesFolderExist = real_dfe
+  PLDR.SHOW_DETAILS, PLDR.GAMEPATH = saved_details, saved_gamepath
+  cc:Clear()
+  if bad ~= nil then return false, bad end
+  return true
+end''')()
+check("T54 a bare game entry + GAMEPATH joins to a device-qualified cover AND details path", t54)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
