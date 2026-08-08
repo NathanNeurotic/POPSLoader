@@ -122,7 +122,11 @@ function PLDR.ResolveDeviceLabelRoot(path)
     local ok, driver = pcall(System.getMassMountDriver, root)
     if ok and type(driver) == "string" and driver ~= "" and kind.match(string.lower(driver)) then
       -- Swap the label root for the real one, keeping the rest of the path.
-      local rest = string.match(path, "^%a+%d*:/*(.*)$") or ""
+      -- %w+, not %a+%d*: the label we just matched can be "mx4sio0:", whose digit
+      -- is inside the NAME. The old pattern failed there and `or ""` then threw the
+      -- ENTIRE relative tail away, so an mx4sio0: settings path resolved to a bare
+      -- massN:/ root instead of massN:/APPS/.../.pldrs (issue #570 family).
+      local rest = string.match(path, "^%w+:/*(.*)$") or ""
       return root..rest
     end
   end
@@ -253,9 +257,12 @@ local function IsAbsoluteDevicePath(path)
   if path == nil then
     return false
   end
-  if string.match(path, "^[%a]+%d*:/") ~= nil then
+  -- %w+ so mx4sio0:/ counts as absolute (see ui.lua IsDevicePath, issue #570).
+  if string.match(path, "^%w+:/") ~= nil then
     return true
   end
+  -- The INNER segment of an APA path is always "pfs<slot>", never a BDM device
+  -- name, so the %a+%d* spelling is correct there and is left alone deliberately.
   return string.match(path, "^hdd%d:[^:]+:[%a]+%d*:/") ~= nil
 end
 
@@ -7913,7 +7920,7 @@ function PLDR.InitSMBPopsRoot(report)
   end
   -- dev_or_err = the mounted device handle ("smb0:"). PLDR.SMB.PATH is an optional
   -- cwd-relative subfolder UNDER the share (blank = share root), then POPS/. Forward
-  -- slashes keep it consistent with IsDevicePath (^%a+%d*:/) + the rest of the loader.
+  -- slashes keep it consistent with IsDevicePath (^%w+:/) + the rest of the loader.
   -- NOTE [HW]: smb0: path-separator acceptance is hardware-only-verifiable -- if the
   -- share connects but lists nothing, the separator / leading-slash is the suspect.
   local dev = tostring(dev_or_err or "smb0:")
@@ -8678,7 +8685,8 @@ local function ExtractVcdFilename(path)
     return ""
   end
   local basename = string.match(path, "([^/]+)$") or path
-  local without_device = string.match(basename, "^[%a]+%d*:(.+)$")
+  -- %w+ so a device-relative "mx4sio0:Game.VCD" sheds its prefix too (issue #570).
+  local without_device = string.match(basename, "^%w+:(.+)$")
   if without_device ~= nil and without_device ~= "" then
     return without_device
   end
