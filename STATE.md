@@ -251,7 +251,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.1.0** is the public release (2026-07-21; previously 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.2.0** is the public release (2026-08-03; previously 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.
