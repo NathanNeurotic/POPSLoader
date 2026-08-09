@@ -101,7 +101,7 @@ game's folder.</li>
 FAT32 drive needs nothing special; for an <b>exFAT</b> drive (or MX4SIO / MMCE) set POPSLoader's <b>BDMA&nbsp;Mode</b>
 to match — BDMA is what reaches every device except the internal HDD.</li>
 <li><b>Green or blank screen on an HDTV?</b> Add <code>$HDTVFIX</code> (or hex-edit config byte <code>$412</code>
-from 0 to 1).</li>
+from 0 to 1; the original wiki calls that byte the "SetGsCrt hack", which is the same setting).</li>
 <li><b>Kicked back to the file browser right after launching?</b> Usually a wrong/old <code>POPSTARTER.ELF</code>
 or an incompatible <code>BOOT.ELF</code> — see Troubleshooting.</li>
 </ul>
