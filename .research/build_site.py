@@ -410,7 +410,14 @@ def idx(title, cat, text, url, cap=8000):
     t = re.sub(r'\s+', ' ', (text or ''))[:cap]
     # add the $-stripped form of every $COMMAND so "forcepal" matches "$FORCEPAL" (and ranks the
     # doc, not the download). Cheap alias layer, no app.js change needed.
-    extra = ' '.join(sorted(set(m.lower() for m in re.findall(r'\$([A-Za-z_][A-Za-z0-9_]*)', title + ' ' + t))))
+    _asrc = title + ' ' + t
+    extra = ' '.join(sorted(set(m.lower() for m in re.findall(r'\$([A-Za-z_][A-Za-z0-9_]*)', _asrc))))
+    # Config bytes are "$412" here and in the recovered table, but krHACKen's changelog writes them
+    # "412h". Searching "412h" found nothing, so a reader arriving from the changelog dead-ended
+    # (okeanos86, 2026-08-09). Alias the "NNNh" and "0xNNN" spellings onto whatever card names them.
+    _hexb = sorted(set(m.lower() for m in re.findall(r'\$([0-9A-Fa-f]{3})\b', _asrc)))
+    if _hexb:
+        extra += ' ' + ' '.join(f'0x{h} {h}h' for h in _hexb)
     search.append({'title': title, 'cat': cat, 'text': (t + ' ' + extra).strip(), 'url': url})
 
 # natural-language synonym/alias cards — map the phrasings real users type ("60hz", "black
@@ -426,6 +433,13 @@ SYNONYMS = [
      'memory card vmc virtual memory card saves save game slot0 slot1 vmcdir shared memory card does not save'),
     ('Widescreen / 16:9', 'cheats.html#widescreen',
      'widescreen 16:9 16 by 9 ultra widescreen eyefinity fov field of view aspect ratio stretched'),
+    # The old ShaolinAssassin wiki never says "HDTVFIX" at byte $412 — it only ever says "SetGsCrt
+    # hack". Readers arriving from it could not map the two (okeanos86, 2026-08-09). The changelog
+    # page that proves they are one setting sits past idx()'s 8000-char cap, so the literal index
+    # cannot rescue this; route the upstream vocabulary here explicitly.
+    ('SetGsCrt hack = $HDTVFIX = config byte $412', 'glossary.html#setgscrt-hack',
+     'setgscrt set gs crt setgscrt hack static interlace parameter 412 412h 0x412 hdtvfix green '
+     'screen greenscreen no signal blank screen hdtv component ypbpr interlaced 480i 576i 240p 288p'),
     ('My cheats do nothing', 'cheats.html',
      'cheats not working cheat does nothing CHEATS.TXT uppercase filename ignored safemode $safemode hdtvfix does nothing on hdd'),
     ('USB not detected', 'troubleshooting.html',
@@ -629,7 +643,12 @@ def build_wiki():
         body = f'<h1>{html.escape(title)}</h1>{prov}{body_html}{gal}{rel}'
         write(f'wiki/{ws}.html', shell(title, body, None, base='../'))
         plain = re.sub(r'<[^>]+>', ' ', body_html)
-        idx(title, 'wiki', plain, f'wiki/{ws}.html')
+        # The recovered changelog carries the upstream vocabulary (SetGsCrt, "function skipper",
+        # "thru component") ~14k chars deep, past the default 8000-char cap, so it was invisible to
+        # search on exactly the terms an old-wiki reader types. The two raw GameShark dumps stay
+        # capped; they are megabytes of hex and index nothing useful.
+        wcap = 8000 if low in ('ps1-codes-in-ps1-raw-format', 'ps1-codes-in-ps2-raw-format') else 40000
+        idx(title, 'wiki', plain, f'wiki/{ws}.html', cap=wcap)
         if low not in WIKI_GRID_EXCLUDE:
             tile = f'<a class="tile" href="{ws}.html"><b>{html.escape(title)}</b><span>{html.escape(page)}</span></a>'
             by_sec.setdefault(wiki_section_of(low), []).append((page.lower(), tile))
@@ -1579,6 +1598,11 @@ KNOWN_ISSUES = [
     ('Expected 240p but got 480i / 576i',
      '<code>$HDTVFIX</code> is active, either in <code>CHEATS.TXT</code> or as config byte <code>$412</code> (the old wiki calls that byte the "SetGsCrt hack").',
      'Remove <code>$HDTVFIX</code>, or set <code>$412</code> back to <code>0x00</code>. It turns interlacing on for displays that reject 240p/288p. <a href="config.html">details →</a>'),
+    # The table listed only the symptom of having this ON. The symptom that makes people reach for it
+    # in the first place, the green screen, was missing (okeanos86, 2026-08-09).
+    ('Green screen or garbage picture on an HDTV over component',
+     'The TV will not lock onto the PS1’s <b>240p/288p</b> output. The old ShaolinAssassin wiki files this under the <b>SetGsCrt hack</b> at config byte <code>$412</code>, which is the same setting as <code>$HDTVFIX</code>.',
+     'Add <code>$HDTVFIX</code> to <code>CHEATS.TXT</code>, or set <code>$412</code> to <code>0x01</code>, so it outputs 480i/576i instead. Leave it off on CRTs (interlace flicker). <a href="config.html">details →</a>'),
     ('USB drive not detected',
      'USB access delay too low, or a poor format.',
      'Raise config byte <code>$413</code> (<code>$USBDELAY_#</code> only patches streaming, not detection); use FAT32/exFAT with 32K–64K clusters. <a href="troubleshooting.html">details →</a>'),
@@ -1671,7 +1695,8 @@ def build_known_issues():
             + render_known_issues())
     write('known-issues.html', shell('Known issues', body, 'known-issues'))
     idx('Known issues at a glance', 'faq',
-        'known issues matrix consolidated troubleshooting black screen igr exit hdtvfix 480i usb not detected '
+        'known issues matrix consolidated troubleshooting black screen igr exit hdtvfix 480i '
+        'setgscrt setgscrt hack 412 green screen greenscreen component hdtv usb not detected '
         'exfat cheats do nothing smb saves fail __.POPS partition pops0 pops9 title.cfg rip build multidisc vmc '
         'bdma multitap physical memory card', 'known-issues.html')
     idx('FAQ & known bugs', 'faq',
