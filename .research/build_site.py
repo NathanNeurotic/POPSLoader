@@ -1265,10 +1265,14 @@ def build_sections():
          '<b>Manual</b> or <b>Off</b> and it launches. That is <i>different</i> from the <b>black screen on IGR/exit</b>, '
          'which is an incompatible <code>BOOT.ELF</code> in the exit chain (fix: disable the ELF loader with stock '
          '<code>PATCH_9.BIN</code>, or replace/recompress <code>BOOT.ELF</code>).</div>'
-         '<div class="callout info"><div class="h">Step 0 — see the actual error</div>Boot a <b>debug</b> '
-         '<code>POPSTARTER.ELF</code> (build byte <code>FF</code> shows a full log; classic <code>00</code> shows a '
-         'black wait-screen until the PS logo) so you read the real failure instead of guessing. The config table\'s '
-         '<code>$410</code>/<code>$411</code> debug bytes and <code>DEBUG_AND_HALT.PPF</code> help here.</div>' +
+         '<div class="callout info"><div class="h">Step 0 — see the actual error</div>Turn on POPStarter\'s '
+         '<b>debug mode</b> so you read the real failure instead of guessing. There is no separate "debug build" '
+         'to download: it is the same <code>POPSTARTER.ELF</code> with one config byte changed. <code>$410</code> '
+         'is the "Display of the debug texts/pages" byte, and the shipped "classic" file has it at <code>00</code>, '
+         'which prints nothing. <code>FF</code> prints in realtime; a middle value such as <code>12</code> paces '
+         'the pages so you can actually read them. Set <code>$411</code> non-zero to halt on the error, or just '
+         'apply <code>DEBUG_AND_HALT.PPF</code>, which flips both. SMB mode always runs with it on. '
+         '<a href="wiki/debug-mode.html">Debug Mode →</a></div>' +
          wiki_content(['known-bugs', 'troubleshooting-games', 'faqs']) +
          section_prose(['troubleshooting and display']) +
          firstparty('thread-troubleshooting.md') + firstparty('firstparty-extras.md') +
@@ -1336,10 +1340,22 @@ def render_pl_doc(md):
     def fix(m):
         href, text = m.group(1), m.group(2)
         low = href.lower().split('#')[0].lstrip('./')
+        # GitHub and Python-Markdown's toc extension slugify headings differently. GitHub drops
+        # punctuation and leaves the hyphens either side of it, so "Development & Building" becomes
+        # "development--building"; toc collapses the whitespace run instead and yields
+        # "development-building". Both keep underscores, so the ONLY difference is repeated hyphens.
+        # Copying the markdown's own anchor verbatim therefore produced links that work on
+        # github.com and 404 here (5 of them, silently, because audit_site.py threw the fragment
+        # away before checking). Collapse the runs. Do not re-slug with slug(): it also folds "_"
+        # to "-", which toc does not, and that breaks ROLLING_NOTES-style headings.
+        def dedash(frag):
+            return re.sub(r'-{2,}', '-', frag)
         if low in PL_MAP:
-            anc = ('#' + href.split('#', 1)[1]) if '#' in href else ''
+            anc = ('#' + dedash(href.split('#', 1)[1])) if '#' in href else ''
             return f'<a href="{PL_MAP[low]}.html{anc}">{text}</a>'
-        if href.startswith(('http://', 'https://', '#', 'mailto:')):
+        if href.startswith('#'):
+            return f'<a href="#{dedash(href[1:])}">{text}</a>' if href[1:] else m.group(0)
+        if href.startswith(('http://', 'https://', 'mailto:')):
             return m.group(0)
         clean = href.lstrip('./').split('#')[0]
         if clean:
@@ -1443,7 +1459,7 @@ GLOSSARY = [
     ('$FORCEPAL / $NOPAL', "<code>$FORCEPAL</code> forces the PAL patcher + Euro region; <code>$NOPAL</code> disables the PAL patcher so a PAL game runs native NTSC."),
     ('$HDTVFIX', "The <b>SetGsCrt hack</b>, which is also config byte <code>$412</code> (<code>0x00</code> off by default, <code>0x01</code> on): one setting, three labels. It turns interlacing on (480i NTSC / 576i PAL) for HDTVs that refuse the PS1's 240p/288p over component and show a green screen instead. Can cause interlace flicker on CRTs, so don't use it by default."),
     ('SetGsCrt hack', "krHACKen's own name for the setting this site calls <a href=\"glossary.html#hdtvfix\">$HDTVFIX</a> and the recovered config table lists at byte <code>$412</code>. If you came from the old ShaolinAssassin wiki, this is the entry you are looking for. One caveat: the original note says it helps \"HDTVs that can't deal with the interlaced resolutions\", which is back to front, since enabling it turns interlacing <i>on</i>. See the <a href=\"config.html\">Config Table</a>."),
-    ('Compatibility mode', "POPS per-game fix levels <code>0x01</code>–<code>0x07</code>, selectable as <code>$COMPATIBILITY_0x##</code> or a <code>PATCH_X.BIN</code>. The full mode→meaning map is only partly documented."),
+    ('Compatibility mode', "POPS per-game fix levels <code>0x01</code>–<code>0x07</code>, selectable as <code>$COMPATIBILITY_0x##</code> or a <code>PATCH_X.BIN</code>. All seven are described in the recovered <a href=\"compatibility.html#compatibility-modes\">Compatibility modes table</a>: <code>0x01</code> restores music/voices, <code>0x04</code> fixes slowdowns and flickering, <code>0x06</code> disables the built-in BIOS OSD shell so some games stop freezing on startup, and <code>0x07</code> targets missing textures but is unfinished and marked obsolete. <code>0x01</code>, <code>0x02</code>, <code>0x03</code> and <code>0x05</code> are variants of the same hack and conflict with each other, so use only one at a time."),
     ('Hugopocked fixes', "The leading still-maintained community per-game patch pack for POPStarter — dropped into the game's own VMC folder (matched by VCD basename) to fix titles POPS gets wrong. Archive password <code>hugopocked</code>; don't stack with <code>TROJAN_7.BIN</code>. See the <a href=\"compatibility.html#hugopocked\">Hugopocked section</a>."),
     ('Enceladus', "The Lua runtime the POPSLoader UI is built on."),
     ('POC2 / POPS-00001', "The leaked early Sony PS1 emulator builds POPStarter evolved from; the historical USB method used manual HxD header patching."),
@@ -1563,7 +1579,7 @@ POPSLOADER.ELF -page=hdd -debug                        &larr; open the HDD list 
 # ---------- FAQ ----------
 FAQ_CARDS = [
     ('Why is my game a black screen?',
-     'Most often an incompatible <code>BOOT.ELF</code> in the IGR/exit chain (disable the ELF loader with stock <code>PATCH_9.BIN</code>), or a missing/wrong POPS file. Boot a debug build first to read the actual error.', 'igr.html'),
+     'Most often an incompatible <code>BOOT.ELF</code> in the IGR/exit chain (disable the ELF loader with stock <code>PATCH_9.BIN</code>), or a missing/wrong POPS file. Turn on debug mode first (config byte <code>$410</code>, same ELF, no separate download) to read the actual error.', 'igr.html'),
     ('How do I force PAL, or fix 50/60 Hz?',
      '<code>$FORCEPAL</code> forces the PAL patcher + Euro region; <code>$NOPAL</code> runs a PAL game in native NTSC. <code>PATCH_8.BIN</code> / <code>PATCH_9.BIN</code> are the binary equivalents. After <code>$NOPAL</code> you usually need <code>$YPOS_##</code> to re-center.', 'cheats.html#forcepal'),
     ('Does it support exFAT (USB or internal HDD)?',
@@ -1641,7 +1657,7 @@ KNOWN_ISSUES = [
      'Use Rev 13 Beta 2019/06/05 — the canonical final public build. <a href="history.html">details →</a>'),
     ('SMB shows debug / status text',
      'SMB mode forces startup status text — it is not a "wrong build" signal.',
-     'Ignore it; don’t chase a debug build. <a href="config.html">details →</a>'),
+     'Ignore it. There is no separate debug build to hunt for; debug is config byte <code>$410</code> on the same ELF, and SMB mode forces it on. <a href="config.html">details →</a>'),
     ('Multi-disc swap / shared VMC fails',
      '<code>DISCS.TXT</code> / <code>VMCDIR.TXT</code> misplaced or wrong filenames.',
      '<code>DISCS.TXT</code> in every disc folder; <code>VMCDIR.TXT</code> in the later-disc folders, with exact VCD names. <a href="multidisc.html">details →</a>'),
