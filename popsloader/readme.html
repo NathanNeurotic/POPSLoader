@@ -53,7 +53,7 @@
 </p>
 
 <p>POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.</p>
-<p>The current public release is <strong>1.1.0</strong> (released 2026-07-21). Rolling test artifacts continue to be published from the <code>dev</code> branch (see <a href="#development--building">Development &amp; Building</a>).</p>
+<p>The current public release is <strong>1.1.0</strong> (released 2026-07-21). Rolling test artifacts continue to be published from the <code>dev</code> branch (see <a href="#development-building">Development &amp; Building</a>).</p>
 <hr />
 <h2 id="highlights">Highlights</h2>
 <p>POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:</p>
@@ -68,7 +68,7 @@
 </ul>
 <blockquote>
 <p>** Note<strong><br />
-The canonical, always-current </strong>Known Issues<strong> list and </strong>hardware-verification status<strong> live in </strong><a href="state.html#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here">STATE.md &gt; Known Issues</a>** (with the full ledger in <a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>). The current open item is the config-specific "Failed to load HDD" from a non-HDD boot; the 2026-06 HDD/PAL/BDMA features are implemented and boot on PCSX2 (HDD confirmed read-write on hardware by provato) and are still validating on hardware.</p>
+The canonical, always-current </strong>Known Issues<strong> list and </strong>hardware-verification status<strong> live in </strong><a href="state.html#known-issues-canonical-the-single-list-readme-agents-rolling_notes-point-here">STATE.md &gt; Known Issues</a>** (with the full ledger in <a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>). The current open item is the config-specific "Failed to load HDD" from a non-HDD boot; the 2026-06 HDD/PAL/BDMA features are implemented and boot on PCSX2 (HDD confirmed read-write on hardware by provato) and are still validating on hardware.</p>
 </blockquote>
 <hr />
 <h2 id="supported-devices">Supported Devices</h2>
@@ -83,7 +83,7 @@ The canonical, always-current </strong>Known Issues<strong> list and </strong>ha
 </ul>
 <blockquote>
 <p>** Note<strong><br />
-The main menu can also list </strong>i.Link<strong>, but that flow is not implemented yet — it </strong>ships Hidden by default<strong> (show it under <em>Settings → Device List</em> if you want it), and selecting it shows a "not implemented" notice. </strong>SMB (v1)<strong> network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (</strong>HDD (exFAT)** is likewise implemented via BDMA Mode <code>ATA</code> and is validating on hardware.) See <a href="#known-issues--planned-improvements">Known Issues &amp; Planned Improvements</a>.</p>
+The main menu can also list </strong>i.Link<strong>, but that flow is not implemented yet — it </strong>ships Hidden by default<strong> (show it under <em>Settings → Device List</em> if you want it), and selecting it shows a "not implemented" notice. </strong>SMB (v1)<strong> network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (</strong>HDD (exFAT)** is likewise implemented via BDMA Mode <code>ATA</code> and is validating on hardware.) See <a href="#known-issues-planned-improvements">Known Issues &amp; Planned Improvements</a>.</p>
 <p>** Note**<br />
 Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.</p>
 </blockquote>
@@ -483,7 +483,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 </ul>
 <hr />
 <h2 id="known-issues-planned-improvements">Known Issues &amp; Planned Improvements</h2>
-<p>Confirmed broken: see the single canonical <strong><a href="state.html#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here">STATE.md &gt; Known Issues</a></strong> list (currently: the "Failed to load HDD" from a non-HDD boot case, and the SMB connect failure whose root cause is fixed in code and awaiting its first hardware run — the full 2026-07-07 audit and fixes are in <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/REPO_AUDIT_2026-07-07.md">docs/REPO_AUDIT_2026-07-07.md</a>).</p>
+<p>Confirmed broken: see the single canonical <strong><a href="state.html#known-issues-canonical-the-single-list-readme-agents-rolling_notes-point-here">STATE.md &gt; Known Issues</a></strong> list (currently: the "Failed to load HDD" from a non-HDD boot case, and the SMB connect failure whose root cause is fixed in code and awaiting its first hardware run — the full 2026-07-07 audit and fixes are in <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/REPO_AUDIT_2026-07-07.md">docs/REPO_AUDIT_2026-07-07.md</a>).</p>
 <p>Planned for subsequent updates:<br />
 *   <strong>Layer C Lazy IRX Loading</strong>: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The <code>mmceman</code> portion has <strong>landed</strong> (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of <code>ds34bt</code> / <code>usbd</code> was <strong>declined</strong> (2026-06-22): both hard-import <code>usbd</code> and the only available defer trigger is the boot device family — not the same as pad transport — so deferring them would strand USB / Bluetooth controller input (unrecoverable without a reboot) for a small boot-time gain. They are kept loaded eagerly; the Layer C effort is closed at the <code>mmceman</code> win.<br />
 *   <strong>Settings UI Redesign (Berion)</strong>: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.<br />
