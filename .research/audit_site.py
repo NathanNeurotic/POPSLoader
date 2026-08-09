@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Deterministic audit of the built site: link integrity, policy compliance, render artifacts, completeness.
-import os, re, json, html
+import os, re, sys, json, html
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.join(ROOT, 'site')
 # docs.google.com removed 2026-06-22 (maintainer call) — community compat lists/forms are allowed live links.
@@ -20,6 +20,27 @@ def rel_exists(page, href):
     target = os.path.normpath(os.path.join(os.path.dirname(page), href))
     return os.path.exists(target)
 
+# Anchor targets per page. rel_exists() throws the #fragment away before it checks anything, so a
+# link to a real page with a nonexistent heading always passed. That hid 5 dead anchors in the
+# mirrored README/STATE pages, where GitHub's "a--b" slugs do not match ours.
+ANCHORS = {}
+for _p in htmls:
+    _t = open(_p, encoding='utf-8', errors='replace').read()
+    ANCHORS[os.path.normpath(_p)] = (set(re.findall(r'\sid="([^"]+)"', _t))
+                                     | set(re.findall(r'\sname="([^"]+)"', _t)))
+
+def anchor_exists(page, href):
+    if '#' not in href or href.startswith(('http://', 'https://', 'mailto:', 'data:')):
+        return True
+    path, frag = href.split('#', 1)
+    if not frag:
+        return True
+    target = os.path.normpath(page if not path
+                              else os.path.join(os.path.dirname(page), path))
+    if target not in ANCHORS:
+        return True   # missing file is rel_exists()'s job; don't double-report
+    return frag in ANCHORS[target]
+
 for page in htmls:
     txt = open(page, encoding='utf-8', errors='replace').read()
     rp = os.path.relpath(page, SITE)
@@ -29,6 +50,8 @@ for page in htmls:
     for href in re.findall(r'href="([^"]+)"', txt):
         if not rel_exists(page, href):
             issues['links'].append(f'{rp}: dead local link -> {href}')
+        elif not anchor_exists(page, href):
+            issues['links'].append(f'{rp}: dead anchor -> {href}')
     for src in re.findall(r'src="([^"]+)"', txt):
         if not rel_exists(page, src):
             issues['links'].append(f'{rp}: dead local src -> {src}')
@@ -91,3 +114,8 @@ for k, v in issues.items():
         print(f"  ... +{len(v)-40} more")
     total += len(v)
 print(f"\nTOTAL ISSUES: {total}")
+# docs-site.yml runs this under `set -eu` in a step labelled "Audit (hard gate)", but the script
+# used to end here, so it exited 0 no matter what it printed and the gate could never fail. Arm it.
+if total:
+    print("FAILED: the gate is armed; fix the issues above or the site will not publish.")
+    sys.exit(1)
