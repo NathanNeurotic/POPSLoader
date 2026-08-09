@@ -1092,8 +1092,11 @@ def build_sections():
          '<div class="callout info"><div class="h">Command nuances worth knowing</div><ul>'
          '<li><code>$NOPAL</code> (PAL→native NTSC) usually needs a <code>$YPOS_##</code> companion (e.g. '
          '<code>$YPOS_10</code>) to re-center the picture afterward.</li>'
-         '<li><code>$HDTVFIX</code> outputs <b>480i (NTSC) / 576i (PAL)</b> — if a game unexpectedly shows 480i '
-         'instead of 240p, check for a stray <code>$HDTVFIX</code>. Don\'t use it as a default (CRT interlace flicker).</li>'
+         '<li><code>$HDTVFIX</code> is the <b>SetGsCrt hack</b> under a friendlier name (the original wiki lists it '
+         'only as "SetGsCrt hack", and it is config byte <code>$412</code>, so all three names mean one setting). '
+         'It turns interlacing <b>on</b>: 480i on NTSC, 576i on PAL. Use it for an HDTV that refuses the PS1\'s '
+         '240p/288p over component and shows a green screen. If a game unexpectedly shows 480i instead of 240p, '
+         'check for a stray <code>$HDTVFIX</code>. Don\'t use it as a default (CRT interlace flicker).</li>'
          '<li><code>$USBDELAY_#</code> patches POPS for <i>streaming</i> stalls (try +2–3) — it does <b>not</b> fix '
          '"USB not detected"; raise config byte <code>$413</code> for detection.</li></ul></div>' +
          callouts_matching(['cheat', 'safemode', 'master']) +
@@ -1175,6 +1178,21 @@ def build_sections():
     page('config', 'Config Table ($410–$42F)',
          'POPStarter r13 stores a 32-byte configuration table at file offset <code>$410</code> inside '
          'POPSTARTER.ELF/.KELF. Each byte is one setting.',
+         '<div class="callout info"><div class="h">$412: "SetGsCrt hack" and "$HDTVFIX" are one setting, '
+         'under two names</div>'
+         '<p>The table below is krHACKen\'s original wording, so <code>$412</code> appears there only as the '
+         '<b>SetGsCrt hack</b>. That is the same switch this site and <code>CHEATS.TXT</code> call '
+         '<code>$HDTVFIX</code>. Setting <code>$412</code> to <code>0x01</code> and putting <code>$HDTVFIX</code> '
+         'in <code>CHEATS.TXT</code> do the identical job, and krHACKen said as much when he made it default-off '
+         'in Beta 16: "add $HDTVFIX to your CHEATS.TXT, or patch the offset 412h of the ELF/KELF".</p>'
+         '<p><b>One caveat on the original note.</b> It reads "helps with the HDTVs that can\'t deal with the '
+         'interlaced resolutions thru component", which is back to front for what the byte actually does. The hack '
+         'pins SetGsCrt\'s <i>interlace</i> parameter on, so switching it to <code>0x01</code> <b>turns interlacing '
+         'on</b> (480i on NTSC, 576i on PAL). What it rescues are HDTVs that refuse the PS1\'s <b>240p/288p</b> '
+         'over component and show a plain green screen instead. Read the original sentence as "can\'t deal with '
+         'the [non-]interlaced resolutions" and it lines up. Corroborated on the psx-place thread, where a user '
+         'stuck in 480i got 240p back by deleting a <code>$HDTVFIX</code> an installer had written for them.</p>'
+         '</div>' +
          callouts_matching(['$41', '$42', 'byte', 'debug', 'hdtvfix', '412']) +
          wiki_content(['configuration-table']) +
          section_prose(['32-byte config']) +
@@ -1404,7 +1422,8 @@ GLOSSARY = [
     ('D2LS', "The “left stick is the D-pad” cheat. <code>$D2LS</code> leaves the pad digital; <code>$D2LS_ALT</code> leaves it analog."),
     ('$SAFEMODE', "Delays <i>raw</i> GameShark codes until after POPS startup. Needed only for raw codes — not for named <code>$commands</code> like <code>$NOPAL</code>."),
     ('$FORCEPAL / $NOPAL', "<code>$FORCEPAL</code> forces the PAL patcher + Euro region; <code>$NOPAL</code> disables the PAL patcher so a PAL game runs native NTSC."),
-    ('$HDTVFIX', "A SetGsCrt hack (480i/576i) for HDTVs that can't show 240p/288p. Can cause interlace flicker on CRTs — don't use it by default."),
+    ('$HDTVFIX', "The <b>SetGsCrt hack</b>, which is also config byte <code>$412</code> (<code>0x00</code> off by default, <code>0x01</code> on): one setting, three labels. It turns interlacing on (480i NTSC / 576i PAL) for HDTVs that refuse the PS1's 240p/288p over component and show a green screen instead. Can cause interlace flicker on CRTs, so don't use it by default."),
+    ('SetGsCrt hack', "krHACKen's own name for the setting this site calls <a href=\"glossary.html#hdtvfix\">$HDTVFIX</a> and the recovered config table lists at byte <code>$412</code>. If you came from the old ShaolinAssassin wiki, this is the entry you are looking for. One caveat: the original note says it helps \"HDTVs that can't deal with the interlaced resolutions\", which is back to front, since enabling it turns interlacing <i>on</i>. See the <a href=\"config.html\">Config Table</a>."),
     ('Compatibility mode', "POPS per-game fix levels <code>0x01</code>–<code>0x07</code>, selectable as <code>$COMPATIBILITY_0x##</code> or a <code>PATCH_X.BIN</code>. The full mode→meaning map is only partly documented."),
     ('Hugopocked fixes', "The leading still-maintained community per-game patch pack for POPStarter — dropped into the game's own VMC folder (matched by VCD basename) to fix titles POPS gets wrong. Archive password <code>hugopocked</code>; don't stack with <code>TROJAN_7.BIN</code>. See the <a href=\"compatibility.html#hugopocked\">Hugopocked section</a>."),
     ('Enceladus', "The Lua runtime the POPSLoader UI is built on."),
@@ -1558,8 +1577,8 @@ KNOWN_ISSUES = [
      'OPL is waiting on a network/BDM/SMB device left on <b>Auto</b>.',
      'Set the OPL devices you don’t use to <b>Manual</b> or <b>Off</b>. <a href="troubleshooting.html#two-black-screens">details →</a>'),
     ('Expected 240p but got 480i / 576i',
-     '<code>$HDTVFIX</code> is active (config byte <code>$412</code> or in <code>CHEATS.TXT</code>).',
-     'Remove <code>$HDTVFIX</code> — it forces interlaced output for displays that reject 240p/288p. <a href="config.html">details →</a>'),
+     '<code>$HDTVFIX</code> is active, either in <code>CHEATS.TXT</code> or as config byte <code>$412</code> (the old wiki calls that byte the "SetGsCrt hack").',
+     'Remove <code>$HDTVFIX</code>, or set <code>$412</code> back to <code>0x00</code>. It turns interlacing on for displays that reject 240p/288p. <a href="config.html">details →</a>'),
     ('USB drive not detected',
      'USB access delay too low, or a poor format.',
      'Raise config byte <code>$413</code> (<code>$USBDELAY_#</code> only patches streaming, not detection); use FAT32/exFAT with 32K–64K clusters. <a href="troubleshooting.html">details →</a>'),

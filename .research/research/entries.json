@@ -92,7 +92,7 @@
   {
     "name": "$HDTVFIX",
     "category": "cheats",
-    "effect": "Enables a SetGsCrt hack (static interlace param). Helps HDTVs/LED TVs that can't deal with POPS interlaced resolutions over component (otherwise green screens / garbage). Hardcode-equivalent: config offset $412=0x01.",
+    "effect": "Enables the SetGsCrt hack (a static interlace parameter). The original ShaolinAssassin wiki labels this only as the 'SetGsCrt hack', and it is the same switch as config offset $412=0x01, so the three names describe one setting. It turns interlacing ON (480i on NTSC, 576i on PAL) so HDTVs/LED TVs that refuse the PS1's 240p/288p over component stop showing plain green screens and other rubbish. Caveat on the original wording: 'HDTVs that can't deal with the interlaced resolutions' is back to front, since the byte enables interlacing rather than avoiding it.",
     "scope": "CHEATS.TXT per-game.",
     "conflicts": "INCOMPATIBLE with some CRT TVs (leave off on CRTs).",
     "example": "$HDTVFIX",
@@ -725,7 +725,7 @@
     "effect": "0x00 = disabled (default). 0x01 = enabled. The feature exposed as the $HDTVFIX cheat. CORRECTION to base report: in r13 $412 is HDTVFIX, NOT a 'function skipper'. The function skipper lived at $412 ONLY in pre-Beta-13 builds and was REMOVED in WIP06 Beta 13 (2015-12-07, ~10KB saved); the freed byte was repurposed for SetGsCrt in Beta 15/16 (2016).",
     "scope": "POPSTARTER.ELF/.KELF byte $412. r13. Default 0x00. SetGsCrt implemented Beta 15, default-off Beta 16.",
     "conflicts": "INCOMPATIBLE with some CRT TVs. Equivalent to $HDTVFIX.",
-    "example": "$HDTVFIX, or hex-edit byte $412=0x01, to fix green-screen on a component HDTV",
+    "example": "$HDTVFIX in CHEATS.TXT, or hex-edit byte $412=0x01 (the old wiki's 'SetGsCrt hack'), to fix green-screen on a component HDTV",
     "provenance": "PRIMARY: r13 CHANGES.TXT (function-skipper removal 2015/12/07; HDTVFIX 2016/09/18 + 2016/11/20) + config-table wiki + ELF hexdump",
     "confidence": "primary"
   },
