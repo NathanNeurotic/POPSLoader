@@ -54,30 +54,8 @@ local function ResolveFirstExistingElf(candidates)
   end
   return nil
 end
--- %w+ accepts letters and digits IN ANY ORDER and still stops at the colon. The
--- old "^[%a]+%d*:/" could only express a device whose digits are all at the END
--- of the name, so it matched nothing against mx4sio0: -- the one backend whose
--- name carries a digit in the MIDDLE (ps2sdk registers the literal "mx4sio", and
--- the typed sweep appends the unit ordinal: system.lua TYPED_PREFIX).
---
--- That is issue #570. MMCE and MX4SIO both store game-list entries as BARE
--- filenames plus the live PLDR.GAMEPATH (system.lua, cache-format note), so
--- ResolveSelectedVcdPath below is what rejoins them. With the device root
--- unrecognised it fell through to `return entry`, handing every consumer a bare
--- filename: the cover probe became the RELATIVE "ART/<name>_COV.png" (resolved
--- against the loader's own cwd, so it missed indistinguishably from an absent
--- cover), the details .txt was never requested at all, and the launch preflight
--- reported the game file missing. Listing and launching were unaffected -- they
--- concatenate PLDR.GAMEPATH directly and never consult this predicate -- which
--- is why the games booted fine on a card whose art was dead.
---
--- EXP56 fixed the two devroot matches DOWNSTREAM of here (BuildCoverCandidates
--- and the details .txt) and left this gate alone, so the corrected patterns
--- never received a device-qualified path on MX4SIO. Strict widening: every
--- string the old pattern matched still matches (mass:/ mass0:/ mmce0:/ ata0:/
--- usb0:/ ilink0:/ mc0:/ pfs0:/ smb0:/), and hdd0:__common still does not.
 local function IsDevicePath(path)
-  return path ~= nil and string.match(path, "^%w+:/") ~= nil
+  return path ~= nil and string.match(path, "^[%a]+%d*:/") ~= nil
 end
 local function StripExtension(path)
   if path == nil then return nil end
@@ -87,9 +65,7 @@ end
 local function BasenameWithoutExtension(path)
   if path == nil or path == "" then return "" end
   local basename = string.match(path, "([^/]+)$") or path
-  -- %w+ for the same reason as IsDevicePath above: a device-relative "mx4sio0:Game.VCD"
-  -- kept its device prefix under the old letters-then-digits pattern.
-  local without_device = string.match(basename, "^%w+:(.+)$")
+  local without_device = string.match(basename, "^[%a]+%d*:(.+)$")
   if without_device ~= nil and without_device ~= "" then
     basename = without_device
   end
@@ -3671,6 +3647,21 @@ UI = {
               return
             end
           end
+          -- Net-SMB launches keep smbman.irx resident (reboot_iop=0 for the SMB
+          -- policy, ResolveLaunchPolicy), so the loader's OWN logged-on browse
+          -- session to the share is still open when POPSTARTER opens its own via
+          -- SMBCONFIG.DAT right after. On a link with no switch to arbitrate two
+          -- sessions from the same client (e.g. a direct crossover-cable PS2<->PC
+          -- setup), a duplicate LOGON on top of a live one can wedge the connect
+          -- silently, before POPSTARTER's own error/debug text is ever reached --
+          -- a permanent black-screen freeze indistinguishable from a hang, not
+          -- POPSTARTER's own (textual) failure modes. Log off first, exactly like
+          -- the existing BACK-hook disconnect above, so POPSTARTER starts clean.
+          -- disconnectSMB is idempotent + smb_irx_loaded-gated (system.lua), so
+          -- this is a harmless no-op on every other launch route.
+          if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
+            pcall(System.disconnectSMB)
+          end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           -- Skip the existence preflight on net-SMB too: per-file stat over the live
@@ -6412,14 +6403,6 @@ if UI.FONT ~= nil then
   end
 end
 _G.UI = UI
--- Exported for the host harness (T54). MMCE and MX4SIO store game-list entries as
--- BARE filenames plus the live PLDR.GAMEPATH, so this join is the FIRST step of the
--- cover/details path and the step issue #570 broke. T37 pinned the cover path but
--- fed it an already-joined literal, so it stayed green while MX4SIO covers were
--- 100% dead. Anything testing cover or details resolution must start HERE.
--- Assigned after `UI` exists (load-order contract: a `UI.x =` above the table
--- literal at line 883 would brick every boot).
-UI.ResolveSelectedVcdPath = ResolveSelectedVcdPath
 UI.GAME_SCENES = {
   [UI.SCENES.GUSBFAT] = true,
   [UI.SCENES.GSMB] = true,
