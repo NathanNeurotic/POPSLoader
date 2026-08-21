@@ -2317,7 +2317,7 @@ if _t55_ok:
             _t55_ok, _t55_why = False, "gate must not depend on UI.CURSCENE/GSMBNET -- centralized in RunPOPStarterGame for auto-launch coverage"
         elif "pcall(System.disconnectSMB)" not in _window:
             _t55_ok, _t55_why = False, "disconnect must be pcall(System.disconnectSMB) (idempotent, keeps IRX resident)"
-        elif _slice55.find("System.disconnectSMB", 0) != _disc:
+        elif _slice55.count("pcall(System.disconnectSMB)") != 1:
             _t55_ok, _t55_why = False, "more than one System.disconnectSMB inside RunPOPStarterGame -- keep a single last-moment teardown before LaunchEngine"
 check("T55 net-SMB launch drains cover worker then logs off loader session before handoff (context.device_page==SMB && reboot_iop==0)", _t55_ok, _t55_why)
 
