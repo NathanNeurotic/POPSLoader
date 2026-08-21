@@ -9751,6 +9751,17 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
   end
+  if type(UI) == "table" and type(UI.CoverCache) == "table"
+     and type(UI.CoverCache.Quiesce) == "function" then
+    pcall(function()
+      UI.CoverCache:Quiesce()
+    end)
+  end
+  if context.device_page == "SMB"
+     and reboot_iop == 0
+     and type(System.disconnectSMB) == "function" then
+    pcall(System.disconnectSMB)
+  end
   context.hdd_preexec_gate_mode = hdd_preexec_gate_mode
   LaunchEngine(popstarter, argv, reboot_iop, context)
 end

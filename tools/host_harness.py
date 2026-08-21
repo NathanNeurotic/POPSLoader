@@ -2275,6 +2275,51 @@ end''')()
 check("T54 a bare game entry + GAMEPATH joins to a device-qualified cover AND details path", t54)
 
 
+# T55 #571: SMB state leakage across the no-IOP-reset handoff must be closed
+# last-moment inside PLDR.RunPOPStarterGame. POPSLoader's smb0: LOGON survives
+# reboot_iop==0 into POPStarter's own LOGON via mc:/POPSTARTER/SMBCONFIG.DAT.
+# The fix drains the resident cover worker (which may hold an smb0: fopen) then
+# CLOSESHARE+LOGOFF immediately before LaunchEngine. Centralized in RunPOPStarterGame
+# so both UI CONFIRM and AutoLaunchFromLaunchArgs are covered -- hence the gate is
+# context.device_page == "SMB" and reboot_iop == 0, NOT UI.CURSCENE/GSMBNET.
+# Order matters: Retro GEM (EmitRetroGemGameId) reads SYSTEM.CNF inside the VCD
+# via smb0: in ui.lua BEFORE RunPOPStarterGame, so disconnecting earlier would break it.
+_sys55 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_t55_ok, _t55_why = True, ""
+# locate the tail of RunPOPStarterGame (Clear -> LaunchEngine)
+_clear = _sys55.find("UI.CoverCache:Clear()")
+_quiesce = _sys55.find("UI.CoverCache:Quiesce()", _clear if _clear != -1 else 0)
+_disc = _sys55.find("System.disconnectSMB", _quiesce if _quiesce != -1 else 0)
+_launch = _sys55.find("LaunchEngine(popstarter, argv, reboot_iop, context)", _disc if _disc != -1 else 0)
+if _clear == -1 or _quiesce == -1 or _disc == -1 or _launch == -1:
+    _t55_ok, _t55_why = False, "Clear/Quiesce/disconnectSMB/LaunchEngine sequence not found in RunPOPStarterGame tail"
+elif not (_clear < _quiesce < _disc < _launch):
+    _t55_ok, _t55_why = False, "wrong order: expected Clear -> Quiesce -> disconnectSMB -> LaunchEngine (all SMB-dependent work must complete before Quiesce, and Quiesce before CLOSESHARE)"
+elif "pcall(function()" not in _sys55[_quiesce-200:_quiesce+200] or "UI.CoverCache:Quiesce()" not in _sys55[_quiesce-200:_quiesce+200]:
+    _t55_ok, _t55_why = False, "Quiesce must be pcall(function() UI.CoverCache:Quiesce() end) -- pcall(UI.CoverCache.Quiesce) omits self and never drains"
+elif "pcall(UI.CoverCache.Quiesce" in _sys55:
+    _t55_ok, _t55_why = False, "bare pcall(UI.CoverCache.Quiesce) found -- self==nil, Quiesce throws and the worker is not drained"
+else:
+    _window = _sys55[_disc-600:_disc+600]
+    if 'context.device_page == "SMB"' not in _window or "reboot_iop == 0" not in _window:
+        _t55_ok, _t55_why = False, 'gate must be context.device_page == "SMB" and reboot_iop == 0 (covers UI + auto-launch, not GSMBNET)'
+    elif "GSMBNET" in _window or "UI.CURSCENE" in _window:
+        _t55_ok, _t55_why = False, "gate must not depend on UI.CURSCENE/GSMBNET -- centralized in RunPOPStarterGame for auto-launch coverage"
+    elif "pcall(System.disconnectSMB)" not in _window:
+        _t55_ok, _t55_why = False, "disconnect must be pcall(System.disconnectSMB) (idempotent, keeps IRX resident)"
+# negative: within RunPOPStarterGame, no disconnect may appear before Quiesce
+# (earlier failure-cleanup disconnects outside this function are fine)
+if _t55_ok:
+    _rpp = _sys55.find("function PLDR.RunPOPStarterGame")
+    _slice = _sys55[_rpp:_rpp+16000] if _rpp != -1 else ""
+    _slice_clear = _slice.find("UI.CoverCache:Clear()")
+    _slice_quiesce = _slice.find("UI.CoverCache:Quiesce()")
+    _slice_disc = _slice.find("System.disconnectSMB")
+    if _slice_disc != -1 and _slice_quiesce != -1 and _slice_disc < _slice_quiesce:
+        _t55_ok, _t55_why = False, "a disconnectSMB appears before Quiesce inside RunPOPStarterGame -- cover worker still holds smb0: fopen across CLOSESHARE"
+check("T55 net-SMB launch drains cover worker then logs off loader session before handoff (context.device_page==SMB && reboot_iop==0)", _t55_ok, _t55_why)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
