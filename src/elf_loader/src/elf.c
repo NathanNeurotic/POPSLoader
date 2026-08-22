@@ -610,6 +610,22 @@ int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[])
 }
 
 
+int LoadELFFromFileKeepIOP(const char *filename, int argc, char *argv[])
+{
+	char resolved_path[256];
+	if (resolve_exec_path(filename, resolved_path, sizeof(resolved_path)) < 0) {
+		return -1;
+	}
+	// Keep IOP: route through the BRAM embedded child loader without an IOP reset.
+	// The child loads the target through the still-live IOP (SMB mount preserved)
+	// and the target (POPStarter) performs its own IOP reset after reading
+	// smb:/POPS/SB.<game>.ELF selector. Narrowly scoped to the SMB POPStarter
+	// route from Lua (device_page == "SMB" && reboot_iop == 0); this function
+	// is generic so the Lua gate is the scope control. Empty partition_context
+	// means no APA mount bookkeeping -- local mass:/ or mc:/ POPSTARTER.ELF.
+	return ExecuteViaEmbeddedLoader("", resolved_path, argc, argv);
+}
+
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[])
 {
 	return LoadELFFromFileExecPS2RebootIOPWithPartition(filename, NULL, argc, argv);

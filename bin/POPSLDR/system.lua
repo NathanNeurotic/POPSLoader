@@ -9123,7 +9123,28 @@ local function LaunchEngine(popstarter, argv, reboot_iop, context)
   local use_partition_api = exec_partition_context ~= nil
     and reboot_iop ~= 0
     and type(System.loadELFWithPartition) == "function"
-  if exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
+  -- SMB POPStarter: keep IOP via the BRAM embedded child loader (RiptOPL control
+  -- src/system.c sysLaunchPopstarter -> sysLoadELFKeepIOP). The loader's SMB
+  -- mount/session stays up (no pre-handoff disconnect/logoff), the child preserves
+  -- smb:/POPS/SB.<game>.ELF argv[0], and POPStarter does its own IOP reset +
+  -- SMB init via mc:/POPSTARTER/SMBCONFIG.DAT. Narrowly scoped to this route
+  -- so USB/MMCE/MX4SIO/HDD behavior is untouched.
+  local use_smb_keepiop = context ~= nil
+    and context.device_page == "SMB"
+    and reboot_iop == 0
+    and type(System.loadELFKeepIOP) == "function"
+    and type(exec_args) == "table" and #exec_args >= 1
+    and type(exec_args[1]) == "string"
+    and string.match(string.lower(exec_args[1]), "^smb:/pops/sb%.") ~= nil
+  if use_smb_keepiop then
+    if #exec_args > 0 and unpack_fn ~= nil then
+      rc = System.loadELFKeepIOP(exec_path, unpack_fn(exec_args))
+    elseif #exec_args == 1 then
+      rc = System.loadELFKeepIOP(exec_path, exec_args[1])
+    else
+      rc = System.loadELFKeepIOP(exec_path)
+    end
+  elseif exec_args ~= nil and #exec_args > 0 and unpack_fn ~= nil then
     if use_partition_api then
       rc = System.loadELFWithPartition(exec_path, reboot_iop, exec_partition_context, unpack_fn(exec_args))
     else
@@ -9750,6 +9771,12 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local reboot_iop = launch_cmd.reboot_iop
   if UI ~= nil and UI.CoverCache ~= nil and UI.CoverCache.Clear ~= nil then
     UI.CoverCache:Clear()
+  end
+  if type(UI) == "table" and type(UI.CoverCache) == "table"
+     and type(UI.CoverCache.Quiesce) == "function" then
+    pcall(function()
+      UI.CoverCache:Quiesce()
+    end)
   end
   context.hdd_preexec_gate_mode = hdd_preexec_gate_mode
   LaunchEngine(popstarter, argv, reboot_iop, context)
