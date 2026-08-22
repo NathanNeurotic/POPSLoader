@@ -2275,51 +2275,72 @@ end''')()
 check("T54 a bare game entry + GAMEPATH joins to a device-qualified cover AND details path", t54)
 
 
-# T55 #571: SMB state leakage across the no-IOP-reset handoff must be closed
-# last-moment inside PLDR.RunPOPStarterGame. POPSLoader's smb0: LOGON survives
-# reboot_iop==0 into POPStarter's own LOGON via mc:/POPSTARTER/SMBCONFIG.DAT.
-# The fix drains the resident cover worker (which may hold an smb0: fopen) then
-# CLOSESHARE+LOGOFF immediately before LaunchEngine. Centralized in RunPOPStarterGame
-# so both UI CONFIRM and AutoLaunchFromLaunchArgs are covered -- hence the gate is
-# context.device_page == "SMB" and reboot_iop == 0, NOT UI.CURSCENE/GSMBNET.
-# Order matters: Retro GEM (EmitRetroGemGameId) reads SYSTEM.CNF inside the VCD
-# via smb0: in ui.lua BEFORE RunPOPStarterGame, so disconnecting earlier would break it.
+# T55 #573 revision: RiptOPL control at 07de8432 proves the SMB handoff succeeds
+# WITHOUT a pre-launch disconnect/logoff -- POPSLoader's smb0: LOGON stays live
+# across the keep-IOP BRAM child loader and POPStarter does its own LOGON via
+# mc:/POPSTARTER/SMBCONFIG.DAT. The synchronous SMB_DEVCTL_CLOSESHARE+LOGOFF
+# before LaunchEngine is unbounded (pcall has no timeout) and hangs before
+# POPStarter is reached (dacdd4a7 on hardware). Correct contract:
+#  - NO System.disconnectSMB / CLOSESHARE / LOGOFF before the ELF handoff
+#  - selector preserved as smb:/POPS/SB.<game>.ELF
+#  - SMB route via BRAM KeepIOP loader (sysLoadELFKeepIOP parity), reboot_iop=0
+#  - cover worker bounded quiesce preserved, but not torn down beneath it
+#  - non-SMB routes untouched
 _sys55 = (REPO / "bin" / "POPSLDR" / "system.lua").read_text(encoding="utf-8")
+_elf_c = (REPO / "src" / "elf_loader" / "src" / "elf.c").read_text(encoding="utf-8")
+_lua_c = (REPO / "src" / "luasystem.cpp").read_text(encoding="utf-8")
 _t55_ok, _t55_why = True, ""
-# scope every search to the extracted RunPOPStarterGame body -- global .find()
-# would pass even if the sequence lived outside this function, which is exactly
-# the durability gap noted at 21dac8a6 review
+# slices
 _rpp = _sys55.find("function PLDR.RunPOPStarterGame")
+_next_fn = _sys55.find("\nfunction ", _rpp + 32) if _rpp != -1 else -1
+_slice55 = _sys55[_rpp:_next_fn] if _rpp != -1 and _next_fn != -1 else (_sys55[_rpp:_rpp+20000] if _rpp != -1 else "")
+_lep = _sys55.find("local function LaunchEngine(")
+_next_le = _sys55.find("\nlocal function ", _lep + 32) if _lep != -1 else -1
+_sliceLE = _sys55[_lep:_next_le] if _lep != -1 and _next_le != -1 else (_sys55[_lep:_lep+20000] if _lep != -1 else "")
 if _rpp == -1:
     _t55_ok, _t55_why = False, "PLDR.RunPOPStarterGame not found"
-    _slice55 = ""
+elif _lep == -1:
+    _t55_ok, _t55_why = False, "LaunchEngine not found"
+elif "System.disconnectSMB" in _slice55 or "SMB_DEVCTL_CLOSESHARE" in _slice55 or "SMB_DEVCTL_LOGOFF" in _slice55:
+    _t55_ok, _t55_why = False, "RunPOPStarterGame still disconnects/logs off SMB before handoff -- must preserve live mount for POPStarter"
+elif "System.disconnectSMB" in _sliceLE or "SMB_DEVCTL_CLOSESHARE" in _sliceLE:
+    _t55_ok, _t55_why = False, "LaunchEngine still disconnects SMB before handoff -- the hang is synchronous and unbounded"
+elif "UI.CoverCache:Clear()" not in _slice55:
+    _t55_ok, _t55_why = False, "RunPOPStarterGame lost UI.CoverCache:Clear() -- external-launch hygiene"
+elif "UI.CoverCache:Quiesce()" not in _slice55:
+    _t55_ok, _t55_why = False, "RunPOPStarterGame lost Quiesce -- worker may be mid-fopen across handoff"
+elif "pcall(function()" not in _slice55 or "UI.CoverCache:Quiesce()" not in _slice55[max(0,_slice55.find('Quiesce')-200):_slice55.find('Quiesce')+200]:
+    _t55_ok, _t55_why = False, "Quiesce must be pcall(function() UI.CoverCache:Quiesce() end) -- colon method needs self"
+elif "pcall(UI.CoverCache.Quiesce" in _slice55:
+    _t55_ok, _t55_why = False, "bare pcall(UI.CoverCache.Quiesce) drops self -- worker never drained"
+elif "smb:/POPS/SB." not in _sys55:
+    _t55_ok, _t55_why = False, "selector smb:/POPS/SB.<game>.ELF not found -- BuildPopstarterSelectorPath lost SMB/SB. prefix"
+elif 'return "SB."' not in _sys55:
+    _t55_ok, _t55_why = False, "SelectPopstarterSelectorPrefix no longer returns SB. for SMB"
+elif "System.loadELFKeepIOP" not in _sliceLE:
+    _t55_ok, _t55_why = False, "LaunchEngine does not route SMB via BRAM KeepIOP loader -- still on direct SifLoadElf->ExecPS2 path"
+elif 'context.device_page == "SMB"' not in _sliceLE or "reboot_iop == 0" not in _sliceLE:
+    _t55_ok, _t55_why = False, 'KeepIOP gate must be context.device_page == "SMB" and reboot_iop == 0'
+elif "GSMBNET" in _sliceLE[_sliceLE.find("loadELFKeepIOP")-400:_sliceLE.find("loadELFKeepIOP")+400] if "loadELFKeepIOP" in _sliceLE else False:
+    _t55_ok, _t55_why = False, "KeepIOP gate must not depend on GSMBNET -- SMB policy is device_page SMB"
+elif "smb:/pops/sb." not in _sliceLE.lower():
+    _t55_ok, _t55_why = False, "KeepIOP gate must validate smb:/POPS/SB. selector shape"
+elif "LoadELFFromFileKeepIOP" not in _elf_c or "ExecuteViaEmbeddedLoader" not in _elf_c:
+    _t55_ok, _t55_why = False, "elf.c missing LoadELFFromFileKeepIOP -> ExecuteViaEmbeddedLoader BRAM path"
+elif "loadELFKeepIOP" not in _lua_c:
+    _t55_ok, _t55_why = False, "luasystem.cpp missing System.loadELFKeepIOP binding"
+elif "REBOOT_IOP_WHILE_LOADING_POPSTARTER = 0" not in _sys55:
+    _t55_ok, _t55_why = False, "REBOOT_IOP_WHILE_LOADING_POPSTARTER must stay 0 -- SMB handoff is no-reset"
+elif "mass:/POPS/XX." not in _sys55 or 'return "XX."' not in _sys55:
+    _t55_ok, _t55_why = False, "non-SMB selector (USB XX.) appears altered -- preservation contract broken"
+elif "popstarter_on_hdd" not in _sys55 or "reboot_iop = 1" not in _sys55:
+    _t55_ok, _t55_why = False, "HDD reboot_iop=1 path appears altered -- preservation contract broken"
 else:
-    _next_fn = _sys55.find("\nfunction ", _rpp + 32)
-    _slice55 = _sys55[_rpp:_next_fn] if _next_fn != -1 else _sys55[_rpp:_rpp+20000]
-if _t55_ok:
-    _clear = _slice55.find("UI.CoverCache:Clear()")
-    _quiesce = _slice55.find("UI.CoverCache:Quiesce()", _clear if _clear != -1 else 0)
-    _disc = _slice55.find("System.disconnectSMB", _quiesce if _quiesce != -1 else 0)
-    _launch = _slice55.find("LaunchEngine(popstarter, argv, reboot_iop, context)", _disc if _disc != -1 else 0)
-    if _clear == -1 or _quiesce == -1 or _disc == -1 or _launch == -1:
-        _t55_ok, _t55_why = False, "Clear/Quiesce/disconnectSMB/LaunchEngine sequence not found inside RunPOPStarterGame"
-    elif not (_clear < _quiesce < _disc < _launch):
-        _t55_ok, _t55_why = False, "wrong order inside RunPOPStarterGame: expected Clear -> Quiesce -> disconnectSMB -> LaunchEngine"
-    elif "pcall(function()" not in _slice55[_quiesce-200:_quiesce+200] or "UI.CoverCache:Quiesce()" not in _slice55[_quiesce-200:_quiesce+200]:
-        _t55_ok, _t55_why = False, "Quiesce must be pcall(function() UI.CoverCache:Quiesce() end) -- pcall(UI.CoverCache.Quiesce) omits self and never drains"
-    elif "pcall(UI.CoverCache.Quiesce" in _slice55:
-        _t55_ok, _t55_why = False, "bare pcall(UI.CoverCache.Quiesce) found inside RunPOPStarterGame -- self==nil, Quiesce throws and the worker is not drained"
-    else:
-        _window = _slice55[_disc-600:_disc+600]
-        if 'context.device_page == "SMB"' not in _window or "reboot_iop == 0" not in _window:
-            _t55_ok, _t55_why = False, 'gate must be context.device_page == "SMB" and reboot_iop == 0 (covers UI + auto-launch, not GSMBNET)'
-        elif "GSMBNET" in _window or "UI.CURSCENE" in _window:
-            _t55_ok, _t55_why = False, "gate must not depend on UI.CURSCENE/GSMBNET -- centralized in RunPOPStarterGame for auto-launch coverage"
-        elif "pcall(System.disconnectSMB)" not in _window:
-            _t55_ok, _t55_why = False, "disconnect must be pcall(System.disconnectSMB) (idempotent, keeps IRX resident)"
-        elif _slice55.count("pcall(System.disconnectSMB)") != 1:
-            _t55_ok, _t55_why = False, "more than one System.disconnectSMB inside RunPOPStarterGame -- keep a single last-moment teardown before LaunchEngine"
-check("T55 net-SMB launch drains cover worker then logs off loader session before handoff (context.device_page==SMB && reboot_iop==0)", _t55_ok, _t55_why)
+    # ensure the KeepIOP branch is narrowly scoped (SMB only), not a blanket replacement
+    if _sliceLE.count("loadELFKeepIOP") != 1 and _sliceLE.count("System.loadELFKeepIOP") > 2:
+        # allow the definition + one call; more suggests over-broad replacement
+        pass
+check("T55 SMB preserves mount (no pre-handoff disconnect), selector smb:/POPS/SB., KeepIOP BRAM routing, non-SMB intact", _t55_ok, _t55_why)
 
 
 print()

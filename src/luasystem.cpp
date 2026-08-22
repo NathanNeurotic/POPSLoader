@@ -1011,6 +1011,7 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
+int LoadELFFromFileKeepIOP(const char *filename, int argc, char *argv[]);
 void SetExecKeepPfsMask(unsigned int mask);
 void ClearExecKeepPfsMask(void);
 }
@@ -1169,6 +1170,43 @@ static int lua_loadELFRebootIOP(lua_State *L)
 		return 1;
 	}
 	int rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
+	ClearExecKeepPfsMask();
+	lua_pushinteger(L, rc);
+	return 1;
+}
+
+static int lua_loadELFKeepIOP(lua_State *L)
+{
+	int argc = lua_gettop(L);
+	if (argc < 1) return luaL_error(L, "%s(path, args...): not enough args", __FUNCTION__);
+	const char *elftoload = luaL_checkstring(L, 1);
+	static char arg_storage[2048];
+	static char *argv_static[33];
+	int arg_count = 0;
+	size_t storage_offset = 0;
+	for (int index = 2; index <= argc; index++) {
+		const char *arg = luaL_checkstring(L, index);
+		size_t len = strlen(arg) + 1;
+		if (arg_count >= 32) {
+			return luaL_error(L, "System.loadELFKeepIOP supports at most 32 arguments");
+		}
+		if ((storage_offset + len) > sizeof(arg_storage)) {
+			return luaL_error(L, "System.loadELFKeepIOP argument storage exceeded");
+		}
+		memcpy(&arg_storage[storage_offset], arg, len);
+		argv_static[arg_count] = &arg_storage[storage_offset];
+		storage_offset += len;
+		arg_count++;
+	}
+	argv_static[arg_count] = NULL;
+	DPRINTF("# KeepIOP ELF '%s' argc=%d\n", elftoload, arg_count);
+	for (int i = 0; i < arg_count; i++) DPRINTF("#  argv[%d]='%s'\n", i, argv_static[i]);
+	int rc;
+	if (arg_count > 0) {
+		rc = LoadELFFromFileKeepIOP(elftoload, arg_count, argv_static);
+	} else {
+		rc = LoadELFFromFileKeepIOP(elftoload, 0, NULL);
+	}
 	ClearExecKeepPfsMask();
 	lua_pushinteger(L, rc);
 	return 1;
@@ -2383,6 +2421,7 @@ static const luaL_Reg System_functions[] = {
 	{"smbNetUp",               lua_smb_netup},
 	{"connectSMB",             lua_smb_connect},
 	{"disconnectSMB",          lua_smb_disconnect},
+	{"loadELFKeepIOP",         lua_loadELFKeepIOP},
 	{"bdmList",                lua_bdm_list},
 	{"refreshMassBackends",    lua_refresh_mass_backends},
 	{"getMassBackendInfo",     lua_get_mass_backend_info},

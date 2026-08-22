@@ -25,6 +25,7 @@ int LoadELFFromFile(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOP(const char *filename, int argc, char *argv[]);
 int LoadELFFromFileExecPS2RebootIOPWithPartition(const char *filename, const char *partition, int argc, char *argv[]);
+int LoadELFFromFileKeepIOP(const char *filename, int argc, char *argv[]);
 
 /** Preserve caller args for partition-aware loads; synthesize argv[0] only when none were supplied.
  *
