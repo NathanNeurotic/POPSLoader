@@ -1,14 +1,10 @@
-<p align="center">
-  <img height="250" alt="image" src="https://github.com/user-attachments/assets/e8c39a2d-81eb-4059-9173-be07bf16ba3a" />
+<p align="center"><img width="1774" height="887" alt="POPSLoader" src="https://github.com/user-attachments/assets/0a5ded44-3012-4608-bddf-9adbf1173cc6" />
+<img width="400" height="92" alt="LLMdevelopment" src="https://github.com/user-attachments/assets/9a3c3610-271d-4f9b-959b-bed32bcb9461" />
 </p>
 
 ---
 
 # POPSLoader
-
-<p align="center">
-  <img src="banner.jpg" alt="POPSLoader Banner" width="800"/>
-</p>
 
 <p align="center">
   <a href="https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ"><img src="https://img.shields.io/badge/MEGA-Rolling%20Archive-%23D90007?style=flat&logo=mega&logoColor=white" alt="MEGA Rolling Archive"/></a>
