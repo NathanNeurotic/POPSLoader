@@ -125,11 +125,6 @@ command, byte, or file instantly.</p>
   var ctx = canvas.getContext('2d');
   if (!ctx) return;
 
-  // Respect user preference for reduced motion
-  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    return;
-  }
-
   var width = window.innerWidth;
   var height = window.innerHeight;
   var dpr = window.devicePixelRatio || 1;
@@ -138,76 +133,98 @@ command, byte, or file instantly.</p>
     dpr = window.devicePixelRatio || 1;
     width = window.innerWidth;
     height = window.innerHeight;
-    canvas.width = Math.round(width * dpr);
-    canvas.height = Math.round(height * dpr);
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
   }
   window.addEventListener('resize', resize);
   resize();
 
-  // Mouse tracking with smooth spring inertia
   var mouse = {
     x: width / 2,
     y: height / 2,
     targetX: width / 2,
     targetY: height / 2,
-    active: false
+    speed: 0,
+    hasMoved: false
   };
 
+  function onPointerMove(x, y) {
+    mouse.targetX = x;
+    mouse.targetY = y;
+    if (!mouse.hasMoved) {
+      mouse.x = x;
+      mouse.y = y;
+      mouse.hasMoved = true;
+    }
+  }
+
   window.addEventListener('mousemove', function (e) {
-    mouse.targetX = e.clientX;
-    mouse.targetY = e.clientY;
-    mouse.active = true;
+    onPointerMove(e.clientX, e.clientY);
+  });
+  document.addEventListener('mousemove', function (e) {
+    onPointerMove(e.clientX, e.clientY);
   });
 
-  window.addEventListener('mouseleave', function () {
-    mouse.active = false;
-  });
-
-  // Touch support for mobile / tablet
   window.addEventListener('touchmove', function (e) {
-    if (e.touches.length > 0) {
-      mouse.targetX = e.touches[0].clientX;
-      mouse.targetY = e.touches[0].clientY;
-      mouse.active = true;
+    if (e.touches && e.touches.length > 0) {
+      onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   }, { passive: true });
 
-  // 7 authentic PS2 OSDSYS orbs with distinct 3D orbital parameters
-  var NUM_ORBS = 7;
-  var orbs = [];
-  var ORB_CONFIGS = [
-    { radius: 38, speed: 0.026, tiltX: 0.65, tiltY: 0.35, phase: 0.0, baseSize: 3.2, hue: 'cyan' },
-    { radius: 50, speed: -0.020, tiltX: -0.55, tiltY: 0.50, phase: 1.1, baseSize: 2.8, hue: 'blue' },
-    { radius: 28, speed: 0.034, tiltX: 0.40, tiltY: -0.70, phase: 2.3, baseSize: 2.4, hue: 'cyan' },
-    { radius: 60, speed: -0.016, tiltX: 0.75, tiltY: -0.30, phase: 3.5, baseSize: 3.6, hue: 'ice' },
-    { radius: 44, speed: 0.022, tiltX: -0.70, tiltY: -0.45, phase: 4.4, baseSize: 2.6, hue: 'blue' },
-    { radius: 66, speed: 0.015, tiltX: 0.30, tiltY: 0.80, phase: 5.2, baseSize: 3.0, hue: 'cyan' },
-    { radius: 54, speed: -0.024, tiltX: -0.45, tiltY: -0.60, phase: 5.9, baseSize: 2.7, hue: 'ice' }
+  // 7 authentic PS2 OSDSYS orbs with visible sizing
+  var ORBS = [
+    { radius: 36, speed: 0.038, tiltX: 0.65, tiltY: 0.35, phase: 0.0, size: 4.8, hue: 'cyan' },
+    { radius: 52, speed: -0.028, tiltX: -0.55, tiltY: 0.50, phase: 1.1, size: 4.2, hue: 'blue' },
+    { radius: 26, speed: 0.046, tiltX: 0.40, tiltY: -0.70, phase: 2.3, size: 3.8, hue: 'cyan' },
+    { radius: 64, speed: -0.022, tiltX: 0.75, tiltY: -0.30, phase: 3.5, size: 5.2, hue: 'ice' },
+    { radius: 44, speed: 0.032, tiltX: -0.70, tiltY: -0.45, phase: 4.4, size: 4.0, hue: 'blue' },
+    { radius: 74, speed: 0.020, tiltX: 0.30, tiltY: 0.80, phase: 5.2, size: 4.6, hue: 'cyan' },
+    { radius: 58, speed: -0.030, tiltX: -0.45, tiltY: -0.60, phase: 5.9, size: 3.9, hue: 'ice' }
   ];
 
-  for (var i = 0; i < NUM_ORBS; i++) {
-    var cfg = ORB_CONFIGS[i];
-    orbs.push({
-      cfg: cfg,
-      angle: cfg.phase,
+  var orbStates = [];
+  for (var i = 0; i < ORBS.length; i++) {
+    orbStates.push({
+      cfg: ORBS[i],
+      angle: ORBS[i].phase,
       history: []
     });
   }
 
-  var TRAIL_LEN = 6;
+  // Trailing stardust particles emitted as cursor sweeps
+  var particles = [];
   var lastTime = performance.now();
 
   function tick(now) {
-    var dt = Math.min((now - lastTime) / 1000, 0.1);
+    var dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
 
-    // Smooth cursor tracking (fluid inertia)
-    mouse.x += (mouse.targetX - mouse.x) * 0.12;
-    mouse.y += (mouse.targetY - mouse.y) * 0.12;
+    // Fluid spring cursor tracking
+    var dx = mouse.targetX - mouse.x;
+    var dy = mouse.targetY - mouse.y;
+    mouse.x += dx * 0.16;
+    mouse.y += dy * 0.16;
+    mouse.speed = Math.sqrt(dx * dx + dy * dy);
 
-    // Subtle ambient wave drift when cursor is resting
-    var idleWaveX = Math.sin(now * 0.001) * 8 * (mouse.active ? 0.3 : 1.0);
-    var idleWaveY = Math.cos(now * 0.0012) * 6 * (mouse.active ? 0.3 : 1.0);
+    // Spawn subtle stardust trail when cursor moves
+    if (mouse.speed > 1.5 && particles.length < 40) {
+      particles.push({
+        x: mouse.x + (Math.random() - 0.5) * 12,
+        y: mouse.y + (Math.random() - 0.5) * 12,
+        vx: (Math.random() - 0.5) * 0.8 - (dx * 0.03),
+        vy: (Math.random() - 0.5) * 0.8 - (dy * 0.03),
+        life: 1.0,
+        decay: 0.03 + Math.random() * 0.03,
+        size: 1.5 + Math.random() * 2.2,
+        hue: Math.random() > 0.4 ? 'cyan' : 'blue'
+      });
+    }
+
+    // Ambient floating wave when resting
+    var idleWaveX = Math.sin(now * 0.001) * 6;
+    var idleWaveY = Math.cos(now * 0.0013) * 5;
 
     var cx = mouse.x + idleWaveX;
     var cy = mouse.y + idleWaveY;
@@ -216,34 +233,51 @@ command, byte, or file instantly.</p>
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    // Render with additive blending for authentic PlayStation luminescence
-    ctx.globalCompositeOperation = 'lighter';
+    // 1. Update and render stardust particles
+    for (var p = particles.length - 1; p >= 0; p--) {
+      var pt = particles[p];
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.life -= pt.decay;
+      if (pt.life <= 0) {
+        particles.splice(p, 1);
+        continue;
+      }
+      var pAlpha = pt.life * 0.85;
+      var pColor = pt.hue === 'cyan'
+        ? 'rgba(56, 189, 248, ' + pAlpha + ')'
+        : 'rgba(96, 165, 250, ' + pAlpha + ')';
+      ctx.fillStyle = pColor;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.size * pt.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // Calculate current 3D positions
+    // 2. Calculate 3D positions for the 7 satellite orbs
     var renderedOrbs = [];
-    for (var k = 0; k < orbs.length; k++) {
-      var o = orbs[k];
+    for (var k = 0; k < orbStates.length; k++) {
+      var o = orbStates[k];
       o.angle += o.cfg.speed * (dt * 60);
 
       var rad = o.cfg.radius;
       var ox = Math.cos(o.angle) * rad;
       var oy = Math.sin(o.angle) * rad;
 
-      // 3D rotation by orbital plane inclination
+      // 3D rotation by inclined orbital plane
       var x3 = ox * Math.cos(o.cfg.tiltY) - oy * Math.sin(o.cfg.tiltX) * Math.sin(o.cfg.tiltY);
       var y3 = oy * Math.cos(o.cfg.tiltX);
       var z3 = ox * Math.sin(o.cfg.tiltY) + oy * Math.sin(o.cfg.tiltX) * Math.cos(o.cfg.tiltY);
 
-      // Depth projection: front is brighter and larger, rear is dimmer and smaller
-      var depth = (z3 + 80) / 160;
-      depth = Math.max(0.2, Math.min(1.0, depth));
+      // Depth projection: front is brighter & larger, rear is dimmer & smaller
+      var depth = (z3 + 90) / 180;
+      depth = Math.max(0.25, Math.min(1.0, depth));
 
       var screenX = cx + x3;
       var screenY = cy + y3;
 
       // Update trail history
       o.history.unshift({ x: screenX, y: screenY, depth: depth });
-      if (o.history.length > TRAIL_LEN) {
+      if (o.history.length > 7) {
         o.history.pop();
       }
 
@@ -253,15 +287,15 @@ command, byte, or file instantly.</p>
         y: screenY,
         z: z3,
         depth: depth,
-        size: o.cfg.baseSize * (0.7 + 0.6 * depth),
+        size: o.cfg.size * (0.75 + 0.55 * depth),
         hue: o.cfg.hue
       });
     }
 
-    // Sort rear to front for correct depth blending
+    // Sort rear to front for correct depth order
     renderedOrbs.sort(function (a, b) { return a.z - b.z; });
 
-    // Draw ethereal motion trails
+    // 3. Draw ethereal motion trails for orbs
     for (var t = 0; t < renderedOrbs.length; t++) {
       var item = renderedOrbs[t];
       var hist = item.orb.history;
@@ -269,11 +303,12 @@ command, byte, or file instantly.</p>
         for (var h = 1; h < hist.length; h++) {
           var p0 = hist[h - 1];
           var p1 = hist[h];
-          var trailAlpha = (1 - h / hist.length) * 0.32 * p1.depth;
-          ctx.strokeStyle = item.hue === 'blue'
-            ? 'rgba(0, 140, 255, ' + trailAlpha + ')'
-            : (item.hue === 'ice' ? 'rgba(180, 230, 255, ' + trailAlpha + ')' : 'rgba(0, 220, 255, ' + trailAlpha + ')');
-          ctx.lineWidth = Math.max(0.8, item.size * 0.5 * (1 - h / hist.length));
+          var trailAlpha = (1 - h / hist.length) * 0.45 * p1.depth;
+          var trailCol = item.hue === 'blue'
+            ? 'rgba(96, 165, 250, ' + trailAlpha + ')'
+            : (item.hue === 'ice' ? 'rgba(224, 242, 254, ' + trailAlpha + ')' : 'rgba(56, 189, 248, ' + trailAlpha + ')');
+          ctx.strokeStyle = trailCol;
+          ctx.lineWidth = Math.max(0.9, item.size * 0.6 * (1 - h / hist.length));
           ctx.beginPath();
           ctx.moveTo(p0.x, p0.y);
           ctx.lineTo(p1.x, p1.y);
@@ -282,29 +317,30 @@ command, byte, or file instantly.</p>
       }
     }
 
-    // Draw glowing orb bodies
+    // 4. Draw glowing orb bodies
     for (var i = 0; i < renderedOrbs.length; i++) {
       var ro = renderedOrbs[i];
-      var glowRadius = ro.size * 5.5;
+      var glowRadius = ro.size * 5.0;
+
+      // Outer soft ambient glow
       var grad = ctx.createRadialGradient(ro.x, ro.y, 0, ro.x, ro.y, glowRadius);
 
-      var colorCore = 'rgba(255, 255, 255, ' + (0.95 * ro.depth) + ')';
+      var colorCore = 'rgba(255, 255, 255, ' + (0.98 * ro.depth) + ')';
       var colorInner, colorOuter;
 
       if (ro.hue === 'blue') {
-        colorInner = 'rgba(20, 120, 255, ' + (0.65 * ro.depth) + ')';
-        colorOuter = 'rgba(0, 70, 200, 0)';
+        colorInner = 'rgba(96, 165, 250, ' + (0.75 * ro.depth) + ')';
+        colorOuter = 'rgba(30, 64, 175, 0)';
       } else if (ro.hue === 'ice') {
-        colorInner = 'rgba(120, 220, 255, ' + (0.75 * ro.depth) + ')';
-        colorOuter = 'rgba(40, 140, 255, 0)';
+        colorInner = 'rgba(186, 230, 253, ' + (0.85 * ro.depth) + ')';
+        colorOuter = 'rgba(56, 189, 248, 0)';
       } else { // cyan
-        colorInner = 'rgba(0, 230, 255, ' + (0.75 * ro.depth) + ')';
-        colorOuter = 'rgba(0, 120, 255, 0)';
+        colorInner = 'rgba(56, 189, 248, ' + (0.85 * ro.depth) + ')';
+        colorOuter = 'rgba(14, 116, 144, 0)';
       }
 
       grad.addColorStop(0, colorCore);
-      grad.addColorStop(0.25, colorInner);
-      grad.addColorStop(0.65, colorInner.replace(/[\d\.]+\)$/, (0.25 * ro.depth) + ')'));
+      grad.addColorStop(0.3, colorInner);
       grad.addColorStop(1, colorOuter);
 
       ctx.fillStyle = grad;
@@ -312,26 +348,25 @@ command, byte, or file instantly.</p>
       ctx.arc(ro.x, ro.y, glowRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Intense white point center
+      // Sharp intense center core
       ctx.fillStyle = colorCore;
       ctx.beginPath();
-      ctx.arc(ro.x, ro.y, Math.max(1.0, ro.size * 0.4), 0, Math.PI * 2);
+      ctx.arc(ro.x, ro.y, Math.max(1.5, ro.size * 0.45), 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // Connect close orbs with subtle ethereal energy filaments
+    // 5. Connect close orbs with subtle ethereal energy filaments
     for (var a = 0; a < renderedOrbs.length; a++) {
       for (var b = a + 1; b < renderedOrbs.length; b++) {
         var oA = renderedOrbs[a];
         var oB = renderedOrbs[b];
-        var dx = oA.x - oB.x;
-        var dy = oA.y - oB.y;
-        var dist = Math.sqrt(dx * dx + dy * dy);
-        var maxConnectDist = 45;
-        if (dist < maxConnectDist) {
-          var filamentAlpha = (1 - dist / maxConnectDist) * 0.18 * Math.min(oA.depth, oB.depth);
-          ctx.strokeStyle = 'rgba(0, 210, 255, ' + filamentAlpha + ')';
-          ctx.lineWidth = 0.8;
+        var distSq = (oA.x - oB.x) * (oA.x - oB.x) + (oA.y - oB.y) * (oA.y - oB.y);
+        var maxDist = 55;
+        if (distSq < maxDist * maxDist) {
+          var dist = Math.sqrt(distSq);
+          var filamentAlpha = (1 - dist / maxDist) * 0.28 * Math.min(oA.depth, oB.depth);
+          ctx.strokeStyle = 'rgba(56, 189, 248, ' + filamentAlpha + ')';
+          ctx.lineWidth = 1.0;
           ctx.beginPath();
           ctx.moveTo(oA.x, oA.y);
           ctx.lineTo(oB.x, oB.y);
