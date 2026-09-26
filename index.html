@@ -5,16 +5,21 @@
 <link rel="stylesheet" href="assets/style.css">
 </head><body data-base="">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu"></button>
+  <button class="menu-btn" aria-label="Menu">&#9776;</button>
   <a class="brand" href="index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
+  <div class="topbar-actions">
+    <a class="topbar-btn primary" href="downloads.html" title="Downloads &amp; Files"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Downloads</a>
+    <a class="topbar-btn" href="https://github.com/NathanNeurotic/POPSLoader" target="_blank" rel="noopener" title="GitHub Repository"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>GitHub</a>
+  </div>
   <div class="search">
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
   </div>
 </header>
+<canvas id="fall-leaves" class="fall-leaves-canvas" aria-hidden="true"></canvas>
 <div class="layout">
   <nav class="sidebar">
     <a href="index.html" class="active">Home</a>
@@ -48,8 +53,20 @@
 <h1>POPStarter <span class="g">Documentation</span></h1>
 <p class="lead">Everything you need to play your PS1 game backups on a PS2 with POPStarter — recovered from
 ShaolinAssassin's lost wiki, krHACKen's changelog and the community, merged and made fully searchable.</p>
+<div class="sys-strip">
+  <div class="sys-strip-row">
+    <span class="sys-pill">POPS PS1 RUNTIME</span>
+    <span class="sys-pill">USB / HDD / SMB / DISCS</span>
+    <span class="sys-pill">MULTI-DISC &amp; VMC</span>
+    <span class="sys-pill">CHEATS &amp; IGR</span>
+  </div>
+  <div class="sys-strip-row">
+    <span class="sys-pill">MMCE &amp; MX4SIO</span>
+    <span class="sys-pill">COMPATIBILITY ENGINE</span>
+  </div>
+</div>
 <div class="btn-row">
-  <a class="btn" href="getting-started.html"> New here? Start your first game</a>
+  <a class="btn" href="getting-started.html">Start your first game</a>
   <a class="btn ghost" href="#reference">Browse the full reference</a>
 </div>
 <div class="stat-row"><div class="stat"><b>63</b><span>wiki pages recovered</span></div><div class="stat"><b>136</b><span>cross-sourced facts &amp; commands</span></div><div class="stat"><b>23</b><span>downloads served locally</span></div><div class="stat"><b>124</b><span>images recovered</span></div></div>
@@ -101,4 +118,159 @@ command, byte, or file instantly.</p>
   documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="credits.html">Credits</a>.</p>
 </footer>
 <script src="assets/app.js"></script>
+<script>
+(function () {
+  var canvas = document.getElementById('fall-leaves');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  if (!ctx) return;
+
+  var width = window.innerWidth;
+  var height = window.innerHeight;
+  var dpr = window.devicePixelRatio || 1;
+
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var PALETTE = [
+    { fill: 'rgba(235, 45, 60, ',  vein: 'rgba(175, 20, 35, ' },  // Maple crimson
+    { fill: 'rgba(255, 102, 0, ',  vein: 'rgba(190, 65, 0, ' },   // Fiery orange
+    { fill: 'rgba(255, 160, 0, ',  vein: 'rgba(200, 115, 0, ' },  // Golden amber
+    { fill: 'rgba(240, 200, 35, ', vein: 'rgba(185, 145, 15, ' }, // Autumn ochre
+    { fill: 'rgba(195, 75, 35, ',  vein: 'rgba(140, 45, 15, ' },  // Russet bronze
+    { fill: 'rgba(220, 60, 45, ',  vein: 'rgba(165, 30, 20, ' }   // Deep vermilion
+  ];
+
+  function drawMaple(c, s) {
+    c.beginPath();
+    c.moveTo(0, -s);
+    c.bezierCurveTo(-s * 0.25, -s * 0.7, -s * 0.35, -s * 0.5, -s * 0.7, -s * 0.5);
+    c.bezierCurveTo(-s * 0.5, -s * 0.25, -s * 0.45, -s * 0.1, -s * 0.8, s * 0.15);
+    c.bezierCurveTo(-s * 0.5, s * 0.2, -s * 0.3, s * 0.2, -s * 0.35, s * 0.45);
+    c.bezierCurveTo(-s * 0.15, s * 0.4, -s * 0.05, s * 0.5, 0, s * 0.55);
+    c.bezierCurveTo(s * 0.05, s * 0.5, s * 0.15, s * 0.4, s * 0.35, s * 0.45);
+    c.bezierCurveTo(s * 0.3, s * 0.2, s * 0.5, s * 0.2, s * 0.8, s * 0.15);
+    c.bezierCurveTo(s * 0.45, -s * 0.1, s * 0.5, -s * 0.25, s * 0.7, -s * 0.5);
+    c.bezierCurveTo(s * 0.35, -s * 0.5, s * 0.25, -s * 0.7, 0, -s);
+    c.closePath();
+  }
+
+  function drawBirch(c, s) {
+    c.beginPath();
+    c.moveTo(0, -s);
+    c.bezierCurveTo(-s * 0.55, -s * 0.4, -s * 0.55, s * 0.3, 0, s * 0.55);
+    c.bezierCurveTo(s * 0.55, s * 0.3, s * 0.55, -s * 0.4, 0, -s);
+    c.closePath();
+  }
+
+  function drawOak(c, s) {
+    c.beginPath();
+    c.moveTo(0, -s);
+    c.bezierCurveTo(-s * 0.3, -s * 0.75, -s * 0.5, -s * 0.6, -s * 0.45, -s * 0.4);
+    c.bezierCurveTo(-s * 0.25, -s * 0.3, -s * 0.6, -s * 0.1, -s * 0.5, s * 0.2);
+    c.bezierCurveTo(-s * 0.3, s * 0.25, -s * 0.35, s * 0.45, 0, s * 0.6);
+    c.bezierCurveTo(s * 0.35, s * 0.45, s * 0.3, s * 0.25, s * 0.5, s * 0.2);
+    c.bezierCurveTo(s * 0.6, -s * 0.1, s * 0.25, -s * 0.3, s * 0.45, -s * 0.4);
+    c.bezierCurveTo(s * 0.5, -s * 0.6, s * 0.3, -s * 0.75, 0, -s);
+    c.closePath();
+  }
+
+  function createLeaf(scatterY) {
+    var color = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    var size = 11 + Math.random() * 12; // 11px to 23px
+    return {
+      x: Math.random() * (width + 80) - 40,
+      y: scatterY ? (Math.random() * height) : (-30 - Math.random() * 30),
+      size: size,
+      type: Math.floor(Math.random() * 3), // 0=maple, 1=birch, 2=oak
+      color: color,
+      alpha: 0.78 + Math.random() * 0.20,
+      vy: 0.7 + Math.random() * 0.9,       // gentle descent
+      wind: 0.15 + Math.random() * 0.35,   // slight gentle rightward breeze
+      sway: Math.random() * Math.PI * 2,
+      swaySpeed: 0.015 + Math.random() * 0.02,
+      swayAmp: 0.8 + Math.random() * 1.2,
+      flipX: Math.random() * Math.PI * 2,
+      flipSpeedX: 0.02 + Math.random() * 0.03,
+      flipY: Math.random() * Math.PI * 2,
+      flipSpeedY: 0.01 + Math.random() * 0.02,
+      angle: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.02
+    };
+  }
+
+  var leaves = [];
+  var COUNT = 52;
+  for (var i = 0; i < COUNT; i++) {
+    leaves.push(createLeaf(true)); // distribute across whole height initially
+  }
+
+  function tick() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    for (var j = 0; j < leaves.length; j++) {
+      var l = leaves[j];
+
+      // Physics update
+      l.sway += l.swaySpeed;
+      l.flipX += l.flipSpeedX;
+      l.flipY += l.flipSpeedY;
+      l.angle += l.rotSpeed;
+
+      l.x += Math.sin(l.sway) * l.swayAmp + l.wind;
+      l.y += l.vy;
+
+      // Wrap around
+      if (l.y > height + 35 || l.x < -60 || l.x > width + 60) {
+        leaves[j] = createLeaf(false);
+        continue;
+      }
+
+      // 3D fold simulation
+      var foldX = Math.cos(l.flipX);
+      var foldY = Math.sin(l.flipY);
+      var faceBrightness = 0.85 + 0.15 * Math.abs(foldX);
+
+      ctx.save();
+      ctx.translate(l.x, l.y);
+      ctx.rotate(l.angle);
+      ctx.scale(foldX, foldY);
+
+      // Render leaf body
+      ctx.fillStyle = l.color.fill + (l.alpha * faceBrightness) + ')';
+      if (l.type === 0) {
+        drawMaple(ctx, l.size);
+      } else if (l.type === 1) {
+        drawBirch(ctx, l.size);
+      } else {
+        drawOak(ctx, l.size);
+      }
+      ctx.fill();
+
+      // Render leaf stem & spine vein
+      ctx.strokeStyle = l.color.vein + (l.alpha * faceBrightness * 0.7) + ')';
+      ctx.lineWidth = Math.max(0.7, l.size * 0.05);
+      ctx.beginPath();
+      ctx.moveTo(0, -l.size * 0.8);
+      ctx.lineTo(0, l.size * 0.75);
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  requestAnimationFrame(tick);
+})();
+</script>
 </body></html>
