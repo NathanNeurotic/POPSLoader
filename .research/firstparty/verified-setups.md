@@ -41,16 +41,22 @@ mass:/APPS/PS1_POPSLDR/title.cfg
 
 **HugoPocked per-game fixes:** drop them in a folder named after the VCD, e.g. `123.VCD` → `mass:/POPS/123/`.
 
-### exFAT on USB — BDMAssault enabler (case-sensitive!)
+### exFAT on USB: BDMAssault enabler (case-sensitive!)
 
-israpps' [BDMAssault](https://github.com/israpps/BDMAssault) renames `usbd_bd_assault.irx` and
-`bdm_assault.irx`. Place on a memory card (exact case matters):
+israpps' [BDMAssault](https://github.com/israpps/BDMAssault) drivers go in the memory card's
+**`POPSTARTER` folder only**, renamed exactly like this (lowercase matters):
 ```
-mc?:/POPSTARTER/usbd.irx
-mc?:/POPSTARTER/usbhdfsd.irx
-mc?:/SYS-CONF/USBD.IRX
-mc?:/SYS-CONF/USBHDFSD.IRX
+bdm_assault.irx      ->  mc?:/POPSTARTER/usbd.irx
+usbd_bd_assault.irx  ->  mc?:/POPSTARTER/usbhdfsd.irx
 ```
+
+> **Do NOT copy them into `mc?:/SYS-CONF/`.** That folder holds FreeMcBoot's own USB drivers, and
+> POPStarter never reads it. Replacing `SYS-CONF/USBD.IRX` / `USBHDFSD.IRX` does nothing for PS1 games
+> and can stop FreeMcBoot from booting at all. Only touch `SYS-CONF` if you specifically want FMCB
+> itself to read exFAT, and keep a backup of the originals.
+>
+> **POPSLoader does this for you:** with Adaptive BDMA on (the default), it stages the right driver
+> pair into `mc?:/POPSTARTER/` when you launch a game, so you don't need to copy anything by hand.
 
 ### SMB (Ethernet)
 

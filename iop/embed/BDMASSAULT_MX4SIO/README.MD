@@ -11,6 +11,11 @@ To use this project you have to place the two IRX binaries provided at the [rele
 - `bdm_assault.irx` must be pasted into `mc?:/POPSTARTER/usbd.irx`
 - `usbd_bd_assault.irx` must be pasted into `mc?:/POPSTARTER/usbhdfsd.irx`
 
+> **POPSLoader note:** for POPStarter / POPSLoader you only need the `POPSTARTER` folder above
+> (POPSLoader stages it for you). Do NOT copy these into `SYS-CONF` for PS1 games: POPStarter never
+> reads `SYS-CONF`, and replacing FMCB's drivers there can stop FreeMcBoot from booting. The section
+> below is only for making FMCB itself read exFAT; back up the originals first.
+
 ### FreeMcBoot
 - `bdm_assault.irx` must be pasted into `mc?:/SYS-CONF/USBD.IRX`
 - `usbd_bd_assault.irx` must be pasted into `mc?:/SYS-CONF/USBHDFSD.IRX`
