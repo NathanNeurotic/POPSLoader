@@ -1,3 +1,9 @@
+[1.2.2] - September 30th, 2026
+- Docs: BDMAssault exFAT drivers go only in mc?:/POPSTARTER/ (usbd.irx, usbhdfsd.irx). The docs site also listed mc?:/SYS-CONF/, which POPStarter never reads; replacing FreeMcBoot's drivers there can stop FMCB from booting.
+- Docs site: the PS2 orb cursor and favicon set are now built from the tracked site source instead of existing only on gh-pages.
+- Release: master, dev, and experimental align on the same commit and 1.2.2 stamp.
+- No launcher code changes since 1.2.1; the 1.2.1 hardware-validation status carries over. See QA_REGRESSION_MATRIX.md.
+
 [1.2.1] - September 11th, 2026
 - Fix: RGB PNG covers use 32-bit textures with explicit alpha, avoiding invisible covers with alpha blending (#575).
 - Fix: MX4SIO cover and details paths recognize device names containing digits (#570).

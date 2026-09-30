@@ -1,10 +1,12 @@
-# POPSLoader 1.2.1 — Experimental Release
+# POPSLoader 1.2.2 — Experimental Release
 
-At the 1.2.1 release cut, `master`, `dev`, and `experimental` share the same source commit. All three builds show **v1.2.1** in Settings → About; there is no EXP suffix for this cut.
+At the 1.2.2 release cut, `master`, `dev`, and `experimental` share the same source commit. All three builds show **v1.2.2** in Settings → About; there is no EXP suffix for this cut.
 
-This release includes the RGB PNG alpha correction (#575), MX4SIO cover/details path correction (#570), and SMB POPStarter handoff correction (#571). Host tests and CI do not replace PS2 testing; hardware validation for these changes remains pending. See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md).
+1.2.2 is a documentation fix. The exFAT (BDMAssault) setup now says the two drivers go only in the memory card's `POPSTARTER` folder (`usbd.irx`, `usbhdfsd.irx`). The docs site also listed `mc?:/SYS-CONF/`, which POPStarter never reads; replacing FreeMcBoot's drivers there can stop FMCB from booting. POPSLoader stages these drivers for you when Adaptive BDMA is on (the default).
 
-The versioned release is [POPSLoader 1.2.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.1). Floating channel builds may advance after this cut.
+The launcher code is identical to 1.2.1 apart from the version stamp. 1.2.1 included the RGB PNG alpha correction (#575), MX4SIO cover/details path correction (#570), and SMB POPStarter handoff correction (#571). Host tests and CI do not replace PS2 testing; hardware validation for those changes remains pending. See [STATE.md](STATE.md) and [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md).
+
+The versioned release is [POPSLoader 1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2). Floating channel builds may advance after this cut.
 
 ---
 

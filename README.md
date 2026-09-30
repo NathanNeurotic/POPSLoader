@@ -12,7 +12,7 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **[1.2.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.1)** (2026-09-11). At this release cut, `master`, `dev`, and `experimental` share the same commit and version stamp. Floating channel artifacts continue to publish from their respective branches.
+The current public release is **[1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2)** (2026-09-30). At this release cut, `master`, `dev`, and `experimental` share the same commit and version stamp. Floating channel artifacts continue to publish from their respective branches.
 
 ---
 

@@ -1,6 +1,6 @@
 # AGENTS
 
-Last updated: 2026-09-11 (release 1.2.1; master, dev, and experimental aligned at this cut)
+Last updated: 2026-09-30 (release 1.2.2; master, dev, and experimental aligned at this cut)
 
 Operational guidance and entry point for AI agents (cloud or interactive) working in this repository. This file is self-contained: it absorbs the former `AGENTS_START_HERE.md` orientation content. For current code/hardware status, behavioral invariants, preservation contracts, and the canonical known-issues list, defer to **`STATE.md`** rather than restating them here.
 
@@ -8,7 +8,7 @@ Operational guidance and entry point for AI agents (cloud or interactive) workin
 
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by **embedded Lua** modules (`system.lua`, `ui.lua`, `images.lua`). The Lua is bin2c'd into the EE ELF at build time, so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI and only surfaces on real PS2 / PCSX2. (`pops_profiles.lua` was removed 2026-07-13 with the profile-preset system.)
 
-- Released line: **1.2.1** (2026-09-11). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.1` stamp.
+- Released line: **1.2.2** (2026-09-30; previously 1.2.1 2026-09-11). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.2` stamp.
 - Dev branch: **`dev`** (the active/rolling branch; `BETA-12-PLAY` is now **archival/frozen**). The rolling-release workflow publishes from `dev`.
 - Testers: maintainer + Nuno (primary), CosmicScale (secondary), plus **provato** and **nuno6573**. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
 

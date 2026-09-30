@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-09-11 (1.2.1 release cut)
-Released line: **1.2.1** (2026-09-11). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.1` stamp. Earlier rows retain their original artifact identity and hardware status.
+Last updated: 2026-09-30 (1.2.2 release cut)
+Released line: **1.2.2** (2026-09-30; previously 1.2.1 2026-09-11). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.2` stamp. 1.2.2 changes documentation only; the launcher code is identical to 1.2.1 apart from the version stamp. Earlier rows retain their original artifact identity and hardware status.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
