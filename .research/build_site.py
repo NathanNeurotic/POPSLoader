@@ -263,6 +263,10 @@ def shell(title, body, active, base=''):
 <title>{html.escape(title)} · POPStarter Docs</title>
 <meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
 <link rel="stylesheet" href="{base}assets/style.css">
+<link rel="icon" type="image/x-icon" href="{base}assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="{base}assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="{base}assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="{base}assets/apple-touch-icon.png">
 </head><body data-base="{base}">
 <header class="topbar">
   <button class="menu-btn" aria-label="Menu"></button>
@@ -275,6 +279,7 @@ def shell(title, body, active, base=''):
     <div id="results"></div>
   </div>
 </header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
 <div class="layout">
   <nav class="sidebar">
     <a href="{base}index.html"{homecls}>Home</a>
