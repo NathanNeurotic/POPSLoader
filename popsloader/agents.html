@@ -9,48 +9,45 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
 </head><body data-base="../">
 <header class="topbar">
-  <button class="menu-btn" aria-label="Menu">&#9776;</button>
+  <button class="menu-btn" aria-label="Menu"></button>
   <a class="brand" href="../index.html">
     <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
     POPStarter <small>DOCS</small></a>
-  <div class="topbar-actions">
-    <a class="topbar-btn primary" href="../downloads.html" title="Downloads &amp; Files"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Downloads</a>
-    <a class="topbar-btn" href="https://github.com/NathanNeurotic/POPSLoader" target="_blank" rel="noopener" title="GitHub Repository"><svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>GitHub</a>
-  </div>
   <div class="search">
     <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
     <kbd>/</kbd>
     <div id="results"></div>
   </div>
 </header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
 <div class="layout">
   <nav class="sidebar">
-    <a href="../index.html"><span class="icon icon-home"></span>Home</a>
+    <a href="../index.html">Home</a>
     <h4>POPSLoader · this project</h4>
-    <a href="../popsloader.html" class="active"><span class="icon icon-pops"></span>POPSLoader docs</a>
-    <a href="../launch-arguments.html"><span class="icon icon-launch"></span>Launch arguments</a>
-    <h4>POPStarter · documentation</h4><a href="../getting-started.html"><span class="icon icon-start"></span>Getting Started</a>
-<a href="../storage.html"><span class="icon icon-storage"></span>Storage Backends</a>
-<a href="../cheats.html"><span class="icon icon-cheats"></span>Cheats</a>
-<a href="../compatibility.html"><span class="icon icon-patch"></span>Patches & TROJANs</a>
-<a href="../igr.html"><span class="icon icon-igr"></span>IGR & Hotkeys</a>
-<a href="../config.html"><span class="icon icon-config"></span>Config Table</a>
-<a href="../multidisc.html"><span class="icon icon-multidisc"></span>Multi-disc & VMC</a>
-<a href="../troubleshooting.html"><span class="icon icon-troubleshoot"></span>Troubleshooting</a>
-<a href="../downloads.html"><span class="icon icon-download"></span>Downloads</a>
-<a href="../history.html"><span class="icon icon-history"></span>History</a>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
     <h4>Reference</h4>
-    <a href="../glossary.html"><span class="icon icon-glossary"></span>Glossary</a>
-    <a href="../commands.html"><span class="icon icon-commands"></span>Command index</a>
-    <a href="../faq.html"><span class="icon icon-faq"></span>FAQ &amp; known bugs</a>
-    <a href="../known-issues.html"><span class="icon icon-issues"></span>Known issues</a>
-    <a href="../compatibility-table.html"><span class="icon icon-compat"></span>Compatibility table</a>
-    <a href="../thread-study.html"><span class="icon icon-community"></span>Community knowledge</a>
-    <a href="../credits.html"><span class="icon icon-credits"></span>Credits</a>
-    <a href="../wiki/index.html"><span class="icon icon-wiki"></span>All wiki pages</a>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader"><span class="icon icon-opl"></span>RiptOPL (OPL) docs ↗</a>
-    <a href="https://ps2homebrewstore.com"><span class="icon icon-store"></span>PS2 Homebrew Store ↗</a>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>AGENTS — orientation &amp; high-risk surfaces</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/AGENTS.md">view on GitHub ↗</a></p><p>Last updated: 2026-09-11 (release 1.2.1; master, dev, and experimental aligned at this cut)</p>
 <p>Operational guidance and entry point for AI agents (cloud or interactive) working in this repository. This file is self-contained: it absorbs the former <code>AGENTS_START_HERE.md</code> orientation content. For current code/hardware status, behavioral invariants, preservation contracts, and the canonical known-issues list, defer to <strong><code>STATE.md</code></strong> rather than restating them here.</p>
