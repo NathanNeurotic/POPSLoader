@@ -15,6 +15,8 @@ on:
       - '.research/downloads/network_modules.7z'
       - '.research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip'
       - '.research/tools/audit_legacy_archive_payloads.py'
+      - '.research/tools/audit_legacy_tool_overlap.py'
+      - '.research/research/legacy-tool-payload-provenance.md'
       - '.research/research/legacy-gh-pages-inventory.tsv'
       - '.research/research/legacy-gh-pages-payload-audit.md'
       - '.github/workflows/research-network-driver-integrity.yml'
@@ -95,6 +97,10 @@ jobs:
         run: |
           python3 -m py_compile .research/tools/audit_legacy_archive_payloads.py
           python3 .research/tools/audit_legacy_archive_payloads.py published
+      - name: Identify actual DEBUG_AND_HALT, BATCHER and uLE members and exact cross-pack matches
+        run: |
+          python3 -m py_compile .research/tools/audit_legacy_tool_overlap.py
+          python3 .research/tools/audit_legacy_tool_overlap.py published .research/downloads
       - name: Compare legacy CUE2POPS and Compatibility Mode 7z against tracked ZIP forms
         run: |
           python3 .research/tools/compare_recovered_archive_candidates.py \
