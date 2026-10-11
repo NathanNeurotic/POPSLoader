@@ -60,6 +60,26 @@ def check(published):
           "since the last audited deployment.")
 
 
+def prune_previous_generated(published, source):
+    """Remove only previously generated, now obsolete pages; never legacy files."""
+    check(published)
+    manifest = published / MANIFEST
+    if not manifest.exists():
+        return
+    old = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    current = set(collect(source))
+    removed = 0
+    for name in sorted(set(old) - current):
+        if not eligible(name):
+            raise ValueError("Invalid path in old generated manifest: " + name)
+        path = published / name
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("Unexpected obsolete page state: " + name)
+        path.unlink()
+        removed += 1
+    print(f"PASS: pruned {removed} removed generator-owned pages")
+
+
 def record(published, source):
     expected = collect(source)
     if not expected:
@@ -99,12 +119,19 @@ def self_test():
         (pages / "index.html").write_text("legitimate generated change", encoding="utf-8")
         record(pages, site)
         check(pages)
-    print("PASS: deployment guard catches manual drift and permits source-driven changes")
+        (site / "index.html").unlink()
+        (site / "next.html").write_text("legitimate replacement")
+        prune_previous_generated(pages, site)
+        assert not (pages / "index.html").exists()
+        (pages / "next.html").write_text("legitimate replacement")
+        record(pages, site)
+        check(pages)
+    print("PASS: deployment guard catches manual drift, safely prunes obsolete pages")
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("mode", choices=["check", "record", "self-test"])
+    p.add_argument("mode", choices=["check", "record", "prune", "self-test"])
     p.add_argument("published", nargs="?", type=Path)
     p.add_argument("source", nargs="?", type=Path)
     args = p.parse_args()
@@ -114,6 +141,8 @@ def main():
         check(args.published)
     elif args.mode == "record" and args.published and args.source:
         record(args.published, args.source)
+    elif args.mode == "prune" and args.published and args.source:
+        prune_previous_generated(args.published, args.source)
     else:
         p.error("check requires published path; record requires published and source paths")
 

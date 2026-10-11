@@ -67,6 +67,8 @@ jobs:
           set -eu
           node .research/tools/test_cursor_orbs.cjs
           python3 .research/tools/guard_site_deploy.py self-test
+          python3 .research/tools/audit_legacy_pages.py self-test
+          python3 .research/tools/audit_legacy_pages.py offline .research/site
 
       - name: Audit (hard gate)
         shell: bash
@@ -120,11 +122,15 @@ jobs:
           # Refuse to erase site changes made directly on gh-pages.
           # Edit .research/_srcassets or the site generator instead.
           python3 .research/tools/guard_site_deploy.py check ../ghp
+          python3 .research/tools/audit_legacy_pages.py check ../ghp
+          python3 .research/tools/audit_legacy_pages.py retire ../ghp
+          python3 .research/tools/guard_site_deploy.py prune ../ghp .research/site
           # Overlay, never delete-then-copy: gh-pages carries files the build does not
           # emit, and a sync-by-deletion would drop them.
           cp -r .research/site/* ../ghp/
           cp .research/site/.nojekyll ../ghp/.nojekyll
           python3 .research/tools/guard_site_deploy.py record ../ghp .research/site
+          python3 .research/tools/audit_legacy_pages.py verify ../ghp
           cd ../ghp
           git add -A
           if git diff --cached --quiet; then
