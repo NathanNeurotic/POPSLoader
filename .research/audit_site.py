@@ -115,8 +115,16 @@ else:
     if 'verification status' not in dlpage.lower():
         issues['complete'].append('historical inventory missing explicit status column')
     for sample in ('NOPAL_PATCH.7z', 'network_modules.7z'):
-        if sample not in dlpage or 'Historical size discrepancy:' not in dlpage:
-            issues['complete'].append('same-name historical-size discrepancy not labelled: '+sample)
+        if sample not in dlpage:
+            issues['complete'].append('original package-size provenance missing: ' + sample)
+    # Verify that the two current downloaded variants remain clearly identified.
+    mismatches = ('NOPAL_PATCH.7z', 'network_modules.7z')
+    tracked_size = {name: os.path.getsize(os.path.join(SITE, 'downloads', name))
+                    for name in mismatches if os.path.exists(os.path.join(SITE, 'downloads', name))}
+    discrepant = (tracked_size.get('NOPAL_PATCH.7z', 226) != 226 or
+                  not (58000 <= tracked_size.get('network_modules.7z', 59000) <= 62000))
+    if discrepant and 'Historical size discrepancy:' not in dlpage:
+        issues['complete'].append('different-size original package copy not marked unverified')
 # The original source ZIP is shown either with a real file or as explicitly pending.
 original_zip = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
 if original_zip not in os.listdir(os.path.join(SITE, 'downloads')):
@@ -131,6 +139,11 @@ for phrase in ('The 15 original news bulletins', 'Linux CUE2POPS source',
         issues['complete'].append('missing recovered historical note: ' + phrase)
 if 'Original wiki community thanks (April 2016)' not in credits_page:
     issues['complete'].append('original 2016 collective community credit missing')
+for phrase in ('34 original screenshot/image references not recovered',
+               '1094748012', '3844714277', 'Original 2024 wiki HEAD'):
+    if phrase not in history_page:
+        issues['complete'].append('historic source-image inventory missing: ' + phrase)
+
 
 # every entry has an anchor on its page
 entries = json.load(open(os.path.join(ROOT, 'research', 'entries.json'), encoding='utf-8'))
