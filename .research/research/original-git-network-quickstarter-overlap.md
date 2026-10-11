@@ -1,5 +1,36 @@
 # POPStarter network-driver overlap — current 7z versus 2020 SMB quickstarter
 
+## Full decompressed-payload verification — 2026-10-10 (supersedes metadata-only caveat above)
+
+**Verified in [GitHub Actions run #38113818669](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38113818669), job `verify-network-archives`, successful.** The research-only script [`verify_network_driver_payloads.py`](../tools/verify_network_driver_payloads.py) decoded all 12 members of the hosted 7z independently with the installed 7-Zip decoder, checked each extracted length and independently recomputed CRC-32 against the stored directory value, and required a successful full-archive `7z t`. All **12/12** passed. Python's `zipfile` separately decompressed and verified the six 2020 ZIP drivers. SHA-256 was then calculated from actual decompressed bytes from both packages, without executing IRX content or emitting distributable artifacts.
+
+| Driver | SHA-256 of extracted 7z member **and** extracted 2020 ZIP member | Result |
+|---|---|---|
+| `poweroff.irx` | `573863a0f9b213b6f53f2eeaf074745b27b9c4d52dfddeaff8f0b112632cb504` | MATCH |
+| `ps2dev9.irx` | `e2b83bb01a5904b3f4360e23fd7cfc07a2a11eaa413c1808961432dced80119c` | MATCH |
+| `ps2ip.irx` | `1bf99ca297dcca410bccce14b8efa00f5efc536359e3e34be50edf0043c867b9` | MATCH |
+| `ps2smap.irx` | `671fe9e3c5e0e735fb3ea3b81a8ea39898bd0fafbdacbf9ca7fa11fff391df8d` | MATCH |
+| `smbman.irx` | `000296a2f03073dffd2f87a6f3eae249a1f83c2213ffb0ae25bad67b970ebed0` | MATCH |
+| `smsutils.irx` | `91daae46a300138218bfd6a876a1b5012594412b71c2eebf6eadfb70fde38e1b` | MATCH |
+
+**Full package fingerprints** (archive bytes, not member hashes):
+
+- `network_modules.7z`: 93,934 bytes; SHA-256 `ee3aeec5a9259665c6d505b81ee1bbdd3025a6925185e7cc4d3657100f37fad2`
+- `POPStarter_SMB_Quickstarter_Pack_20200209.zip`: 280,193 bytes; SHA-256 `94b432f6665132cd6862ae7465a2dc66807084f0c71c686899abe1f453c405d8`
+
+**Scope of proof:** the six SMB drivers currently hosted in these two archive formats contain the exact same uncompressed bytes. The *historical* original October 27, 2017 Bitbucket `network_modules.7z` (listed at 59.0 KB) is absent; no byte identity, driver-version provenance, or historical member manifest is established for that old upload. The 7z's remaining six non-network members were successfully CRC-tested, but this SHA-256 equivalence table is **only** for the six network IRXs.
+
+To reproduce on Linux: install `7zip` or `p7zip-full`, then run:
+
+```bash
+python3 .research/tools/verify_network_driver_payloads.py \
+  .research/downloads/network_modules.7z \
+  .research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip
+```
+
+The original section below records the **earlier directory-only stage**. Its claims that no payloads had been decoded are superseded by this verified follow-up, not evidence of any disagreement.
+
+
 Evidence date: 2026-10-10, added to draft PR #580. Original 2017 Bitbucket package is unavailable; **these findings concern two packages currently hosted by POPSLoader**.
 
 
