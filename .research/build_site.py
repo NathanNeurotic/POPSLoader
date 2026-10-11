@@ -756,9 +756,9 @@ def build_dl_manifest():
 
     # The original indexed upload size is evidence of a different file, not a
     # checksum. Other same-name archives stay "original bytes unverified".
-    known_differences = {
-        'nopal_patch.7z': ('226 bytes', '188 bytes'),
-        'network_modules.7z': ('59.0 KB', '93,934 bytes'),
+    original_listed_sizes = {
+        'nopal_patch.7z': ('226 bytes', 226),
+        'network_modules.7z': ('59.0 KB', None),  # Bitbucket rounded display
     }
     seen = set()
     counts = dict(available=0, alternative=0, unverified=0, withheld=0, invalid=0)
@@ -786,11 +786,20 @@ def build_dl_manifest():
         else:
             actual = filename_match(fn)
             if actual:
-                if fn.lower() in known_differences:
+                actual_size = os.path.getsize(os.path.join(DL, actual))
+                old_size = original_listed_sizes.get(fn.lower())
+                mismatch = False
+                if old_size:
+                    listed_text, exact_size = old_size
+                    # The original "59.0 KB" may have used either decimal KB or KiB;
+                    # the very different 93,934-byte copy is outside both ranges.
+                    mismatch = (actual_size != exact_size if exact_size is not None
+                                else not (58000 <= actual_size <= 62000))
+                if mismatch:
                     state = 'Available copy; provenance unverified'
-                    difference = known_differences[fn.lower()]
-                    extra = (' **Historical size discrepancy:** Bitbucket listed '
-                             + difference[0] + '; hosted file is ' + difference[1] + '.')
+                    extra = (' <strong>Historical size discrepancy:</strong> Bitbucket listed '
+                             + html.escape(listed_text) + '; hosted copy is '
+                             + str(actual_size) + ' bytes.')
                 else:
                     state = 'Available copy; original identity unverified'
                     extra = ''
@@ -851,6 +860,53 @@ def build_dl_manifest():
     return (intro + '<table data-sortable><thead><tr><th>Historical name</th>'
             '<th>Verification status</th><th>Source and availability</th></tr>'
             '</thead><tbody>' + ''.join(rows) + '</tbody></table>')
+
+
+def build_original_image_gap_index():
+    """Original Git source references missing from the tracked recovered assets.
+
+    This is an index of original image identifiers, NOT a replacement image
+    downloader, and does not claim that every ID denotes unique image bytes.
+    """
+    path = os.path.join(RES, 'original-git-unmatched-images.tsv')
+    if not os.path.isfile(path):
+        raise FileNotFoundError('Missing tracked original image reference inventory')
+    from_head = set('1094748012 1450475876 1720317623 1731981611 '
+                    '2425094621 2636724756 270560112 3117688129 '
+                    '3801833563 3811602128 3844714277 4095826607 '
+                    '4249513129 4286767539 446039127 471851278 '
+                    '65599370 727086931 997655191'.split())
+    records = []
+    seen = set()
+    for line in open(path, encoding='utf-8'):
+        if not line.strip() or line.startswith('#'):
+            continue
+        parts = line.rstrip('\n').split('\t')
+        if len(parts) < 4:
+            raise ValueError('Malformed original image inventory entry')
+        ident, name, source, state = parts[:4]
+        if ident in seen:
+            raise ValueError('Duplicate original image numeric ID: ' + ident)
+        seen.add(ident)
+        records.append((ident, name, source, state))
+    if len(records) != 34 or len(seen & from_head) != 19:
+        raise ValueError('Original image inventory totals unexpectedly changed')
+    lines = []
+    for ident, name, source, last_attempt in records:
+        era = 'Original 2024 wiki HEAD' if ident in from_head else 'Historical revision only'
+        lines.append('<tr><td><code>' + html.escape(ident) + '</code></td><td>' +
+                     html.escape(name) + '</td><td>' + html.escape(source) +
+                     '</td><td>' + era + '</td><td>Not recovered by original ID; ' +
+                     html.escape(last_attempt) + '</td></tr>')
+    return ('<details class="deep"><summary>34 original screenshot/image references not recovered '
+            '(19 in final wiki / 15 older only)</summary>'
+            '<p>These are historical Bitbucket image identifiers, not verified distinct '
+            'unavailable image byte streams. Existing recovered galleries contain 98 '
+            'working images; that does not imply these 34 original references survived. '
+            'No substitution or invented screenshot is offered.</p>'
+            '<table data-sortable><thead><tr><th>Image ID</th><th>Historic filename</th>'
+            '<th>Original page</th><th>Scope</th><th>Recovery state</th></tr></thead><tbody>' +
+            ''.join(lines) + '</tbody></table></details>')
 
 def human(n):
     for u in ('B', 'KB', 'MB'):
@@ -1393,6 +1449,7 @@ def build_sections():
          '<h2>krHACKen\'s changelog</h2>' + wiki_content(['popstarter-changelog']) +
          firstparty('thread-history.md') +
          firstparty('original-wiki-git-historical-additions.md') +
+         build_original_image_gap_index() +
          '<h2>More sources</h2>' + wiki_links(['apps-last-version', 'related-stuff']) +
          '<div class="callout info"><div class="h">How this archive was recovered</div>Every page was pulled '
          'from the Wayback Machine across all archived snapshots, extracted to markdown, de-duplicated, and merged '
