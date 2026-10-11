@@ -47,6 +47,7 @@ def main() -> None:
     wanted["downloads/SHA256SUMS.txt"] = sums_file.read_bytes()
     wanted["downloads/Disc_Combining_Kits_SECURITY_NOTICE.txt"] = (DOWNLOADS / "Disc_Combining_Kits_SECURITY_NOTICE.txt").read_bytes()
     wanted["downloads.html"] = (ROOT / "downloads.html").read_bytes()
+    wanted["multidisc.html"] = (ROOT / "multidisc.html").read_bytes()
     wanted["data/search-index.json"] = (ROOT / "data/search-index.json").read_bytes()
 
     with zipfile.ZipFile(OFFLINE, "r") as original:

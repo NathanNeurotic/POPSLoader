@@ -6,6 +6,7 @@ on:
     paths:
       - 'downloads/*.7z'
       - 'downloads.html'
+      - 'multidisc.html'
       - 'data/search-index.json'
       - 'downloads/SHA256SUMS.txt'
       - 'downloads/Disc_Combining_Kits_SECURITY_NOTICE.txt'
