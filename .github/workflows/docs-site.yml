@@ -61,6 +61,13 @@ jobs:
           set -eu
           POPSLOADER_REPO="$GITHUB_WORKSPACE" python3 build_site.py
 
+      - name: Test cursor-orb behavior and generated assets
+        shell: bash
+        run: |
+          set -eu
+          node .research/tools/test_cursor_orbs.cjs
+          python3 .research/tools/guard_site_deploy.py self-test
+
       - name: Audit (hard gate)
         shell: bash
         working-directory: .research
@@ -110,10 +117,14 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages --depth=1
           git worktree add ../ghp origin/gh-pages
+          # Refuse to erase site changes made directly on gh-pages.
+          # Edit .research/_srcassets or the site generator instead.
+          python3 .research/tools/guard_site_deploy.py check ../ghp
           # Overlay, never delete-then-copy: gh-pages carries files the build does not
           # emit, and a sync-by-deletion would drop them.
           cp -r .research/site/* ../ghp/
           cp .research/site/.nojekyll ../ghp/.nojekyll
+          python3 .research/tools/guard_site_deploy.py record ../ghp .research/site
           cd ../ghp
           git add -A
           if git diff --cached --quiet; then
