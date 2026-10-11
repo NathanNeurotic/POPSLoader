@@ -956,8 +956,97 @@ EOF).
 <li><strong>ShaolinAssassin's wiki was being rebuilt (~70%, private)</strong> after the original bitbucket was lost; the<br />
   archive.org snapshots (2017 &amp; 2020) are the surviving record — which is what this site is reconstructed from.<br />
 <em>(ShaolinAssassin / HWNJ)</em></li>
-</ul><h2>More sources</h2><div class="grid"><a class="tile" href="wiki/apps-last-version.html"><b>Apps Last Version</b><span>full wiki page</span></a>
-<a class="tile" href="wiki/related-stuff.html"><b>Related Stuff</b><span>full wiki page</span></a></div><div class="callout info"><div class="h">How this archive was recovered</div>Every page was pulled from the Wayback Machine across all archived snapshots, extracted to markdown, de-duplicated, and merged so each page is more complete than any single live snapshot ever was. Downloads were recovered the same way and verified by magic-byte.</div><details class="deep"><summary>Key facts (cross-sourced)</summary><div class="cards"><div class="card" id="popstarter-is-the-launcher-patch-layer-pops-is-sony-s-emulator"><h3>POPStarter is the launcher/patch layer; POPS is Sony&#x27;s emulator <span class="badge primary">primary</span> <span class="cat-chip">history</span></h3>
+</ul><h2 id="historical-additions-recovered-from-the-original-wiki-git-history">Historical additions recovered from the original wiki Git history</h2>
+<p>These dated notes supplement the 63 Wayback-recovered wiki pages without overwriting their source text. <strong>AstroSnail</strong> provided the original ShaolinAssassin Bitbucket Git archive: 2,140 commits across 2016–2024, including deleted pages. Original documentation authors retain their credits. <strong>Historical reports below are not current hardware-testing results.</strong></p>
+<h3 id="the-15-original-news-bulletins-apriljuly-2016">The 15 original news bulletins (April–July 2016)</h3>
+<p>Original deleted <code>News.textile</code> at Git revision <code>1ee0214f63ba</code> listed these items:</p>
+<table>
+<thead>
+<tr>
+<th>Date, 2016</th>
+<th>Bulletin</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>July 27</td>
+<td>POPStarter r13 WIP06 OBT14 release announcement</td>
+</tr>
+<tr>
+<td>June 19</td>
+<td>POPStarter BATCHER v0.2</td>
+</tr>
+<tr>
+<td>May 6</td>
+<td>Batch-create/rename/update POPStarter ELF tutorial</td>
+</tr>
+<tr>
+<td>May 3</td>
+<td>Game Fixes archive description published</td>
+</tr>
+<tr>
+<td>April 30</td>
+<td>HDD/USB/SMB tools and guide links corrected</td>
+</tr>
+<tr>
+<td>April 30</td>
+<td>New <code>SMOOTH</code> screenshots page</td>
+</tr>
+<tr>
+<td>April 29</td>
+<td>Toolbox/CUE2POPS changelog moved into its own page</td>
+</tr>
+<tr>
+<td>April 29</td>
+<td>General note about external files added</td>
+</tr>
+<tr>
+<td>April 29</td>
+<td>POPS history material added</td>
+</tr>
+<tr>
+<td>April 28</td>
+<td>Widescreen codes moved to Related Stuff</td>
+</tr>
+<tr>
+<td>April 28</td>
+<td>Wiki contents/navigation rearranged</td>
+</tr>
+<tr>
+<td>April 28</td>
+<td>VCD conversion guide revised</td>
+</tr>
+<tr>
+<td>April 27</td>
+<td>IGR texture-making tutorial consolidated</td>
+</tr>
+<tr>
+<td>April 27</td>
+<td>Game troubleshooting tutorial created</td>
+</tr>
+<tr>
+<td>April 27</td>
+<td>Wiki News section introduced</td>
+</tr>
+</tbody>
+</table>
+<h3 id="old-release-corrections-keep-the-versions-separate">Old-release corrections: keep the versions separate</h3>
+<p><strong>WIP05 USB Quickstarter erratum (2016-10-29 / 2016-11-03).</strong> The wiki author reported accidentally mixing stable and beta setup instructions. A prior USB pack omitted the needed <code>PFS_WRAP.BIN</code>; a corrected pack followed. The WIP05 setup required <code>POPS.PAK</code> and <code>PFS_WRAP.BIN</code>. In a <a href="https://www.assemblergames-archive.com/printthread.php?page=191&amp;tid=38642">contemporary developer discussion</a>, <strong>krHACKen</strong> explained that the beta used <code>POPS_IOX.PAK</code> instead and renaming the PAK does not make files interchangeable. Some earlier pages misleadingly referred to <code>POPS_IOP.PAK</code>, changed to <code>POPS_IOX.PAK</code> in February 2017. Do not apply these <strong>2016-specific</strong> packaging rules to the final 2019 launcher.</p>
+<p><strong>OBT14 USB caution (July–September 2016).</strong> The original homepage repeated community reports of black screens or corrupted POPS-folder files with that beta, and discouraged IRX modules in USB mode. The notice was removed with the OBT15 release. Source Git commits <code>ca88fcf1bb62</code>, <code>95e41b9093b3</code>. This is <strong>historical community feedback</strong>, not established as a present-day POPStarter/POPSLoader bug.</p>
+<p><strong>WIP05 PAL clock / XA stuttering.</strong> A removed 2016 known-bugs note said PAL emulator clock timing might make A/V resynchronization stutter XA audio; deleted by October 2017 (<code>18b64829c634</code>, <code>9fdfafd3d241</code>). Later release status unverified.</p>
+<p><strong>Configuration byte <code>$412</code>.</strong> Initially a never-completed "skip most functions" setting (April 2016), later marked unused, it was redefined for the <strong>SetGsCrt</strong> hack in November 2016. The current table's SetGsCrt meaning is correct; the experimental description is only version history (original commits <code>fa60511de312</code>, <code>34755b05e46</code>, <code>7211f94519a</code>).</p>
+<h3 id="tools-cue-sheets-and-input-devices">Tools, CUE sheets and input devices</h3>
+<p><strong>Linux CUE2POPS source and credit.</strong> Original <code>51abeb7d6e:vcd.textile</code> named a Linux-modified source archive (<code>cue2pops_src_linux.7z</code>, with an earlier .zip variant), mentioned GCC compilation, and credited <strong>SovietStriker</strong>. The actual historical sources are <strong>unverified/unavailable</strong>, not a currently tested build.</p>
+<p><strong>Missing CUE instructions.</strong> An earlier VCD guide (<code>058f6fc</code>, removed by <code>a114f3a</code>) pointed to Redump's PS1 CUE listing and emphasized matching filenames and actual tracks. A different disc revision's CUE is not necessarily valid for a particular BIN dump; this is historical guidance rather than an unchecked repair method.</p>
+<p><strong>Light-gun module example correction.</strong> The preserved Wayback page <code>ps1-special-devices.md</code> repeats <code>USBD.IRX</code> as both example modules. The original wiki corrected the second entry to <strong>USBGUN.IRX</strong> on 2017-10-17 (<code>f4210efed748</code>). The underlying tutorial credits <strong>AKuHAK</strong>; its module order is experimental and no hardware compatibility guarantee is implied.</p>
+<p><strong>Old ELF batcher warning.</strong> Deleted <code>Batcher_outdated.textile</code> (<code>e85288316021</code>) warned that older versions deleted existing launcher ELFs in the working folder before regenerating them, and periods in VCD filenames could truncate generated ELF names. Do not generalize this to later versions.</p>
+<h3 id="superseded-multi-disc-methods-and-missing-screenshots">Superseded multi-disc methods and missing screenshots</h3>
+<p>Before native disc swapping, the source wiki listed <strong>52 region-specific disc-combining kit entries</strong>, a manual emulator/retail-console save-transfer workaround, and a caution about a possibly unsafe Chrono Cross kit. The original author explicitly marked that method obsolete. Preserve the <a href="https://github.com/NathanNeurotic/POPSLoader/blob/master/.research/research/original-git-obsolete-multidisc-kits.md">historical inventory</a> as <strong>metadata only</strong>, not a recommended download.</p>
+<p>Both the original 2017 automated game/fix record (<strong>497 entries</strong>) and the final Git wiki record (<strong>641 entries</strong>) are preserved in full. Across 38 historical revisions of that page, all <strong>545 distinct disc IDs</strong> remain represented; this is a <strong>textual</strong> comparison, not a verified game-performance result.</p>
+<p>The current site has working files for all <strong>98 image references in its own gallery cache</strong>, but the original wiki final revision references <strong>19 additional missing image IDs</strong>. Twelve are widescreen comparison images. The <a href="https://github.com/NathanNeurotic/POPSLoader/blob/master/.research/research/original-git-image-priorities.md">image-priority ledger</a> identifies each; no unverified replacement is presented as the original.</p>
+<h3 id="source-integrity-and-distribution">Source integrity and distribution</h3>
+<p>The original wiki Git ZIP contributed by AstroSnail must remain <strong>byte-identical</strong>, with SHA-256 <code>d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a</code>. It also includes original historical Git author names/emails. If the exact ZIP is not yet hosted, the Downloads page labels it <strong>not yet available</strong> instead of generating a dead link. Historical download names, including uncertain and withheld packages, remain documented with explicit verification labels.</p><details class="deep"><summary>34 original screenshot/image references not recovered (19 in final wiki / 15 older only)</summary><p>These are historical Bitbucket image identifiers, not verified distinct unavailable image byte streams. Existing recovered galleries contain 98 working images; that does not imply these 34 original references survived. No substitution or invented screenshot is offered.</p><table data-sortable><thead><tr><th>Image ID</th><th>Historic filename</th><th>Original page</th><th>Scope</th><th>Recovery state</th></tr></thead><tbody><tr><td><code>1094748012</code></td><td>TOMB_RAIDER_II_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>1391261396</code></td><td>2.png</td><td>POC2_POPS-00001.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>1450475876</code></td><td>SYPHON_FILTER_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>1510911193</code></td><td>pops05_zps81df52b9.jpg</td><td>Pfsshell.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>1720317623</code></td><td>APE_ESCAPE_COMP.JPG</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>1731981611</code></td><td>2.png</td><td>POC2_POPS-00001.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>2070562384</code></td><td>new.gif</td><td>News.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2084063178</code></td><td>01_bmp10.jpg</td><td>PS1 MC saves to VMC.md</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2114982071</code></td><td>IGR_sample.gif</td><td>IGR textures.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2165842753</code></td><td>007_TND_WIDE%20</td><td>widescreen.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2329291489</code></td><td>02_bmp10.jpg</td><td>PS1 MC saves to VMC.md</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2348636821</code></td><td>03_bmp10.jpg</td><td>PS1 MC saves to VMC.md</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>2425094621</code></td><td>TEAM_BUDDIES_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>2636724756</code></td><td>57067464.JPG</td><td>D2LS.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>2685397097</code></td><td>Sans-titre-1.png</td><td>Batcher.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>270560112</code></td><td>16h0lcg.jpg</td><td>16/9.md</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;\x89PNG&#x27;)</td></tr><tr><td><code>3117688129</code></td><td>bez%C3%82%C2%A0tytu%C5%82u.png</td><td>IGR textures.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>3333649027</code></td><td>result.png</td><td>IGR textures.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>3346710006</code></td><td>index.jpeg</td><td>History.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>3801833563</code></td><td>2md7xs.jpg</td><td>16/9.md</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>3811602128</code></td><td>EXHUMED_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>3844714277</code></td><td>POPS2CUE.JPG</td><td>Toolbox commands.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>4095826607</code></td><td>GRAN_TURISMO_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>4209628073</code></td><td>007_TND_WIDE%20</td><td>smooth.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>4249513129</code></td><td>MEDIEVIL_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>4286767539</code></td><td>2n0oweq.jpg</td><td>16/9.md</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;\x89PNG&#x27;)</td></tr><tr><td><code>446039127</code></td><td>SOUL_REAVER_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>462913228</code></td><td>canvas.png</td><td>scan_lines_preview.md</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>471851278</code></td><td>DIE_HARD_TRILOGY_2_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>65599370</code></td><td>METAL_GEAR_SOLID_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;?xm&#x27;)</td></tr><tr><td><code>727086931</code></td><td>GHOST_IN_THE_SHELL_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr><tr><td><code>777862948</code></td><td>Sans-titre-1.png</td><td>popstarter-batcher.textile</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>983441507</code></td><td>nocanvas.png</td><td>scan_lines_preview.md</td><td>Historical revision only</td><td>Not recovered by original ID; no logged source-ID result</td></tr><tr><td><code>997655191</code></td><td>WIPEOUT_3_WIDE.jpg</td><td>widescreen.textile</td><td>Original 2024 wiki HEAD</td><td>Not recovered by original ID; FAIL:magic(b&#x27;&lt;!DO&#x27;)</td></tr></tbody></table></details><h2>More sources</h2><div class="grid"><a class="tile" href="wiki/apps-last-version.html"><b>Apps Last Version</b><span>full wiki page</span></a>
+<a class="tile" href="wiki/related-stuff.html"><b>Related Stuff</b><span>full wiki page</span></a></div><div class="callout info"><div class="h">How this archive was recovered</div>Every page was pulled from the Wayback Machine across all archived snapshots, extracted to markdown, de-duplicated, and merged so each page is more complete than any single live snapshot ever was. AstroSnail also provided the original Bitbucket wiki Git history, including deleted pages and original authors. Only hosted downloads are treated as available; the historical download catalogue retains all unverified and withheld references.</div><details class="deep"><summary>Key facts (cross-sourced)</summary><div class="cards"><div class="card" id="popstarter-is-the-launcher-patch-layer-pops-is-sony-s-emulator"><h3>POPStarter is the launcher/patch layer; POPS is Sony&#x27;s emulator <span class="badge primary">primary</span> <span class="cat-chip">history</span></h3>
 <div class="field"><b>Effect:</b> POPStarter (krHACKen) is the launcher and patch/cheat layer wrapped AROUND Sony&#x27;s PS1-on-PS2 POPS emulator (POPS.ELF / SLBB-00001). POPStarter loads per-game assets (CHEATS.TXT, PATCH/TROJAN, BIOS/OSD, VMCDIR/DISCS), applies the cheat engine and compatibility modes, and hands off to POPS to actually emulate. &#x27;POPStarter&#x27; is a distinct project from the modern Lua-based POPSLoader fork.</div>
 <div class="field"><b>Scope:</b> Whole architecture. Canonical package = 2019-06-05 r13 Beta.</div>
 <div class="field"><b>Conflicts:</b> Don&#x27;t conflate POPStarter (krHACKen) with POPS (Sony) or with POPSLoader (El_isra -&gt; NathanNeurotic).</div>
