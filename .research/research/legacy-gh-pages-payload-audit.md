@@ -33,4 +33,44 @@ The pre-existing `downloads/SHA256SUMS.txt` covers all **14** preserved `.7z` fi
 
 **Not equivalent to** independent malware scanning, external original source recovery, chain-of-custody authentication, absence of dangerous archive payloads, or a rights review. Historical source evidence appears above. Archives with software executables or nested containers must not be promoted into the official curated downloads without separate review.
 
-**Pending until workflow logs validate:** per-archive decompression and SHA-256 checks, comparison with the separate generated `pfsshell`/`RadHostClient` hashes, and any discovered anomalies. Do not mark them PASS without a real GitHub Actions run.
+## Verified hardware-independent integrity results (GitHub Actions, 2026-10-11)
+
+[GitHub Actions run #38178795652](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38178795652), job `audit-published-legacy-archive-payloads`, checked out the **current published `gh-pages` files independently**. It passed **14/14 whole-archive SHA-256 comparisons**, **14/14 full 7-Zip decompression/CRC tests**, Git-blob identity checks on all 17 retained sidecars, the retained security notice/favicons, and both generator-owned archival references in historical `SHA256SUMS.txt`.
+
+**Corrected member census:** **160 actual file members**, *excluding* **44 zero-byte folder-directory records** reported in the 7z listings. The first prototype incorrectly counted all **204** path records as files; the [corrected scanner](../tools/audit_legacy_archive_payloads.py) excludes both `Folder = +` records and implicit zero-byte directory entries. This was independently reconciled against the existing member-level hash comparison tool and rerun to PASS. Archive tests never executed any ELF/EXE/script.
+
+| Archive | Real file members | Full SHA-256 + decompression/CRC | Executable or nested-extension members (name only) |
+|---|---:|---|---:|
+| `BATCHER_0.3.1.EXE.7z` | 1 | PASS | 1 |
+| `CUE2POPS_2.3.7z` | 3 | PASS | 3 |
+| `Compatibility_Modes.7z` | 8 | PASS | 0 |
+| `DEBUG_AND_HALT.7z` | 1 | PASS | 0 |
+| `IGR_Behaviour_Modifiers.7z` | 9 | PASS | 0 |
+| `IGR_sample_kit.7z` | 11 | PASS | 0 |
+| `IGR_textures_-_English_pack.7z` | 46 | PASS | 0 |
+| `IGR_textures_-_French_pack.7z` | 30 | PASS | 0 |
+| `IGR_textures_-_German_Pack.7z` | 5 | PASS | 0 |
+| `IGR_textures_-_Polish_pack.7z` | 29 | PASS | 0 |
+| `IGR_textures_-_Portuguese_pack.7z` | 7 | PASS | 0 |
+| `IGR_textures_-_Spanish_pack.7z` | 6 | PASS | 0 |
+| `hddosd_sample_files.7z` | 3 | PASS | 0 |
+| `uLE_kHn_20191110_2.7z` | 1 | PASS | 1 |
+| **Total** | **160** | **14/14 PASS** | **5 filename-flagged members** |
+
+### Exactly two complete cross-container payload equivalences
+
+The [same successful job](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38178795652) used the strict `--require-same-member-set` condition to compare against existing `.research/downloads/` ZIPs. These are **member-name and decompressed-byte SHA-256 equal**, but the compressed **ZIP and 7z archives themselves have different bytes and containers**.
+
+1. `gh-pages/downloads/CUE2POPS_2.3.7z` vs `.research/downloads/CUE2POPS_2.3.zip`: **3/3 identical member files**: `bulk_cue2pops.bat`, `cue2pops_2_3.exe`, `pops2cue.exe`; no candidate-only/reference-only files.
+2. `gh-pages/downloads/Compatibility_Modes.7z` vs `.research/downloads/Compatibility_Modes.zip`: **8/8 identical member files**, `PATCH_1.BIN` through `PATCH_7.BIN` plus `README.TXT`; no candidate-only/reference-only files.
+
+This **upgrades cross-format *content equivalence*** for exactly two preservation pairs. It does **not** authenticate either ZIP/7z against a 2016 Bitbucket original date, determine licensing/safety, or justify copying the legacy package into curated downloads.
+
+### Primary-source provenance categories
+
+- **9** legacy .7z names have an **exact name entry** in the original wiki-Git catalog: the six listed IGR texture language packs, IGR sample kit, IGR Behaviour Modifiers, and HDDOSD sample files.
+- **2** have *possible ZIP/7z format-variant evidence* and now *confirmed cross-format decompressed contents*: CUE2POPS 2.3 and Compatibility Modes.
+- **3** lack an exact `.7z` name in the canonical catalog: BATCHER `0.3.1.EXE.7z`, DEBUG_AND_HALT `.7z`, and `uLE_kHn_20191110_2.7z`. Related alternative filenames exist but cannot establish exact archive provenance.
+
+**Policy:** leave 17 legacy-only sidecars preserved under their existing identities. Do not add, migrate, remove, or promote any legacy executable/archive into newly recommended/generated download packages based on these integrity results alone. The historical manifest's checksum for the *withheld* `DISCS_POOPER.BAT.7z` remains a historical record and is **not a public availability claim**.
+
