@@ -1,5 +1,7 @@
 # Original Bitbucket downloads listing: externally corroborated source inventory
 
+**Cross-period reconciliation (2026-10-11):** This document is a **28-row 2020 indexed sample only**. A [saved 2018 Bitbucket Downloads HTML listing](original-bitbucket-download-snapshot-2018.md) independently contains **29 rows**, including **6 older filenames omitted by this later listing**. The union across both sources is **34 exact historical upload filenames**, not 28. Both are dated partial snapshots, not the original site's exhaustive download history. No additional original binary file was recovered by comparing lists.
+
 **Preservation research for draft PR #578 — do not merge or automatically import binary files.** This is a new, independent artifact-level evidence source beyond the original `wiki.zip` Git revisions: a preserved <https://archive.ph/PBG1V> snapshot of **Shaolin Assassin / POPStarter Documentation & Stuff / Downloads**, indexed by web search.
 
 **Source accessibility limitation:** the direct archived URL currently responds with HTTP 429 or is inaccessible from some clients. The **search-index cache exposes the 28 recent listing rows quoted below** (with displayed size, uploader and date). The visible excerpt is **not proven to contain the complete historical Downloads index**. Consequently **28 is a verified indexed sample, not the total number of original downloadable assets**. The ZIP supplied for this audit contains Git text and history, not these download payload bytes.
