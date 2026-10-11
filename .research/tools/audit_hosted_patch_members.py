@@ -32,7 +32,14 @@ def list_7z_members(exe, archive):
         name = fields.get('Path')
         if name and fields.get('Folder') != '+':
             members.append((name, int(fields.get('Size', -1)), fields.get('CRC', '')))
-    return members
+    # Some p7zip/7zip builds omit the Folder field in -slt output for
+    # 7z directory entries. The archive may show a 0-byte path with
+    # no CRC that is a parent of a real member. Do not count it as a file.
+    children = [name.replace('\\\\', '/') for name, _, _ in members]
+    return [(name, size, crc) for name, size, crc in members
+            if not (size == 0 and not crc and
+                    any(child.startswith(name.replace('\\\\', '/') + '/')
+                        for child in children))]
 
 
 def main():
