@@ -95,3 +95,12 @@ jobs:
         run: |
           python3 -m py_compile .research/tools/audit_legacy_archive_payloads.py
           python3 .research/tools/audit_legacy_archive_payloads.py published
+      - name: Compare legacy CUE2POPS and Compatibility Mode 7z against tracked ZIP forms
+        run: |
+          python3 .research/tools/compare_recovered_archive_candidates.py \
+            published/downloads/CUE2POPS_2.3.7z \
+            .research/downloads/CUE2POPS_2.3.zip
+          python3 .research/tools/compare_recovered_archive_candidates.py \
+            published/downloads/Compatibility_Modes.7z \
+            .research/downloads/Compatibility_Modes.zip
+
