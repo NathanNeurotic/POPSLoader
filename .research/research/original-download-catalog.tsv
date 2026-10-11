@@ -1,4 +1,4 @@
-# Canonical historical download references: 80 parsed original wiki forms + legacy retrieval manifest + 28 indexed original Bitbucket upload records; de-duplicated. Metadata only; no binary equivalence claims.
+# Canonical historical download references: 80 parsed original wiki forms + legacy retrieval manifest + 28 indexed 2020 + 29 saved 2018 Bitbucket upload records (34 distinct names); de-duplicated. Metadata only; no binary equivalence claims.
 filename	evidence	status	source_reference	original_size_displayed	original_uploader	original_date
 $FORCEPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			
 $NOPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			
@@ -16,7 +16,7 @@ cue2pops_src_linux.zip	wiki_git	historical_reference	8f569ea5a5
 DEBUG_AND_HALT.PPF	wiki_git+bitbucket_listing	possible_bundle_member	POPStarter_r13_WIP_06_OBT_20170128.zip	73 bytes	Shaolin Assassin	2016-09-24
 Disc_Combining_Kits.7z	wiki_git+bitbucket_listing	withheld	AV-flagged archive excluded by previous policy	8.4 MB	Shaolin Assassin	2017-10-26
 DISCS_POOPER.BAT.7z	wiki_git	withheld	Excluded by established site policy			
-DISCS_POOPER.EXE	wiki_git	withheld	Excluded by established site policy			
+DISCS_POOPER.EXE	wiki_git+bitbucket_listing_2018	withheld	Excluded by established site policy	165.4 KB	ShaolinAssassin	2016-10-06
 DS3_modules_BT_20171017.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	17.7 KB	Shaolin Assassin	2017-10-17
 DS3_modules_USB_20171017.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	13.8 KB	Shaolin Assassin	2017-10-17
 FORCEPAL_PATCH.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	234 bytes	Shaolin Assassin	2017-10-26
@@ -53,7 +53,7 @@ pfsshell-0.2a.7z	wiki_git+bitbucket_listing	historical_reference	original Git wi
 POPStarter r13 WIP 05.zip	wiki_git	historical_reference	eb4d4d70fd			
 POPStarter_BATCHER_06192016.7z	wiki_git	historical_reference	0d1cdd640e			
 POPStarter_ELFs BATCHER_05062016.7z	wiki_git	withheld	AV-flagged archive excluded by previous policy			
-POPStarter_HDD_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	original Git wiki			
+POPStarter_HDD_Quickstarter_Pack_20171027.7z	wiki_git+bitbucket_listing_2018	historical_reference	original Git wiki	845.4 KB	ShaolinAssassin	2017-10-27
 POPStarter_HDD_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	1.1 MB	El_Patas	2020-02-09
 POPStarter_Quickstarter_Pack_HDD_20161002.7z	wiki_git	historical_reference	4dec8dfa45			
 POPStarter_Quickstarter_Pack_HDD_20161103.7z	wiki_git	historical_reference	562d2481e4			
@@ -63,14 +63,14 @@ POPStarter_Quickstarter_Pack_USB__2017_01_10.7z	wiki_git	historical_reference	6a
 POPStarter_Quickstarter_Pack_USB_20161002.7z	wiki_git	historical_reference	77fb27ce3			
 POPStarter_Quickstarter_Pack_USB_20161103.7z	wiki_git	historical_reference	dcc7269d4			
 POPStarter_r13_Beta_20190605.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	338.9 KB	El_Patas	2020-02-09
-POPStarter_r13_RIP_06.zip	wiki_git	historical_reference	original Git wiki			
+POPStarter_r13_RIP_06.zip	wiki_git+bitbucket_listing_2018	historical_reference	original Git wiki	342.3 KB	ShaolinAssassin	2017-10-25
 POPStarter_r13_WIP_05.7z	wiki_git	historical_reference	43f1930c2c			
 POPStarter_r13_WIP_06_OBT_13_20151207.zip	wiki_git	historical_reference	eb4d4d70fd			
 POPStarter_r13_WIP_06_OBT_20160723_OBT15.7z	wiki_git	historical_reference	43f1930c2c			
 POPStarter_r13_WIP_06_OBT_20161120.zip	legacy_manifest_only	unverified_reference	previous retrieval ledger			
-POPStarter_SMB_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	f50684bfb8			
+POPStarter_SMB_Quickstarter_Pack_20171027.7z	wiki_git+bitbucket_listing_2018	historical_reference	f50684bfb8	250.3 KB	ShaolinAssassin	2017-10-27
 POPStarter_SMB_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	273.6 KB	El_Patas	2020-02-09
-POPStarter_USB_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	bfef022077			
+POPStarter_USB_Quickstarter_Pack_20171027.7z	wiki_git+bitbucket_listing_2018	historical_reference	bfef022077	512.7 KB	ShaolinAssassin	2017-10-27
 POPStarter_USB_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	642.8 KB	El_Patas	2020-02-09
 PPF Bunch pack v1.7z	wiki_git	historical_reference	a711cae2cb			
 PPF_Bunch_pack.7z	wiki_git	historical_reference	316423c2f0			
@@ -80,5 +80,5 @@ SAMPLE_CHEATS.TXT	wiki_git	historical_reference	original Git wiki
 ToolBox.7z	wiki_git	historical_reference	740cda4faa			
 ToolBox.zip	wiki_git	historical_reference	9fb9314cf4			
 uLE_kHn_20150727.zip	wiki_git	historical_reference	efdac2fc9d			
-uLE_kHn_20160723.7z	wiki_git	historical_reference	3c35465478			
+uLE_kHn_20160723.7z	wiki_git+bitbucket_listing_2018	historical_reference	3c35465478	648.0 KB	ShaolinAssassin	2016-07-27
 uLE_kHn_20191110.zip	wiki_git+bitbucket_listing	possible_bundle_member	POPStarter_USB_Quickstarter_Pack_20200209.zip	2.0 MB	El_Patas	2020-02-09

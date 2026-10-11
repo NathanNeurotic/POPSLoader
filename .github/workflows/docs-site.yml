@@ -71,6 +71,9 @@ jobs:
       # Cheap invariants the audit does not cover. audit_site.py validates relative
       # links only and returns true for every http(s) href, which is exactly how 15
       # dead blob/BETA-13-PLAY/ links shipped unnoticed.
+      - name: Gate historical patch and download descriptions
+        run: python3 .research/tools/audit_published_provenance.py
+
       - name: Check emitted GitHub links name a live branch
         shell: bash
         run: |

@@ -84,3 +84,8 @@ Machine-readable raw record extraction: [`original-bitbucket-downloads-2018.tsv`
 4. Full archive-media restoration still requires actual authenticated file bytes, original-date attribution, per-member checksums, safety and copyright review; **none was imported or published** during this audit.
 
 **Safety boundary:** no executable or archive file changed, no original media imported, no public site edited, no Sony engine/BIOS materials distributed.
+
+
+## Single-source CI reconciliation
+
+The existing [2018 canonical TSV](original-bitbucket-downloads-2018.tsv) now includes **all 29 archived file URLs** in addition to the original Bitbucket identifiers, dates, source file sizes, original download counts and present-day exact-name host coverage. The [read-only inventory verifier](../tools/audit_bitbucket_download_snapshots.py) cross-checks the 29-row 2018 source and 28-row 2020 source, requires the **23 intersecting / 34 union** filenames, validates original Wayback URLs and enriches six already-catalogued source rows. No duplicate “preserved” TSV or second competing report is needed. This adds no historical executable or picture bytes.

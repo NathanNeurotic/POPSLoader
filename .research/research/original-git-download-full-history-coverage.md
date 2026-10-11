@@ -44,3 +44,6 @@ These are *not inferred missing wiki files* and their sources remain separately 
 - **Completeness is limited to URLs matching the historical `popstarter-documentation-stuff/downloads/` path in reachable blobs**, not every external forum attachment, defunct mirror, lost Bitbucket upload that was never linked in the wiki, or file version held only in the real Bitbucket listing.
 
 **Disposition:** Close the previously open question of *missing filename forms within the historic wiki Git URL corpus*. Continue checking **original payload provenance and content**, with correct legal/release-policy gating; maintain intentional download exclusions. No binaries were added and no existing archive was touched.
+
+
+**Cross-source check:** The [saved 2018 original upload listing](original-bitbucket-download-snapshot-2018.md) contains six names missing from the separate 2020 sample, **all already found** in the 80-name Git-history URL set. The reconciled 34-name two-snapshot upload universe and the 80-name Git-URL corpus count different evidence sources, not a new total of independent executable binaries. An automated validator now checks both denominators.
