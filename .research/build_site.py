@@ -1014,6 +1014,17 @@ def build_downloads():
               + '<br>'.join(f'<b>{html.escape(n)}</b> — MD5 <code>{h}</code>' for n, h in HOMEBREW_MD5.items())
               + ' <span class="prov-inline">(<code>.KELF</code> = the encrypted form for HDDOSD <code>PP.&lt;game&gt;</code> installs)</span></div>')
     manifest = build_dl_manifest()
+    # A catalogued archive is not a download until the actual original bytes exist.
+    wiki_zip = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
+    wiki_zip_pending = ''
+    if wiki_zip not in dl_files:
+        wiki_zip_pending = ('<h2>Original wiki Git history ZIP — not yet hosted</h2>'
+                            '<p class="lead"><b>AstroSnail</b> preserved the original '
+                            'ShaolinAssassin wiki Git clone (2,140 commits, 2016–2024). '
+                            'The byte-identical ZIP is available to the maintainer but '
+                            'has not yet been uploaded here. <b>Status: not hosted; no download link.</b> '
+                            'SHA-256: <code>d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a</code>. '
+                            'This is archival source, not a launcher release.</p>')
     # images that were referenced but never archived as the binary (preserve the record)
     lost_imgs = []
     sp = os.path.join(ROOT, '_state', 'assets_done.tsv')
@@ -1029,8 +1040,8 @@ def build_downloads():
                     seen.add(fn.lower()); lost_imgs.append(fn)
     img_ledger = ''
     if lost_imgs:
-        img_ledger = ('<h2>Lost wiki images</h2><p class="lead">Comparison/screenshot images referenced by the '
-                      'wiki that the Wayback Machine never archived as the actual image file. Recorded for '
+        img_ledger = ('<h2>Unrecovered historical image references</h2><p class="lead">Comparison/screenshot images referenced by the '
+                      'wiki whose original image bytes are absent from tracked assets. Recorded for '
                       f'completeness ({len(lost_imgs)}).</p><p>'
                       + ' '.join(f'<span class="pill">{html.escape(i)}</span>' for i in sorted(lost_imgs)) + '</p>')
     archive_card = ('<div class="archive-cta"><div class="h">Download the complete archive (offline)</div>'
@@ -1053,6 +1064,7 @@ distributed here. Verify your own legally-obtained files against the checksums S
 {hb_md5}
 {''.join(cards)}
 {manifest}
+{wiki_zip_pending}
 {img_ledger}'''
     write('downloads.html', shell('Downloads', body, 'downloads'))
 
@@ -1380,11 +1392,14 @@ def build_sections():
          wiki_content(['timeline', 'chronology', 'poc2-pops-00001-era']) +   # proto.md = French dup of the changelog; kept as a standalone page
          '<h2>krHACKen\'s changelog</h2>' + wiki_content(['popstarter-changelog']) +
          firstparty('thread-history.md') +
+         firstparty('original-wiki-git-historical-additions.md') +
          '<h2>More sources</h2>' + wiki_links(['apps-last-version', 'related-stuff']) +
          '<div class="callout info"><div class="h">How this archive was recovered</div>Every page was pulled '
          'from the Wayback Machine across all archived snapshots, extracted to markdown, de-duplicated, and merged '
-         'so each page is more complete than any single live snapshot ever was. Downloads were recovered the same '
-         'way and verified by magic-byte.</div>' +
+         'so each page is more complete than any single live snapshot ever was. AstroSnail also '
+         'provided the original Bitbucket wiki Git history, including deleted pages and original authors. '
+         'Only hosted downloads are treated as available; the historical download catalogue '
+         'retains all unverified and withheld references.</div>' +
          ('<details class="deep"><summary>Key facts (cross-sourced)</summary>' + cards_for(['history']) + '</details>'
           if any(e.get('category') == 'history' for e in entries) else ''))
 
@@ -1902,6 +1917,16 @@ def build_credits():
             '<div class="callout info"><div class="h">Missing or mis-credited?</div>This is community work and the '
             'historical record is imperfect — if someone is missing or wrongly attributed, let the maintainer know '
             'and it will be corrected.</div>')
+    body += ('<details class="deep"><summary>Original wiki community thanks (April 2016)</summary>'
+             '<p>ShaolinAssassin\'s original wiki homepage thanked '
+             'conan14, Delcro, algol, ShaolinAssassin, El_Patas, orcanaoftime, MockyLock, '
+             'Gillbert, ruffonetas, windwaker, SDJ1977, l_oliveira, SP193, hitchhikr, '
+             'AKuHAK, Somechump, blueheaven, RandQalan, LocalH, SilverBull, root670 and joseri.'
+             '</p><p>It also acknowledged a contributor who requested anonymity, compatibility '
+             'reporters and donors. These are original historical pseudonyms; no individual '
+             'role or identity is inferred. The collective thanks was removed upstream on '
+             '2016-04-12 (Git revision e298fe8309fb), recovered from the original Git wiki '
+             'preserved by AstroSnail.</p></details>')
     write('credits.html', shell('Credits', body, 'credits'))
     idx('Credits — POPStarter, POPSLoader &amp; this archive', 'credits',
         'credits thanks acknowledgements who made authors contributors ShaolinAssassin krHACKen kHn POPStarter POPS Sony '
