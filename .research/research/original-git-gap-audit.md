@@ -268,7 +268,7 @@ The recovered `.research/wiki/usb-mode.md`, `smb-mode.md`, and `popstarter-chang
 
 ### G11 — [CONFIRMED HISTORICAL NOTE ABSENT] Old VCD guide: missing CUE sheets
 
-The old `VCD.textile` (addition `058f6fc`, 2016-04-14) offered a link to `http://redump.org/cues/psx/` when a PS1 disc CUE sheet was absent, and cautioned that the named BIN and CUE entries must match, noting that the CUE describes CD tracks. On 2016-07-27, commit `a114f3a` **removed** that note; the final original `vcd.textile` and the recovered `.research/wiki/vcd.md` do not contain it. Repository search found no current record of that old exact link.
+The old `VCD.textile` (addition `058f6fc`, 2016-04-14) offered a link to `http://redump.org/cues/psx/` when a PS1 disc CUE sheet was absent, and cautioned that the named BIN and CUE entries must match, noting that the CUE describes CD tracks. On 2016-07-27, commit `a114f3a` **removed** that note; the final original `vcd.textile` and the directly inspected recovered `.research/wiki/vcd.md` do not contain it. A repository-wide exact-string search returned zero results, but that search has known false negatives, so **the absence assertion is limited to the directly checked recovered VCD page**.
 
 This is a **missing historical troubleshooting reference**, not automatically valid recovery advice for every image. A generic CUE from a different dump may describe different tracks and must not be presented as an equivalent substitute without verification. Retain provenance and deletion date if represented in the archive.
 
@@ -281,3 +281,9 @@ The older four-disc limit, `DISCS.TXT` line count limit, and shared VMC method a
 ### Audit scope and future comparisons
 
 These findings came from tracking paragraph-level deletions and dated redefinitions in the original Git history. They are **not** a claim that all changed prose across 2,140 commits has been completely reviewed or semantically validated. The remaining candidate work includes code/command edge cases, fine-grained per-game version associations, removed download provenance, and accurate image recovery. All changes remain **research-only** in draft PR #578.
+
+### [PRESERVED — NOT A MISSING GAP] Early PPF patch-list descriptions
+
+An early `POPStarter Configuration Table.textile` (`a711cae`, 2016-04-21) explains `NO_LC_CRACKS.PPF`, `DEBUG_AND_HALT.PPF`, `NO_VMC.PPF`, `ONLY_1ST_VMC.PPF`, `NO_PAL.PPF`, `FORCE_MODEX.PPF`, `DEFAULT_IGR_TEXTURES.PPF`, `LC_ONLY.PPF` and `NO_AUTO_PATCH.PPF`. These lines are absent from the later source HEAD but the named PPFs (including the five spot-checked rare names) **are present in our directly retrieved `.research/wiki/configuration-table.md`**. Do not count them as missing technical guidance, even if a Git-only deleted-line scan flags them.
+
+**Verification warning:** GitHub repository-wide code-search calls returned `0` for literal `NO_LC_CRACKS.PPF` despite direct file retrieval finding that exact string in the recovered configuration page. Therefore repository-wide search **cannot establish absence** in this investigation. Future gap labels must cite direct recovered-page inspection or a complete verified local mirror.
