@@ -45,6 +45,8 @@ def list_7z_members(exe, archive):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('directory', type=Path)
+    p.add_argument('--full-test', action='store_true',
+                   help='Also verify every full compressed member via zipfile/7z t (no extraction to disk)')
     args = p.parse_args()
     root = args.directory.resolve()
     sevenzip = next((shutil.which(n) for n in ('7zz', '7z', '7za') if shutil.which(n)), None)
@@ -65,6 +67,20 @@ def main():
             members = list_7z_members(sevenzip, archive)
         if not members:
             raise ValueError(f'No files in archive: {archive.name}')
+        if args.full_test:
+            if archive.suffix.casefold() == '.zip':
+                with ZipFile(archive) as z:
+                    corrupt = z.testzip()
+                if corrupt is not None:
+                    raise RuntimeError(f'ZIP payload integrity failed: {archive.name} :: {corrupt}')
+            else:
+                test = subprocess.run([sevenzip, 't', '-bd', '-y', str(archive)],
+                                      capture_output=True, text=True, check=False,
+                                      timeout=90)
+                if test.returncode:
+                    raise RuntimeError(f'7z payload integrity failed: {archive.name}: '
+                                       f'{(test.stderr or test.stdout)[-500:]}')
+            print(f'PAYLOAD TEST PASS: {archive.name}')
         archives.append((archive.name, len(members),
                          hashlib.sha256(archive.read_bytes()).hexdigest()))
         for name, size, crc in members:
@@ -75,6 +91,8 @@ def main():
             elif PurePosixPath(normalized).suffix.casefold() in ARCHIVE_EXTS:
                 nested.append((archive.name, normalized, size))
     print(f'Host archives checked: {len(archives)} (other tracked files not archives)')
+    if args.full_test:
+        print(f'Full payload integrity test PASS: {len(archives)}/{len(archives)} archive containers')
     for name, count, sha in archives:
         print(f'ARCHIVE {name}: {count} direct file members; SHA256={sha}')
     print(f'Direct candidate patch members: {len(hits)}')
