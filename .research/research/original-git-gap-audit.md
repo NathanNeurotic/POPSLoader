@@ -358,3 +358,21 @@ Original commit `eb75d91410491b8d693e70b6980c8f9c4036bfc2` changed the **USB** t
 The previously identified **30** `/commits/` links in nine recovered Markdown pages represent **18 distinct values** (seven date labels, five numeric code/config values, three checksums, three historical Pastie IDs). **None** resolves as a Git object in the supplied 2,140-commit wiki Git clone (tested by `git cat-file -t`), and the original wiki HEAD has no explicit URLs of that form. Forensic breakdown, examples and cautious provenance: [`original-git-source-corrections.md`](original-git-source-corrections.md). Exact origin of the spurious links in the archive/HTML conversion chain is not established. Treat as a reviewable fidelity issue, not 30 missing Git commits.
 
 All three findings are research only; no site source or public documentation was changed.
+
+
+## Forensic update — final-head automated compatibility lists fully reconciled
+
+The original Git wiki final `automated.textile` three lists were compared **record-by-record**, including full names, game revisions/labels, disc IDs and complete listed compatibility/LibCrypt/misc fixes. Each of the three sorted UTF-8 row sequences has an identical SHA-256 digest in the recovered `automated.md` **after only normalizing `×` to `x`**:
+
+- **309/309** original automatic compatibility-mode entries retained, plus **four** explicitly labelled 2017 snapshot-only extras.
+- **223/223** original LibCrypt entries retained.
+- **109/109** original miscellaneous fix entries retained.
+- **641/641 exact final-revision rows retained** in total. Duplicate row multiplicity preserved. See [`original-git-exact-automated-parity.md`](original-git-exact-automated-parity.md) and [read-only reproducibility script](../tools/audit_original_automated_parity.py).
+
+This closes *original final HEAD automated list* parity, **not** every older revision's prose, runnable game compatibility, or the separate manual TROJAN list.
+
+### Critical correction: site already protects users against source-format defects
+
+Direct inspection of `.research/build_site.py` establishes that its `render_md` function normalizes hexadecimal `0×` to ASCII `0x` at output time (`line 211`); and `rewrite_and_clean` strips the faux `/commits/` links while keeping the visible text (`lines 170–172`). Live page checks agree (`wiki/automated.html` displays `0x04`; `wiki/cheat-engine.html` displays `add $01000000` unlinked).
+
+**Therefore earlier audit descriptions of 854 raw malformed prefixes and 30 reconstructed pseudo-commit links refer to the preserved Markdown source only. They do not establish 854+30 broken renderings on the public documentation website.** They remain important for source fidelity, offline exports, direct GitHub rendering and future tooling. The generator already mitigates them for this site; do not blindly add redundant runtime transforms. Relevant audit entries `G3`, `F2` and `C3` must be read with this clarification.

@@ -32,3 +32,6 @@ Run these standard Python snippets against an unchanged original wiki working tr
 `python -c "import pathlib,re; a=list(pathlib.Path('/path/to/original/wiki').glob('*.textile')); print([(p.name,len(re.findall('0×[0-9A-F]',p.read_text(errors='replace'),re.I))) for p in a if re.search('0×[0-9A-F]',p.read_text(errors='replace'),re.I)])"`
 
 Note: other Unicode substitutions (e.g. typographic multiplication in `3×16:9`) are legitimate and **must not** be blindly rewritten. A later remediation should target **hex prefixes only**, compare against the exact archival source revision, and distinguish faithful preservation from a corrected, clearly marked current-use representation. No changes to wiki text are made here.
+
+
+**2026-10-10 verification update:** The generator **already normalizes** every `0×[hex digit]` to `0x[hex digit]` in `.research/build_site.py` (`render_md`, line 211). The published site therefore does **not** display the 854 literal raw-Markdown malformed prefixes; they remain a fidelity concern for the raw repository source, offline conversion and independent consumers. Do not conflate raw-count audit with rendered-site defects.

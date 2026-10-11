@@ -60,3 +60,6 @@ Examples verified directly from the recovered Markdown:
 For page review, look for `popstarter-documentation-stuff/commits/` in all 63 recovered Markdown files. The original final wiki contains zero explicit URLs matching that pattern. The counts above describe the exact baseline; later edits must be recounted.
 
 **Research-only:** no public-page correction, no module/payload upload, no attribution changes and no merge.
+
+
+**2026-10-10 verification update:** `.research/build_site.py`, `rewrite_and_clean` (lines 170–172), **already strips `/commits/` anchors while retaining their literal text**. This includes code and checksum fields. The 30 pseudo-commit URLs remain in the recovered *Markdown source* but are not active links in the generated website, as confirmed by the public Cheat Engine page showing `add $01000000` unlinked. Audit priority is source portability/fidelity, not a demonstrably broken published link.
