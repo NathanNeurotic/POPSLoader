@@ -1,0 +1,36 @@
+# Research candidates only. Missing from tracked .research/assets by numeric Bitbucket image ID; not proof that external bytes survive.
+# image_id	historical_name	historical_source_path	previous_recovery_result
+1094748012	TOMB_RAIDER_II_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+1391261396	2.png	POC2_POPS-00001.textile	no logged source-ID result
+1450475876	SYPHON_FILTER_WIDE.jpg	widescreen.textile	FAIL:magic(b'<?xm')
+1510911193	pops05_zps81df52b9.jpg	Pfsshell.textile	no logged source-ID result
+1720317623	APE_ESCAPE_COMP.JPG	widescreen.textile	FAIL:magic(b'<!DO')
+1731981611	2.png	POC2_POPS-00001.textile	FAIL:magic(b'<!DO')
+2070562384	new.gif	News.textile	no logged source-ID result
+2084063178	01_bmp10.jpg	PS1 MC saves to VMC.md	no logged source-ID result
+2114982071	IGR_sample.gif	IGR textures.textile	no logged source-ID result
+2165842753	007_TND_WIDE%20	widescreen.textile	no logged source-ID result
+2329291489	02_bmp10.jpg	PS1 MC saves to VMC.md	no logged source-ID result
+2348636821	03_bmp10.jpg	PS1 MC saves to VMC.md	no logged source-ID result
+2425094621	TEAM_BUDDIES_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+2636724756	57067464.JPG	D2LS.textile	FAIL:magic(b'<?xm')
+2685397097	Sans-titre-1.png	Batcher.textile	no logged source-ID result
+270560112	16h0lcg.jpg	16/9.md	FAIL:magic(b'\x89PNG')
+3117688129	bez%C3%82%C2%A0tytu%C5%82u.png	IGR textures.textile	FAIL:magic(b'<!DO')
+3333649027	result.png	IGR textures.textile	no logged source-ID result
+3346710006	index.jpeg	History.textile	no logged source-ID result
+3801833563	2md7xs.jpg	16/9.md	FAIL:magic(b'<!DO')
+3811602128	EXHUMED_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+3844714277	POPS2CUE.JPG	Toolbox commands.textile	FAIL:magic(b'<?xm')
+4095826607	GRAN_TURISMO_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+4209628073	007_TND_WIDE%20	smooth.textile	no logged source-ID result
+4249513129	MEDIEVIL_WIDE.jpg	widescreen.textile	FAIL:magic(b'<?xm')
+4286767539	2n0oweq.jpg	16/9.md	FAIL:magic(b'\x89PNG')
+446039127	SOUL_REAVER_WIDE.jpg	widescreen.textile	FAIL:magic(b'<?xm')
+462913228	canvas.png	scan_lines_preview.md	no logged source-ID result
+471851278	DIE_HARD_TRILOGY_2_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+65599370	METAL_GEAR_SOLID_WIDE.jpg	widescreen.textile	FAIL:magic(b'<?xm')
+727086931	GHOST_IN_THE_SHELL_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
+777862948	Sans-titre-1.png	popstarter-batcher.textile	no logged source-ID result
+983441507	nocanvas.png	scan_lines_preview.md	no logged source-ID result
+997655191	WIPEOUT_3_WIDE.jpg	widescreen.textile	FAIL:magic(b'<!DO')
