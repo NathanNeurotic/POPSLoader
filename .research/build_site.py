@@ -730,59 +730,127 @@ def dl_note(fn):
     return ''
 
 def build_dl_manifest():
-    mpath = os.path.join(ROOT, '_tmp', 'dl_manifest.tsv')
-    if not os.path.exists(mpath):
-        return ''
-    def norm(s):
-        return re.sub(r'[^a-z0-9]', '', os.path.splitext(s)[0].lower())
-    have_map = {norm(x): x for x in dl_files}   # base-name -> actual hosted file (matches .7z<->.zip variants)
-    mirrors = {}
-    fp = os.path.join(ROOT, '_tmp', 'found_mirrors.tsv')
-    if os.path.exists(fp):
-        for l in open(fp, encoding='utf-8'):
-            p = l.rstrip('\n').split('\t')
-            if len(p) >= 2 and p[1].strip():
-                mirrors[p[0].lower()] = p[1].strip()
-    rows = []; n_rec = n_lost = n_mir = 0
-    for l in open(mpath, encoding='utf-8'):
-        p = l.rstrip('\n').split('\t')
-        if len(p) < 2:
+    """Show every traced historical filename, even if its binary is unverified.
+
+    The tracked TSV is an archive *reference inventory*, not a distribution
+    manifest. Never equate same-base ZIP/7z formats with byte-identical files.
+    """
+    import csv
+    catalog = os.path.join(RES, 'original-download-catalog.tsv')
+    if not os.path.isfile(catalog):
+        raise FileNotFoundError('Tracked original download catalog missing: ' + catalog)
+    with open(catalog, encoding='utf-8', newline='') as fh:
+        entries = list(csv.DictReader((line for line in fh if not line.startswith('#')),
+                                      delimiter='\t'))
+    if not entries:
+        raise ValueError('Original historical download inventory is empty')
+
+    def filename_match(name):
+        return next((host for host in dl_files if host.lower() == name.lower()), None)
+
+    def alt_match(name):
+        """Candidate alternate archive: no implication of payload equivalence."""
+        key = re.sub(r'[^a-z0-9]', '', os.path.splitext(name)[0].lower())
+        return next((host for host in dl_files
+                     if re.sub(r'[^a-z0-9]', '', os.path.splitext(host)[0].lower()) == key), None)
+
+    # The original indexed upload size is evidence of a different file, not a
+    # checksum. Other same-name archives stay "original bytes unverified".
+    known_differences = {
+        'nopal_patch.7z': ('226 bytes', '188 bytes'),
+        'network_modules.7z': ('59.0 KB', '93,934 bytes'),
+    }
+    seen = set()
+    counts = dict(available=0, alternative=0, unverified=0, withheld=0, invalid=0)
+    rows = []
+    for entry in entries:
+        fn = entry.get('filename', '').strip()
+        if not fn:
             continue
-        fn, status = p[0], p[1]
-        if norm(fn) in have_map:
-            actual = have_map[norm(fn)]
-            badge = '<span class="badge primary">recovered</span>'
-            extra = '' if norm(actual) == norm(fn) and actual == fn else f' <span class="prov-inline">(as {html.escape(actual)})</span>'
-            cell = f'<a href="downloads/{html.escape(actual)}" download>download ↓</a>{extra}'; n_rec += 1
-        elif status == 'excluded':
-            badge = '<span class="badge unconfirmed">withheld</span>'
-            cell = 'Withheld per publishing policy'
-        elif fn.lower() in mirrors:
-            badge = '<span class="badge secondary">mirror</span>'
-            cell = f'<a href="{html.escape(mirrors[fn.lower()])}">external mirror ↗</a>'; n_mir += 1
+        if fn.casefold() in seen:
+            raise ValueError('Duplicate original download catalogue name: ' + fn)
+        seen.add(fn.casefold())
+        kind = entry.get('status', '').strip()
+        ref = entry.get('source_reference', '').strip()
+        uploader = entry.get('original_uploader', '').strip()
+        up_date = entry.get('original_date', '').strip()
+        size = entry.get('original_size_displayed', '').strip()
+        if kind == 'withheld':
+            state = 'Withheld'
+            detail = 'Listed for completeness; not offered under the archive publishing policy.'
+            counts['withheld'] += 1
+        elif kind == 'invalid_reference':
+            state = 'Invalid historical reference'
+            detail = 'Malformed, truncated or unrelated original reference; no file is asserted.'
+            counts['invalid'] += 1
         else:
-            badge = '<span class="badge unconfirmed">lost</span>'
-            cell = 'Only the bitbucket download-<em>page</em> survives on Wayback'; n_lost += 1
-        # For a RECOVERED row prefer the audited card note, keyed by the exact hosted
-        # filename. dl_note() matches by substring, so 'quickstarter_pack' labelled all
-        # four packs "Older pack; the 2020 .zip version is recovered above" -- including
-        # the 2020 packs that ARE the current ones. dl_note() still serves the lost and
-        # mirror-only rows, which have no card.
-        note = ''
-        if norm(fn) in have_map:
-            note = DL_CARD_NOTES.get(have_map[norm(fn)], '')
-        if not note:
-            note = dl_note(fn)
-        rows.append(f'<tr><td><code>{html.escape(fn)}</code></td><td>{badge}</td>'
-                    f'<td>{cell}{(" — " + note) if note else ""}</td></tr>')
-    return (f'<h2 id="archive-index">Complete original download index</h2>'
-            f'<p class="lead">The full set of files ShaolinAssassin offered on the original bitbucket downloads '
-            f'page — preserved here as a permanent record of <em>what once was</em> ({n_rec} recovered · '
-            f'{n_mir} via mirror · {n_lost} lost). “Lost” means only the bitbucket download <em>page</em> (HTML) '
-            f'survives in the Wayback Machine, not the binary — but many such files’ contents still live inside '
-            f'the recovered packs above. Click a header to sort.</p>'
-            f'<table data-sortable><thead><tr><th>File</th><th>Status</th><th>Where / note</th></tr></thead><tbody>'
-            + ''.join(rows) + '</tbody></table>')
+            actual = filename_match(fn)
+            if actual:
+                if fn.lower() in known_differences:
+                    state = 'Available copy; provenance unverified'
+                    difference = known_differences[fn.lower()]
+                    extra = (' **Historical size discrepancy:** Bitbucket listed '
+                             + difference[0] + '; hosted file is ' + difference[1] + '.')
+                else:
+                    state = 'Available copy; original identity unverified'
+                    extra = ''
+                detail = ('<a href="downloads/' + html.escape(actual, quote=True)
+                          + '" download>Download available copy</a>' + extra)
+                counts['available'] += 1
+            else:
+                candidate = filename_match(ref) if kind in ('possible_variant',
+                                                              'possible_bundle_member') else None
+                if not candidate and kind == 'possible_variant':
+                    candidate = alt_match(fn)
+                if candidate:
+                    state = 'Alternative available; unverified'
+                    detail = ('<a href="downloads/' + html.escape(candidate, quote=True)
+                              + '" download>Download candidate: '
+                              + html.escape(candidate) + '</a>'
+                              + ' — not confirmed equivalent to the original file.')
+                    counts['alternative'] += 1
+                else:
+                    state = ('Historical upload; file unverified / unavailable'
+                             if uploader else 'Historical reference; file unverified / unavailable')
+                    detail = 'Original file bytes not recovered or verified. No download link.'
+                    counts['unverified'] += 1
+        meta = []
+        if size:
+            meta.append('Original listing: ' + size)
+        if up_date:
+            meta.append('Uploaded ' + up_date)
+        if uploader:
+            meta.append('by ' + uploader + ' (listed uploader, not necessarily author)')
+        if ref and len(ref) <= 100:
+            meta.append('Source: ' + ref)
+        meta_html = ('<span class="prov-inline">' +
+                     html.escape(' · '.join(meta)) + '</span>') if meta else ''
+        badge = ('<span class="badge primary">' if counts and state.startswith('Available copy') else
+                 '<span class="badge unconfirmed">')
+        rows.append('<tr><td><code>' + html.escape(fn) + '</code></td><td>' +
+                    badge + html.escape(state) + '</span></td><td>' +
+                    detail + ('<div>' + meta_html + '</div>' if meta_html else '') +
+                    '</td></tr>')
+
+    intro = ('<h2 id="archive-index">Historical download catalogue — verified and unverified</h2>'
+             '<p class="lead">All ' + str(len(rows)) + ' distinct historical file-name/reference forms '
+             'documented in the original Git wiki, older recovery index, and surviving '
+             '<a href="https://archive.ph/PBG1V">Bitbucket uploads listing</a>. '
+             'The listing is partial; multiple names may refer to alternate '
+             'versions or the same tool. <b>Nothing is omitted for being unverified.</b> '
+             'A historical upload record proves a filename was listed, '
+             '<b>not</b> that its original file bytes survived. '
+             + str(counts['available']) + ' available under the named file, ' +
+             str(counts['alternative']) + ' possible alternate packages, ' +
+             str(counts['unverified']) + ' not recovered / unverified, ' +
+             str(counts['withheld']) + ' withheld, ' +
+             str(counts['invalid']) + ' invalid references. '
+             'Same-name files can still differ: <code>NOPAL_PATCH.7z</code> and '
+             '<code>network_modules.7z</code> have documented original-size discrepancies. '
+             'For authenticated archival equivalence, compare original payload hashes.</p>')
+    return (intro + '<table data-sortable><thead><tr><th>Historical name</th>'
+            '<th>Verification status</th><th>Source and availability</th></tr>'
+            '</thead><tbody>' + ''.join(rows) + '</tbody></table>')
 
 def human(n):
     for u in ('B', 'KB', 'MB'):
