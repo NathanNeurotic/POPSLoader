@@ -1,0 +1,84 @@
+# Canonical historical download references: 80 parsed original wiki forms + legacy retrieval manifest + 28 indexed original Bitbucket upload records; de-duplicated. Metadata only; no binary equivalence claims.
+filename	evidence	status	source_reference	original_size_displayed	original_uploader	original_date
+$FORCEPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			
+$NOPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			
+BATCHER_0.3.1.EXE	wiki_git+bitbucket_listing	historical_reference	0c1b34edee	23.5 KB	Shaolin Assassin	2016-11-28
+BATCHER_0.3.EXE	wiki_git	historical_reference	68ec1c5fde			
+CHEATS.TXT	wiki_git+bitbucket_listing	historical_reference	original Git wiki	1.1 KB	Shaolin Assassin	2017-10-27
+Compatibility Modes.zip	wiki_git	possible_variant	Compatibility_Modes.zip			
+Compatibility_Modes_07252016.7z	wiki_git	historical_reference	d080270444			
+Compatibility_Modes.7z	wiki_git+bitbucket_listing	possible_variant	Compatibility_Modes.zip	882 bytes	Shaolin Assassin	2016-09-27
+Compatibility_Modes.zip	wiki_git	historical_reference	original Git wiki			
+CUE2POPS_2.2.7z	wiki_git	historical_reference	30af41a3c1			
+CUE2POPS_2.3.7z	wiki_git+bitbucket_listing	possible_variant	CUE2POPS_2.3.zip	30.0 KB	Shaolin Assassin	2016-11-03
+cue2pops_src_linux.7z	wiki_git	historical_reference	51abeb7d6e			
+cue2pops_src_linux.zip	wiki_git	historical_reference	8f569ea5a5			
+DEBUG_AND_HALT.PPF	wiki_git+bitbucket_listing	possible_bundle_member	POPStarter_r13_WIP_06_OBT_20170128.zip	73 bytes	Shaolin Assassin	2016-09-24
+Disc_Combining_Kits.7z	wiki_git+bitbucket_listing	withheld	AV-flagged archive excluded by previous policy	8.4 MB	Shaolin Assassin	2017-10-26
+DISCS_POOPER.BAT.7z	wiki_git	withheld	Excluded by established site policy			
+DISCS_POOPER.EXE	wiki_git	withheld	Excluded by established site policy			
+DS3_modules_BT_20171017.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	17.7 KB	Shaolin Assassin	2017-10-17
+DS3_modules_USB_20171017.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	13.8 KB	Shaolin Assassin	2017-10-17
+FORCEPAL_PATCH.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	234 bytes	Shaolin Assassin	2017-10-26
+Game Fixes.zip	wiki_git	historical_reference	938eaf9e52			
+Game_Fixes.7z	wiki_git	historical_reference	a36a503715			
+hddosd_sample_files.7z	wiki_git+bitbucket_listing	historical_reference	1dc243759b	18.5 KB	Shaolin Assassin	2016-10-09
+IGR Behaviour Modifiers.zip	wiki_git	historical_reference	949b7f4166			
+IGR Textures - Chinese pack.7z	wiki_git	possible_variant	IGR_textures_-_Chinese_pack.7z			
+IGR Textures - English pack.7z	wiki_git	historical_reference	65029585a5			
+IGR Textures - French pack.7z	wiki_git	historical_reference	faf8b381af			
+IGR Textures - Polish pack.7z	wiki_git	possible_variant	IGR_textures_-_Polish_pack.7z			
+IGR Textures - Portuguese pack.7z	wiki_git	historical_reference	b477e79c7d			
+IGR Textures - Spanish pack.7z	wiki_git	historical_reference	faf8b381af			
+IGR_Behaviour_Modifiers.7z	wiki_git+bitbucket_listing	historical_reference	7351fa6ddd	1.0 KB	Shaolin Assassin	2016-09-27
+IGR_Behaviour_Modifiers.zip	wiki_git	historical_reference	bb2a09c57e			
+IGR_sample_kit_04272016.7z	wiki_git	historical_reference	1428464956			
+IGR_sample_kit.7z	wiki_git+bitbucket_listing	historical_reference	cd69a042ad	62.9 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_	wiki_git	invalid_reference	Truncated/partial URL, not an artifact name			
+IGR_textures_-_Chinese_pack.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	63.4 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_English_pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	843.8 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_English_pack.zip	wiki_git	possible_variant	IGR_textures_-_English_pack.7z			
+IGR_textures_-_French_pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	623.3 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_German_Pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	117.0 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_German_pack.zip	wiki_git	possible_variant	IGR_textures_-_German_Pack.7z			
+IGR_textures_-_Polish_pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	459.9 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_Portuguese_pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	216.9 KB	Shaolin Assassin	2016-09-27
+IGR_textures_-_Spanish_pack.7z	wiki_git+bitbucket_listing	historical_reference	ee7ecc9399	172.0 KB	Shaolin Assassin	2016-09-27
+lang_French.lng	wiki_git	invalid_reference	From unrelated historical sample.md			
+network_modules.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	59.0 KB	Shaolin Assassin	2017-10-27
+network_modules.zip	wiki_git	possible_bundle_member	POPStarter_SMB_Quickstarter_Pack_20200209.zip			
+NOPAL_PATCH.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	226 bytes	Shaolin Assassin	2017-10-26
+pfs-scripts.7z	wiki_git	historical_reference	536660e141			
+pfsshell-0.2a.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	62.6 KB	Shaolin Assassin	2016-11-03
+POPStarter r13 WIP 05.zip	wiki_git	historical_reference	eb4d4d70fd			
+POPStarter_BATCHER_06192016.7z	wiki_git	historical_reference	0d1cdd640e			
+POPStarter_ELFs BATCHER_05062016.7z	wiki_git	withheld	AV-flagged archive excluded by previous policy			
+POPStarter_HDD_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	original Git wiki			
+POPStarter_HDD_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	1.1 MB	El_Patas	2020-02-09
+POPStarter_Quickstarter_Pack_HDD_20161002.7z	wiki_git	historical_reference	4dec8dfa45			
+POPStarter_Quickstarter_Pack_HDD_20161103.7z	wiki_git	historical_reference	562d2481e4			
+POPStarter_Quickstarter_Pack_HDD_2017_01_10.7z	wiki_git	historical_reference	a96be9c1c2			
+POPStarter_Quickstarter_Pack_SMB__2017_01_10.7z	wiki_git	historical_reference	8251123a5e			
+POPStarter_Quickstarter_Pack_USB__2017_01_10.7z	wiki_git	historical_reference	6ab47ba67			
+POPStarter_Quickstarter_Pack_USB_20161002.7z	wiki_git	historical_reference	77fb27ce3			
+POPStarter_Quickstarter_Pack_USB_20161103.7z	wiki_git	historical_reference	dcc7269d4			
+POPStarter_r13_Beta_20190605.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	338.9 KB	El_Patas	2020-02-09
+POPStarter_r13_RIP_06.zip	wiki_git	historical_reference	original Git wiki			
+POPStarter_r13_WIP_05.7z	wiki_git	historical_reference	43f1930c2c			
+POPStarter_r13_WIP_06_OBT_13_20151207.zip	wiki_git	historical_reference	eb4d4d70fd			
+POPStarter_r13_WIP_06_OBT_20160723_OBT15.7z	wiki_git	historical_reference	43f1930c2c			
+POPStarter_r13_WIP_06_OBT_20161120.zip	legacy_manifest_only	unverified_reference	previous retrieval ledger			
+POPStarter_SMB_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	f50684bfb8			
+POPStarter_SMB_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	273.6 KB	El_Patas	2020-02-09
+POPStarter_USB_Quickstarter_Pack_20171027.7z	wiki_git	historical_reference	bfef022077			
+POPStarter_USB_Quickstarter_Pack_20200209.zip	wiki_git+bitbucket_listing	historical_reference	original Git wiki	642.8 KB	El_Patas	2020-02-09
+PPF Bunch pack v1.7z	wiki_git	historical_reference	a711cae2cb			
+PPF_Bunch_pack.7z	wiki_git	historical_reference	316423c2f0			
+RadHostClient 1.8a.7z	legacy_manifest_only	unverified_reference	previous retrieval ledger			
+RadHostClient_1.8a.7z	wiki_git+bitbucket_listing	historical_reference	original Git wiki	333.0 KB	Shaolin Assassin	2016-11-03
+SAMPLE_CHEATS.TXT	wiki_git	historical_reference	original Git wiki			
+ToolBox.7z	wiki_git	historical_reference	740cda4faa			
+ToolBox.zip	wiki_git	historical_reference	9fb9314cf4			
+uLE_kHn_20150727.zip	wiki_git	historical_reference	efdac2fc9d			
+uLE_kHn_20160723.7z	wiki_git	historical_reference	3c35465478			
+uLE_kHn_20191110.zip	wiki_git+bitbucket_listing	possible_bundle_member	POPStarter_USB_Quickstarter_Pack_20200209.zip	2.0 MB	El_Patas	2020-02-09
