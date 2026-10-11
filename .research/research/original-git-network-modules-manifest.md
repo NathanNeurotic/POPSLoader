@@ -5,6 +5,8 @@
 
 **Status:** read-only, based on authenticated *current repository bytes*. The historic Bitbucket source archive itself is **unavailable**. No files have been executed or extracted into a distributable package, and no driver version or real-hardware behavior has been certified.
 
+**New provenance lead (2026-10-11):** In [krHACKen's 2015-10-23 SMB/Beta 8 developer announcement](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-20-134569.html), the developer identified an earlier and separately named `POPStarter_Net_Modules_for_mc0.zip` distribution for the original network drivers and configuration templates. No authentic bytes for that archive have been retrieved. It is a **pre-2017 packaging/source lead**, not proof of equivalence with either the original 2017 `network_modules.7z` or today's 7z/2020 ZIP. See [dated source timeline](original-git-2015-network-and-patch9-timeline.md).
+
 ## Provenance and discrepancy
 
 | Evidence | Value |
