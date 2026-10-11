@@ -397,3 +397,19 @@ This **closes exact entry preservation for the 2017 WIP06 OBT17 497-row list**, 
 - An old ~special-cheats.textile~ revision deleted an entire **67-line** "Left Stick is the D-Pad" memory-patch block when replacing it with ~D2LS~ and ~D2LS_ALT~ commands (2016-11-20 commit ~bec5b67~). Its **67 ordered instruction/code lines** are identical in final original ~D2LS.textile~ and recovered ~D2LS.md~ (case-preserving, order-sensitive FNV-1a 32-bit ~77b4ef6b~); no old code line is missing from that standalone document. This code is **historical and not independently hardware-tested**.
 - Original ~VCD.textile~ removed the standalone CUE2POPS/Toolbox changelog in commit ~a4d8185~ (2016-04-29), but the essential **2013 converter change notes** (including the 2013-05-16 v2.0 false-positive Y-position fix, pregap rewrite, NTSC patch exceptions and version identifier) are already documented in recovered ~cue2pops-and-toolbox-changelogs.md~. This relocation is not missing developer history.
 - The July 2024 original final edits are also represented in recovered pages: ~special-cheats.md~ retains the explicit ~$NOPAL~ caveat; ~multi-disc.md~ refers to ~DISCS_POOPER.BAT.7z~; recovered ~Home.md~ retains the 2023 ElOtroLado reporting thread. Existing distribution exclusions still apply.
+
+
+## All 38 original automated-page revisions: historical disc-ID union preserved
+
+The original wiki's automated compatibility/fix page had **three actual Git filenames** over its lifetime: `5a. Automated.textile` → `Automated.textile` → `automated.textile`. Enumerated all **38** path-scoped original Git revisions (including these explicit rename predecessors), parsed their disc IDs with the consistent PlayStation serial pattern `[A-Z]{4}-[0-9]{5}`, and deduplicated exact disc serial strings across every snapshot.
+
+- Original 2017 WIP06 OBT17 `a005d627`: **460 distinct disc IDs**.
+- Original final page `automated.textile` at HEAD: **528 distinct disc IDs** (includes IDs mentioned in historical sections and prose, not exclusively the final 641-row table).
+- Across **all 38 historical revisions**: **545 distinct disc IDs**.
+- Set difference: **0 historical disc IDs missing from the union of the 2017 source and final source**.
+
+Because both the original **2017 full 497-row game/fix list** and the original **2024 final 641-row game/fix lists** have been matched to recovered `automated.md` record-for-record, **all 545 exact disc IDs referenced in this original automated-page lineage have surviving representation** in these recovered datasets. This checks ID retention across the entire rename-connected revision chain, not just the two individual snapshot dates.
+
+**Limitations:** This exact serial-ID union check does *not* prove every intermediate descriptive claim, game-title spelling, port-specific fix, or named game-version change is preserved. It does not cover other wiki pages' manual fixes or every original history path. The search pattern is intentionally exact (four uppercase letters, hyphen, five digits) and can miss malformed/free-text serials. It is nonetheless a reproducible way to rule out a significant class of lost compatibility records.
+
+Reproduce with `git rev-list --all -- '5a. Automated.textile' 'Automated.textile' automated.textile` and inspect each revision's then-current path; collect serials with `re.findall(r'\\b[A-Z]{4}-\\d{5}\\b', original_text)`, then compare against the union of the 2017 and final original automated files. The attached ZIP is the primary evidence source.

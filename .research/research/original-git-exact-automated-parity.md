@@ -58,3 +58,19 @@ Applied **only** Unicode NFKC normalization, multiplication sign `×` → ASCII 
 The source data was read directly from the unmodified original Git clone via `git show`, and the recovered file was read directly from GitHub. The digest was verified by Python `hashlib.sha256` and an independently tested JS SHA-256 implementation. The new [`audit_original_wip06_2017.py`](../tools/audit_original_wip06_2017.py) is a read-only local comparator using Python `Counter` and SHA-256, and was syntax-checked and positive/negative-tested: deliberately removing one record caused `DIFF` and a nonzero exit status.
 
 This **closes exact entry preservation for the 2017 WIP06 OBT17 497-row list**, in addition to the previously proven 641 rows in the original **2024 Git HEAD**. It does **not** prove that all intermediate revisions, changelog prose or real game compatibility are preserved, and should not be added to 641 as a count of unique games: the two lists overlap extensively.
+
+
+## All 38 original automated-page revisions: historical disc-ID union preserved
+
+The original wiki's automated compatibility/fix page had **three actual Git filenames** over its lifetime: `5a. Automated.textile` → `Automated.textile` → `automated.textile`. Enumerated all **38** path-scoped original Git revisions (including these explicit rename predecessors), parsed their disc IDs with the consistent PlayStation serial pattern `[A-Z]{4}-[0-9]{5}`, and deduplicated exact disc serial strings across every snapshot.
+
+- Original 2017 WIP06 OBT17 `a005d627`: **460 distinct disc IDs**.
+- Original final page `automated.textile` at HEAD: **528 distinct disc IDs** (includes IDs mentioned in historical sections and prose, not exclusively the final 641-row table).
+- Across **all 38 historical revisions**: **545 distinct disc IDs**.
+- Set difference: **0 historical disc IDs missing from the union of the 2017 source and final source**.
+
+Because both the original **2017 full 497-row game/fix list** and the original **2024 final 641-row game/fix lists** have been matched to recovered `automated.md` record-for-record, **all 545 exact disc IDs referenced in this original automated-page lineage have surviving representation** in these recovered datasets. This checks ID retention across the entire rename-connected revision chain, not just the two individual snapshot dates.
+
+**Limitations:** This exact serial-ID union check does *not* prove every intermediate descriptive claim, game-title spelling, port-specific fix, or named game-version change is preserved. It does not cover other wiki pages' manual fixes or every original history path. The search pattern is intentionally exact (four uppercase letters, hyphen, five digits) and can miss malformed/free-text serials. It is nonetheless a reproducible way to rule out a significant class of lost compatibility records.
+
+Reproduce with `git rev-list --all -- '5a. Automated.textile' 'Automated.textile' automated.textile` and inspect each revision's then-current path; collect serials with `re.findall(r'\\b[A-Z]{4}-\\d{5}\\b', original_text)`, then compare against the union of the 2017 and final original automated files. The attached ZIP is the primary evidence source.
