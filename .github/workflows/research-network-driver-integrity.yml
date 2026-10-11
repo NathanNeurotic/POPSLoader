@@ -14,6 +14,9 @@ on:
       - '.research/tools/inspect_network_modules_header.py'
       - '.research/downloads/network_modules.7z'
       - '.research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip'
+      - '.research/tools/audit_legacy_archive_payloads.py'
+      - '.research/research/legacy-gh-pages-inventory.tsv'
+      - '.research/research/legacy-gh-pages-payload-audit.md'
       - '.github/workflows/research-network-driver-integrity.yml'
   workflow_dispatch:
 
@@ -71,3 +74,24 @@ jobs:
             .research/research/original-bitbucket-download-snapshot-2020.tsv \
             .research/research/original-download-catalog.tsv \
             --strict-known-inventory
+
+  audit-published-legacy-archive-payloads:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout tracked provenance and audit source
+        uses: actions/checkout@v4
+      - name: Checkout immutable published-file candidates
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: published
+          persist-credentials: false
+      - name: Install read-only 7z integrity decoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+      - name: Audit every retained legacy archive, checksum and policy exclusion
+        run: |
+          python3 -m py_compile .research/tools/audit_legacy_archive_payloads.py
+          python3 .research/tools/audit_legacy_archive_payloads.py published
