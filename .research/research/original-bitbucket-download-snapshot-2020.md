@@ -86,3 +86,8 @@ The preserved Bitbucket listing reports **59.0 KB** (2017-10-27), whereas the tr
 5. Preserve original upload attribution and date separately from **tool authorship**, which cannot be inferred from uploader.
 
 **No changes are authorized to `.research/downloads/`, published wiki files, releases, or executable code.**
+
+
+## 2026-10-11 independent older Downloads-page correction
+
+A [real 2018-08-18 Wayback-captured Bitbucket Downloads HTML page preserved inside HWNJ's 2020 saved-wiki RAR](original-bitbucket-download-snapshots-2018-2020-reconciliation.md) supplies **29 directly parsed historical upload rows** with native Bitbucket IDs, high-precision HTML timestamp attributes, displayed sizes and links. It includes **six filenames absent from the 28-row February 2020 indexed listing** in this document, although each of those six was already in the original wiki Git-history link catalog. The cross-snapshot exact-name intersection is **23**, the observed union is **34**, and **five** rows appear only in the later 2020 inventory. Thus **28 is not the historical uploads total**, and the six older upload metadata rows are preserved in [the 2018 original-source TSV](original-bitbucket-downloads-2018-preserved.tsv). No binary bytes or media have been recovered by this metadata comparison. The original two 2017 size discrepancies remain open.
