@@ -248,3 +248,36 @@ Original `widescreen.textile` uses `$ULTRE_WIDESCREEN` in one explanatory bullet
 Source commit `cad93a2da1e` (2024-07-22, contributor El_Patas) removed the former HDD/USB/SMB official Google Docs compatibility-list links and attribution to AlGollan84/Algol/Allan58 and krHACKen from `compatibility.textile` after promoting the newer ElOtroLado list. Our merged `.research/wiki/compatibility.md` **does** retain those older links and authorship with historical/obsolete labels, so this is a verified preservation win. It is a concrete reason **not** to overwrite our reconstruction with original Git HEAD.
 
 **No additions to the published historical pages, compiled software, or binary download directory are made in this PR.**
+
+
+## Continued chronology audit — further verified differences (October 2026)
+
+The comparisons below use specific original Git revisions and checked the current recovered Markdown pages. They describe **historical documentation**, not requirements for today's POPStarter runtime. A compact evidence index is recorded in [`original-git-technical-changes.tsv`](original-git-technical-changes.tsv).
+
+### G9 — [CONFIRMED, VERSION-SCOPED] Configuration offset `$412` changed meaning
+
+In the first advanced configuration documentation (`fa60511de312`, 2016-04-11; expanded in `d071daa8`), offset `$412` was described as **"Skip most POPStarter functions (NOT FULLY IMPLEMENTED)"**, with `0x00` = disabled and `0x01`/`0x02` = level 1/2. The source expressly warned that the feature was unfinished. A subsequent revision (`34755b05e46`, 2016-04-12) replaced the description with **NOT USED**. On 2016-11-20 (`7211f94519a`) the configuration-table documentation changed `$412` to a **SetGsCrt hack**, with `0x00` disabled and `0x01` enabled to address some HDTV/interlaced-component issues.
+
+Our recovered `.research/wiki/configuration-table.md` correctly describes the **later** SetGsCrt meaning, but the early experimental meaning and its withdrawal are absent from that page. Other current pages do mention SetGsCrt; the old option is not an alternative current mode. **Preserve only as a dated version-history footnote, if desired; never merge incompatible meanings into a single current setup instruction.**
+
+### G10 — [CONFIRMED, HISTORICAL FILE-NAME TRANSITION] USB/SMB `POPS_IOP.PAK` → `POPS_IOX.PAK`
+
+The original late-2016 USB and SMB setup instructions refer to `POPS_IOP.PAK`. Original Git commits `ac9c1c5` (USB, 2017-02-01 15:22 UTC) and `60b6676` (SMB, same date) replaced the referenced compressed emulator filename with `POPS_IOX.PAK`; follow-up commits `895809b` and `bb5d665` corrected additional notes (including mixed punctuation `POPS_IOP_PAK`).
+
+The recovered `.research/wiki/usb-mode.md`, `smb-mode.md`, and `popstarter-changelog.md` refer to the later name `POPS_IOX.PAK`, with no `POPS_IOP.PAK` historical naming note. The original Git text proves a **documentation rename on that date**, but not whether any particular old package is byte-compatible. **This belongs to historical setup/version chronology, not a newly offered package download.** No emulator payload is included.
+
+### G11 — [CONFIRMED HISTORICAL NOTE ABSENT] Old VCD guide: missing CUE sheets
+
+The old `VCD.textile` (addition `058f6fc`, 2016-04-14) offered a link to `http://redump.org/cues/psx/` when a PS1 disc CUE sheet was absent, and cautioned that the named BIN and CUE entries must match, noting that the CUE describes CD tracks. On 2016-07-27, commit `a114f3a` **removed** that note; the final original `vcd.textile` and the recovered `.research/wiki/vcd.md` do not contain it. Repository search found no current record of that old exact link.
+
+This is a **missing historical troubleshooting reference**, not automatically valid recovery advice for every image. A generic CUE from a different dump may describe different tracks and must not be presented as an equivalent substitute without verification. Retain provenance and deletion date if represented in the archive.
+
+### [PRESERVED; EXCLUDE FROM MISSING-CONTENT COUNT] PFSshell batch transfer and multi-disc limits
+
+The older `pfsshell.textile` referenced `pfs-scripts.7z` and credited **ElPatas** and **deba5er** for the batch transfer method. The reconstructed `pfsshell.md` still documents the exact `pfs.bat hddX: __.POPS *.VCD` invocation and attribution. The historical script archive itself remains an unverified download-reference candidate, not a missing instruction.
+
+The older four-disc limit, `DISCS.TXT` line count limit, and shared VMC method are also documented in the reconstructed `multi-disc.md`. **Do not add duplicate pages** for these removed source notes.
+
+### Audit scope and future comparisons
+
+These findings came from tracking paragraph-level deletions and dated redefinitions in the original Git history. They are **not** a claim that all changed prose across 2,140 commits has been completely reviewed or semantically validated. The remaining candidate work includes code/command edge cases, fine-grained per-game version associations, removed download provenance, and accurate image recovery. All changes remain **research-only** in draft PR #578.
