@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - docs/restore-popstarter-downloads
+      - gh-pages
     paths:
       - 'downloads/*.7z'
       - 'downloads.html'
@@ -36,4 +37,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add popstarter-docs-archive.zip
           git commit -m "docs: include recovered archives in complete offline POPStarter ZIP"
-          git push origin HEAD:docs/restore-popstarter-downloads
+          git push origin HEAD:${GITHUB_REF_NAME}
