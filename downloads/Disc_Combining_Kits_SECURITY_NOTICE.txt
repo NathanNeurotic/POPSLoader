@@ -1,0 +1,49 @@
+SECURITY NOTICE — Disc_Combining_Kits.7z
+========================================
+
+STATUS: HISTORICAL PRESERVATION COPY — POTENTIALLY UNSAFE TO EXECUTE
+This notice accompanies Disc_Combining_Kits.7z and the complete offline
+POPStarter documentation ZIP that contains the same file.
+
+WHAT THE ORIGINAL ARCHIVE ACTUALLY SAYS
+The bundled Disc_Combining_Kits/_info.txt lists:
+    Chrono Cross (*** POSSIBLE VIRUS WARNING ***)
+The original source is recorded there as:
+    http://ngemu.com/threads/disc-combining-kits.118402/
+
+The bundle includes multiple nested 7z/RAR archives, including
+Disc_Combining_Kits/chronomergekit.rar (the Chrono Cross kit).
+This is an inherited warning from historical documentation, NOT a
+confirmed malware analysis or a determination that the file is safe.
+There is no known detection name, signature, or independently verified
+false-positive conclusion accompanying this preservation copy.
+
+PRECAUTIONS
+* Treat EVERY executable, script, and nested archive in this bundle
+  as untrusted. Do not execute any of them on your everyday computer.
+* Before any testing, independently inspect and malware-scan the exact
+  extracted files with current security tools. A clean scan alone does
+  not establish that old executable software is safe.
+* If execution is necessary for research, use an isolated, disposable
+  test environment without access to important data or credentials.
+* Keep verified, read-only backups of your original disc images and
+  saves before attempting any combining or conversion.
+* The accompanying SHA256SUMS.txt proves file identity/integrity only.
+  It does NOT certify malware safety, provenance, or legal rights.
+
+ADDITIONAL USAGE LIMITATIONS FROM THE ORIGINAL _info.txt
+* The historical notes advise against re-ripping a CD image from a
+  virtual drive using CloneCD or Alcohol to generate BIN/IMG files.
+* The notes say PSN-purchased, DRM-encrypted images will not work with
+  these kits as supplied; the document offers no support for them.
+
+PROVENANCE AND SCOPE
+This archive is retained unchanged for documentation and preservation.
+The team has not independently audited the contents for malware.
+This warning concerns the disc-combining utilities; POPStarter's
+separate TROJAN_#.BIN patch terminology is unrelated to a malware
+classification.
+
+Before redistributing or running any component, review the original
+embedded _info.txt and verify you have the right to use the relevant
+software and disc images.
