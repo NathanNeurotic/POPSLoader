@@ -41,7 +41,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y 7zip
-      - name: Census hosted archive patch member names
+      - name: Validate hosted ZIP/7z payloads and census patch member names
         run: |
           python3 -m py_compile .research/tools/audit_hosted_patch_members.py
-          python3 .research/tools/audit_hosted_patch_members.py .research/downloads
+          python3 .research/tools/audit_hosted_patch_members.py .research/downloads --full-test
