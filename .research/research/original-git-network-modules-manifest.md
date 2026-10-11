@@ -1,5 +1,8 @@
 # Forensic directory audit: currently hosted `network_modules.7z`
 
+**Later byte-level update (supersedes the metadata-only limitation recorded below):** [Full 12/12 decompressed 7z member CRC verification and 6/6 driver SHA-256 equality against the 2020 SMB ZIP](original-git-network-quickstarter-overlap.md#full-decompressed-payload-verification--2026-10-10-supersedes-metadata-only-caveat-above), confirmed by [successful GitHub Actions run #38113818669](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38113818669). Earlier directory-only language is retained as research chronology; it no longer describes the current verification state.
+
+
 **Status:** read-only, based on authenticated *current repository bytes*. The historic Bitbucket source archive itself is **unavailable**. No files have been executed or extracted into a distributable package, and no driver version or real-hardware behavior has been certified.
 
 ## Provenance and discrepancy
