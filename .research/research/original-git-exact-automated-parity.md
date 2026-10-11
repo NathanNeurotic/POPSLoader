@@ -45,3 +45,16 @@ The script is read-only and fails when any source row is missing, altered, dupli
 The source `.research/wiki/automated.md` contains typographic `0×` literals; `build_site.py:211` normalizes such prefixes to ASCII `0x` **at render time**. The builder's `rewrite_and_clean` function (`build_site.py:170–172`) **also strips pseudo Git-commit anchors, retaining the literal linked value**. Live `wiki/automated.html` shows `COMPATIBILITY_0x04` and live `wiki/cheat-engine.html` shows `add $01000000` with no spurious commit link. Thus the **raw Markdown remains less portable/faithful than the generated website**, but these two defects are **not confirmed present in rendered public pages**. Avoid describing 854 raw `0×` instances and 30 pseudo-commit links as 884 live website failures.
 
 **PR policy:** research only; no actual wiki-content overwrites, license-sensitive redistribution, runtime edits, or merge.
+
+
+## Historical 2017 WIP06 OBT17 — full row-level preservation proof
+
+Original source commit `a005d6274eb845b6307fcdb1bad4a20b2a5f9d57` (2017-07-15), page `automated.textile`. Its first `h2.` section is titled **Fixes integrated into POPStarter Revision 13 WIP 06, OBT 17**. It contains **497** complete `* ` game/fix rows covering **460 distinct disc IDs**. The separate `## Changelog / version history (from the 2017-06-29 snapshot)` section in our current `.research/wiki/automated.md` contains **497** historical `- ` rows, with **the exact same normalized full row multiset and all 460 distinct disc IDs**.
+
+Applied **only** Unicode NFKC normalization, multiplication sign `×` → ASCII `x`, typographic en/em dash → hyphen, curly apostrophe → straight apostrophe, and whitespace collapsing. Retained full titles, disc/region identifiers, release-version labels, fix descriptions, row multiplicity and variants. Sorting normalized rows and SHA-256 hashing LF-delimited UTF-8 text returned the *same digest on both sides*:
+
+`d2449e7d75be69e25464ad159a06b0763c718299413d425c82aa5c2db39e2754`
+
+The source data was read directly from the unmodified original Git clone via `git show`, and the recovered file was read directly from GitHub. The digest was verified by Python `hashlib.sha256` and an independently tested JS SHA-256 implementation. The new [`audit_original_wip06_2017.py`](../tools/audit_original_wip06_2017.py) is a read-only local comparator using Python `Counter` and SHA-256, and was syntax-checked and positive/negative-tested: deliberately removing one record caused `DIFF` and a nonzero exit status.
+
+This **closes exact entry preservation for the 2017 WIP06 OBT17 497-row list**, in addition to the previously proven 641 rows in the original **2024 Git HEAD**. It does **not** prove that all intermediate revisions, changelog prose or real game compatibility are preserved, and should not be added to 641 as a count of unique games: the two lists overlap extensively.

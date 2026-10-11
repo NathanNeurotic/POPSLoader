@@ -376,3 +376,24 @@ This closes *original final HEAD automated list* parity, **not** every older rev
 Direct inspection of `.research/build_site.py` establishes that its `render_md` function normalizes hexadecimal `0×` to ASCII `0x` at output time (`line 211`); and `rewrite_and_clean` strips the faux `/commits/` links while keeping the visible text (`lines 170–172`). Live page checks agree (`wiki/automated.html` displays `0x04`; `wiki/cheat-engine.html` displays `add $01000000` unlinked).
 
 **Therefore earlier audit descriptions of 854 raw malformed prefixes and 30 reconstructed pseudo-commit links refer to the preserved Markdown source only. They do not establish 854+30 broken renderings on the public documentation website.** They remain important for source fidelity, offline exports, direct GitHub rendering and future tooling. The generator already mitigates them for this site; do not blindly add redundant runtime transforms. Relevant audit entries `G3`, `F2` and `C3` must be read with this clarification.
+
+
+## Historical 2017 WIP06 OBT17 — full row-level preservation proof
+
+Original source commit `a005d6274eb845b6307fcdb1bad4a20b2a5f9d57` (2017-07-15), page `automated.textile`. Its first `h2.` section is titled **Fixes integrated into POPStarter Revision 13 WIP 06, OBT 17**. It contains **497** complete `* ` game/fix rows covering **460 distinct disc IDs**. The separate `## Changelog / version history (from the 2017-06-29 snapshot)` section in our current `.research/wiki/automated.md` contains **497** historical `- ` rows, with **the exact same normalized full row multiset and all 460 distinct disc IDs**.
+
+Applied **only** Unicode NFKC normalization, multiplication sign `×` → ASCII `x`, typographic en/em dash → hyphen, curly apostrophe → straight apostrophe, and whitespace collapsing. Retained full titles, disc/region identifiers, release-version labels, fix descriptions, row multiplicity and variants. Sorting normalized rows and SHA-256 hashing LF-delimited UTF-8 text returned the *same digest on both sides*:
+
+`d2449e7d75be69e25464ad159a06b0763c718299413d425c82aa5c2db39e2754`
+
+The source data was read directly from the unmodified original Git clone via `git show`, and the recovered file was read directly from GitHub. The digest was verified by Python `hashlib.sha256` and an independently tested JS SHA-256 implementation. The new [`audit_original_wip06_2017.py`](../tools/audit_original_wip06_2017.py) is a read-only local comparator using Python `Counter` and SHA-256, and was syntax-checked and positive/negative-tested: deliberately removing one record caused `DIFF` and a nonzero exit status.
+
+This **closes exact entry preservation for the 2017 WIP06 OBT17 497-row list**, in addition to the previously proven 641 rows in the original **2024 Git HEAD**. It does **not** prove that all intermediate revisions, changelog prose or real game compatibility are preserved, and should not be added to 641 as a count of unique games: the two lists overlap extensively.
+
+
+## False-positive exclusions — legacy Toolbox, D2LS and 2013 converter changelog
+
+- Original deleted ~Toolboxcommands.textile~ (last prior to ~022068c~ on 2016-04-15) contains **10** documented CLI flags: ~-cue2pops~, ~-lc~, ~-vmode~, ~-trainer~, ~-makeosd~, ~-igrpix~, ~-vmcid~, ~-dbgdelay~, ~-usbdelay~, ~-cdid~. All ten remain in the final original ~toolbox-commands.textile~ and our recovered ~toolbox-commands.md~. The obsolete tool was superseded by later CUE2POPS; do not create a duplicate document from the deleted page.
+- An old ~special-cheats.textile~ revision deleted an entire **67-line** "Left Stick is the D-Pad" memory-patch block when replacing it with ~D2LS~ and ~D2LS_ALT~ commands (2016-11-20 commit ~bec5b67~). Its **67 ordered instruction/code lines** are identical in final original ~D2LS.textile~ and recovered ~D2LS.md~ (case-preserving, order-sensitive FNV-1a 32-bit ~77b4ef6b~); no old code line is missing from that standalone document. This code is **historical and not independently hardware-tested**.
+- Original ~VCD.textile~ removed the standalone CUE2POPS/Toolbox changelog in commit ~a4d8185~ (2016-04-29), but the essential **2013 converter change notes** (including the 2013-05-16 v2.0 false-positive Y-position fix, pregap rewrite, NTSC patch exceptions and version identifier) are already documented in recovered ~cue2pops-and-toolbox-changelogs.md~. This relocation is not missing developer history.
+- The July 2024 original final edits are also represented in recovered pages: ~special-cheats.md~ retains the explicit ~$NOPAL~ caveat; ~multi-disc.md~ refers to ~DISCS_POOPER.BAT.7z~; recovered ~Home.md~ retains the 2023 ElOtroLado reporting thread. Existing distribution exclusions still apply.
