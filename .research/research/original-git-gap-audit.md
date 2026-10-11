@@ -343,3 +343,18 @@ Deleted from 2017 original `compatibility.textile` at commit `15f0d8a`, the **ma
 The historical `smooth.textile` gallery temporarily shrank dramatically in 2017 (`930678b`), but the later original Git HEAD restored its main comparison gallery. Our current recovered `smooth.md` has 16 comparison-game headings, and the site `_state/galleries.json` includes **46 original image references** for the page. All 46 corresponding files are tracked in `.research/assets/`. More broadly, all **98** references stored in **18 nonempty cached galleries** across the site match actual tracked image filenames (from the 124 image assets). Therefore there is **no current known missing gallery-cache image for those 98 references**. This does **not** disprove the separate 34 unmatched numeric image IDs in *all historical Git revisions*, or the 19 IDs still referenced at source HEAD but not in the recovered gallery cache. The inventories have different scopes and must never be directly subtracted.
 
 **Scope reminder:** this is audit evidence only. No change to original historical documents, public wiki, credits, compatibility table, downloads, or binary assets is authorized by draft PR #578.
+
+
+### C1 — Missed October 2017 light-gun documentation correction
+
+Original wiki commit `f4210efed74840394474a502da259d733a03be22` corrected `ps1-special-devices.textile` step 6 from **USBD.IRX + USBD.IRX** to **USBD.IRX + USBGUN.IRX** as the first/second **example** modules. Our recovered `ps1-special-devices.md` still has the outdated duplicate `USBD.IRX` text (despite step 5 mentioning `USBGUN.IRX`). The original 2024 HEAD has the corrected wording. Tutorial attribution to **AKuHAK** must remain. This is a **high-confidence editorial source-fidelity correction for later approval**, not a tested assertion of particular light-gun hardware support.
+
+### C2 — Reconstructed USB example more correct than original HEAD
+
+Original commit `eb75d91410491b8d693e70b6980c8f9c4036bfc2` changed the **USB** table's example from `XX.Some Game.elf` to erroneous `SB.GAME.ELF`, contrary to the same page's explicit prefix `XX.`. The incorrect USB sample survived in the original HEAD. Our recovered `usb-mode.md` preserves correct `XX.Some Game.elf`, while `smb-mode.md` properly uses the SMB prefix `SB.`. **Do not replace the reconstructed page with the original HEAD.**
+
+### C3 — Validated pseudo-commit link generation
+
+The previously identified **30** `/commits/` links in nine recovered Markdown pages represent **18 distinct values** (seven date labels, five numeric code/config values, three checksums, three historical Pastie IDs). **None** resolves as a Git object in the supplied 2,140-commit wiki Git clone (tested by `git cat-file -t`), and the original wiki HEAD has no explicit URLs of that form. Forensic breakdown, examples and cautious provenance: [`original-git-source-corrections.md`](original-git-source-corrections.md). Exact origin of the spurious links in the archive/HTML conversion chain is not established. Treat as a reviewable fidelity issue, not 30 missing Git commits.
+
+All three findings are research only; no site source or public documentation was changed.
