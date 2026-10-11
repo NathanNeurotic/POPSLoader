@@ -7,6 +7,7 @@ Does not execute binaries, extract members to disk, authenticate old Bitbucket
 uploads, claim safety, or promote files for download.
 """
 from pathlib import Path, PurePosixPath
+from io import BytesIO
 import argparse
 import hashlib
 import shutil
@@ -115,6 +116,30 @@ def audit(site, research):
         key = normal(name)
         originals[f] = (key, sha(payload), size)
         print(f"LEGACY {f} member={name} size={size} sha256={sha(payload)}")
+    # The legacy uLE 7z contains a *ZIP*, not the loose BOOT.ELF some
+    # documentation assumes. CRC-test its actual inner members in memory.
+    ule_7z = site / "downloads" / "uLE_kHn_20191110_2.7z"
+    ule_name, ule_length = members(ule_7z, exe)[0]
+    ule_zip = member_bytes(ule_7z, ule_name, ule_length, exe)
+    if not ule_name.casefold().endswith(".zip") or not ule_zip.startswith(b"PK"):
+        raise ValueError("2019 uLE inner member is not the expected ZIP")
+    with ZipFile(BytesIO(ule_zip)) as nested:
+        infos = [item for item in nested.infolist() if not item.is_dir()]
+        if not infos or len(infos) > 64:
+            raise ValueError("Unexpected nested uLE ZIP file count")
+        total = sum(item.file_size for item in infos)
+        if total > 64_000_000 or any(item.file_size > EXTERNAL_MAX_BYTES for item in infos):
+            raise ValueError("uLE inner ZIP decompression limit exceeded")
+        for info in infos:
+            normal(info.filename)
+        bad_member = nested.testzip()  # checks member stream CRCs, no disk writes
+        if bad_member:
+            raise ValueError("Nested uLE ZIP member CRC failure: " + bad_member)
+        print(f"NESTED_ZIP {ule_name} bytes={len(ule_zip)} sha256={sha(ule_zip)} "
+              f"members={len(infos)} total_unpacked={total} crc=PASS")
+        for item in infos:
+            print(f"NESTED_MEMBER name={item.filename} size={item.file_size} "
+                  f"crc32={item.CRC:08X}")
     candidates = sorted([x for x in research.iterdir()
                          if x.is_file() and x.suffix.lower() in (".zip", ".7z")])
     print(f"Scanning {len(candidates)} tracked packages for exact decompressed payloads.")
@@ -142,6 +167,9 @@ def audit(site, research):
                 if identical:
                     match_count[f] += 1
                     matches.append((f, archive.name, name))
+    if not any(f == "DEBUG_AND_HALT.7z" and archive == "POPStarter_r13_WIP_06_OBT_20170128.zip"
+               for f, archive, name in matches):
+        raise ValueError("Expected historical DEBUG_AND_HALT.PPF payload cross-package match missing")
     for f in TARGETS:
         print(f"SUMMARY {f}: {match_count[f]} exact-name+byte matches "
               f"among {len(candidates)} tracked archives")
