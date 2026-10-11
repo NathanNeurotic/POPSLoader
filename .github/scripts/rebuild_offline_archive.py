@@ -15,9 +15,10 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[2]
 DOWNLOADS = ROOT / "downloads"
 OFFLINE = ROOT / "popstarter-docs-archive.zip"
+WITHHELD = "Disc_Combining_Kits.7z"
 NEW = (
     "BATCHER_0.3.1.EXE.7z", "Compatibility_Modes.7z", "CUE2POPS_2.3.7z",
-    "DEBUG_AND_HALT.7z", "DISCS_POOPER.BAT.7z", "Disc_Combining_Kits.7z",
+    "DEBUG_AND_HALT.7z", "DISCS_POOPER.BAT.7z",
     "hddosd_sample_files.7z", "IGR_Behaviour_Modifiers.7z", "IGR_sample_kit.7z",
     "IGR_textures_-_English_pack.7z", "IGR_textures_-_French_pack.7z",
     "IGR_textures_-_German_Pack.7z", "IGR_textures_-_Polish_pack.7z",
@@ -31,6 +32,8 @@ def digest(data: bytes) -> str:
 
 
 def main() -> None:
+    if (DOWNLOADS / WITHHELD).exists():
+        raise RuntimeError(f"Withheld file is present in public downloads: {WITHHELD}")
     missing = [name for name in NEW if not (DOWNLOADS / name).is_file()]
     if missing:
         print(f"WAITING: {len(missing)} original files not yet uploaded: {', '.join(missing)}")
@@ -39,6 +42,8 @@ def main() -> None:
     sums_file = DOWNLOADS / "SHA256SUMS.txt"
     records = dict(line.split("  ", 1) for line in sums_file.read_text(encoding="utf-8").splitlines() if "  " in line)
     expected = {name: sha for sha, name in records.items()}
+    if WITHHELD in expected:
+        raise RuntimeError("Withheld file remains in public SHA256SUMS.txt")
     for name in NEW:
         if not expected.get(name) or digest((DOWNLOADS / name).read_bytes()) != expected[name]:
             raise RuntimeError(f"SHA-256 mismatch for {name}; not rebuilding the offline archive")
@@ -57,7 +62,8 @@ def main() -> None:
             raise RuntimeError(f"Unexpected downloads page in offline ZIP: {prefixes}")
         prefix = prefixes[0]
         pending = {prefix + name: data for name, data in wanted.items()}
-        if all(path in paths and digest(original.read(path)) == digest(data) for path, data in pending.items()):
+        withheld_path = prefix + "downloads/" + WITHHELD
+        if all(path in paths and digest(original.read(path)) == digest(data) for path, data in pending.items()) and withheld_path not in paths:
             print("ALREADY CURRENT: offline ZIP contains all recovered archives")
             return
         fd, temp_name = tempfile.mkstemp(prefix="popsdocs-", suffix=".zip", dir=ROOT)
@@ -65,11 +71,17 @@ def main() -> None:
         try:
             with zipfile.ZipFile(temp_name, "w") as output:
                 for member in original.infolist():
+                    if member.filename == withheld_path:
+                        continue  # Deliberately remove this risk from the published ZIP.
                     data = pending.pop(member.filename, None)
                     output.writestr(member, original.read(member.filename) if data is None else data)
                 for path, data in pending.items():
                     output.writestr(path, data, compress_type=zipfile.ZIP_STORED)
             with zipfile.ZipFile(temp_name) as checked:
+                if withheld_path in checked.namelist():
+                    raise RuntimeError("Withheld archive survived offline ZIP rewrite")
+                if not all(prefix + path in checked.namelist() for path in wanted):
+                    raise RuntimeError("Offline ZIP is missing required recovery files")
                 bad = checked.testzip()
                 if bad:
                     raise RuntimeError(f"ZIP CRC validation failed for {bad}")

@@ -1,9 +1,10 @@
 SECURITY NOTICE — Disc_Combining_Kits.7z
 ========================================
 
-STATUS: HISTORICAL PRESERVATION COPY — POTENTIALLY UNSAFE TO EXECUTE
-This notice accompanies Disc_Combining_Kits.7z and the complete offline
-POPStarter documentation ZIP that contains the same file.
+STATUS: WITHHELD / NOT PUBLICLY DISTRIBUTED — POTENTIALLY UNSAFE TO EXECUTE
+This preservation note documents Disc_Combining_Kits.7z, which has been
+WITHHELD from the published downloads and REMOVED from the complete offline
+POPStarter documentation ZIP pending independent security review.
 
 WHAT THE ORIGINAL ARCHIVE ACTUALLY SAYS
 The bundled Disc_Combining_Kits/_info.txt lists:
@@ -38,8 +39,9 @@ ADDITIONAL USAGE LIMITATIONS FROM THE ORIGINAL _info.txt
   these kits as supplied; the document offers no support for them.
 
 PROVENANCE AND SCOPE
-This archive is retained unchanged for documentation and preservation.
-The team has not independently audited the contents for malware.
+The archive is documented for historical reference only; the downloadable
+binary has been excluded from publication and the offline package.
+The team has not independently audited its contents for malware.
 This warning concerns the disc-combining utilities; POPStarter's
 separate TROJAN_#.BIN patch terminology is unrelated to a malware
 classification.
