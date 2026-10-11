@@ -193,3 +193,35 @@ Original Git audit should be rerun against a **fresh, unchanged ZIP with verifie
 ### Git filename-census correction
 
 The early 248-path figure was inflated by `git log --numstat`'s brace-notation (`{old => new}`) rename expressions. Counting concrete old/new paths with `git log --all --name-status --find-renames` yields **164 distinct actual paths**. Operations: **82 additions, 1,894 modifications, 21 deletions, 88 renames**. The 248 figure must not be used as a historical page count.
+
+
+## Continuation: source-revision and artifact verification
+
+### G7 — Confirmed missing historical Linux CUE2POPS instructions
+
+The original `vcd.textile` at revision `51abeb7d6e` explicitly links a Linux-modified `cue2pops_src_linux.7z` source archive and explains compilation using GCC. It credits **SovietStriker** and an original AssemblerGames discussion (page 55, post 792589). The original history also links `cue2pops_src_linux.zip`. This note was removed in subsequent revisions and is absent from the present `.research/wiki/vcd.md`, `toolbox-commands.md`, `master-entries.md`, `sources.md`, `build_site.py`, and download manifest. Record as a historical source and contributor credit, **not** a currently supported binary or reproducibly buildable tool. No actual source archive is contained in the user-supplied Git ZIP.
+
+### G8 — Confirmed missing 2016 USB Quickstarter package erratum
+
+The 2016-10-29 `quickstart-usb.textile` revision cautioned that an earlier guide mixed stable/beta instructions and the earlier USB Quickstarter package lacked required `PFS_WRAP.BIN`, requiring a corrected download. Original commit `dcc7269d4c5` (2016-11-03) removed the dated erratum, noted CUE2POPS 2.3, and switched `POPStarter_Quickstarter_Pack_USB_20161002.7z` to `POPStarter_Quickstarter_Pack_USB_20161103.7z`. Commit `14f8edd518d` (2017-01-10) later removed old instructions. The recovered quickstart pages do not reproduce the 2016 erratum or the old filenames. Preserve the correction as *dated release/package history*, not as modern setup guidance.
+
+### Fully preserved numeric corpus: original PS1 RAW cheat codes
+
+Beyond the previously verified 13,933 PS2 RAW pairs, compared original `ps1-codes-in-ps1-raw-format.textile` against the recovered `.research/wiki/ps1-codes-in-ps1-raw-format.md`. Both contain **47,596 ordered hexadecimal address/value pairs** and **37,826 distinct pairs**, with identical order-sensitive FNV-1a 32-bit fingerprint `3510520a`. No PS1 RAW numeric cheat-code sequence gap was detected. Heading and editorial text equivalence has not been established; FNV is non-cryptographic.
+
+### Stronger historical per-game category comparison
+
+For source `5e6e4709eb32:poop.textile`, checked matching game-specific fix categories (rather than only disc ID presence) in recovered `automated.md`:
+
+- **182/182** distinct historical mode 0x04 disc IDs have matching mode 0x04 annotations.
+- **180/180** distinct historical LibCrypt-crack disc IDs have matching LibCrypt annotations.
+- **90/90** distinct historic disc-ID associations across modes 0x01, 0x02, 0x03, 0x05, and 0x06 have matching mode annotations. Two mode-0x06 lines use the phrase "Compatibility Mode 0x06" rather than a same-line code token.
+- Rare Crash Fix, VSync Fix, VMC disable, Boot/Load Fix and Metal Gear cutscene fix categories were also checked on their associated source disc IDs.
+
+This verifies category coverage for these sets, **not** every unique disc revision, conflicting fix claim, game-version pairing or implementation detail. Mode comparisons normalize the recovered Markdown's malformed Unicode `0×` to `0x` *in analysis only*; the documented 292 source-fidelity mistakes remain unchanged.
+
+### Historical download crosswalk completed
+
+See [the 80-reference download crosswalk](original-git-download-crosswalk.md). It classifies the **80** source filename forms as: 17 exact hosted names, 45 without an exact hosted filename, 7 possible filename/container-format aliases requiring binary comparison, 3 probably present within hosted bundles requiring inspection, 4 intentional exclusions, and 4 invalid/truncated/unrelated forms. The site currently tracks **23** downloads overall; this is not a claim of 45 proven-missing binary files. Importantly `.research/_tmp/dl_manifest.tsv` reports some tracked downloads as "missing" and some deliberately excluded downloads as "recovered"; its status labels are stale and unsafe for completeness claims.
+
+The original ZIP is a Git **documentation/history** archive. It does not contain referenced Bitbucket download binaries or missing screenshot image bytes. **Research only: no import, no binary upload, no main-branch changes, no merge.**
