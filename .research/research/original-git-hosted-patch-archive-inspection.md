@@ -4,6 +4,8 @@
 
 **Draft follow-up research only.** This report inspects **existing hosted archive bytes**, not the historical Bitbucket originals. It does not execute any patch, assess patch safety on a PS2, or replace, delete or redistribute existing packages.
 
+**New dated primary-source bridge (2026-10-11):** [2015 POPStarter Beta 3 documentation](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-18-134569.html) explicitly identified the `CHEATS.TXT` `$NOPAL` command as the equivalent of the **older PAL-disabling PATCH_9.BIN**, while [the developer's 2020 post](https://www.psx-place.com/threads/popstarter.19139/page-4) specified a **new** PATCH_9.BIN for ELF-loader/IGR trouble. A [2025 user report](https://www.psx-place.com/threads/popstarter.19139/page-18) further documents `$NOPAL`'s PAL behavior, without authenticating the 2017 patch archive. This stronger timeline is recorded in [the separate dated source matrix](original-git-2015-network-and-patch9-timeline.md). **No historical replacement bytes were found.**
+
 ## Why this matters
 
 The original final `special-cheats.textile` (and recovered `.research/wiki/special-cheats.md`) explicitly links `$NOPAL`'s disable-auto-PAL-patcher instruction to the Bitbucket download **`NOPAL_PATCH.7z`**. The POPSLoader research site has a **same-named 188-byte archive** under `.research/downloads/` which the site normally relinks for recovered download names. The historical Bitbucket listing, however, describes an original **226-byte** archive dated **2017-10-26**. The distinct sizes establish that **the two full archives cannot be byte-identical**, but do not reveal the original 2017 member filenames or semantics.
