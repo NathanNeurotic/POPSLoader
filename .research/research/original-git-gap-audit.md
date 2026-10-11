@@ -445,3 +445,10 @@ The original source's **2017-10-27 Bitbucket listing** reports a **59.0 KB** arc
 ### New preservation cross-check: 2020 SMB Quickstarter shares six identical driver metadata entries
 
 Compared full repository-hosted 2020 SMB Quickstarter ZIP central directory with the hosted `network_modules.7z` (decoded and CRC-verified directory). **All six network IRXs have identical uncompressed sizes and stored CRC-32 values**, a strong second-source content correlation. The two .DAT config examples differ, and the 7z includes extra USB IRXs and memory-card icons; the entire archives are not equivalent. Current 7z 93,934-byte SHA-256 is `ee3aeec5a9259665c6d505b81ee1bbdd3025a6925185e7cc4d3657100f37fad2`; next-header CRC recalculated successfully. **Original 2017 59.0 KB Bitbucket archive still unavailable**, so no original byte/member equivalence established. See [network overlap report](original-git-network-quickstarter-overlap.md).
+
+
+## Completed follow-up: hosted network package full-payload check (2026-10-10)
+
+- **Closed — present hosted-file integrity:** All **12/12** decoded 7z members passed size/CRC-32 checks and whole-archive `7z t`. All **6/6** independently decompressed network IRXs have identical SHA-256 digests in current hosted `network_modules.7z` and `POPStarter_SMB_Quickstarter_Pack_20200209.zip`. Reproducible verifier: [`verify_network_driver_payloads.py`](../tools/verify_network_driver_payloads.py); [recorded per-driver SHA-256 table](original-git-network-quickstarter-overlap.md); [successful workflow run](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38113818669).
+- **Still open — historical identity:** Original **2017-10-27** Bitbucket `network_modules.7z` 59.0 KB remains unavailable; no original member-level comparison is possible. This verification does not change its unresolved provenance status.
+- **Still open — `$NOPAL` patch:** Original **2017-10-26** 226-byte `NOPAL_PATCH.7z` remains unavailable, and currently hosted 188-byte namesake is not validated as a substitute. No change to publicly served downloads, patch usage instructions or source archive custody was authorized by this audit.
