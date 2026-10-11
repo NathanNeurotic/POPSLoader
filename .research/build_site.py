@@ -1085,16 +1085,16 @@ def build_downloads():
                       'wiki whose original image bytes are absent from tracked assets. Recorded for '
                       f'completeness ({len(lost_imgs)}).</p><p>'
                       + ' '.join(f'<span class="pill">{html.escape(i)}</span>' for i in sorted(lost_imgs)) + '</p>')
-    archive_card = ('<div class="archive-cta"><div class="h">Download the complete archive (offline)</div>'
-                    '<p>Grab the <b>entire</b> recovered documentation set as one self-contained <code>.zip</code> — '
+    archive_card = ('<div class="archive-cta"><div class="h">Download generated documentation (offline)</div>'
+                    '<p>Grab the <b>generated</b> documentation set as one self-contained <code>.zip</code> — '
                     'all 63 wiki pages, every reference page (glossary, FAQ, command index, the full thread study), '
-                    'the recovered downloads, the menu images, <i>and</i> the raw source markdown. Open '
+                    'the generator-hosted downloads, the menu images, <i>and</i> the raw source markdown. Older Pages-only legacy files are retained separately pending provenance review. Open '
                     '<code>index.html</code> inside it to browse the whole site offline. Contains '
                     '<b>no Sony binaries</b>.</p>'
                     '<a class="btn" href="popstarter-docs-archive.zip" download> Download the full archive (__ARCHIVE_SIZE__)</a>'
                     '</div>')
     body = f'''<h1>Downloads</h1>
-<p class="lead">Every POPStarter-related file recovered from the archive, served locally so it never 404s again.
+<p class="lead">Every POPStarter file in the tracked generator-hosted download collection, together with a separate inventory of historical references. Legacy Pages-only assets are retained separately pending individual review.
 {len(dl_files)} files (POPStarter builds, Quickstarter packs, tools, patches &amp; cheat references) —
 all verified to contain <b>no Sony emulator binaries</b>.</p>
 <div class="callout info"><div class="h">Which of these do I need?</div>{html.escape(DL_INTRO)}</div>
