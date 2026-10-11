@@ -805,6 +805,12 @@ def build_dl_manifest():
                     extra = ''
                 detail = ('<a href="downloads/' + html.escape(actual, quote=True)
                           + '" download>Download available copy</a>' + extra)
+                if fn.casefold() == 'nopal_patch.7z':
+                    detail = detail.replace('Download available copy',
+                                            'Download current archival copy (not original $NOPAL)')
+                    detail += (' <strong>Not verified for PAL disabling.</strong> '
+                               'This hosted 188-byte file describes an IGR ELF-loader unhook; '
+                               'the 2017 original was 226 bytes.')
                 counts['available'] += 1
             else:
                 candidate = filename_match(ref) if kind in ('possible_variant',
@@ -934,7 +940,7 @@ DL_GROUPS = [
     ("When one game misbehaves",
      "Drop-in files for a single problem game that glitches, crashes, or comes out at the wrong speed. Put one in that game's VMC folder to affect only that game, or in the POPS folder to affect all of them, and try one at a time.",
      "PS2",
-     ["TROJAN_7.zip", "Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "NOPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
+     ["TROJAN_7.zip", "Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
     ("Optional add-ons",
      "None of this is needed to play a game. Come back once your setup is running.",
      "PS2",
@@ -947,6 +953,10 @@ DL_GROUPS = [
      "Superseded. Nothing here does anything the 2019 release does not. They are kept because this is an archive, and because each one carries a document or a tool that the final release dropped.",
      "PS2",
      ["POPStarter_r13_RIP_06.zip", "POPStarter_r13_WIP_06_OBT_20170128.zip", "POPStarter_HDD_Quickstarter_Pack_20171027.7z"]),
+    ("Unverified historical patch — archival copy only",
+     "The hosted 188-byte NOPAL-named archive contains an IGR ELF-loader-labelled PATCH_9.BIN, NOT a verified copy of the missing 2017 226-byte PAL patch. Keep for research, not game fixes.",
+     "Historical / not recommended for gameplay",
+     ["NOPAL_PATCH.7z"]),
     ("Original Bitbucket wiki — complete Git history",
      "Original ShaolinAssassin wiki Git history supplied by AstroSnail, including 2,140 commits and deleted pages (2016–2024). This is archival source documentation, not a POPStarter release.",
      "PC — historical reference",
@@ -966,35 +976,10 @@ DL_CARD_NOTES = {
     "TROJAN_7.zip": "TROJAN_7.BIN, krHACKen's cumulative per-game fix bundle (2020-04-02 / 2020-05-20 r7). Patches POPStarter globally for titles that glitch or freeze (e.g. Speedball 2100). Place in POPS/ or a game's VMC folder. Do not stack with Hugopocked per-game fixes.",
     "Compatibility_Modes.zip": "PATCH_1.BIN to PATCH_7.BIN, one per compatibility mode 0x01 to 0x07, with the README explaining what each mode fixes. Try one at a time; modes 1, 2, 3 and 5 are variants of the same hack and must never be combined.",
     "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
-    "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
+    "NOPAL_PATCH.7z": "ARCHIVAL / UNVERIFIED FOR $NOPAL. The hosted 188-byte file contains PATCH_9.BIN labelled as an IGR ELF-loader unhook. The original 2017 226-byte PAL-disabling archive has NOT been recovered. Do not apply this download as a PAL fix; the historical CHEATS.TXT $NOPAL command is separately documented.",
     "CHEATS.TXT": "Every $ command POPStarter understands in one file, with the $ deliberately stripped so nothing fires by accident. Put it in your POPS folder and add the $ back to the lines you want, or copy those lines into a single game's CHEATS.TXT.",
     "SAMPLE_CHEATS.TXT": "A real filled-in cheat file (Crash Bash, annotated in Italian) showing how GameShark and Action Replay codes are laid out inside one game's folder. The worked example, not a command list.",
-    "network_modules.7z": "The whole mc0:/POPSTARTER folder for network play: the six SMB modules, the two .DAT files to edit with your network settings, and a memory-card icon. It goes on the memory card, not next to your games. Newer than the copy inside the SMB pack, which has no icon and no 2023-dated usbd.irx / usbhdfsd.irx.",
-    "DS3_modules_USB_20171017.7z": "DualShock 3 over a USB cable. Two IRX files that go loose in your POPS folder exactly as they are, never inside a game's VMC folder. Documented as working on the WIP 06 and RIP 06 launchers only, and not on the prototypes.",
-    "DS3_modules_BT_20171017.7z": "The same thing over Bluetooth; only MODULE_2.IRX differs between the two packs. Same POPS-folder placement and the same launcher caveat as the USB pack.",
-    "IGR_textures_-_Chinese_pack.7z": "Puts the \"return to the PlayStation 2 main menu?\" confirmation screen into Chinese. It is a .ppf you apply on your PC over your own POPS.ELF with a PPF patcher, not a folder drop-in. The only one of the seven language packs the wiki listed that survived.",
-    "POPStarter_r13_Beta_20190605.zip": "Rev 13 Beta, 5 June 2019, the last public release. Its POPSTARTER.ELF is byte-identical to the one in all three packs above; what it adds is POPSTARTER.KELF, for installing a game into the PS2 Browser 2.00 (HDDOSD) as its own PP. partition, plus the full 38 KB changelog.",
-    "POPStarter_r13_RIP_06.zip": "Rev 13 RIP 06, October 2017: the previous public release, and the exact launcher the 2017 hard-drive pack ships. The only package carrying FIXES.TXT, the list of games POPStarter auto-patches.",
-    "POPStarter_r13_WIP_06_OBT_20170128.zip": "Rev 13 WIP 06 Beta 17, January 2017, the pre-RIP development line. Also the only surviving source of DEBUG_AND_HALT.PPF, and it bundles a CUE2POPS with POPS2CUE plus the SMB sample .DAT files.",
-    "POPStarter_HDD_Quickstarter_Pack_20171027.7z": "The 2017 edition of the hard-drive pack, built on the RIP 06 launcher. Use the 2020 .zip instead; this is kept because it is the only place the older uLE_kHn 2016-07-23 browser survives.",
-}
-DL_CARD_PILL = {
-    "POPStarter_USB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "POPStarter_HDD_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "POPStarter_SMB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "CUE2POPS_2.3.zip": "PC",
-    "cdmage1-02-1b5.zip": "PC",
-    "pfsshell-0.2a.7z": "PC",
-    "pfsshell-0.2a.zip": "PC",
-    "RadHostClient_1.8a.7z": "PC",
-    "RadHostClient.zip": "PC",
-    "TROJAN_7.zip": "PS2",
-    "Compatibility_Modes.zip": "PS2",
-    "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
-    "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
-    "CHEATS.TXT": "Every $ command POPStarter understands in one file, with the $ deliberately stripped so nothing fires by accident. Put it in your POPS folder and add the $ back to the lines you want, or copy those lines into a single game's CHEATS.TXT.",
-    "SAMPLE_CHEATS.TXT": "A real filled-in cheat file (Crash Bash, annotated in Italian) showing how GameShark and Action Replay codes are laid out inside one game's folder. The worked example, not a command list.",
-    "network_modules.7z": "The whole mc0:/POPSTARTER folder for network play: the six SMB modules, the two .DAT files to edit with your network settings, and a memory-card icon. It goes on the memory card, not next to your games. Newer than the copy inside the SMB pack, which has no icon and no 2023-dated usbd.irx / usbhdfsd.irx.",
+    "network_modules.7z": "Currently hosted 93,934-byte archive; its six SMB drivers were independently SHA-256-matched against the 2020 SMB Quickstarter ZIP. It also includes USB IRXs and configuration/icon assets. NOT verified as the original 2017 Bitbucket network_modules.7z, listed at 59.0 KB; no original driver-build date is established. Install modules under the POPSTARTER memory-card folder supported by your release.",
     "DS3_modules_USB_20171017.7z": "DualShock 3 over a USB cable. Two IRX files that go loose in your POPS folder exactly as they are, never inside a game's VMC folder. Documented as working on the WIP 06 and RIP 06 launchers only, and not on the prototypes.",
     "DS3_modules_BT_20171017.7z": "The same thing over Bluetooth; only MODULE_2.IRX differs between the two packs. Same POPS-folder placement and the same launcher caveat as the USB pack.",
     "IGR_textures_-_Chinese_pack.7z": "Puts the \"return to the PlayStation 2 main menu?\" confirmation screen into Chinese. It is a .ppf you apply on your PC over your own POPS.ELF with a PPF patcher, not a folder drop-in. The only one of the seven language packs the wiki listed that survived.",
@@ -1016,7 +1001,7 @@ DL_CARD_PILL = {
     "TROJAN_7.zip": "PS2",
     "Compatibility_Modes.zip": "PS2",
     "FORCEPAL_PATCH.7z": "PS2",
-    "NOPAL_PATCH.7z": "PS2",
+    "NOPAL_PATCH.7z": "Archive only — unverified",
     "CHEATS.TXT": "edit + copy",
     "SAMPLE_CHEATS.TXT": "edit + copy",
     "network_modules.7z": "PS2",
@@ -1114,6 +1099,12 @@ def build_downloads():
 all verified to contain <b>no Sony emulator binaries</b>.</p>
 <div class="callout info"><div class="h">Which of these do I need?</div>{html.escape(DL_INTRO)}</div>
 {archive_card}
+<div class="callout amber"><div class="h">Historical NOPAL patch name conflict</div>
+The original <code>NOPAL_PATCH.7z</code> was listed in 2017 as <b>226 bytes</b> and is not recovered.
+The currently hosted <b>188-byte</b> archive is labelled with an <b>IGR ELF-loader</b> unhook instead.
+It remains available as an <b>archival copy</b>, but <b>not a verified <code>$NOPAL</code> PAL patch</b>.
+The hosted <code>network_modules.7z</code> also differs from its 2017 original listing, though its six SMB drivers match the independently unpacked 2020 Quickstarter.
+See the <a href="https://github.com/NathanNeurotic/POPSLoader/blob/master/.research/research/original-git-hosted-patch-archive-inspection.md">provenance investigation</a>.</div>
 <div class="callout info"><div class="h">About POPS</div>The POPS emulator (Sony copyright) is <b>not</b>
 distributed here. Verify your own legally-obtained files against the checksums ShaolinAssassin published:</div>
 {md5}
@@ -1296,9 +1287,11 @@ def build_sections():
          'walk-through</a> and grab the tool from the <a href="downloads.html">Downloads</a> page.</div>' +
          EQUIV_TABLE +
          '<div class="callout amber"><div class="h">Same filename, different file — check before you drop it in</div>'
-         'Two patch names carry two unrelated roles across sources. <code>PATCH_9.BIN</code>: the stock '
-         '<b>disable-PAL-patcher</b> patch (= <code>$NOPAL</code>) <i>and</i> the <b>disable-ELF-loader</b> fix '
-         'krHACKen posted for the BOOT.ELF black-screen-on-exit bug. <code>PATCH_5.BIN</code>: a stock '
+         'The <code>PATCH_9.BIN</code> basename was reused for two different developer patches. The early '
+         'PAL-disabling patch corresponded to the historical <code>$NOPAL</code> setting; the later patch '
+         'unhooks the ELF loader for IGR. The hosted 188-byte <code>NOPAL_PATCH.7z</code> is labelled as the '
+         'IGR-purpose patch, while the original 2017 226-byte PAL archive is absent. '
+         '<b>Do not apply the hosted file as a verified PAL workaround.</b> <code>PATCH_5.BIN</code>: a stock '
          'compatibility-mode patch <i>and</i> the custom <b>IGR texture pack</b> shipped in El_isra\'s POPSLoader. '
          'Confirm which one you have.</div>'
          '<div class="callout info"><div class="h">TROJAN_7.BIN — the farewell cumulative</div>'
