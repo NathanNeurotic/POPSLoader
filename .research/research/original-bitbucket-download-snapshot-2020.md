@@ -1,5 +1,7 @@
 # Original Bitbucket downloads listing: externally corroborated source inventory
 
+**Cross-period reconciliation (2026-10-11):** This document is a **28-row 2020 indexed sample only**. A [saved 2018 Bitbucket Downloads HTML listing](original-bitbucket-download-snapshot-2018.md) independently contains **29 rows**, including **6 older filenames omitted by this later listing**. The union across both sources is **34 exact historical upload filenames**, not 28. Both are dated partial snapshots, not the original site's exhaustive download history. No additional original binary file was recovered by comparing lists.
+
 **Preservation research for draft PR #578 — do not merge or automatically import binary files.** This is a new, independent artifact-level evidence source beyond the original `wiki.zip` Git revisions: a preserved <https://archive.ph/PBG1V> snapshot of **Shaolin Assassin / POPStarter Documentation & Stuff / Downloads**, indexed by web search.
 
 **Source accessibility limitation:** the direct archived URL currently responds with HTTP 429 or is inaccessible from some clients. The **search-index cache exposes the 28 recent listing rows quoted below** (with displayed size, uploader and date). The visible excerpt is **not proven to contain the complete historical Downloads index**. Consequently **28 is a verified indexed sample, not the total number of original downloadable assets**. The ZIP supplied for this audit contains Git text and history, not these download payload bytes.
@@ -86,8 +88,3 @@ The preserved Bitbucket listing reports **59.0 KB** (2017-10-27), whereas the tr
 5. Preserve original upload attribution and date separately from **tool authorship**, which cannot be inferred from uploader.
 
 **No changes are authorized to `.research/downloads/`, published wiki files, releases, or executable code.**
-
-
-## 2026-10-11 independent older Downloads-page correction
-
-A [real 2018-08-18 Wayback-captured Bitbucket Downloads HTML page preserved inside HWNJ's 2020 saved-wiki RAR](original-bitbucket-download-snapshots-2018-2020-reconciliation.md) supplies **29 directly parsed historical upload rows** with native Bitbucket IDs, high-precision HTML timestamp attributes, displayed sizes and links. It includes **six filenames absent from the 28-row February 2020 indexed listing** in this document, although each of those six was already in the original wiki Git-history link catalog. The cross-snapshot exact-name intersection is **23**, the observed union is **34**, and **five** rows appear only in the later 2020 inventory. Thus **28 is not the historical uploads total**, and the six older upload metadata rows are preserved in [the 2018 original-source TSV](original-bitbucket-downloads-2018-preserved.tsv). No binary bytes or media have been recovered by this metadata comparison. The original two 2017 size discrepancies remain open.

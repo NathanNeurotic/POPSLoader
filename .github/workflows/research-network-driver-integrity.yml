@@ -6,7 +6,7 @@ on:
     paths:
       - '.research/tools/verify_network_driver_payloads.py'
       - '.research/tools/audit_bitbucket_download_snapshots.py'
-      - '.research/research/original-bitbucket-downloads-2018-preserved.tsv'
+      - '.research/research/original-bitbucket-downloads-2018.tsv'
       - '.research/research/original-bitbucket-download-snapshot-2020.tsv'
       - '.research/research/original-download-catalog.tsv'
       - '.research/tools/compare_recovered_archive_candidates.py'
@@ -67,7 +67,7 @@ jobs:
         run: |
           python3 -m py_compile .research/tools/audit_bitbucket_download_snapshots.py
           python3 .research/tools/audit_bitbucket_download_snapshots.py \
-            .research/research/original-bitbucket-downloads-2018-preserved.tsv \
+            .research/research/original-bitbucket-downloads-2018.tsv \
             .research/research/original-bitbucket-download-snapshot-2020.tsv \
             .research/research/original-download-catalog.tsv \
             --strict-known-inventory

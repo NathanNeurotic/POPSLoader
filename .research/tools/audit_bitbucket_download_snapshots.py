@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read-only reconciliation of two historical Bitbucket Downloads inventories.
 
-2018 saved Wayback HTML was independently parsed into a six-column TSV;
+2018 saved Wayback HTML was independently parsed into one canonical TSV;
 the 2020 indexed listing was previously preserved separately. This program
 compares the preserved *metadata*, NOT original binary downloads, and checks
 that all 2018 entries survive in the canonical reference catalog.
@@ -40,9 +40,9 @@ def index(rows, field, source):
 
 def audit(first_path, later_path, catalog_path, strict=False):
     first = index(read_tsv(first_path, (
-        "bitbucket_download_id", "filename", "size_displayed_2018",
-        "original_uploaded_datetime_verbatim", "uploader_displayed",
-        "archived_file_url_2018")), "filename", first_path)
+        "bitbucket_download_record_id", "original_filename", "original_size_display",
+        "original_datetime_timezone_unspecified", "uploader_as_listed",
+        "archived_file_url_2018")), "original_filename", first_path)
     later = index(read_tsv(later_path, ("name", "original_size_displayed",
                                       "uploaded_by", "original_date")),
                   "name", later_path)
@@ -50,9 +50,9 @@ def audit(first_path, later_path, catalog_path, strict=False):
                                           "source_reference")),
                     "filename", catalog_path)
     for name, row in first.items():
-        if not row["bitbucket_download_id"].isdigit():
+        if not row["bitbucket_download_record_id"].isdigit():
             raise ValueError("Invalid Bitbucket download ID for " + name)
-        iso = row["original_uploaded_datetime_verbatim"]
+        iso = row["original_datetime_timezone_unspecified"]
         date = datetime.fromisoformat(iso)
         if date.tzinfo is not None or date > datetime(2018, 8, 18, 23, 59, 59):
             raise ValueError("Unexpected time attribute for " + name)
@@ -74,9 +74,9 @@ def audit(first_path, later_path, catalog_path, strict=False):
     print(f"2018-only upload names: {len(only_first)}")
     for name in only_first:
         item = first[name]
-        print(f"  +2018 {item['bitbucket_download_id']} {name} "
-              f"size={item['size_displayed_2018']} "
-              f"upload={item['original_uploaded_datetime_verbatim']}")
+        print(f"  +2018 {item['bitbucket_download_record_id']} {name} "
+              f"size={item['original_size_display']} "
+              f"upload={item['original_datetime_timezone_unspecified']}")
     print(f"2020-only upload names: {len(only_later)}")
     for name in only_later:
         print(f"  +2020 {name}")
@@ -97,10 +97,10 @@ def audit(first_path, later_path, catalog_path, strict=False):
             entry = catalog[name]
             original = first[name]
             if ("bitbucket_listing_2018" not in entry["evidence"].split("+")
-                    or entry["original_size_displayed"] != original["size_displayed_2018"]
-                    or entry["original_uploader"] != original["uploader_displayed"]
+                    or entry["original_size_displayed"] != original["original_size_display"]
+                    or entry["original_uploader"] != original["uploader_as_listed"]
                     or entry["original_date"] !=
-                        original["original_uploaded_datetime_verbatim"][:10]):
+                        original["original_datetime_timezone_unspecified"][:10]):
                 raise ValueError("Catalog missing original 2018 upload metadata: " + name)
     print("PASS: exact set reconciliation; no recovered-binary claim")
 

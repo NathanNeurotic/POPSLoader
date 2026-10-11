@@ -1,4 +1,4 @@
-# Canonical historical download references: 80 parsed original wiki forms + legacy retrieval manifest + 28 indexed 2020 + 29 directly parsed 2018 Bitbucket upload records (34 distinct, 23 overlapping); de-duplicated. Metadata only; no binary equivalence claims.
+# Canonical historical download references: 80 parsed original wiki forms + legacy retrieval manifest + 28 indexed 2020 + 29 saved 2018 Bitbucket upload records (34 distinct names); de-duplicated. Metadata only; no binary equivalence claims.
 filename	evidence	status	source_reference	original_size_displayed	original_uploader	original_date
 $FORCEPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			
 $NOPAL_PATCH.7z	wiki_git	invalid_reference	Malformed literal dollar-prefixed archive URL			

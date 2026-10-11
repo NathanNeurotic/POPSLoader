@@ -1,6 +1,6 @@
 # POPStarter network-module archives: dated primary-source URL crosswalk (2015–2025)
 
-**2026-10-11, draft PR #580; read-only external-source investigation.** These are independently located developer/forum/hosting references. They do **not** supply downloaded archive bytes and do **not** authenticate a build against a historic original. This file records stable source names, source dates and retrieval limitations so researchers do not mistake similarly purposed archives for identical packages.
+**2026-10-11; research follow-up on `master` after merged PR #580.** These are independently located developer/forum/hosting references. They do **not** supply downloaded archive bytes and do **not** authenticate a build against a historic original. This file records stable source names, source dates and retrieval limitations so researchers do not mistake similarly purposed archives for identical packages.
 
 ## New primary-source locator evidence
 
@@ -12,6 +12,18 @@
 | **2025-01-25**, forum poster jolek stated they added network modules + BDM Assault | `POPSTARTER_MC-Network_BDM.7z` | [jolek's dated post #348](https://psx-place.com/threads/popstarter.19139/page-18) pointing to the [first-post attachment list](https://www.psx-place.com/threads/popstarter.19139/#post-134186). | Forum attachment displays **91.7 KB**. The *current hosted* `.research/downloads/network_modules.7z` is **93,934 B**, which rounds to **91.7 KiB**—only a display-size-level resemblance. The 2025 forum post explicitly dates the *addition* of the BDM attachment; no earlier introduction date is assumed. | Whether the forum attachment bytes and current repository 7z are identical; any relationship to the missing **2017-10-27** 59.0 KB original; actual forum attachment's SHA-256. |
 | **2017-10-27**, Shaolin Assassin Bitbucket indexed upload | `network_modules.7z` | [Preserved Bitbucket download listing](https://archive.ph/PBG1V). | **59.0 KB** displayed, uploader Shaolin Assassin. The 93,934 B hosted namesake **cannot be the same archive bytes** as the indexed original. | Authentic 2017 original archive data, contents, version strings, and 2015/2016 source comparison. |
 | **2020-02-09** historical Bitbucket-listed upload | `POPStarter_SMB_Quickstarter_Pack_20200209.zip` | [Preserved upload listing](https://archive.ph/PBG1V) and [hosted cross-package hash audit](original-git-network-quickstarter-overlap.md). | Existing repository ZIP SHA-256 `94b432f6665132cd6862ae7465a2dc66807084f0c71c686899abe1f453c405d8`; independently decompressed six network drivers **match current hosted network 7z member SHA-256 values 6/6**. | Their original driver source dates and relationship to the missing 2017 Bitbucket package. |
+
+## Independent Wayback URL availability check (2026-10-11)
+
+The Internet Archive availability API was queried for the complete original URLs, **not** for arbitrary filenames. Its most-recent/closest endpoint produced:
+
+| Original URL tested | Closest snapshot in availability API | Direct raw-memento inspection |
+|---|---|---|
+| `https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/downloads/NOPAL_PATCH.7z` | No closest capture returned | **No archived 2017 patch verified** |
+| `https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/downloads/network_modules.7z` | No closest capture returned | **No archived 2017 network package verified** |
+| `https://aybabtu.chez.com/kHn/SOFTWARES/POPStarter_Net_Modules_for_mc0.zip` | [2025-12-28 HTTP 200](https://web.archive.org/web/20251228131325id_/http://aybabtu.chez.com/kHn/SOFTWARES/POPStarter_Net_Modules_for_mc0.zip) | **`text/html` / 'Pages Persos Chez.com' blocked-account parking document**, **not a ZIP**, when opened in raw `id_` form |
+
+The archive lookup returns nearest *available* captures only; it is **not** an exhaustive CDX/WARC history query and the empty entries do not prove never archived. The 2025 HTTP 200 is a *false-positive for binary recovery*, just as the screenshot URLs' parked Chez.com HTTP 200 mementos were. No checksum or member manifest can be computed from a parking page. Preserve the 2015 ZIP path as historical evidence but **do not mark this 2025 capture as an archive copy**.
 
 ## Reproducible retrieval outcomes and safeguards
 
