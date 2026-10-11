@@ -1,0 +1,23 @@
+# Frozen gh-pages-only assets; Git blob SHA-1 + size identify bytes, not safety.
+# 'preserve' is historical retention, not approval to republish in generated downloads.
+path	bytes	git_sha1	policy
+.github/scripts/rebuild_offline_archive.py	4663	1b2c0f2360dfaece0aac5dce952aebe0fceb1d89	retire
+.github/workflows/rebuild-popstarter-offline.yml	1369	5ba5cd3b7045d21b619c4a0c2c77abfdf2a622fc	retire
+downloads/BATCHER_0.3.1.EXE.7z	21175	7b602d3e5b11df16b8edf2f6415bcbbcdd7bdf74	preserve
+downloads/CUE2POPS_2.3.7z	30694	77c82b7e6a0cb92ca9295c099c0d20c578e3a939	preserve
+downloads/Compatibility_Modes.7z	882	cd039e6a539bdfb374a336c6d70526528b2c2952	preserve
+downloads/DEBUG_AND_HALT.7z	219	59a85d534a5f859b80e475e5f6316a5c227bc46c	preserve
+downloads/DISCS_POOPER.BAT.7z	846	43cf17b1bb8b59fd9dd5d0f2620ba6cfd60c12e8	retire
+downloads/Disc_Combining_Kits_SECURITY_NOTICE.txt	2628	f513adc72e9c63ec4c61f9f0adada7693fdcd242	preserve
+downloads/IGR_Behaviour_Modifiers.7z	1068	c9dbc6ae1cd99a26ee71122b9f1417f620c4853d	preserve
+downloads/IGR_sample_kit.7z	64423	2a9f338cbbedc53aabcee7b273e615e8dda8c2f6	preserve
+downloads/IGR_textures_-_English_pack.7z	864062	41c12eecdf7d6feb4093cfac729b03971edd8620	preserve
+downloads/IGR_textures_-_French_pack.7z	638259	afe8039db77db58b9e0658c9c6effae2eb5457f2	preserve
+downloads/IGR_textures_-_German_Pack.7z	119783	f1bccb76c8e32437702f125ea6139fb8d6f58bd0	preserve
+downloads/IGR_textures_-_Polish_pack.7z	470976	39840cc89e7bb21a7b339804b0da79e13cca3100	preserve
+downloads/IGR_textures_-_Portuguese_pack.7z	222125	9c679f380100974aa240fca62319e97b9758c014	preserve
+downloads/IGR_textures_-_Spanish_pack.7z	176092	827577772f24e2473596e97bbc188e0a3f02f578	preserve
+downloads/SHA256SUMS.txt	1535	2534653c82d0cdf8e2912f0481ac7c8107e7eb97	preserve
+downloads/hddosd_sample_files.7z	18921	b2fd50b2cda6393e59e2048036c502df780545e0	preserve
+downloads/uLE_kHn_20191110_2.7z	2076070	b7f45ee987818dbe556df58a1319a7c826a6f335	preserve
+favicon.ico	10715	8205af6c376757d7f5b809d569a7e6f9c0b1d0d9	preserve
