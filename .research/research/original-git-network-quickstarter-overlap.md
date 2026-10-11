@@ -1,5 +1,7 @@
 # POPStarter network-driver overlap — current 7z versus 2020 SMB quickstarter
 
+**2026-10-11 patch-hunt follow-up:** The previously uninspected 2020 HDD Quickstarter ZIP **was checked** as part of a [21-hosted-archive directory census](original-git-hosted-patch-census.md) in [successful GitHub Actions run #38165914482](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38165914482). It has seven direct file members and no directly named `NOPAL_PATCH.7z`, `PATCH_9.7z` or `PATCH_9.BIN`. The older statement below that this particular ZIP was not inspected is superseded; archive bytes from the actual 2017 original upload remain missing.
+
 ## Full decompressed-payload verification — 2026-10-10 (supersedes metadata-only caveat above)
 
 **Verified in [GitHub Actions run #38113818669](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38113818669), job `verify-network-archives`, successful.** The research-only script [`verify_network_driver_payloads.py`](../tools/verify_network_driver_payloads.py) decoded all 12 members of the hosted 7z independently with the installed 7-Zip decoder, checked each extracted length and independently recomputed CRC-32 against the stored directory value, and required a successful full-archive `7z t`. All **12/12** passed. Python's `zipfile` separately decompressed and verified the six 2020 ZIP drivers. SHA-256 was then calculated from actual decompressed bytes from both packages, without executing IRX content or emitting distributable artifacts.
