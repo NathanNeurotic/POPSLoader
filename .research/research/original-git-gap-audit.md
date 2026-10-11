@@ -264,7 +264,21 @@ Our recovered `.research/wiki/configuration-table.md` correctly describes the **
 
 The original late-2016 USB and SMB setup instructions refer to `POPS_IOP.PAK`. Original Git commits `ac9c1c5` (USB, 2017-02-01 15:22 UTC) and `60b6676` (SMB, same date) replaced the referenced compressed emulator filename with `POPS_IOX.PAK`; follow-up commits `895809b` and `bb5d665` corrected additional notes (including mixed punctuation `POPS_IOP_PAK`).
 
-The recovered `.research/wiki/usb-mode.md`, `smb-mode.md`, and `popstarter-changelog.md` refer to the later name `POPS_IOX.PAK`, with no `POPS_IOP.PAK` historical naming note. The original Git text proves a **documentation rename on that date**, but not whether any particular old package is byte-compatible. **This belongs to historical setup/version chronology, not a newly offered package download.** No emulator payload is included.
+The recovered `.research/wiki/usb-mode.md`, `smb-mode.md`, and `popstarter-changelog.md` refer to the later name `POPS_IOX.PAK`, with no `POPS_IOP.PAK` historical naming note. The original Git text proves a **documentation rename on that date**, but not whether any particular old package is byte-compatible. **This belongs to historical setup/version chronology, not a newly offered package download. A contemporaneous developer statement (below) suggests the original `POPS_IOP.PAK` name was an erroneous old wiki instruction, not a valid third file format.** No emulator payload is included.
+
+
+### Primary-source corroboration of G8/G10 — original author clarification (2016-10-29)
+
+A preserved [ASSEMblergames discussion, October 29 2016](https://www.assemblergames-archive.com/printthread.php?page=191&tid=38642) documents an actual user trying to use POPStarter **WIP05** (build 2015-06-03), following the original USB guide, and reporting a failed boot after **renaming a file from `POPS_IOX.PAK` to `POPS_IOP.PAK`**. In that same exchange, POPStarter developer **krHACKen** explained that:
+
+- `POPS_IOX.PAK` belongs to the POPStarter beta version; the older WIP05 requires a different `POPS.PAK` format.
+- Changing the PAK filename does **not** make it compatible with a different launcher version.
+- WIP05 USB setup required `PFS_WRAP.BIN`; the beta did not require this particular file.
+- A failure still could have been USB access-related, making this an explanation of **version rules**, not conclusive proof of that particular user's root cause.
+
+The dated source explicitly supports the USB Quickstarter erratum (G8) and reveals the old `POPS_IOP.PAK` wiki spelling (G10) was **probably incorrect or misleading contemporaneous documentation**, **not demonstrated evidence of an independently distributed valid PAK variant**. The February 2017 replacement with `POPS_IOX.PAK` is therefore best documented as **source-correction history**, not as a software artifact rename. The reproduced forum thread includes developer and tester testimony, but no original binary checksums proving every version pairing.
+
+**Preservation decision:** any old guide reprint should visibly mark the incorrect PAK naming as superseded and warn not to rename files across launcher revisions. Do **not** recreate a downloadable `POPS_IOP.PAK`, and do not publish a replacement Sony emulator package.
 
 ### G11 — [CONFIRMED HISTORICAL NOTE ABSENT] Old VCD guide: missing CUE sheets
 
