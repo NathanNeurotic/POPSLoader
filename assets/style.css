@@ -1356,3 +1356,30 @@ footer {
   letter-spacing: 0.2px;
   font-size: 14px;
 }
+
+/* Cursor orbs toggle and responsive header */
+.cursor-orbs-disabled .ps2-orbs-canvas { display: none !important; }
+.topbar .cursor-orbs-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 auto; min-width: 79px; min-height: 32px; padding: 5px 9px;
+  border: 1px solid rgba(125,211,252,.55); border-radius: 6px;
+  background: rgba(18,43,85,.88); color: #e0f2fe;
+  font: 700 11px/1.2 system-ui, sans-serif; white-space: nowrap; cursor: pointer;
+}
+.topbar .cursor-orbs-toggle[aria-pressed="true"] { border-color: #38bdf8; color: #fff; }
+.topbar .cursor-orbs-toggle:hover { background: rgba(37,83,152,.95); }
+.topbar .cursor-orbs-toggle:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
+@media (max-width: 600px) {
+  .topbar { height: auto; min-height: 0; flex-wrap: wrap; gap: 8px; padding: 7px 10px; }
+  .topbar .search { order: 10; flex: 1 0 100%; min-width: 0; width: 100%; }
+  .topbar .topbar-actions { gap: 4px; margin-left: 0; }
+  .topbar .topbar-actions .topbar-btn {
+    width: 30px; height: 30px; padding: 0; font-size: 0; justify-content: center;
+  }
+  .topbar .cursor-orbs-toggle { margin-left: auto; min-height: 30px; padding: 5px 7px; }
+  .sidebar { top: 92px; }
+}
+@media (max-width: 380px) {
+  .topbar .brand { font-size: 12px; }
+  .topbar .brand .psbtns { display: none; }
+}
