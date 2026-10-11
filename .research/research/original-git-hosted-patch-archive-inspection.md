@@ -34,3 +34,10 @@ The original indexed Bitbucket listing shows:
 - Keep the `PATCH_9.BIN` semantics **version-scoped**. A same-numbered patch is not proof of matching behavior across 2014–2020 releases; do not rely on filenames alone.
 
 **Research-boundary reminder:** the draft PR deliberately **does not modify** `special-cheats.md`, `thread-patches.md`, `build_site.py`, the downloadable archives, or the published website. The underlying original Git clone does not embed either binary package.
+
+
+### ZIP package exclusions for the original NOPAL patch hunt
+
+Read-only central-directory scans of **currently hosted** ZIPs found no `NOPAL_PATCH.7z`, `FORCEPAL_PATCH.7z`, `PATCH_9.BIN` or `PATCH_8.BIN` members in the `POPStarter_USB_Quickstarter_Pack_20200209.zip` (9 entries), `POPStarter_SMB_Quickstarter_Pack_20200209.zip` (18 entries), `POPStarter_r13_Beta_20190605.zip` (4 entries), `POPStarter_r13_RIP_06.zip` (5 entries) or `POPStarter_r13_WIP_06_OBT_20170128.zip` (12 entries). These specific bundles therefore do not independently authenticate or reproduce the original **2017 226-byte** `NOPAL_PATCH.7z`. The hosted HDD 2020 ZIP is **over 1 MB**, which the connector did not supply as a full base64 payload; **it has not been searched** and must not be counted as a negative result.
+
+For network-module comparison, the new [read-only six-driver crosswalk script](../tools/audit_network_driver_crc_overlap.py) compares the stored `(file size, CRC-32)` directory fields in the current 7z and hosted 2020 SMB ZIP. It does **not** decompress, execute or overwrite any IRX file. An exact 6/6 match is a robust independent archival cross-reference, **not a direct match to the missing 2017 Bitbucket original**.
