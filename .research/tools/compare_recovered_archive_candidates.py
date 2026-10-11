@@ -145,6 +145,8 @@ def main():
     p.add_argument('reference', type=Path, nargs='?')
     p.add_argument('--expect-identified-matches', type=int, default=None,
                    help='Fail if fewer than N common-basename member SHA256 matches')
+    p.add_argument('--require-same-member-set', action='store_true',
+                   help='Require identical filenames and SHA-256s for every member in both archives')
     args = p.parse_args()
     try:
         a = fingerprint(args.candidate)
@@ -164,8 +166,11 @@ def main():
             if (args.expect_identified_matches is not None and
                     len(identical) < args.expect_identified_matches):
                 raise ValueError("Not enough identical per-member SHA256 comparisons")
-        elif args.expect_identified_matches is not None:
-            raise ValueError("--expect-identified-matches requires reference")
+            if args.require_same_member_set and not (
+                    len(identical) == len(a[3]) == len(b[3])):
+                raise ValueError("Archive member sets are not fully identical")
+        elif args.expect_identified_matches is not None or args.require_same_member_set:
+            raise ValueError("Member comparison requirements need a reference archive")
     except (ValueError, OSError, RuntimeError, TimeoutError, EOFError) as e:
         print(f"REJECT: {e}", file=sys.stderr)
         return 1
