@@ -79,37 +79,50 @@ def historical_checksums(path: Path) -> dict[str, str]:
 
 
 def archive_members(archive: Path, executable: str) -> tuple[int, int, int]:
-    cmd = [executable, "l", "-slt", str(archive)]
-    p = subprocess.run(cmd, check=False, text=True, capture_output=True, timeout=60)
+    p = subprocess.run([executable, "l", "-slt", str(archive)],
+                       check=False, text=True, capture_output=True, timeout=60)
     if p.returncode or "----------" not in p.stdout:
         raise ValueError(f"Unable to parse 7z directory for {archive.name}")
-    count, total, nested = 0, 0, 0
+
+    entries: list[dict[str, str]] = []
     for section in p.stdout.split("----------", 1)[1].split("\n\n"):
-        attributes: dict[str, str] = {}
+        fields: dict[str, str] = {}
         for row in section.splitlines():
             if " = " in row:
                 key, value = row.split(" = ", 1)
-                attributes[key] = value
-        if not attributes.get("Path") or attributes.get("Folder") == "+":
+                fields[key] = value
+        if fields.get("Path"):
+            entries.append(fields)
+
+    names = [f["Path"].replace("\\", "/").rstrip("/") for f in entries]
+    count, total, suspicious_extensions = 0, 0, 0
+    for fields, normalized in zip(entries, names):
+        if fields.get("Folder") == "+":
             continue
+        size = int(fields.get("Size", "-1"))
+        if size == 0 and not fields.get("CRC") and any(
+                other.startswith(normalized + "/") for other in names):
+            # Some old 7z files omit Folder=+ on directory markers. Do not
+            # inflate the real-file census by counting the directory itself.
+            continue
+        if (not normalized or normalized.startswith("/") or
+                ".." in normalized.split("/")):
+            raise ValueError(f"Unsafe member path: {archive.name} {normalized!r}")
+        if size < 0 or size > MAX_MEMBER:
+            raise ValueError(f"Unacceptable member size: {archive.name} {normalized!r}")
         count += 1
         if count > MAX_ENTRIES:
-            raise ValueError(f"Archive has excessive members: {archive.name}")
-        name = attributes["Path"]
-        if name.startswith(("/", "\\")) or ".." in name.replace("\\", "/").split("/"):
-            raise ValueError(f"Unsafe archive member path: {archive.name} {name!r}")
-        size = int(attributes.get("Size", "-1"))
-        if size < 0 or size > MAX_MEMBER:
-            raise ValueError(f"Unexpected decoded member length: {archive.name} {name!r}")
+            raise ValueError(f"Archive exceeds maximum member count: {archive.name}")
         total += size
         if total > MAX_UNCOMPRESSED:
-            raise ValueError(f"Excessive total uncompressed length: {archive.name}")
-        if name.lower().endswith((".exe", ".elf", ".kelf", ".irx", ".dll", ".bat",
-                                 ".com", ".cmd", ".vbs", ".ps1", ".rar", ".zip", ".7z")):
-            nested += 1  # metadata only; NOT a malware detection
+            raise ValueError(f"Archive exceeds maximum decoded byte count: {archive.name}")
+        if normalized.lower().endswith((
+                ".exe", ".elf", ".kelf", ".irx", ".dll", ".bat", ".com", ".cmd",
+                ".vbs", ".ps1", ".rar", ".zip", ".7z")):
+            suspicious_extensions += 1  # metadata only; no verdict
     if count == 0:
-        raise ValueError(f"No regular 7z members found: {archive.name}")
-    return count, total, nested
+        raise ValueError(f"No file members in 7z archive: {archive.name}")
+    return count, total, suspicious_extensions
 
 
 def audit(root: Path):

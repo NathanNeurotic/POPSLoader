@@ -99,8 +99,10 @@ jobs:
         run: |
           python3 .research/tools/compare_recovered_archive_candidates.py \
             published/downloads/CUE2POPS_2.3.7z \
-            .research/downloads/CUE2POPS_2.3.zip
+            .research/downloads/CUE2POPS_2.3.zip \
+            --expect-identified-matches 3 --require-same-member-set
           python3 .research/tools/compare_recovered_archive_candidates.py \
             published/downloads/Compatibility_Modes.7z \
-            .research/downloads/Compatibility_Modes.zip
+            .research/downloads/Compatibility_Modes.zip \
+            --expect-identified-matches 8 --require-same-member-set
 
