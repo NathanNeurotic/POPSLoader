@@ -149,3 +149,12 @@ The existing docs indicate that these appear in bundles; this crosswalk **does n
 2. Record cryptographic hashes, the original historical URL, revision date, package provenance, and any license/AV findings for every recoverable candidate.
 3. Treat truly lost or excluded artifacts as *metadata-only preservation records*.
 4. No downloads, source replacements, or release/package edits are authorized by this research PR.
+
+
+## Independent Bitbucket download listing corroboration (2020-era archived index)
+
+An archived [original Bitbucket Downloads listing](https://archive.ph/PBG1V) surfaced via web-search cache. The first **28 visible rows** give historical filenames, displayed sizes, uploader names and upload dates. This is a **partial source excerpt, not a complete download list**. Compared against 23 exact tracked files: **13 identical basenames**, **14 not hosted with that exact filename**, **1 previously withheld archive**. The 2020 rows credit **El_Patas** as uploader; the earlier 23 rows credit **Shaolin Assassin**. The snapshot independently confirms that historical CUE2POPS 2.3, BATCHER 0.3.1, IGR language packs, old HDDOSD sample and mode archives were genuine Bitbucket-listed uploads, not hypothetical filename mentions.
+
+**Two high-priority provenance discrepancies:** `NOPAL_PATCH.7z` (**226 bytes** on original listing vs **188 bytes** tracked) and `network_modules.7z` (**59.0 KB** indexed vs **93,934 bytes** tracked). Identical filenames but demonstrably nonidentical sizes; the original URL recovery log reported failures. This **does not** establish that current variants are defective, but it forbids byte-for-byte archival-equivalence claims. Other archive sizes often match to displayed rounding but still need hash verification. See [independent 28-row evidence inventory](original-bitbucket-download-snapshot-2020.md) and [source metadata TSV](original-bitbucket-download-snapshot-2020.tsv).
+
+The previously suggested CosmicScale GitHub mirror offers **localized TM2 image assets**, not the actual original `IGR_textures_-_*.7z` files. It is a potential **functional asset source**, not an authenticated archive of those historical Bitbucket packages. No package import/repack has been attempted.
