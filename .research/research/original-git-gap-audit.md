@@ -1,6 +1,6 @@
 # Original POPStarter wiki Git-history gap audit — investigation ledger
 
-> **Research-only, no imports or replacements.** PR #578 was merged; follow-up PR #580 remains draft/unmerged. This is the **first systematic pass**, not a claim that all 2,140 historical revisions have been reconciled. Preservation/repair decisions are deferred to the maintainer.
+> **Research-only, no imports or replacements.** PR #578 and follow-up PR #580 were both merged. Subsequent research is tracked directly on `master`. This is the **first systematic pass**, not a claim that all 2,140 historical revisions have been reconciled. Preservation/repair decisions are deferred to the maintainer.
 
 ## Source and comparison baseline
 
@@ -487,3 +487,10 @@ A [new primary-source archive-location crosswalk](original-network-module-source
 ## 2026-10-11 Internet Archive 2017/2020 RAR directory verification
 
 The historically documented [HWNJ Internet Archive saved-wiki pair](https://archive.org/details/backup-popstarter-documentation-stuff-wiki-from-2017-and-2020) was directly inventoried **without downloading the full RAR payloads**. Internet Archive's online member listings contain **378 entries in the 2017 RAR**, **1,172 in the 2020 RAR**; the latter includes **52 numeric-Bitbucket-ID image entries, representing 29 unique IDs, all 29 already present** in POPSLoader's current `.research/assets/` filename-ID inventory. Four other historically missing IDs (`3117688129`, `270560112`, `3801833563`, `4286767539`) appear as **`.htm` files**, and all four individual files were read as **Wayback Machine HTML**, **not original images**. See [complete directory/hash-metadata crosswalk](internet-archive-2017-2020-rar-image-coverage.md). This closes a potentially misleading historical RAR source lead at *listed filename-ID* level, **not at actual RAR member-hash or unseen external media level**. Recovered missing original screenshots: **0**; unresolved IDs remain **19 original HEAD / 34 history**. Original 2017 NOPAL and network binary payloads remain missing.
+
+
+## 2026-10-11 Beta 9 module regression and historical ZIP Wayback false positive
+
+Primary-source development chronology clarified: Beta 8 (2015-10-23) read network/USB modules from `mc0:` only. Beta 9 (2015-10-24) implemented `mc1:` fallback but **broke `poweroff.irx` and `ps2ip.irx` loading from `mc0:`**, acknowledged in the October 25 developer edit; **Beta 10 (2015-10-26) fixed this**. Beta 11 (2015-11-11) made `IPCONFIG.DAT` optional and allowed `IPADDRESS:PORT` in `SMBCONFIG.DAT`, replacing the original fixed-445 limitation. These are version-specific facts, **not global requirements for current POPStarter**. See [developer-source chronology](original-git-2015-network-and-patch9-timeline.md).
+
+The [Bitbucket 2017 `NOPAL_PATCH.7z` and `network_modules.7z` paths](original-network-module-source-locations-2015-2025.md) returned **no closest captures** from Internet Archive's availability API. The 2015 `POPStarter_Net_Modules_for_mc0.zip` has an available **2025-12-28 HTTP 200** Wayback snapshot, but its raw memento is **HTML Chez.com parking text**, **not ZIP bytes**. No previously missing binary has been recovered. This is an availability-API spot check rather than an exhaustive archive-collection search.
