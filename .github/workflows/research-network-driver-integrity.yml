@@ -5,6 +5,7 @@ on:
     branches: [master]
     paths:
       - '.research/tools/verify_network_driver_payloads.py'
+      - '.research/tools/audit_hosted_patch_members.py'
       - '.research/tools/inspect_network_modules_header.py'
       - '.research/downloads/network_modules.7z'
       - '.research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip'
@@ -30,3 +31,17 @@ jobs:
           python3 .research/tools/verify_network_driver_payloads.py \
             .research/downloads/network_modules.7z \
             .research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip
+
+  audit-hosted-patch-members:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install archive directory decoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+      - name: Census hosted archive patch member names
+        run: |
+          python3 -m py_compile .research/tools/audit_hosted_patch_members.py
+          python3 .research/tools/audit_hosted_patch_members.py .research/downloads
