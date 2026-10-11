@@ -1,4 +1,4 @@
-# Sources / citations (40)
+# Sources / citations (41)
 
 1. http://web.archive.org/web/20170629123253id_/https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki/special-cheats | special-cheats wiki (core $command set, geometry defaults) | PRIMARY
 2. http://web.archive.org/web/20190403162824id_/https://bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki/special-cheats | special-cheats 2017-10-28 revision (widescreen, mute, novmc, codecache, IGR glyphs, rumble codes) | PRIMARY
@@ -40,3 +40,4 @@
 38. https://www.psx-place.com/resources/ps1-popstarter-r13-wip-06-beta-20160918.354/ | PSX-Place r13 WIP06 beta resource page (package mirror) | MIRROR
 39. https://www.psx-place.com/threads/hugopocked-fixes-for-popstarter.39750/ | HugoPocked per-game fixes pack (Tomb Raider CDDA limitation, title fixes) | COMMUNITY
 40. http://web.archive.org/cdx/search/cdx?url=bitbucket.org/ShaolinAssassin/popstarter-documentation-stuff/wiki* | Wayback CDX index of the lost wiki (recovery map for the whole corpus) | PRIMARY
+41. Original Bitbucket wiki Git clone supplied by [AstroSnail](https://github.com/AstroSnail), HEAD `960d675d278296a3a62143410b38aa8882d21a79`, 2,140 commits, 2016-04-11 to 2024-07-31, SHA-256 `d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a`; see `original-git-provenance.md` | primary original edit history and deleted wiki pages | PRIMARY ARCHIVAL SOURCE

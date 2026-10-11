@@ -64,6 +64,15 @@ sections_md   = md_text('sections.md')
 ambiguities_md= md_text('ambiguities.md')
 
 # recovered downloads (apply exclusions)
+# Optional historical source: never publish an altered or missing Git archive.
+ORIGINAL_GIT_ARCHIVE = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
+ORIGINAL_GIT_SHA256 = 'd0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a'
+original_git_path = os.path.join(DL, ORIGINAL_GIT_ARCHIVE)
+if os.path.isfile(original_git_path):
+    with open(original_git_path, 'rb') as _original_git_file:
+        actual_hash = hashlib.sha256(_original_git_file.read()).hexdigest()
+    if actual_hash != ORIGINAL_GIT_SHA256:
+        raise RuntimeError('Original Bitbucket wiki ZIP SHA-256 mismatch; refusing to publish')
 dl_files = []
 if os.path.isdir(DL):
     for f in sorted(os.listdir(DL)):
@@ -310,7 +319,7 @@ def shell(title, body, active, base=''):
   <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
   emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
   own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
-  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="{base}credits.html">Credits</a>.</p>
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="{base}credits.html">Credits</a>.</p>
 </footer>
 <script src="{base}assets/app.js"></script>
 </body></html>'''
@@ -814,8 +823,13 @@ DL_GROUPS = [
      "Superseded. Nothing here does anything the 2019 release does not. They are kept because this is an archive, and because each one carries a document or a tool that the final release dropped.",
      "PS2",
      ["POPStarter_r13_RIP_06.zip", "POPStarter_r13_WIP_06_OBT_20170128.zip", "POPStarter_HDD_Quickstarter_Pack_20171027.7z"]),
+    ("Original Bitbucket wiki — complete Git history",
+     "Original ShaolinAssassin wiki Git history supplied by AstroSnail, including 2,140 commits and deleted pages (2016–2024). This is archival source documentation, not a POPStarter release.",
+     "PC — historical reference",
+     ["popstarter-documentation-stuff-wiki-git-20240731.zip"]),
 ]
 DL_CARD_NOTES = {
+    "popstarter-documentation-stuff-wiki-git-20240731.zip": "AstroSnail-contributed original wiki Git history (2,140 commits, 61 current source pages, 2016–2024), including deleted pages. SHA-256: d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a. Reference only; not a launcher.",
     "POPStarter_USB_Quickstarter_Pack_20200209.zip": "Games on a USB stick. The final launcher for mass:/POPS, CUE2POPS for your PC, and the special uLaunchELF build (uLE_kHn 2019-11-10) that runs a .VCD straight from the file browser so you never rename an ELF.",
     "POPStarter_HDD_Quickstarter_Pack_20200209.zip": "Games on the PS2's internal hard drive. Same launcher, converter and special uLaunchELF, plus RadHostClient 1.8a for sending .VCD files to the __.POPS partition over your home network.",
     "POPStarter_SMB_Quickstarter_Pack_20200209.zip": "Games in a shared folder on your PC. Same launcher and converter, plus a ready-made mc0:/POPSTARTER folder of network modules and the two .DAT files you fill in with your IP address and share name. This is the one pack with no uLaunchELF.",
@@ -1796,6 +1810,7 @@ CREDITS_SECTIONS = [
         ('P4NCHOL1NO, VizoR, provato, TnA-Plastic, oldman63, and the community', 'Hardware testing on real PS2 consoles — the only thing that proves a launch path actually works.'),
     ]),
     ('This archive &amp; site', [
+        ('<a href="https://github.com/AstroSnail">AstroSnail</a>', 'Preserved and shared the original Bitbucket wiki Git clone: 2,140 historical commits (2016–2024), earlier revisions and deleted material, complementing the Wayback recovery. Original wiki authors retain credit.'),
         ('The Internet Archive / Wayback Machine', 'Preserved ShaolinAssassin\'s lost wiki, the download archives, and the menu images — without it this archive could not exist.'),
         ('Retro-Jogos (Gledson\'s Portuguese guide)', 'Preserved the original documentation navigation taxonomy when the source wiki went dark.'),
         ('R3Z3N', 'Partition-install (<code>PP.</code>) documentation for HDDOSD / PSBBN games.'),
@@ -1824,7 +1839,7 @@ def build_credits():
         'credits thanks acknowledgements who made authors contributors ShaolinAssassin krHACKen kHn POPStarter POPS Sony '
         'El_isra israpps Enceladus Daniel Santos Berion nuno6573 Hugopocked Ripto NathanNeurotic hardware testers '
         'gledson999 El_Patas arkl1t32 LopoTRI Rick Gaiser udpbd OPL Open PS2 Loader BDM Assault Retro-Jogos R3Z3N '
-        'saildot4k BDMA-ATA ATA exFAT HDD backend TnA-Plastic provato oldman63 P4NCHOL1NO VizoR', 'credits.html')
+        'saildot4k BDMA-ATA ATA exFAT HDD backend TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history', 'credits.html')
 
 # ---------- HOME ----------
 def build_home():

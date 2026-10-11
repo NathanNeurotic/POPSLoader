@@ -284,6 +284,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
 *   **krHACKen**: Author of POPStarter.
+*   **[AstroSnail](https://github.com/AstroSnail)**: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See [provenance](.research/research/original-git-provenance.md).
 *   **Berion**: User interface design and theme assets.
 *   **[nuno6573](https://github.com/nuno6573)**: Cover-art engine integrations, scripting, and hardware testing.
 *   **Hugopocked**: POPStarter fixes.
