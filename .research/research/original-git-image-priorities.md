@@ -89,3 +89,30 @@ The existing **98/98 successfully backed gallery-cache entries** refers to a *di
 These are missing original **numeric image identifiers**, not yet confirmed 19 distinct unique missing picture bytes. Unmatched ID `1731981611` could duplicate a different recovered `2.png`, and identical subject matter may appear under alternate identifiers. Old recovery logs for `270560112-16h0lcg.jpg` and `4286767539-2n0oweq.jpg` reported a **PNG magic prefix** despite `.jpg` URL extensions; their complete bytes were never verified. Attempts to open timestamp-specific Wayback raw-asset URLs through the available web retrieval returned inaccessible, so **no actual image recovery is claimed**.
 
 Any future recovery must verify source authenticity, full-file signatures, checksums, dimensions and screenshots' topic; mere filename/ID matching is insufficient. No images were added by this PR.
+
+
+## Alternate historical screenshot witness — krHACKen's 2017 forum post
+
+An independent **2017-10-04 primary-source announcement by POPStarter developer krHACKen** enumerates a 16-title widescreen screenshot set and a distinct **Ape Escape PS1 widescreen game-code-vs-POPS GTE** comparison. Indexed preserved forum copy: [Metagames permalink, post #330](https://www.metagames-eu.com/forums/1776217-post330.html) (also findable within [Metagames POPStarter Revision 13 page 33](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-33-134569.html)). The post reports why game-code patches may render better than POPStarter's GTE-wide hack, and embeds historical image placeholders.
+
+The forum lists the following exact **title stems** that match **11 of the 12 numeric-ID-missing final original `widescreen.textile` images**:
+
+| Bitbucket source ID missing | Original wiki image filename | Independently named by 2017 krHACKen forum post |
+|---|---|---|
+| `471851278` | `DIE_HARD_TRILOGY_2_WIDE.jpg` | `DIE_HARD_TRILOGY_2_WIDE.JPG` |
+| `3811602128` | `EXHUMED_WIDE.jpg` | `EXHUMED_WIDE.JPG` |
+| `727086931` | `GHOST_IN_THE_SHELL_WIDE.jpg` | `GHOST_IN_THE_SHELL_WIDE.JPG` |
+| `4095826607` | `GRAN_TURISMO_WIDE.jpg` | `GRAN_TURISMO_WIDE.JPG` |
+| `4249513129` | `MEDIEVIL_WIDE.jpg` | `MEDIEVIL_WIDE.JPG` |
+| `65599370` | `METAL_GEAR_SOLID_WIDE.jpg` | `METAL_GEAR_SOLID_WIDE.JPG` |
+| `446039127` | `SOUL_REAVER_WIDE.jpg` | `SOUL_REAVER_WIDE.JPG` |
+| `1450475876` | `SYPHON_FILTER_WIDE.jpg` | `SYPHON_FILTER_WIDE.JPG` |
+| `2425094621` | `TEAM_BUDDIES_WIDE.jpg` | `TEAM_BUDDIES_WIDE.JPG` |
+| `1094748012` | `TOMB_RAIDER_II_WIDE.jpg` | `TOMB_RAIDER_II_WIDE.JPG` |
+| `997655191` | `WIPEOUT_3_WIDE.jpg` | `WIPEOUT_3_WIDE.JPG` |
+
+The twelfth missing wiki image, `1720317623-APE_ESCAPE_COMP.JPG`, corresponds to the **separate Ape Escape GTE-vs-PS1 game-patch image discussion** rather than the 16-image list. Its exact filename and numeric ID are **not** independently confirmed by the forum snippet, so treat this as a **topic/subject corroboration** only.
+
+**Recovery status: unchanged.** The archived post's text / screenshot labels are indexed, but the direct permalink did not yield complete original image bytes through the available retrieval client. No legitimate screenshot file or matching checksum has been recovered, and image placeholders are not the missing images. A future candidate must be downloaded from an authentic dated forum attachment or archive capture, with MIME/magic, full bytes, dimensions, subject and provenance checked before any public page change.
+
+This external primary-source crosswalk strengthens the value of the 12 missing widescreen references and gives a second location to search; it does **not** reduce the outstanding **19 final HEAD unmatched image IDs** or the **34 across full Git history**.
