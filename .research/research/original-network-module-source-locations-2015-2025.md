@@ -27,3 +27,20 @@
 **Future authentic-byte acceptance criteria** for each externally obtained package: preserved original URL/redirect chain and source dates, full byte length, SHA-256 of whole archive, validated file type, archive CRC/decompression test, complete member inventory with per-member hashes, absence of prohibited Sony emulator content, and separate matching comparisons against current repository blobs. Historical identity requires either an original source/checksum or equally credible dated chain of custody, not just package similarity.
 
 **Next concrete candidates:** developer-linked 2015 ZIP; independently uploaded 2016 MediaFire ZIP; 2018–2026 first-post `POPSTARTER_MC-Network.zip`; explicitly added January 2025 BDM ZIP; original 2017 Bitbucket package. Preserve each as a separate source row until actual byte evidence allows a merge.
+
+## Candidate comparison workflow — tested but does not imply a new download
+
+A new [read-only forensic candidate comparator](../tools/compare_recovered_archive_candidates.py) accepts **local** ZIP/7z files and records a complete SHA-256 for each archive plus each uniquely named member. It validates the stored CRC and decompressed length of each file; it can compare two package manifests by case-insensitive basename. It rejects unsupported/oversized archives, suspicious member paths, duplicate basenames, and explicitly identified Sony POPS/BIOS member names **before unpacking any archive data**. It reports metadata/hash results only; it does not save or run contents.
+
+Example comparison of two **already tracked and permitted** archives, not retrieved historical candidates:
+
+```bash
+python3 .research/tools/compare_recovered_archive_candidates.py \
+  .research/downloads/network_modules.7z \
+  .research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip \
+  --expect-identified-matches 6
+```
+
+[Successful GitHub Actions run #38167061060](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38167061060) reported **8 common member basenames: 6 exact SHA-256 matches** (`poweroff.irx`, `ps2dev9.irx`, `ps2ip.irx`, `ps2smap.irx`, `smbman.irx`, `smsutils.irx`) and **2 SHA-256 differences** (`ipconfig.dat`, `smbconfig.dat`). This is a second general-purpose method corroborating the dedicated current-driver payload verifier. No 2015/2016/2017 original was present in that test.
+
+**Safeguard:** a file lacking a recognized excluded filename may still be proprietary or unsafe. Do not use this tool's acceptance alone as a permission to upload, distribute or mark an external candidate authentic. It identifies existing files and decompression integrity, not licensing or original authorship.
