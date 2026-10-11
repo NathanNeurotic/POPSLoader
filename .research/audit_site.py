@@ -86,6 +86,52 @@ dlpage = open(os.path.join(SITE, 'downloads.html'), encoding='utf-8').read()
 for f in os.listdir(os.path.join(SITE, 'downloads')):
     if f'downloads/{f}' not in dlpage and html.escape(f) not in dlpage:
         issues['complete'].append(f'download not linked on downloads.html -> {f}')
+# Historical inventory completeness: unavailable/withheld means labelled, not omitted.
+# The recovery manifest is not a verified binary list, so never infer a download.
+import csv
+catalog_path = os.path.join(ROOT, 'research', 'original-download-catalog.tsv')
+if not os.path.exists(catalog_path):
+    issues['complete'].append('tracked historical download catalogue missing')
+else:
+    with open(catalog_path, encoding='utf-8', newline='') as _f:
+        history_rows = list(csv.DictReader((line for line in _f if not line.startswith('#')),
+                                           delimiter='\t'))
+    if len(history_rows) < 80:
+        issues['complete'].append(f'historical catalogue unexpectedly short: {len(history_rows)}')
+    seen_names = set()
+    for item in history_rows:
+        name = item.get('filename', '')
+        if not name:
+            issues['complete'].append('historical catalogue contains blank name')
+            continue
+        if name.casefold() in seen_names:
+            issues['complete'].append(f'duplicate historical catalogue entry: {name}')
+        seen_names.add(name.casefold())
+        if '<code>' + html.escape(name) + '</code>' not in dlpage:
+            issues['complete'].append(f'historical download reference omitted from site: {name}')
+        if item.get('status') in ('withheld', 'invalid_reference'):
+            if 'href="downloads/' + html.escape(name) + '"' in dlpage:
+                issues['policy'].append(f'withheld/invalid download received a link: {name}')
+    if 'verification status' not in dlpage.lower():
+        issues['complete'].append('historical inventory missing explicit status column')
+    for sample in ('NOPAL_PATCH.7z', 'network_modules.7z'):
+        if sample not in dlpage or 'Historical size discrepancy:' not in dlpage:
+            issues['complete'].append('same-name historical-size discrepancy not labelled: '+sample)
+# The original source ZIP is shown either with a real file or as explicitly pending.
+original_zip = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
+if original_zip not in os.listdir(os.path.join(SITE, 'downloads')):
+    if 'Original wiki Git history ZIP — not yet hosted' not in dlpage:
+        issues['complete'].append('original contributed wiki Git ZIP silently omitted')
+# Missing source notes and community credit must not disappear on subsequent rebuild.
+history_page = open(os.path.join(SITE, 'history.html'), encoding='utf-8').read()
+credits_page = open(os.path.join(SITE, 'credits.html'), encoding='utf-8').read()
+for phrase in ('The 15 original news bulletins', 'Linux CUE2POPS source',
+               'Light-gun module example correction', 'WIP05 USB Quickstarter erratum'):
+    if phrase not in history_page:
+        issues['complete'].append('missing recovered historical note: ' + phrase)
+if 'Original wiki community thanks (April 2016)' not in credits_page:
+    issues['complete'].append('original 2016 collective community credit missing')
+
 # every entry has an anchor on its page
 entries = json.load(open(os.path.join(ROOT, 'research', 'entries.json'), encoding='utf-8'))
 CAT_PAGE = {'cheats':'cheats','patches':'compatibility','trojans':'compatibility','igr':'igr',
