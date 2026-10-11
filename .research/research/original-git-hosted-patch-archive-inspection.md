@@ -1,5 +1,7 @@
 # Hosted legacy patch-package forensic comparison — PATCH_9 naming collision
 
+**2026-10-11 follow-up:** The previously unchecked 2020 HDD ZIP and 2017 HDD 7z were **both inventoried**, together with all 21 hosted ZIP/7z packages, by [a successful read-only GitHub Actions run](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38165914482). Neither HDD archive contains a directly named `NOPAL_PATCH.7z`, `PATCH_9.7z`, or `PATCH_9.BIN`; only the existing hosted NOPAL namesake contains `PATCH_9.BIN` (67 B), while the FORCEPAL namesake contains `PATCH_8.BIN` (64 B). See the [21-archive fingerprint and member-census report](original-git-hosted-patch-census.md). Earlier limitations below about the HDD ZIP being uninspected are retained as chronology and **now superseded**. This does not authenticate the missing 2017 Bitbucket NOPAL upload.
+
 **Draft follow-up research only.** This report inspects **existing hosted archive bytes**, not the historical Bitbucket originals. It does not execute any patch, assess patch safety on a PS2, or replace, delete or redistribute existing packages.
 
 ## Why this matters
