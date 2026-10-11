@@ -225,3 +225,26 @@ This verifies category coverage for these sets, **not** every unique disc revisi
 See [the 80-reference download crosswalk](original-git-download-crosswalk.md). It classifies the **80** source filename forms as: 17 exact hosted names, 45 without an exact hosted filename, 7 possible filename/container-format aliases requiring binary comparison, 3 probably present within hosted bundles requiring inspection, 4 intentional exclusions, and 4 invalid/truncated/unrelated forms. The site currently tracks **23** downloads overall; this is not a claim of 45 proven-missing binary files. Importantly `.research/_tmp/dl_manifest.tsv` reports some tracked downloads as "missing" and some deliberately excluded downloads as "recovered"; its status labels are stale and unsafe for completeness claims.
 
 The original ZIP is a Git **documentation/history** archive. It does not contain referenced Bitbucket download binaries or missing screenshot image bytes. **Research only: no import, no binary upload, no main-branch changes, no merge.**
+
+
+### Historical page-lineage classification
+
+Tracking **88 Git rename events** across all 2,140 commits with rename-aware path union-find yields **164 distinct concrete path names** organized into **79 connected file-name lineages**: **60 lineages** lead to the **61 files at the original 2024 HEAD** (one rename-connected lineage includes two currently existing filenames), while **19 lineages** have no file remaining at HEAD. This is a stronger genealogy than naïvely subtracting 61 final pages from 164 historical paths. The 19 retired lineages include early News, Batcher, old 16:9, Toolboxcommands, guide/index stubs, POPS-00001, the old PS1 codes page, and unrelated/vandalized samples. Distinct retired lineages are not automatically missing facts; many are already represented by their successor topics.
+
+### Original ZIP binary-safety scope (read-only object inspection)
+
+The original Git history has exactly **1,982 Git blob objects** (about **17.25 MB uncompressed**), all decodable as UTF-8. No blob contains a NUL byte or begins with common ELF, PE/MZ, ZIP, RAR, 7z, PNG, GIF or JPEG file signatures. This confirms the original ZIP's **Git object payloads are textual documentation**, not the missing screenshot/download binaries. It does **not** constitute a professional malware scan or a guarantee about linked external files. The Git history preserves contributor names/emails and should be handled as historical provenance.
+
+### Image gaps split by source age
+
+The 34 unmatched historical Bitbucket numeric image IDs comprise **19 still referenced by original Git HEAD** and **15 referenced only by older or removed versions**. None of the 19 current original IDs was found in the recovered Markdown source pages or tracked gallery JSON. See [the priority-separated image record](original-git-image-priorities.md), including each original filename, source page and existing asset-recovery status. URLs ending `.jpg` for IDs `270560112` and `4286767539` yielded PNG-signature responses in old recovery logs; genuine retrieval and full-file verification remain outstanding. Historic references alone never establish recoverable image bytes.
+
+### Additional fidelity issue — historically inherited command typo
+
+Original `widescreen.textile` uses `$ULTRE_WIDESCREEN` in one explanatory bullet, whereas original `special-cheats.textile`, `proto.textile` and `popstarter-changelog.textile` use the documented `$ULTRA_WIDESCREEN` spelling. The Wayback-derived `.research/wiki/widescreen.md` faithfully repeats the **source typo**, while the recovered command reference and generator use the correct name. This should eventually receive a factual editorial annotation in the modern guidance without silently rewriting the credited original document. Separate from the **292 malformed `0×` hexadecimal spellings** in `automated.md`.
+
+### Historical list removed in 2024 but preserved by recovery
+
+Source commit `cad93a2da1e` (2024-07-22, contributor El_Patas) removed the former HDD/USB/SMB official Google Docs compatibility-list links and attribution to AlGollan84/Algol/Allan58 and krHACKen from `compatibility.textile` after promoting the newer ElOtroLado list. Our merged `.research/wiki/compatibility.md` **does** retain those older links and authorship with historical/obsolete labels, so this is a verified preservation win. It is a concrete reason **not** to overwrite our reconstruction with original Git HEAD.
+
+**No additions to the published historical pages, compiled software, or binary download directory are made in this PR.**
