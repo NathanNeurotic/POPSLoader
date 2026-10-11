@@ -1,6 +1,6 @@
 # Original POPStarter wiki Git-history gap audit — investigation ledger
 
-> **Research-only, no imports or replacements.** PR #578 is intentionally draft/unmerged. This is the **first systematic pass**, not a claim that all 2,140 historical revisions have been reconciled. Preservation/repair decisions are deferred to the maintainer.
+> **Research-only, no imports or replacements.** PR #578 was merged; follow-up PR #580 remains draft/unmerged. This is the **first systematic pass**, not a claim that all 2,140 historical revisions have been reconciled. Preservation/repair decisions are deferred to the maintainer.
 
 ## Source and comparison baseline
 
