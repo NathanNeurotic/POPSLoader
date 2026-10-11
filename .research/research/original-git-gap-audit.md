@@ -141,6 +141,25 @@ Do **not** represent the present first pass as exhaustive.
 | `poop.textile` | **All 433 disc IDs preserved** | Version/fix pairing |
 | `sample.md` | Unrelated OPL beta material | Exclude POPStarter pages |
 
+## Reproducibility and candidate detail
+
+A read-only, standard-library-only source scanner is now committed as [`../tools/audit_original_git_history.py`](../tools/audit_original_git_history.py). It checks all Git history for deleted names, rename-aware paths, historic image/download URLs and ordered code-pair hashes, with optional ZIP SHA-256 verification and a non-overwriting JSON report. It does not alter the wiki or fetch binaries. The 34 unmatched media reference records and previous recovery statuses are also individually enumerated in [`original-git-unmatched-images.tsv`](original-git-unmatched-images.tsv).
+
+Example (run against a preserved, extracted archive, from repository root):
+
+```sh
+python3 .research/tools/audit_original_git_history.py \
+  --git-dir /path/to/original/wiki \
+  --wiki .research/wiki \
+  --assets .research/assets \
+  --asset-state .research/_state/assets_done.tsv \
+  --downloads .research/downloads \
+  --source-zip /path/to/original/wiki.zip \
+  --out /tmp/popstarter-git-history-audit.json
+```
+
+The script is auxiliary research tooling. Its output must be reviewed for false positives before publishing historical claims.
+
 ## Reproducibility commands (from an extracted original `wiki/` working tree)
 
 `git fsck --full --no-reflogs --strict`
