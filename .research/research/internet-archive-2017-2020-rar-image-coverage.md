@@ -61,6 +61,10 @@ All four members were opened through the Internet Archive **individual archive-m
 
 The old recovery log's occasional PNG magic for external attempted URLs of IDs `270560112` and `4286767539` is **separate and unresolved evidence**; it cannot be conflated with these distinct `.htm` files from the RAR. A URL that includes the correct numeric ID is not enough to establish artifact identity.
 
+## Network/NOPAL binary preservation implication
+
+Neither RAR's displayed member-directory inventory lists **any file with a `.zip`, `.7z` or `.rar` extension**, and neither has a member named `NOPAL_PATCH.7z`, `network_modules.7z` or the earlier developer `POPStarter_Net_Modules_for_mc0.zip`. Thus these snapshots do **not** supply either original 2017 archive as a directly listed file. As with the image investigation, this is a **directory-level negative result**, not a search of embedded content inside arbitrary HTML, nor proof no other Internet Archive item contains the original upload bytes.
+
 ## Provenance/retrieval limitations and next steps
 
 - Archive.org **metadata and online archive directories were accessible** through an independent read path. The original full RAR payloads (25.7 MB and 73.6 MB) were **not downloaded into the working environment**, so reported sizes/hash metadata are **host-supplied**, not newly computed; the listed member CRCs were not independently tested.
