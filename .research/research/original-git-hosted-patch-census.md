@@ -8,6 +8,14 @@
 - Read-only verifier: [`../tools/audit_hosted_patch_members.py`](../tools/audit_hosted_patch_members.py); scans repository archive filenames and **direct member names/declared sizes/CRCs**, with Python `zipfile` and 7-Zip's `l -slt`. No decompression of candidate binaries into working files and no execution.
 - An initial run counted some zero-byte 7z **directory markers** as entries. The script was corrected to exclude zero-byte/CRC-less parents of known children; the table below is from the **corrected successful run**. The 12-file network 7z manifest agrees with the separate full-payload verifier.
 
+## Additional full compressed-payload integrity verification (2026-10-11)
+
+After the original directory-only census, the same verifier gained optional `--full-test` support. In [successful GitHub Actions run #38166162184](https://github.com/NathanNeurotic/POPSLoader/actions/runs/38166162184), all **21/21 hosted ZIP/7z containers passed full compressed-payload integrity tests**: Python `ZipFile.testzip()` for ZIP packages, and `7z t -bd -y` for 7z packages. The run printed a separate `PAYLOAD TEST PASS` for each archive and `Full payload integrity test PASS: 21/21 archive containers`; the same census still identified exactly two named patch members and no nested named archives.
+
+These tests **decompress and verify package data without executing the contents or saving unpacked files for publication**. They are format-integrity checks of today's hosted bytes, **not** historical-original identification, file authorship/version checks, semantic correctness, malware analysis, emulator/PS2 testing, or independent cryptographic matching against 2017 sources. The original network-driver audit separately compares SHA-256 of extracted member bytes between two different packages.
+
+To reproduce the full test, append `--full-test` to the command near the end of this document.
+
 ## Outcome
 
 | Check | Result |
