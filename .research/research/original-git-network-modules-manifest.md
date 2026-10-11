@@ -7,6 +7,8 @@
 
 **New provenance lead (2026-10-11):** In [krHACKen's 2015-10-23 SMB/Beta 8 developer announcement](https://www.metagames-eu.com/forums/playstation-2/popstarter-revision-13-a-20-134569.html), the developer identified an earlier and separately named `POPStarter_Net_Modules_for_mc0.zip` distribution for the original network drivers and configuration templates. No authentic bytes for that archive have been retrieved. It is a **pre-2017 packaging/source lead**, not proof of equivalence with either the original 2017 `network_modules.7z` or today's 7z/2020 ZIP. See [dated source timeline](original-git-2015-network-and-patch9-timeline.md).
 
+**New authentic-source locator evidence (2026-10-11):** [Developer-linked 2015-era ZIP URL, a 2016-09-21 MediaFire network archive listed at 79.81 KB, an undated-original-post network attachment listed at 79.8 KB, and a forum attachment explicitly added on 2025-01-25 for BDM at 91.7 KB](original-network-module-source-locations-2015-2025.md). These are separate provenance candidates: **no external original bytes retrieved**, and the 2025 91.7 KB display similarity to the currently hosted 93,934 B 7z does **not** prove identity. The missing original 2017 59.0 KB archive is still open.
+
 ## Provenance and discrepancy
 
 | Evidence | Value |
