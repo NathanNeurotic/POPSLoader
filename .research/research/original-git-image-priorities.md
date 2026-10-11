@@ -116,3 +116,12 @@ The twelfth missing wiki image, `1720317623-APE_ESCAPE_COMP.JPG`, corresponds to
 **Recovery status: unchanged.** The archived post's text / screenshot labels are indexed, but the direct permalink did not yield complete original image bytes through the available retrieval client. No legitimate screenshot file or matching checksum has been recovered, and image placeholders are not the missing images. A future candidate must be downloaded from an authentic dated forum attachment or archive capture, with MIME/magic, full bytes, dimensions, subject and provenance checked before any public page change.
 
 This external primary-source crosswalk strengthens the value of the 12 missing widescreen references and gives a second location to search; it does **not** reduce the outstanding **19 final HEAD unmatched image IDs** or the **34 across full Git history**.
+
+
+## 2026-10-11 — Internet Archive 2017/2020 RAR content-directory audit
+
+An [independent online archive listing audit](internet-archive-2017-2020-rar-image-coverage.md) identified **378 direct entries** in a 2017-10 saved-wiki RAR and **1,172 direct entries** in a 2020-10 saved-wiki RAR uploaded to [Internet Archive](https://archive.org/details/backup-popstarter-documentation-stuff-wiki-from-2017-and-2020). Archive.org metadata lists these as **25,735,078 B** and **73,550,116 B** respectively; these archive bytes were **not downloaded or SHA-256-verified in this pass**.
+
+Of the 2020 RAR's direct file listings, **52 image file entries** with Bitbucket numeric ID prefixes represent **29 distinct IDs, all 29 already present** among the 121 numeric IDs represented by 124 tracked `.research/assets/` files. This is an **ID-level check**, not a byte-hash verification. Four of the originally missing 19 IDs (`3117688129`, `270560112`, `3801833563`, `4286767539`) **do occur by filename inside the 2020 RAR**, but only as **approximately 94.7 KB `.htm` saved Wayback Machine pages**. Each was independently opened and begins with a Wayback Machine HTML document, **not with original image bytes**. Their extension/URL resemblance must not cause false recovery claims or image imports.
+
+**Recovered original missing image bytes from this source: 0.** The historical **19 final original wiki-HEAD missing image IDs** and **34 full-history missing IDs** remain unresolved. Details, archive metadata fingerprints (host-supplied MD5/SHA-1), and the four individual HTML outcomes are in [the RAR member coverage report](internet-archive-2017-2020-rar-image-coverage.md).
