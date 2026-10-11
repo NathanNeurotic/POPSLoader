@@ -1,0 +1,55 @@
+name: Historical network archive byte verification
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - '.research/tools/verify_network_driver_payloads.py'
+      - '.research/tools/compare_recovered_archive_candidates.py'
+      - '.research/tools/audit_hosted_patch_members.py'
+      - '.research/tools/inspect_network_modules_header.py'
+      - '.research/downloads/network_modules.7z'
+      - '.research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip'
+      - '.github/workflows/research-network-driver-integrity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-network-archives:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install read-only archive decoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+      - name: Verify all 7z member CRCs and cross-package IRX SHA-256
+        run: |
+          python3 -m py_compile .research/tools/inspect_network_modules_header.py .research/tools/verify_network_driver_payloads.py
+          python3 .research/tools/verify_network_driver_payloads.py \
+            .research/downloads/network_modules.7z \
+            .research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip
+      - name: Exercise historical candidate ZIP/7z forensic comparator
+        run: |
+          python3 -m py_compile .research/tools/compare_recovered_archive_candidates.py
+          python3 .research/tools/compare_recovered_archive_candidates.py \
+            .research/downloads/network_modules.7z \
+            .research/downloads/POPStarter_SMB_Quickstarter_Pack_20200209.zip \
+            --expect-identified-matches 6
+
+  audit-hosted-patch-members:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install archive directory decoder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y 7zip
+      - name: Validate hosted ZIP/7z payloads and census patch member names
+        run: |
+          python3 -m py_compile .research/tools/audit_hosted_patch_members.py
+          python3 .research/tools/audit_hosted_patch_members.py .research/downloads --full-test
