@@ -17,14 +17,14 @@
 |---|---:|
 | Reachable commits | 2,140 |
 | Commits from 2016 / 2017 / 2018 / 2020 / 2023 / 2024 | 1,558 / 548 / 1 / 19 / 6 / 8 |
-| Distinct repository paths ever touched (includes aliases/renames) | 248 |
+| Distinct actual repository paths touched (including rename endpoints) | **164** |
 | Git rename events | 88 |
 | Git deletion events / distinct deleted path names | 21 / 20 |
 | Files at source HEAD | 61 Textile pages |
 | Present reconstructed wiki pages | 63 Markdown pages |
 | Source HEAD pages with missing *basename* in recovered wiki | **0** |
 
-**Critical interpretation:** 248 historical paths are **not** 248 separate documentation pages, and 20 deleted path names do **not** mean 20 pieces of missing information. Renames and superseded drafts account for many. Basename coverage is not content coverage.
+**Critical interpretation:** 164 historical paths are **not** 164 separate documentation pages, and 20 deleted path names do **not** mean 20 pieces of missing information. Renames and superseded drafts account for many. Basename coverage is not content coverage.
 
 ## Confirmed preservation wins / false-positive exclusions
 
@@ -79,7 +79,7 @@ The recovered `.research/wiki/automated.md` contains **292 lines** with `COMPATI
 
 ### G4 — [34 UNMATCHED HISTORICAL IMAGE REFERENCES; ORIGINAL BYTES NOT IN ZIP]
 
-Scanned image URLs **introduced in all 2,140 commits** via `git log --all -p --unified=0`. Found **155 distinct numeric Bitbucket image IDs** (156 basename forms). Cross-referenced by numeric ID against all **124** files in tracked `.research/assets/`: **34 IDs have no tracked match**. This is a historical-reference inventory, **not** proof that all 34 files survive at their URL or are absent from every external mirror.
+Scanned image URLs **introduced in all 2,140 commits** via `git log --all -p --unified=0`. Found **155 distinct numeric Bitbucket image IDs** (filename-form count depends on URL decoding and markup cleanup). Cross-referenced by numeric ID against all **124** files in tracked `.research/assets/`: **34 IDs have no tracked match**. This is a historical-reference inventory, **not** proof that all 34 files survive at their URL or are absent from every external mirror.
 
 | IDs currently unmatched | Historical example |
 |---|---|
@@ -100,7 +100,7 @@ The supplied wiki ZIP includes Git text and image **references** only. It does *
 
 ### G5 — [INVENTORY REQUIRED] Historic download references and version variants
 
-Diff-scanning all Git history found **83 raw download-basename forms** (URL-encoded variants and strings bearing markup artifacts included), far more than the current hosted download list. This number is **not a missing-binary count**. Candidates to triage include older BATCHER revisions, ToolBox variants, older USB/SMB/HDD Quickstarter packages, IGR language texture packs, a Linux CUE2POPS source archive, and old uLE_kHn packages.
+Diff-scanning all Git history found **83 raw download-basename forms** (80 after URL decoding, markup cleanup and source-host filtering) (URL-encoded variants and strings bearing markup artifacts included), far more than the current hosted download list. This number is **not a missing-binary count**. Candidates to triage include older BATCHER revisions, ToolBox variants, older USB/SMB/HDD Quickstarter packages, IGR language texture packs, a Linux CUE2POPS source archive, and old uLE_kHn packages.
 
 Compare **individual content/sha/version**, archive mirrors, existing package internals and intentional safety exclusions before proposing to host any binary. Keep prohibited, copyrighted, flagged, or non-redistributable executables out. Store historical link metadata even when the binary is unavailable.
 
@@ -170,3 +170,7 @@ Original Git audit should be rerun against a **fresh, unchanged ZIP with verifie
 5. **Then** jointly decide whether to add an archival wiki-change log, corrected typography, individual asset references/assets, binary-link records, or historical version-specific sidebars.
 
 **Policy for PR #578:** research findings only; no published-page overwrites, no new unscreened binary attachments, no release packaging changes, no merge.
+
+### Git filename-census correction
+
+The early 248-path figure was inflated by `git log --numstat`'s brace-notation (`{old => new}`) rename expressions. Counting concrete old/new paths with `git log --all --name-status --find-renames` yields **164 distinct actual paths**. Operations: **82 additions, 1,894 modifications, 21 deletions, 88 renames**. The 248 figure must not be used as a historical page count.
