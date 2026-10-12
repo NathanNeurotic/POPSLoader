@@ -21,6 +21,9 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ## Immediate Priorities
 
+**POPS UDPFS / BDM-UDPFS Assault — Coming soon:** integrate [Okeanos's read-only UDPFS POPSTARTER fallback](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) with an independently working POPSLoader network VCD scanner, an explicit POPS UDPFS configuration editor and safe BDMA variant staging. This is documentation/planning only, **not implemented**. Gate release on actual device browsing, staging, failed-server handling, console testing, license notices, and removal of the site's **Coming soon** markers. See [docs/UDPFS_BDMA.md](docs/UDPFS_BDMA.md).
+
+
 ### 1) Cut BETA-13 — DONE (shipped as 1.0.0 on 2026-07-10, then 1.0.1 2026-07-13 and 1.1.0 2026-07-21; kept below as history)
 - The BETA-13 input/UX/cover work is in and the headline items are **hardware-confirmed**: up/down + analog-stick nav land on individual items with smooth continuous scroll (oldman63), boot sound saves and survives reboot (oldman63), cover art loads via the *Cover/details folder* setting (FifthFox, 2026-06-30), and "everything working fantastically" on the latest rolling (Nuno6573). See **STATE.md > Reported Hardware Status**.
 - Remaining BETA-13 eyeballs before the cut (none currently believed broken — all "awaiting a look"): the Overscan (CRT inset) render-inset on a real CRT; the `cover_default.png` + `cover_missing.png` overlay registration against the jewel-case window on **both** NTSC and PAL; the description right-stick scroll feel; and the HDD **Proposal A** scan-slot steering (deliberate HW test — see #5 below).
