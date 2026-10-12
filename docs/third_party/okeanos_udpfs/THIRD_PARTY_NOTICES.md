@@ -1,7 +1,7 @@
 # Third-party notices
 
 BDM-UDPFS Assault includes or derives from the works listed below. Each keeps its own license.
-The license of this project itself is in the `LICENSE` file.
+The license of this project itself is in the adjacent [LICENSE](LICENSE) file.
 
 | Component | Author / copyright | License | Where it is used |
 |---|---|---|---|
@@ -11,10 +11,10 @@ The license of this project itself is in the `LICENSE` file.
 | FatFs R0.14b | Copyright (C) 2014–2021, ChaN | FatFs license (1 condition, below) | `bdmfs_ff.c` and related FatFs files |
 | udpfsd | Copyright 2026 Ivan V (pcm720) | BSD-3-Clause (below) | reference for the protocol (no code copied) |
 
-Full license texts (AFL 2.0, AFL 3.0) are in the `licenses/` folder of `__bdm_udp_fs_assault`:
+The license texts are mirrored alongside this document:
 
-- `licenses/AFL-2.0.txt`
-- `licenses/AFL-3.0.txt`
+- [AFL 2.0](LICENSE)
+- [AFL 3.0](AFL-3.0.txt)
 
 ---
 
