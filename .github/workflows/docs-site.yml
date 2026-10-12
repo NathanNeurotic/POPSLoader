@@ -83,6 +83,9 @@ jobs:
       - name: Gate historical patch and download descriptions
         run: python3 .research/tools/audit_published_provenance.py
 
+      - name: Gate original Git archive identity and 2017 module correction
+        run: python3 .research/tools/audit_original_wiki_zip.py
+
       - name: Check emitted GitHub links name a live branch
         shell: bash
         run: |

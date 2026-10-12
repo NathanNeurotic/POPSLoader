@@ -18,13 +18,15 @@ ________________________________________________________________________________
 
 **5.** Then search for your specific IRX files. It can be one file or multiple files. For light gun, it might be USBD.IRX and USBGUN.IRX;
 
-**6.** Rename them as MODULE_1.IRX, MODULE_2.IRX, ... etc. You have to experiment to find the correct order. For light gun, first .IRX might be USBD.IRX and second .IRX USBD.IRX;
+**6.** Rename them as MODULE_1.IRX, MODULE_2.IRX, ... etc. You have to experiment to find the correct order. For light gun, first .IRX might be USBD.IRX and second .IRX USBGUN.IRX;
 
 **7.** Copy these files into POPS folder and run your game. If you got special device to work – have fun!
 
 **8.** If you have no luck – you can copy specific IOPRPxxx.IMG from your game into POPS folder and rename it as IOPRP252.IMG. In such way, you have to delete POPS.PAK and use only POPS.ELF + IOPRP252.IMG.
 
 **9.** If it still doesnt work, you can also try to add more modules from your game (repeat 6th step) or you can try to change modules order.
+
+**Source correction (2017-10-17):** The original wiki revised the example's second module from `USBD.IRX` to `USBGUN.IRX` in revision `f4210efed74840394474a502da259d733a03be22`. This preserves the source's example, not a guarantee that any particular light gun works.
 
 **Notes :**
 

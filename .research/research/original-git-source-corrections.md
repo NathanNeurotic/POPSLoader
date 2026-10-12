@@ -1,16 +1,16 @@
 # Source-correction and generated-link audit — original POPStarter wiki
 
-**Draft PR #578, research only; do not change the published wiki.** Comparison: AstroSnail-supplied original ShaolinAssassin Bitbucket wiki Git clone at final HEAD `960d675d278296a3a62143410b38aa8882d21a79`, versus POPSLoader's recovered Markdown pages on GitHub base commit `15ffb1c7c46e1643ab2869baf1b26718cf53a604`.
+**Historical research originally in PR #578. Confirmed light-gun text correction now implemented in the source on 2026-10-11; the other original wiki snapshots remain preserved.** Comparison: AstroSnail-supplied original ShaolinAssassin Bitbucket wiki Git clone at final HEAD `960d675d278296a3a62143410b38aa8882d21a79`, versus POPSLoader's recovered Markdown pages on GitHub base commit `15ffb1c7c46e1643ab2869baf1b26718cf53a604`.
 
-## C1 — [CONFIRMED CORRECTION MISSED] Light-gun example module order
+## C1 — [IMPLEMENTED — original 2017 correction restored] Light-gun example module order
 
 The recovered `.research/wiki/ps1-special-devices.md`, based primarily on a June 2017 Wayback snapshot, says in step 6 to use **USBD.IRX first and USBD.IRX second** when experimenting with light-gun devices. That duplication contradicts the same recovered page's step 5, which mentions `USBGUN.IRX`.
 
-The original wiki corrected this example on **2017-10-17 08:10:36 UTC** in commit **`f4210efed74840394474a502da259d733a03be22`**, authored in the wiki under ShaolinAssassin's name. The corrected step reads **USBD.IRX first and USBGUN.IRX second**. Original final file `ps1-special-devices.textile` preserves the correction, while our reconstructed Markdown **does not**.
+The original wiki corrected this example on **2017-10-17 08:10:36 UTC** in commit **`f4210efed74840394474a502da259d733a03be22`**, authored in the wiki under ShaolinAssassin's name. The corrected step reads **USBD.IRX first and USBGUN.IRX second**. Original final file `ps1-special-devices.textile` preserves the correction, and our reconstructed Markdown **now matches the original corrected example** after the one-word repair.
 
 Original credits: the tutorial is explicitly attributed to **AKuHAK**. Preserve that credit in any future correction. This is an example **for finding suitable IRX modules**, not a verified promise that a specific light gun works on every device or in USB mode. The original guidance explicitly says module order requires experimentation, and USB devices may fail in USB-mode POPS.
 
-**Proposed later action (requires maintainer approval):** correct only the duplicated word in modernized guide text and annotate the original correction revision. Keep the full text of the old snapshot separately if maintaining a strict historical facsimile.
+**Implemented:** updated only the duplicated module filename in `.research/wiki/ps1-special-devices.md` and annotated the 2017 revision. Retained original AKuHAK attribution and the uncertainty about experimental device compatibility. The original Wayback-captured versions in `.research/_versions/` were not rewritten.
 
 ## C2 — [PRESERVATION WIN: DO NOT RESTORE SOURCE TYPO] USB launcher example
 
