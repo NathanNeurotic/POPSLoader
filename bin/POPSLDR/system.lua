@@ -7890,6 +7890,9 @@ end
 -- reset and reads settings from USB. These must describe the same console.
 function PLDR.UdpfsStaticIp()
   local c = PLDR.SMB or {}
+  if c.DHCP == true then
+    return nil, "UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network."
+  end
   local ip = tostring(c.PS2_IP or "")
   local mask = tostring(c.NETMASK or "")
   local gw = tostring(c.GATEWAY or "0.0.0.0")
