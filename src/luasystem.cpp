@@ -1931,6 +1931,8 @@ static bool net_stack_attempted = false;
 static bool net_nic_claimed = false;
 static bool udpfs_nic_claimed = false;
 static bool udpfs_ioman_loaded = false;
+// The ministack holds its IP for the lifetime of this IOP session.
+static char udpfs_initialized_ip[16] = {0};
 static char SMB_IFNAME[] = "sm0";   // mutable: ps2ip_getconfig takes char*, not const char*
 
 bool EnsureDev9()
@@ -2168,7 +2170,12 @@ static int lua_smb_getipconfig(lua_State *L)
      if (net_stack_attempted || net_nic_claimed || net_irx_loaded || smb_irx_loaded) {
          lua_pushboolean(L,false); lua_pushstring(L,"NIC_BUSY_SMB"); return 2;
      }
-     if (udpfs_ioman_loaded) { lua_pushboolean(L,true); return 1; }
+     if (udpfs_ioman_loaded) {
+         if (strcmp(udpfs_initialized_ip, ip) != 0) {
+             lua_pushboolean(L,false); lua_pushstring(L,"UDPFS_IP_CHANGED_RESTART"); return 2;
+         }
+         lua_pushboolean(L,true); return 1;
+     }
      if (udpfs_nic_claimed) {
          lua_pushboolean(L,false); lua_pushstring(L,"NIC_PARTIAL_RESET"); return 2;
      }
@@ -2189,6 +2196,7 @@ static int lua_smb_getipconfig(lua_State *L)
      if (SifExecModuleBuffer(udpfs_ioman_irx,size_udpfs_ioman_irx,0,NULL,&result) < 0 || result < 0) {
          lua_pushboolean(L,false); lua_pushstring(L,"IOMAN_FAIL"); return 2;
      }
+     snprintf(udpfs_initialized_ip,sizeof(udpfs_initialized_ip),"%s",ip);
      udpfs_ioman_loaded = true;
      lua_pushboolean(L,true);
      return 1;
