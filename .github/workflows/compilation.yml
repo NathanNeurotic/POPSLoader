@@ -47,6 +47,9 @@ jobs:
       - name: Verify docs against source
         shell: bash
         run: python3 tools/docs_verify.py
+      - name: Verify Okeanos UDPFS integration and pinned binaries
+        shell: bash
+        run: python3 tools/test_udpfs_integration.py
 
   build:
     needs: lua-harness
