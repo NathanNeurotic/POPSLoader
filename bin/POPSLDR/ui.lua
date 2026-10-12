@@ -275,6 +275,12 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   -- EXACT game filename ONLY (maintainer directive, EXP71): <device>:/ART/
   -- <gamefilename>_COV.png. The disc-marker-stripped family name is GONE --
   -- tried first, it could shadow the exact per-disc art.
+  if string.match(string.lower(dir), "^udpfs:/pops/") then
+    -- Network games share the exact-basename ART convention with local games,
+    -- but may also keep their artwork beside the VCD. This second probe is
+    -- UDPFS-only; local device artwork policy and probe count stay unchanged.
+    return { artdir..name.."_COV.png", dir..name.."_COV.png" }
+  end
   return { artdir..name.."_COV.png" }
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
