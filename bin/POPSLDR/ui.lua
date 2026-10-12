@@ -3674,6 +3674,12 @@ UI = {
               return
             end
           end
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS"
+             and string.sub(tostring(rel or entry), -4) ~= ".VCD" then
+            unpaint()
+            UI.Notif_queue.add("Okeanos UDPFS requires uppercase .VCD filenames. Rename this image on your UDPFS server.", "error")
+            return
+          end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
           -- Skip the existence preflight on net-SMB too: per-file stat over the live
