@@ -7888,17 +7888,51 @@ end
 -- The menu-side filesystem uses its own ministack and a static IPv4 address,
 -- while Okeanos's runtime pair reinitializes the NIC *after* POPStarter's IOP
 -- reset and reads settings from USB. These must describe the same console.
+-- Keep this check independent from the legacy SMB settings editor: saved values
+-- and existing IPCONFIG.DAT can bypass field validation in the UI.
+local function ParseUdpfsIPv4(value)
+  local a, b, c, d = tostring(value or ""):match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+  if a == nil then return nil end
+  local parts = { a, b, c, d }
+  local octets = {}
+  for i = 1, 4 do
+    if #parts[i] > 3 then return nil end
+    octets[i] = tonumber(parts[i])
+    if octets[i] == nil or octets[i] > 255 then return nil end
+  end
+  return string.format("%d.%d.%d.%d", octets[1], octets[2], octets[3], octets[4]), octets
+end
+
+-- A valid IPv4 subnet mask consists of leading one bits followed only by
+-- zero bits; dotted-quad range checks alone accept unusable values.
+local function IsUdpfsContiguousMask(octets)
+  local found_zero = false
+  for i = 1, 4 do
+    for bit = 7, 0, -1 do
+      local set = math.floor(octets[i] / (2 ^ bit)) % 2 == 1
+      if not set then
+        found_zero = true
+      elseif found_zero then
+        return false
+      end
+    end
+  end
+  return true
+end
+
 function PLDR.UdpfsStaticIp()
   local c = PLDR.SMB or {}
   if c.DHCP == true then
     return nil, "UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network."
   end
-  local ip = tostring(c.PS2_IP or "")
-  local mask = tostring(c.NETMASK or "")
-  local gw = tostring(c.GATEWAY or "0.0.0.0")
-  if not string.match(ip, "^%d+%.%d+%.%d+%.%d+$")
-     or not string.match(mask, "^%d+%.%d+%.%d+%.%d+$") then
-    return nil, "Set a static PS2 IP and netmask in Settings > SMB / Network"
+  local ip, ip_octets = ParseUdpfsIPv4(c.PS2_IP)
+  local mask, mask_octets = ParseUdpfsIPv4(c.NETMASK)
+  local gw = ParseUdpfsIPv4(c.GATEWAY or "0.0.0.0")
+  if ip == nil or ip_octets[1] == 0 or ip_octets[1] == 127
+     or ip_octets[1] >= 224 or (ip_octets[1] == 169 and ip_octets[2] == 254)
+     or mask == nil or mask == "0.0.0.0" or mask == "255.255.255.255"
+     or not IsUdpfsContiguousMask(mask_octets) or gw == nil then
+    return nil, "Set a valid static PS2 IP, contiguous netmask and gateway in Settings > SMB / Network"
   end
   return ip, mask, gw
 end
