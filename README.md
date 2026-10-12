@@ -12,11 +12,13 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **[1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2)** (2026-09-30). At this release cut, `master`, `dev`, and `experimental` share the same commit and version stamp. Floating channel artifacts continue to publish from their respective branches.
+The current **official stable release** is **[1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2)** (2026-09-30). Development channels advance independently; the opt-in [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) and [experimental release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) are prereleases, not certified stable builds.
 
 ---
 
 ## Highlights
+
+**Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This is **not** included in official stable 1.2.2. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
 
 POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
 
@@ -284,6 +286,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
 *   **krHACKen**: Author of POPStarter.
+*   **[AstroSnail](https://github.com/AstroSnail)**: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See [provenance](.research/research/original-git-provenance.md).
 *   **Berion**: User interface design and theme assets.
 *   **[nuno6573](https://github.com/nuno6573)**: Cover-art engine integrations, scripting, and hardware testing.
 *   **Hugopocked**: POPStarter fixes.

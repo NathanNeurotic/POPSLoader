@@ -61,6 +61,15 @@ jobs:
           set -eu
           POPSLOADER_REPO="$GITHUB_WORKSPACE" python3 build_site.py
 
+      - name: Test cursor-orb behavior and generated assets
+        shell: bash
+        run: |
+          set -eu
+          node .research/tools/test_cursor_orbs.cjs
+          python3 .research/tools/guard_site_deploy.py self-test
+          python3 .research/tools/audit_legacy_pages.py self-test
+          python3 .research/tools/audit_legacy_pages.py offline .research/site
+
       - name: Audit (hard gate)
         shell: bash
         working-directory: .research
@@ -71,6 +80,12 @@ jobs:
       # Cheap invariants the audit does not cover. audit_site.py validates relative
       # links only and returns true for every http(s) href, which is exactly how 15
       # dead blob/BETA-13-PLAY/ links shipped unnoticed.
+      - name: Gate historical patch and download descriptions
+        run: python3 .research/tools/audit_published_provenance.py
+
+      - name: Gate original Git archive identity and 2017 module correction
+        run: python3 .research/tools/audit_original_wiki_zip.py
+
       - name: Check emitted GitHub links name a live branch
         shell: bash
         run: |
@@ -107,10 +122,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git fetch origin gh-pages --depth=1
           git worktree add ../ghp origin/gh-pages
+          # Refuse to erase site changes made directly on gh-pages.
+          # Edit .research/_srcassets or the site generator instead.
+          python3 .research/tools/guard_site_deploy.py check ../ghp
+          python3 .research/tools/audit_legacy_pages.py check ../ghp
+          python3 .research/tools/audit_legacy_pages.py retire ../ghp
+          python3 .research/tools/guard_site_deploy.py prune ../ghp .research/site
           # Overlay, never delete-then-copy: gh-pages carries files the build does not
           # emit, and a sync-by-deletion would drop them.
           cp -r .research/site/* ../ghp/
           cp .research/site/.nojekyll ../ghp/.nojekyll
+          python3 .research/tools/guard_site_deploy.py record ../ghp .research/site
+          python3 .research/tools/audit_legacy_pages.py verify ../ghp
           cd ../ghp
           git add -A
           if git diff --cached --quiet; then

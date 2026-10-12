@@ -64,6 +64,15 @@ sections_md   = md_text('sections.md')
 ambiguities_md= md_text('ambiguities.md')
 
 # recovered downloads (apply exclusions)
+# Optional historical source: never publish an altered or missing Git archive.
+ORIGINAL_GIT_ARCHIVE = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
+ORIGINAL_GIT_SHA256 = 'd0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a'
+original_git_path = os.path.join(DL, ORIGINAL_GIT_ARCHIVE)
+if os.path.isfile(original_git_path):
+    with open(original_git_path, 'rb') as _original_git_file:
+        actual_hash = hashlib.sha256(_original_git_file.read()).hexdigest()
+    if actual_hash != ORIGINAL_GIT_SHA256:
+        raise RuntimeError('Original Bitbucket wiki ZIP SHA-256 mismatch; refusing to publish')
 dl_files = []
 if os.path.isdir(DL):
     for f in sorted(os.listdir(DL)):
@@ -310,7 +319,7 @@ def shell(title, body, active, base=''):
   <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
   emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
   own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
-  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b> — see <a href="{base}credits.html">Credits</a>.</p>
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="{base}credits.html">Credits</a>.</p>
 </footer>
 <script src="{base}assets/app.js"></script>
 </body></html>'''
@@ -721,59 +730,189 @@ def dl_note(fn):
     return ''
 
 def build_dl_manifest():
-    mpath = os.path.join(ROOT, '_tmp', 'dl_manifest.tsv')
-    if not os.path.exists(mpath):
-        return ''
-    def norm(s):
-        return re.sub(r'[^a-z0-9]', '', os.path.splitext(s)[0].lower())
-    have_map = {norm(x): x for x in dl_files}   # base-name -> actual hosted file (matches .7z<->.zip variants)
-    mirrors = {}
-    fp = os.path.join(ROOT, '_tmp', 'found_mirrors.tsv')
-    if os.path.exists(fp):
-        for l in open(fp, encoding='utf-8'):
-            p = l.rstrip('\n').split('\t')
-            if len(p) >= 2 and p[1].strip():
-                mirrors[p[0].lower()] = p[1].strip()
-    rows = []; n_rec = n_lost = n_mir = 0
-    for l in open(mpath, encoding='utf-8'):
-        p = l.rstrip('\n').split('\t')
-        if len(p) < 2:
+    """Show every traced historical filename, even if its binary is unverified.
+
+    The tracked TSV is an archive *reference inventory*, not a distribution
+    manifest. Never equate same-base ZIP/7z formats with byte-identical files.
+    """
+    import csv
+    catalog = os.path.join(RES, 'original-download-catalog.tsv')
+    if not os.path.isfile(catalog):
+        raise FileNotFoundError('Tracked original download catalog missing: ' + catalog)
+    with open(catalog, encoding='utf-8', newline='') as fh:
+        entries = list(csv.DictReader((line for line in fh if not line.startswith('#')),
+                                      delimiter='\t'))
+    if not entries:
+        raise ValueError('Original historical download inventory is empty')
+
+    def filename_match(name):
+        return next((host for host in dl_files if host.lower() == name.lower()), None)
+
+    def alt_match(name):
+        """Candidate alternate archive: no implication of payload equivalence."""
+        key = re.sub(r'[^a-z0-9]', '', os.path.splitext(name)[0].lower())
+        return next((host for host in dl_files
+                     if re.sub(r'[^a-z0-9]', '', os.path.splitext(host)[0].lower()) == key), None)
+
+    # The original indexed upload size is evidence of a different file, not a
+    # checksum. Other same-name archives stay "original bytes unverified".
+    original_listed_sizes = {
+        'nopal_patch.7z': ('226 bytes', 226),
+        'network_modules.7z': ('59.0 KB', None),  # Bitbucket rounded display
+    }
+    seen = set()
+    counts = dict(available=0, alternative=0, unverified=0, withheld=0, invalid=0)
+    rows = []
+    for entry in entries:
+        fn = entry.get('filename', '').strip()
+        if not fn:
             continue
-        fn, status = p[0], p[1]
-        if norm(fn) in have_map:
-            actual = have_map[norm(fn)]
-            badge = '<span class="badge primary">recovered</span>'
-            extra = '' if norm(actual) == norm(fn) and actual == fn else f' <span class="prov-inline">(as {html.escape(actual)})</span>'
-            cell = f'<a href="downloads/{html.escape(actual)}" download>download ↓</a>{extra}'; n_rec += 1
-        elif status == 'excluded':
-            badge = '<span class="badge unconfirmed">withheld</span>'
-            cell = 'Withheld per publishing policy'
-        elif fn.lower() in mirrors:
-            badge = '<span class="badge secondary">mirror</span>'
-            cell = f'<a href="{html.escape(mirrors[fn.lower()])}">external mirror ↗</a>'; n_mir += 1
+        if fn.casefold() in seen:
+            raise ValueError('Duplicate original download catalogue name: ' + fn)
+        seen.add(fn.casefold())
+        kind = entry.get('status', '').strip()
+        ref = entry.get('source_reference', '').strip()
+        uploader = entry.get('original_uploader', '').strip()
+        up_date = entry.get('original_date', '').strip()
+        size = entry.get('original_size_displayed', '').strip()
+        if kind == 'withheld':
+            state = 'Withheld'
+            detail = 'Listed for completeness; not offered under the archive publishing policy.'
+            counts['withheld'] += 1
+        elif kind == 'invalid_reference':
+            state = 'Invalid historical reference'
+            detail = 'Malformed, truncated or unrelated original reference; no file is asserted.'
+            counts['invalid'] += 1
         else:
-            badge = '<span class="badge unconfirmed">lost</span>'
-            cell = 'Only the bitbucket download-<em>page</em> survives on Wayback'; n_lost += 1
-        # For a RECOVERED row prefer the audited card note, keyed by the exact hosted
-        # filename. dl_note() matches by substring, so 'quickstarter_pack' labelled all
-        # four packs "Older pack; the 2020 .zip version is recovered above" -- including
-        # the 2020 packs that ARE the current ones. dl_note() still serves the lost and
-        # mirror-only rows, which have no card.
-        note = ''
-        if norm(fn) in have_map:
-            note = DL_CARD_NOTES.get(have_map[norm(fn)], '')
-        if not note:
-            note = dl_note(fn)
-        rows.append(f'<tr><td><code>{html.escape(fn)}</code></td><td>{badge}</td>'
-                    f'<td>{cell}{(" — " + note) if note else ""}</td></tr>')
-    return (f'<h2 id="archive-index">Complete original download index</h2>'
-            f'<p class="lead">The full set of files ShaolinAssassin offered on the original bitbucket downloads '
-            f'page — preserved here as a permanent record of <em>what once was</em> ({n_rec} recovered · '
-            f'{n_mir} via mirror · {n_lost} lost). “Lost” means only the bitbucket download <em>page</em> (HTML) '
-            f'survives in the Wayback Machine, not the binary — but many such files’ contents still live inside '
-            f'the recovered packs above. Click a header to sort.</p>'
-            f'<table data-sortable><thead><tr><th>File</th><th>Status</th><th>Where / note</th></tr></thead><tbody>'
-            + ''.join(rows) + '</tbody></table>')
+            actual = filename_match(fn)
+            if actual:
+                actual_size = os.path.getsize(os.path.join(DL, actual))
+                old_size = original_listed_sizes.get(fn.lower())
+                mismatch = False
+                if old_size:
+                    listed_text, exact_size = old_size
+                    # The original "59.0 KB" may have used either decimal KB or KiB;
+                    # the very different 93,934-byte copy is outside both ranges.
+                    mismatch = (actual_size != exact_size if exact_size is not None
+                                else not (58000 <= actual_size <= 62000))
+                if mismatch:
+                    state = 'Available copy; provenance unverified'
+                    extra = (' <strong>Historical size discrepancy:</strong> Bitbucket listed '
+                             + html.escape(listed_text) + '; hosted copy is '
+                             + str(actual_size) + ' bytes.')
+                else:
+                    state = 'Available copy; original identity unverified'
+                    extra = ''
+                detail = ('<a href="downloads/' + html.escape(actual, quote=True)
+                          + '" download>Download available copy</a>' + extra)
+                if fn.casefold() == 'nopal_patch.7z':
+                    detail = detail.replace('Download available copy',
+                                            'Download current archival copy (not original $NOPAL)')
+                    detail += (' <strong>Not verified for PAL disabling.</strong> '
+                               'This hosted 188-byte file describes an IGR ELF-loader unhook; '
+                               'the 2017 original was 226 bytes.')
+                counts['available'] += 1
+            else:
+                candidate = filename_match(ref) if kind in ('possible_variant',
+                                                              'possible_bundle_member') else None
+                if not candidate and kind == 'possible_variant':
+                    candidate = alt_match(fn)
+                if candidate:
+                    state = 'Alternative available; unverified'
+                    detail = ('<a href="downloads/' + html.escape(candidate, quote=True)
+                              + '" download>Download candidate: '
+                              + html.escape(candidate) + '</a>'
+                              + ' — not confirmed equivalent to the original file.')
+                    counts['alternative'] += 1
+                else:
+                    state = ('Historical upload; file unverified / unavailable'
+                             if uploader else 'Historical reference; file unverified / unavailable')
+                    detail = 'Original file bytes not recovered or verified. No download link.'
+                    counts['unverified'] += 1
+        meta = []
+        if size:
+            meta.append('Original listing: ' + size)
+        if up_date:
+            meta.append('Uploaded ' + up_date)
+        if uploader:
+            meta.append('by ' + uploader + ' (listed uploader, not necessarily author)')
+        if ref and len(ref) <= 100:
+            meta.append('Source: ' + ref)
+        meta_html = ('<span class="prov-inline">' +
+                     html.escape(' · '.join(meta)) + '</span>') if meta else ''
+        badge = ('<span class="badge primary">' if counts and state.startswith('Available copy') else
+                 '<span class="badge unconfirmed">')
+        rows.append('<tr><td><code>' + html.escape(fn) + '</code></td><td>' +
+                    badge + html.escape(state) + '</span></td><td>' +
+                    detail + ('<div>' + meta_html + '</div>' if meta_html else '') +
+                    '</td></tr>')
+
+    intro = ('<h2 id="archive-index">Historical download catalogue — verified and unverified</h2>'
+             '<p class="lead">All ' + str(len(rows)) + ' distinct historical file-name/reference forms '
+             'documented in the original Git wiki, older recovery index, and surviving '
+             '<a href="https://archive.ph/PBG1V">Bitbucket uploads listing</a>. '
+             'The listing is partial; multiple names may refer to alternate '
+             'versions or the same tool. <b>Nothing is omitted for being unverified.</b> '
+             'A historical upload record proves a filename was listed, '
+             '<b>not</b> that its original file bytes survived. '
+             + str(counts['available']) + ' available under the named file, ' +
+             str(counts['alternative']) + ' possible alternate packages, ' +
+             str(counts['unverified']) + ' not recovered / unverified, ' +
+             str(counts['withheld']) + ' withheld, ' +
+             str(counts['invalid']) + ' invalid references. '
+             'Same-name files can still differ: <code>NOPAL_PATCH.7z</code> and '
+             '<code>network_modules.7z</code> have documented original-size discrepancies. '
+             'For authenticated archival equivalence, compare original payload hashes.</p>')
+    return (intro + '<table data-sortable><thead><tr><th>Historical name</th>'
+            '<th>Verification status</th><th>Source and availability</th></tr>'
+            '</thead><tbody>' + ''.join(rows) + '</tbody></table>')
+
+
+def build_original_image_gap_index():
+    """Original Git source references missing from the tracked recovered assets.
+
+    This is an index of original image identifiers, NOT a replacement image
+    downloader, and does not claim that every ID denotes unique image bytes.
+    """
+    path = os.path.join(RES, 'original-git-unmatched-images.tsv')
+    if not os.path.isfile(path):
+        raise FileNotFoundError('Missing tracked original image reference inventory')
+    from_head = set('1094748012 1450475876 1720317623 1731981611 '
+                    '2425094621 2636724756 270560112 3117688129 '
+                    '3801833563 3811602128 3844714277 4095826607 '
+                    '4249513129 4286767539 446039127 471851278 '
+                    '65599370 727086931 997655191'.split())
+    records = []
+    seen = set()
+    for line in open(path, encoding='utf-8'):
+        if not line.strip() or line.startswith('#'):
+            continue
+        parts = line.rstrip('\n').split('\t')
+        if len(parts) < 4:
+            raise ValueError('Malformed original image inventory entry')
+        ident, name, source, state = parts[:4]
+        if ident in seen:
+            raise ValueError('Duplicate original image numeric ID: ' + ident)
+        seen.add(ident)
+        records.append((ident, name, source, state))
+    if len(records) != 34 or len(seen & from_head) != 19:
+        raise ValueError('Original image inventory totals unexpectedly changed')
+    lines = []
+    for ident, name, source, last_attempt in records:
+        era = 'Original 2024 wiki HEAD' if ident in from_head else 'Historical revision only'
+        lines.append('<tr><td><code>' + html.escape(ident) + '</code></td><td>' +
+                     html.escape(name) + '</td><td>' + html.escape(source) +
+                     '</td><td>' + era + '</td><td>Not recovered by original ID; ' +
+                     html.escape(last_attempt) + '</td></tr>')
+    return ('<details class="deep"><summary>34 original screenshot/image references not recovered '
+            '(19 in final wiki / 15 older only)</summary>'
+            '<p>These are historical Bitbucket image identifiers, not verified distinct '
+            'unavailable image byte streams. Existing recovered galleries contain 98 '
+            'working images; that does not imply these 34 original references survived. '
+            'No substitution or invented screenshot is offered.</p>'
+            '<table data-sortable><thead><tr><th>Image ID</th><th>Historic filename</th>'
+            '<th>Original page</th><th>Scope</th><th>Recovery state</th></tr></thead><tbody>' +
+            ''.join(lines) + '</tbody></table></details>')
 
 def human(n):
     for u in ('B', 'KB', 'MB'):
@@ -801,7 +940,7 @@ DL_GROUPS = [
     ("When one game misbehaves",
      "Drop-in files for a single problem game that glitches, crashes, or comes out at the wrong speed. Put one in that game's VMC folder to affect only that game, or in the POPS folder to affect all of them, and try one at a time.",
      "PS2",
-     ["TROJAN_7.zip", "Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "NOPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
+     ["TROJAN_7.zip", "Compatibility_Modes.zip", "FORCEPAL_PATCH.7z", "CHEATS.TXT", "SAMPLE_CHEATS.TXT"]),
     ("Optional add-ons",
      "None of this is needed to play a game. Come back once your setup is running.",
      "PS2",
@@ -814,8 +953,17 @@ DL_GROUPS = [
      "Superseded. Nothing here does anything the 2019 release does not. They are kept because this is an archive, and because each one carries a document or a tool that the final release dropped.",
      "PS2",
      ["POPStarter_r13_RIP_06.zip", "POPStarter_r13_WIP_06_OBT_20170128.zip", "POPStarter_HDD_Quickstarter_Pack_20171027.7z"]),
+    ("Unverified historical patch — archival copy only",
+     "The hosted 188-byte NOPAL-named archive contains an IGR ELF-loader-labelled PATCH_9.BIN, NOT a verified copy of the missing 2017 226-byte PAL patch. Keep for research, not game fixes.",
+     "Historical / not recommended for gameplay",
+     ["NOPAL_PATCH.7z"]),
+    ("Original Bitbucket wiki — complete Git history",
+     "Original ShaolinAssassin wiki Git history supplied by AstroSnail, including 2,140 commits and deleted pages (2016–2024). This is archival source documentation, not a POPStarter release.",
+     "PC — historical reference",
+     ["popstarter-documentation-stuff-wiki-git-20240731.zip"]),
 ]
 DL_CARD_NOTES = {
+    "popstarter-documentation-stuff-wiki-git-20240731.zip": "AstroSnail-contributed original wiki Git history (2,140 commits, 61 current source pages, 2016–2024), including deleted pages. SHA-256: d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a. Reference only; not a launcher.",
     "POPStarter_USB_Quickstarter_Pack_20200209.zip": "Games on a USB stick. The final launcher for mass:/POPS, CUE2POPS for your PC, and the special uLaunchELF build (uLE_kHn 2019-11-10) that runs a .VCD straight from the file browser so you never rename an ELF.",
     "POPStarter_HDD_Quickstarter_Pack_20200209.zip": "Games on the PS2's internal hard drive. Same launcher, converter and special uLaunchELF, plus RadHostClient 1.8a for sending .VCD files to the __.POPS partition over your home network.",
     "POPStarter_SMB_Quickstarter_Pack_20200209.zip": "Games in a shared folder on your PC. Same launcher and converter, plus a ready-made mc0:/POPSTARTER folder of network modules and the two .DAT files you fill in with your IP address and share name. This is the one pack with no uLaunchELF.",
@@ -828,35 +976,10 @@ DL_CARD_NOTES = {
     "TROJAN_7.zip": "TROJAN_7.BIN, krHACKen's cumulative per-game fix bundle (2020-04-02 / 2020-05-20 r7). Patches POPStarter globally for titles that glitch or freeze (e.g. Speedball 2100). Place in POPS/ or a game's VMC folder. Do not stack with Hugopocked per-game fixes.",
     "Compatibility_Modes.zip": "PATCH_1.BIN to PATCH_7.BIN, one per compatibility mode 0x01 to 0x07, with the README explaining what each mode fixes. Try one at a time; modes 1, 2, 3 and 5 are variants of the same hack and must never be combined.",
     "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
-    "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
+    "NOPAL_PATCH.7z": "ARCHIVAL / UNVERIFIED FOR $NOPAL. The hosted 188-byte file contains PATCH_9.BIN labelled as an IGR ELF-loader unhook. The original 2017 226-byte PAL-disabling archive has NOT been recovered. Do not apply this download as a PAL fix; the historical CHEATS.TXT $NOPAL command is separately documented.",
     "CHEATS.TXT": "Every $ command POPStarter understands in one file, with the $ deliberately stripped so nothing fires by accident. Put it in your POPS folder and add the $ back to the lines you want, or copy those lines into a single game's CHEATS.TXT.",
     "SAMPLE_CHEATS.TXT": "A real filled-in cheat file (Crash Bash, annotated in Italian) showing how GameShark and Action Replay codes are laid out inside one game's folder. The worked example, not a command list.",
-    "network_modules.7z": "The whole mc0:/POPSTARTER folder for network play: the six SMB modules, the two .DAT files to edit with your network settings, and a memory-card icon. It goes on the memory card, not next to your games. Newer than the copy inside the SMB pack, which has no icon and no 2023-dated usbd.irx / usbhdfsd.irx.",
-    "DS3_modules_USB_20171017.7z": "DualShock 3 over a USB cable. Two IRX files that go loose in your POPS folder exactly as they are, never inside a game's VMC folder. Documented as working on the WIP 06 and RIP 06 launchers only, and not on the prototypes.",
-    "DS3_modules_BT_20171017.7z": "The same thing over Bluetooth; only MODULE_2.IRX differs between the two packs. Same POPS-folder placement and the same launcher caveat as the USB pack.",
-    "IGR_textures_-_Chinese_pack.7z": "Puts the \"return to the PlayStation 2 main menu?\" confirmation screen into Chinese. It is a .ppf you apply on your PC over your own POPS.ELF with a PPF patcher, not a folder drop-in. The only one of the seven language packs the wiki listed that survived.",
-    "POPStarter_r13_Beta_20190605.zip": "Rev 13 Beta, 5 June 2019, the last public release. Its POPSTARTER.ELF is byte-identical to the one in all three packs above; what it adds is POPSTARTER.KELF, for installing a game into the PS2 Browser 2.00 (HDDOSD) as its own PP. partition, plus the full 38 KB changelog.",
-    "POPStarter_r13_RIP_06.zip": "Rev 13 RIP 06, October 2017: the previous public release, and the exact launcher the 2017 hard-drive pack ships. The only package carrying FIXES.TXT, the list of games POPStarter auto-patches.",
-    "POPStarter_r13_WIP_06_OBT_20170128.zip": "Rev 13 WIP 06 Beta 17, January 2017, the pre-RIP development line. Also the only surviving source of DEBUG_AND_HALT.PPF, and it bundles a CUE2POPS with POPS2CUE plus the SMB sample .DAT files.",
-    "POPStarter_HDD_Quickstarter_Pack_20171027.7z": "The 2017 edition of the hard-drive pack, built on the RIP 06 launcher. Use the 2020 .zip instead; this is kept because it is the only place the older uLE_kHn 2016-07-23 browser survives.",
-}
-DL_CARD_PILL = {
-    "POPStarter_USB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "POPStarter_HDD_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "POPStarter_SMB_Quickstarter_Pack_20200209.zip": "PS2 + PC",
-    "CUE2POPS_2.3.zip": "PC",
-    "cdmage1-02-1b5.zip": "PC",
-    "pfsshell-0.2a.7z": "PC",
-    "pfsshell-0.2a.zip": "PC",
-    "RadHostClient_1.8a.7z": "PC",
-    "RadHostClient.zip": "PC",
-    "TROJAN_7.zip": "PS2",
-    "Compatibility_Modes.zip": "PS2",
-    "FORCEPAL_PATCH.7z": "PATCH_8.BIN, the file form of $FORCEPAL. Forces POPStarter's PAL patcher on and sets the BIOS region to Euro, for PAL discs whose bootsector lost its licence text.",
-    "NOPAL_PATCH.7z": "PATCH_9.BIN, the file form of $NOPAL. Turns POPStarter's PAL patcher off. It is the opposite of the file above, so never use both, and it does not convert an NTSC game to PAL.",
-    "CHEATS.TXT": "Every $ command POPStarter understands in one file, with the $ deliberately stripped so nothing fires by accident. Put it in your POPS folder and add the $ back to the lines you want, or copy those lines into a single game's CHEATS.TXT.",
-    "SAMPLE_CHEATS.TXT": "A real filled-in cheat file (Crash Bash, annotated in Italian) showing how GameShark and Action Replay codes are laid out inside one game's folder. The worked example, not a command list.",
-    "network_modules.7z": "The whole mc0:/POPSTARTER folder for network play: the six SMB modules, the two .DAT files to edit with your network settings, and a memory-card icon. It goes on the memory card, not next to your games. Newer than the copy inside the SMB pack, which has no icon and no 2023-dated usbd.irx / usbhdfsd.irx.",
+    "network_modules.7z": "Currently hosted 93,934-byte archive; its six SMB drivers were independently SHA-256-matched against the 2020 SMB Quickstarter ZIP. It also includes USB IRXs and configuration/icon assets. NOT verified as the original 2017 Bitbucket network_modules.7z, listed at 59.0 KB; no original driver-build date is established. Install modules under the POPSTARTER memory-card folder supported by your release.",
     "DS3_modules_USB_20171017.7z": "DualShock 3 over a USB cable. Two IRX files that go loose in your POPS folder exactly as they are, never inside a game's VMC folder. Documented as working on the WIP 06 and RIP 06 launchers only, and not on the prototypes.",
     "DS3_modules_BT_20171017.7z": "The same thing over Bluetooth; only MODULE_2.IRX differs between the two packs. Same POPS-folder placement and the same launcher caveat as the USB pack.",
     "IGR_textures_-_Chinese_pack.7z": "Puts the \"return to the PlayStation 2 main menu?\" confirmation screen into Chinese. It is a .ppf you apply on your PC over your own POPS.ELF with a PPF patcher, not a folder drop-in. The only one of the seven language packs the wiki listed that survived.",
@@ -878,7 +1001,7 @@ DL_CARD_PILL = {
     "TROJAN_7.zip": "PS2",
     "Compatibility_Modes.zip": "PS2",
     "FORCEPAL_PATCH.7z": "PS2",
-    "NOPAL_PATCH.7z": "PS2",
+    "NOPAL_PATCH.7z": "Archive only — unverified",
     "CHEATS.TXT": "edit + copy",
     "SAMPLE_CHEATS.TXT": "edit + copy",
     "network_modules.7z": "PS2",
@@ -932,6 +1055,17 @@ def build_downloads():
               + '<br>'.join(f'<b>{html.escape(n)}</b> — MD5 <code>{h}</code>' for n, h in HOMEBREW_MD5.items())
               + ' <span class="prov-inline">(<code>.KELF</code> = the encrypted form for HDDOSD <code>PP.&lt;game&gt;</code> installs)</span></div>')
     manifest = build_dl_manifest()
+    # A catalogued archive is not a download until the actual original bytes exist.
+    wiki_zip = 'popstarter-documentation-stuff-wiki-git-20240731.zip'
+    wiki_zip_pending = ''
+    if wiki_zip not in dl_files:
+        wiki_zip_pending = ('<h2>Original wiki Git history ZIP — not yet hosted</h2>'
+                            '<p class="lead"><b>AstroSnail</b> preserved the original '
+                            'ShaolinAssassin wiki Git clone (2,140 commits, 2016–2024). '
+                            'The byte-identical ZIP is available to the maintainer but '
+                            'has not yet been uploaded here. <b>Status: not hosted; no download link.</b> '
+                            'SHA-256: <code>d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a</code>. '
+                            'This is archival source, not a launcher release.</p>')
     # images that were referenced but never archived as the binary (preserve the record)
     lost_imgs = []
     sp = os.path.join(ROOT, '_state', 'assets_done.tsv')
@@ -947,30 +1081,37 @@ def build_downloads():
                     seen.add(fn.lower()); lost_imgs.append(fn)
     img_ledger = ''
     if lost_imgs:
-        img_ledger = ('<h2>Lost wiki images</h2><p class="lead">Comparison/screenshot images referenced by the '
-                      'wiki that the Wayback Machine never archived as the actual image file. Recorded for '
+        img_ledger = ('<h2>Unrecovered historical image references</h2><p class="lead">Comparison/screenshot images referenced by the '
+                      'wiki whose original image bytes are absent from tracked assets. Recorded for '
                       f'completeness ({len(lost_imgs)}).</p><p>'
                       + ' '.join(f'<span class="pill">{html.escape(i)}</span>' for i in sorted(lost_imgs)) + '</p>')
-    archive_card = ('<div class="archive-cta"><div class="h">Download the complete archive (offline)</div>'
-                    '<p>Grab the <b>entire</b> recovered documentation set as one self-contained <code>.zip</code> — '
+    archive_card = ('<div class="archive-cta"><div class="h">Download generated documentation (offline)</div>'
+                    '<p>Grab the <b>generated</b> documentation set as one self-contained <code>.zip</code> — '
                     'all 63 wiki pages, every reference page (glossary, FAQ, command index, the full thread study), '
-                    'the recovered downloads, the menu images, <i>and</i> the raw source markdown. Open '
+                    'the generator-hosted downloads, the menu images, <i>and</i> the raw source markdown. Older Pages-only legacy files are retained separately pending provenance review. Open '
                     '<code>index.html</code> inside it to browse the whole site offline. Contains '
                     '<b>no Sony binaries</b>.</p>'
                     '<a class="btn" href="popstarter-docs-archive.zip" download> Download the full archive (__ARCHIVE_SIZE__)</a>'
                     '</div>')
     body = f'''<h1>Downloads</h1>
-<p class="lead">Every POPStarter-related file recovered from the archive, served locally so it never 404s again.
+<p class="lead">Every POPStarter file in the tracked generator-hosted download collection, together with a separate inventory of historical references. Legacy Pages-only assets are retained separately pending individual review.
 {len(dl_files)} files (POPStarter builds, Quickstarter packs, tools, patches &amp; cheat references) —
 all verified to contain <b>no Sony emulator binaries</b>.</p>
 <div class="callout info"><div class="h">Which of these do I need?</div>{html.escape(DL_INTRO)}</div>
 {archive_card}
+<div class="callout amber"><div class="h">Historical NOPAL patch name conflict</div>
+The original <code>NOPAL_PATCH.7z</code> was listed in 2017 as <b>226 bytes</b> and is not recovered.
+The currently hosted <b>188-byte</b> archive is labelled with an <b>IGR ELF-loader</b> unhook instead.
+It remains available as an <b>archival copy</b>, but <b>not a verified <code>$NOPAL</code> PAL patch</b>.
+The hosted <code>network_modules.7z</code> also differs from its 2017 original listing, though its six SMB drivers match the independently unpacked 2020 Quickstarter.
+See the <a href="https://github.com/NathanNeurotic/POPSLoader/blob/master/.research/research/original-git-hosted-patch-archive-inspection.md">provenance investigation</a>.</div>
 <div class="callout info"><div class="h">About POPS</div>The POPS emulator (Sony copyright) is <b>not</b>
 distributed here. Verify your own legally-obtained files against the checksums ShaolinAssassin published:</div>
 {md5}
 {hb_md5}
 {''.join(cards)}
 {manifest}
+{wiki_zip_pending}
 {img_ledger}'''
     write('downloads.html', shell('Downloads', body, 'downloads'))
 
@@ -1026,6 +1167,7 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
 <tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
+<tr><td>UDPFS Files PS1 VCDs <em>(Coming soon)</em></td><td>read-only UDPFS fallback after USB</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> POPSLoader integration: Coming soon</td></tr>
 <tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
@@ -1037,6 +1179,13 @@ validating on hardware). Everything except an APA/PFS internal HDD goes through 
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
 iLink backend extends the same BDM mechanism but is not hardware-tested yet. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div>'''
+
+POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
+POPSLoader is preparing a PS1 VCD network page and driver-staging support for
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault (Alpha)</a>.
+POPSTARTER reads USB first, then requests missing VCD files from a UDPFS server using its read-only fallback.
+The upstream Alpha exists today; POPSLoader integration is <em>Coming soon</em> and is not included in current releases.
+See the <a href="popsloader/udpfs-bdma.html">planned setup, files and credits</a>. This is not UDPBD or Neutrino&#39;s PS2 UDPFS mode.</div>'''
 
 HUGOPOCKED = '''<h2 id="hugopocked">Hugopocked fixes — the leading community compatibility pack</h2>
 <p class="lead">When POPS' built-in fixes and the compatibility modes above aren't enough, <b>Hugopocked's per-game
@@ -1146,9 +1295,11 @@ def build_sections():
          'walk-through</a> and grab the tool from the <a href="downloads.html">Downloads</a> page.</div>' +
          EQUIV_TABLE +
          '<div class="callout amber"><div class="h">Same filename, different file — check before you drop it in</div>'
-         'Two patch names carry two unrelated roles across sources. <code>PATCH_9.BIN</code>: the stock '
-         '<b>disable-PAL-patcher</b> patch (= <code>$NOPAL</code>) <i>and</i> the <b>disable-ELF-loader</b> fix '
-         'krHACKen posted for the BOOT.ELF black-screen-on-exit bug. <code>PATCH_5.BIN</code>: a stock '
+         'The <code>PATCH_9.BIN</code> basename was reused for two different developer patches. The early '
+         'PAL-disabling patch corresponded to the historical <code>$NOPAL</code> setting; the later patch '
+         'unhooks the ELF loader for IGR. The hosted 188-byte <code>NOPAL_PATCH.7z</code> is labelled as the '
+         'IGR-purpose patch, while the original 2017 226-byte PAL archive is absent. '
+         '<b>Do not apply the hosted file as a verified PAL workaround.</b> <code>PATCH_5.BIN</code>: a stock '
          'compatibility-mode patch <i>and</i> the custom <b>IGR texture pack</b> shipped in El_isra\'s POPSLoader. '
          'Confirm which one you have.</div>'
          '<div class="callout info"><div class="h">TROJAN_7.BIN — the farewell cumulative</div>'
@@ -1226,7 +1377,7 @@ def build_sections():
     page('storage', 'Storage Backends',
          'Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, SMB, plus '
          'the modern MMCE / MX4SIO / exFAT backends — and the launch methods and per-mode ELF prefixes.',
-         DEVICE_MATRIX +
+         DEVICE_MATRIX + POPS_UDPFS_CALLOUT +
          wiki_content(['usb-mode', 'hdd-mode', 'smb-mode', 'ps1cd-mode']) +
          section_prose(['storage backends', 'launch methods']) +
          firstparty('verified-setups.md') +
@@ -1298,11 +1449,15 @@ def build_sections():
          wiki_content(['timeline', 'chronology', 'poc2-pops-00001-era']) +   # proto.md = French dup of the changelog; kept as a standalone page
          '<h2>krHACKen\'s changelog</h2>' + wiki_content(['popstarter-changelog']) +
          firstparty('thread-history.md') +
+         firstparty('original-wiki-git-historical-additions.md') +
+         build_original_image_gap_index() +
          '<h2>More sources</h2>' + wiki_links(['apps-last-version', 'related-stuff']) +
          '<div class="callout info"><div class="h">How this archive was recovered</div>Every page was pulled '
          'from the Wayback Machine across all archived snapshots, extracted to markdown, de-duplicated, and merged '
-         'so each page is more complete than any single live snapshot ever was. Downloads were recovered the same '
-         'way and verified by magic-byte.</div>' +
+         'so each page is more complete than any single live snapshot ever was. AstroSnail also '
+         'provided the original Bitbucket wiki Git history, including deleted pages and original authors. '
+         'Only hosted downloads are treated as available; the historical download catalogue '
+         'retains all unverified and withheld references.</div>' +
          ('<details class="deep"><summary>Key facts (cross-sourced)</summary>' + cards_for(['history']) + '</details>'
           if any(e.get('category') == 'history' for e in entries) else ''))
 
@@ -1323,6 +1478,7 @@ POPSLOADER_DOCS = [
     ('TESTING.md', 'Testing'),
     ('CONTRIBUTING.md', 'Contributing'),
     ('docs/LAUNCH_ARGUMENTS.md', 'Launch arguments'),
+    ('docs/UDPFS_BDMA.md', 'POPS UDPFS / BDM-UDPFS Assault — Coming soon'),
     ('docs/PRESERVATION_CONTRACTS.md', 'Preservation contracts'),
 ]
 def pl_slug(path):
@@ -1419,7 +1575,7 @@ def build_popsloader():
              'menu — launched with <code>reboot_iop=0</code> for a clean handoff. '
              '<i>(Some third-party docs describe this as a &ldquo;Triangle&nbsp;=&nbsp;relaunch BOOT.ELF&rdquo; '
              'shortcut; in this fork Triangle opens the Exit menu and BOOT.ELF is one of its three choices.)</i></div>')
-    body = intro + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
+    body = intro + POPS_UDPFS_CALLOUT + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
            'Rendered straight from the repository.</p><div class="grid">' + ''.join(cards) + '</div>'
     write('popsloader.html', shell('POPSLoader', body, 'popsloader'))
     idx('POPSLoader — the modern launcher', 'popsloader',
@@ -1784,6 +1940,7 @@ CREDITS_SECTIONS = [
     ('Devices &amp; modern backends', [
         ('israpps (El_isra)', '<b>BDM Assault</b> (exFAT / BDMA), <code>MMCEMAN</code>, and much of the modern device tooling that lets POPStarter reach exFAT USB, MX4SIO and MMCE.'),
         ('saildot4k', '<b>BDMA-ATA</b> — the exFAT internal-HDD (ATA) backend for POPSLoader: implementation, fixes, feedback, and oversight that brought the <code>HDD (exFAT)</code> page to life.'),
+        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (<em>Coming soon</em> in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha"><b>BDM-UDPFS Assault Alpha</b></a>, the read-only POPSTARTER UDPFS VCD fallback, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, automatic BDMA equip and launch integration are <em>Coming soon</em>; <a href="popsloader/udpfs-bdma.html">planned setup and credits</a>.'),
         ('The Open PS2 Loader (OPL) project', 'The BDM device-backend ecosystem POPSLoader builds on — USB, MX4SIO, MMCE, ATA and iLink — and the patterns the fork mirrors. (OPL also ships a UDPBD network backend; POPSLoader does not.)'),
         ('Rick Gaiser', '<b>udpbd</b> — the UDP block-device network backend.'),
     ]),
@@ -1796,6 +1953,7 @@ CREDITS_SECTIONS = [
         ('P4NCHOL1NO, VizoR, provato, TnA-Plastic, oldman63, and the community', 'Hardware testing on real PS2 consoles — the only thing that proves a launch path actually works.'),
     ]),
     ('This archive &amp; site', [
+        ('<a href="https://github.com/AstroSnail">AstroSnail</a>', 'Preserved and shared the original Bitbucket wiki Git clone: 2,140 historical commits (2016–2024), earlier revisions and deleted material, complementing the Wayback recovery. Original wiki authors retain credit.'),
         ('The Internet Archive / Wayback Machine', 'Preserved ShaolinAssassin\'s lost wiki, the download archives, and the menu images — without it this archive could not exist.'),
         ('Retro-Jogos (Gledson\'s Portuguese guide)', 'Preserved the original documentation navigation taxonomy when the source wiki went dark.'),
         ('R3Z3N', 'Partition-install (<code>PP.</code>) documentation for HDDOSD / PSBBN games.'),
@@ -1819,12 +1977,22 @@ def build_credits():
             '<div class="callout info"><div class="h">Missing or mis-credited?</div>This is community work and the '
             'historical record is imperfect — if someone is missing or wrongly attributed, let the maintainer know '
             'and it will be corrected.</div>')
+    body += ('<details class="deep"><summary>Original wiki community thanks (April 2016)</summary>'
+             '<p>ShaolinAssassin\'s original wiki homepage thanked '
+             'conan14, Delcro, algol, ShaolinAssassin, El_Patas, orcanaoftime, MockyLock, '
+             'Gillbert, ruffonetas, windwaker, SDJ1977, l_oliveira, SP193, hitchhikr, '
+             'AKuHAK, Somechump, blueheaven, RandQalan, LocalH, SilverBull, root670 and joseri.'
+             '</p><p>It also acknowledged a contributor who requested anonymity, compatibility '
+             'reporters and donors. These are original historical pseudonyms; no individual '
+             'role or identity is inferred. The collective thanks was removed upstream on '
+             '2016-04-12 (Git revision e298fe8309fb), recovered from the original Git wiki '
+             'preserved by AstroSnail.</p></details>')
     write('credits.html', shell('Credits', body, 'credits'))
     idx('Credits — POPStarter, POPSLoader &amp; this archive', 'credits',
         'credits thanks acknowledgements who made authors contributors ShaolinAssassin krHACKen kHn POPStarter POPS Sony '
         'El_isra israpps Enceladus Daniel Santos Berion nuno6573 Hugopocked Ripto NathanNeurotic hardware testers '
         'gledson999 El_Patas arkl1t32 LopoTRI Rick Gaiser udpbd OPL Open PS2 Loader BDM Assault Retro-Jogos R3Z3N '
-        'saildot4k BDMA-ATA ATA exFAT HDD backend TnA-Plastic provato oldman63 P4NCHOL1NO VizoR', 'credits.html')
+        'saildot4k BDMA-ATA ATA exFAT HDD backend Okeanos BDM UDPFS Assault Coming soon TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history', 'credits.html')
 
 # ---------- HOME ----------
 def build_home():
@@ -1872,6 +2040,12 @@ deep reference, for when you need a specific answer.</div>
 Sony POPS emulator is <b>not</b> included anywhere; you supply your own legally-obtained files (verify them by the
 <a href="downloads.html">published MD5s</a>). Questions and support live on the
 <a href="https://www.psx-place.com/threads/popstarter.19139/">PSX-Place POPStarter thread</a>.</div>
+
+<div class="callout info" id="pops-udpfs-upcoming"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
+The POPSLoader fork is preparing read-only PS1 VCD network support based on
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault Alpha</a>.
+The upstream driver is available independently, but POPSLoader integration is <em>Coming soon</em>.
+<a href="popsloader/udpfs-bdma.html">Integration setup and credits</a>.</div>
 
 <h2 id="reference">Full reference</h2>
 <p class="lead">Already know your way around? Jump straight in — or use the search box up top to find any

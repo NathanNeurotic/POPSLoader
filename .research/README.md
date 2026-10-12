@@ -71,3 +71,20 @@ site silently instead of failing loudly.
   do not fold new card text back into `DL_NOTES`.
 - Any hosted download missing from `DL_GROUPS` renders under a visible "Uncategorised"
   heading and prints a build warning. It is never silently dropped.
+
+## Original wiki Git history — AstroSnail preservation contribution
+
+[AstroSnail](https://github.com/AstroSnail) recovered and supplied the complete original
+Bitbucket wiki Git clone from ShaolinAssassin's `popstarter-documentation-stuff`.
+Its 2,140 historical commits preserve changes and deleted pages beyond the reconstructed
+Wayback snapshots. See [the provenance record](research/original-git-provenance.md).
+
+Do not overwrite `.research/wiki/*.md` with this Git tip: those Markdown files are
+merged from multiple Wayback snapshots and may include later or alternative history.
+To publish the **original, unchanged ZIP** on the Downloads page, place it under
+`.research/downloads/popstarter-documentation-stuff-wiki-git-20240731.zip`.
+The site builder validates its SHA-256 and only lists it when the file exists;
+there is no dead placeholder link. The ZIP will also be included in the generated
+self-contained offline archive. The original Git history contains original author
+metadata and an expired historical Bitbucket image URL with an AWS-key-ID-shaped
+identifier; do not graft the history directly into this repository.
