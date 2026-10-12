@@ -39,6 +39,7 @@ jobs:
             || python3 -m pip install --quiet --break-system-packages lupa \
             || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
           python3 tools/host_harness.py
+          python3 tools/test_udpfs_config_runtime.py
       # Mechanical doc/source drift: settings-key counts, harness count, version
       # stamps, translator hand-off integrity, and phrases describing behaviour that
       # was deleted. Pure stdlib, no install step, so it cannot fail on infra.
