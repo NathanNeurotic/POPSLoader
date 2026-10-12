@@ -1,6 +1,57 @@
-# POPS UDPFS / BDM-UDPFS Assault — Coming soon
+# POPS UDPFS / BDM-UDPFS Assault — Release candidate (Coming soon)
 
 **POPSLoader integration: Coming soon.** This page documents the intended user workflow so it will be ready when implemented. No currently published POPSLoader release provides UDPFS VCD browsing, automatic driver staging, or the settings described below. Do not treat this guide as a release announcement.
+
+## Implementation branch (not yet released)
+
+The POPSLoader feature branch implements the planned Ethernet protocol picker:
+select **SMBv1** to use the existing SMB browsing and network-streaming modules,
+or **USB + UDPFS** to use a read-only `udpfs:/POPS/` game list and Okeanos's
+POPSTARTER runtime fallback. This is **not yet a published or hardware-verified
+POPSLoader feature**; the public Pages website must continue to say *Coming soon*
+until the feature is merged, packaged, and verified.
+
+### USB + UDPFS configuration
+
+1. Start `udpfsd` or `udpfs_server.py` on the same LAN with `POPS/<title>.VCD`
+   in the server's exported folder. The extension must be uppercase `.VCD` for
+   the upstream POPSTARTER driver.
+2. In **Settings → SMB / Network**, disable DHCP and enter the console's static
+   **PS2 IP** and **Netmask**, and optionally its gateway. The in-game Okeanos
+   driver and the menu-side UDPFS filesystem must use the same console IP.
+   The gateway is ignored by the driver; the server must be on the same subnet.
+3. Put a USB drive with a `POPS/` directory in the console. On launch,
+   POPSLoader checks existing `POPS/IPCONFIG.DAT` on every detected USB volume:
+   if addresses disagree, it cancels without overwriting the user's file; if
+   missing, it generates one using the configured static address.
+   `POPS/UDPFSCONFIG.DAT` is optional and is **not** automatically modified;
+   create one containing the server IPv4 address to bypass discovery.
+4. Select **Ethernet → USB + UDPFS**. The network game page can list VCDs
+   without an SMB login. Press **R1** to rescan after starting/restarting the
+   server.
+5. Choose a game. POPSLoader resolves **POPSTARTER.ELF from a local device**
+   (never from the network filesystem), prepares the USB settings, and equips
+   the embedded `usbd.irx.udpfs` / `usbhdfsd.irx.udpfs` pair on the memory
+   card as `POPSTARTER/usbd.irx` and `POPSTARTER/usbhdfsd.irx`.
+   The `XX.<title>.ELF` mass selector starts the USB-first / UDPFS-fallback
+   read path after POPSTARTER's IOP reset. **Do not expect the in-menu
+   `udpfs:` filesystem to survive that reset.**
+
+SMB and the UDPFS ministack cannot share the PS2's network adapter at once.
+To change from one protocol to the other after a connection, **restart
+POPSLoader / reset the IOP**. There is intentionally no attempt to reflash
+any adapter firmware, change the UDPFS server implementation, or forcibly
+unload the resident network IRX modules.
+
+The binary pair is pinned from the RiptOPL copy of Okeanos's Alpha release;
+the menu filesystem modules are pinned from its Neutrino bundle. The upstream
+license notices and configuration reference are mirrored under
+[`docs/third_party/okeanos_udpfs/`](third_party/okeanos_udpfs/).
+**Build success is not hardware compatibility proof.** Verify physical PS2
+USB enumeration, UDPFS directory scanning, launch, return/restart behavior,
+and SMBv1 regression before a public release.
+
+---
 
 ## About this support — Coming soon
 
