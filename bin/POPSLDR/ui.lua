@@ -6675,6 +6675,7 @@ function UI.SmbErrorMessage(err)
     IRX_LOAD_FAIL = "SMB modules failed to load",
     NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
     UDPFS_NOT_READY = "UDPFS server unavailable\nCheck your network and UDPFS server",
+    UDPFS_IP_CHANGED_RESTART = "UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP",
     NIC_BUSY_SMB = "SMB already owns the network adapter\nRestart POPSLoader to switch to USB+UDPFS",
     NIC_PARTIAL_RESET = "UDPFS network initialization incomplete\nRestart POPSLoader",
     SMAP_FAIL = "UDPFS SMAP driver failed to load",
