@@ -72,6 +72,61 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 - release package validation gates,<br />
 - repository automation workflows that are not runtime/hardware gates.</p>
 <p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
+<h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / Okeanos BDMA (2026-10-12)</h2>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Status</th>
+<th>Evidence or hardware check still required</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Lua configuration parsing / static IPv4, masks, gateway, DHCP</td>
+<td>PASS (host only)</td>
+<td>Real Lua configuration cases run through <code>tools/test_udpfs_config_runtime.py</code>; launch and settings integration on PS2 untested</td>
+</tr>
+<tr>
+<td>Menu network module embedding and PS2 compilation</td>
+<td>PASS (CI)</td>
+<td>PS2SDK build + pinned IRX checks in CI; real SMAP/ministack/ioman init unknown</td>
+</tr>
+<tr>
+<td>Ethernet SMBv1 / USB+UDPFS selector, R1 scan</td>
+<td>Unknown (verify on hardware)</td>
+<td>Boot, change modes, and enumerate <code>udpfs:/POPS/</code> on actual network</td>
+</tr>
+<tr>
+<td>USB mass selector / POPSTARTER executable resolution</td>
+<td>Unknown (verify on hardware)</td>
+<td>Cold boot + driver reset, VCD present only on server, POPSTARTER on USB/MC, two USB devices</td>
+</tr>
+<tr>
+<td>Driver pair staging / USB <code>IPCONFIG.DAT</code></td>
+<td>Unknown (verify on hardware)</td>
+<td>Confirm the exact Okeanos pair and no overwrites; missing/mismatched config must cancel safely</td>
+</tr>
+<tr>
+<td>SMBv1, USB/exFAT, MX4SIO, MMCE, HDD regressions</td>
+<td>Unknown (verify on hardware)</td>
+<td>Reboot between exclusive network stacks; launch on prior working paths</td>
+</tr>
+<tr>
+<td>UDPFS cover fallback, ART then POPS</td>
+<td>Unknown (verify on hardware)</td>
+<td>Per-game <code>udpfs:/ART/</code> and <code>udpfs:/POPS/</code> cover cases</td>
+</tr>
+<tr>
+<td>Official stable release</td>
+<td>BLOCKED (hardware validation required)</td>
+<td>Keep official 1.2.2 distinct from experimental development builds</td>
+</tr>
+</tbody>
+</table>
+<p>The development workflow is not a substitute for a recorded physical-console<br />
+result. Until the rows above are updated from testing, hardware support must<br />
+be described as <strong>Unknown (verify on hardware)</strong>.</p>
 <h2 id="issue-575-rgb-png-cover-alpha-2026-09-11">Issue #575: RGB PNG cover alpha (2026-09-11)</h2>
 <table>
 <thead>
