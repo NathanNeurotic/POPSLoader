@@ -1927,6 +1927,7 @@ static bool net_irx_loaded = false;
 static bool smb_irx_loaded = false;
 // The UDPFS ministack and SMB netman stack cannot share the SMAP NIC. Once either
 // SMAP has registered, switching modes requires an IOP reset (not disconnectSMB).
+static bool net_stack_attempted = false;
 static bool net_nic_claimed = false;
 static bool udpfs_nic_claimed = false;
 static bool udpfs_ioman_loaded = false;
@@ -1952,6 +1953,7 @@ static bool EnsureNet()
 	if (net_irx_loaded) {
 		return true;
 	}
+	net_stack_attempted = true; // a partial legacy stack is not safely replaceable with UDPFS
 	if (!EnsureDev9()) {
 		return false;
 	}
@@ -2163,7 +2165,7 @@ static int lua_smb_getipconfig(lua_State *L)
      if (!ValidUDPFSStaticIp(ip)) {
          lua_pushboolean(L,false); lua_pushstring(L,"IPCFG_FAIL"); return 2;
      }
-     if (net_nic_claimed || net_irx_loaded || smb_irx_loaded) {
+     if (net_stack_attempted || net_nic_claimed || net_irx_loaded || smb_irx_loaded) {
          lua_pushboolean(L,false); lua_pushstring(L,"NIC_BUSY_SMB"); return 2;
      }
      if (udpfs_ioman_loaded) { lua_pushboolean(L,true); return 1; }
@@ -2196,7 +2198,7 @@ static int lua_smb_getipconfig(lua_State *L)
      if (lua_gettop(L) != 0)
          return luaL_error(L, "System.udpfsState() takes no arguments.");
      lua_pushstring(L,udpfs_ioman_loaded ? "ready" : udpfs_nic_claimed ? "partial"
-                       : (net_nic_claimed || net_irx_loaded) ? "smb" : "idle");
+                       : (net_stack_attempted || net_nic_claimed || net_irx_loaded) ? "smb" : "idle");
      return 1;
  }
  
