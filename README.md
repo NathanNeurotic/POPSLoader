@@ -18,6 +18,8 @@ The current public release is **[1.2.2](https://github.com/NathanNeurotic/POPSLo
 
 ## Highlights
 
+**POPS UDPFS / Okeanos's BDM-UDPFS Assault — Coming soon.** POPSLoader is preparing network VCD browsing and POPSTARTER's read-only UDPFS fallback after USB, based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). The proposed UDPFS settings, device page and BDMA staging do **not** ship yet. See the [planned integration guide](docs/UDPFS_BDMA.md) (**Coming soon**).
+
 POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
 
 *   **Fixed HDD POPSTARTER Handoff (D-10)**: Resolved the long-standing "D-10" black-screen hang when launching games using an HDD-backed POPStarter configuration. Hardware-confirmed.
