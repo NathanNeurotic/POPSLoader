@@ -1136,6 +1136,7 @@ UI = {
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     KeyboardLayoutDraft = nil;
+    NET_TRANSPORT = "SMB";
     SmbDraft = nil;
     SmbDirty = false;
     SmbModulesDraft = false;
@@ -3415,7 +3416,8 @@ UI = {
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.BACK then
-          if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT ~= "UDPFS"
+             and type(System) == "table" and type(System.disconnectSMB) == "function" then
             pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
           end
           -- Drop any transient R3 reveal on the way out (restore the real persisted hide
@@ -3640,7 +3642,7 @@ UI = {
           -- no-op'd, handing POPStarter the placeholder SMBCONFIG.DAT the repo ships
           -- ("SMBip:SMBport SMBshareNAME"). The result is a launch that dies partway
           -- into loading with no explanation, which is issue #560's second symptom.
-          if UI.CURSCENE == UI.SCENES.GSMBNET then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT ~= "UDPFS" then
             local modules_staged = (type(PLDR.AreSmbModulesStaged) == "function")
               and PLDR.AreSmbModulesStaged() or (PLDR.SMB_MODULES == true)
             if not modules_staged then
@@ -3865,6 +3867,16 @@ UI = {
                 report("Scanning exFAT HDD games...", 0.30)
                 PLDR.GetPS1GameLists(ata_root, true, scan)
                 PLDR.SaveGameListCache(ata_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS" then
+              report("Refreshing UDPFS directory...", 0.16)
+              local udpfs_root, udpfs_err = PLDR.InitUDPFSPopsRoot(report)
+              PLDR.CleanupGameList()
+              if type(udpfs_root) == "string" and udpfs_root ~= "" then
+                report("Scanning UDPFS games...", 0.30)
+                PLDR.GetPS1GameLists(udpfs_root, true, scan)
+              else
+                smb_rescan_err = udpfs_err or "UDPFS_NOT_READY"
               end
             elseif rescan_scene == UI.SCENES.GSMBNET then
               report("Reconnecting to SMB...", 0.16)
@@ -6024,7 +6036,7 @@ UI = {
             -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
             -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
             -- this menu handler's locals under Lua's per-function cap.
-            UI.RunSmbConnectFlow()
+            UI.RunNetworkModePicker()
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -6576,7 +6588,7 @@ end
 -- cancels. Returns the chosen share name (string) or nil. Mirrors the RunConfirm modal
 -- (Screen.clear/flip + raw Pads.get), with EDGE-detected nav (one press = one move; also
 -- neutralises PCSX2's constant phantom PAD_UP) and a scrolling window for long lists.
-function UI.RunSharePicker(shares)
+function UI.RunSharePicker(shares, heading)
   if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
      or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
     return nil
@@ -6603,7 +6615,7 @@ function UI.RunSharePicker(shares)
       if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
     end
     local y = UI.SCR.Y_MID - (vis * 11) - 18
-    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L("Select a share"), UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L(heading or "Select a share"), UI.CCOL.YELLOW)
     for i = top, math.min(top + MAXVIS - 1, #shares) do
       local is_sel = (i == sel)
       local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
@@ -6643,6 +6655,14 @@ function UI.SmbErrorMessage(err)
     SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
     IRX_LOAD_FAIL = "SMB modules failed to load",
     NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+    UDPFS_NOT_READY = "UDPFS server unavailable\nCheck your network and UDPFS server",
+    NIC_BUSY_SMB = "SMB already owns the network adapter\nRestart POPSLoader to switch to USB+UDPFS",
+    NIC_PARTIAL_RESET = "UDPFS network initialization incomplete\nRestart POPSLoader",
+    SMAP_FAIL = "UDPFS SMAP driver failed to load",
+    MINISTACK_FAIL = "UDPFS network stack failed to load",
+    IOMAN_FAIL = "UDPFS filesystem module failed to load",
+    DEV9_FAIL = "DEV9 module failed to load",
+    IPCFG_FAIL = "Invalid static PS2 IP address",
   })[err] or "SMB connect failed"
 end
 
@@ -6743,6 +6763,7 @@ function UI.RunSmbConnectFlow()
       -- -- the ordinary "share already configured" path reached the launch with a stale
       -- or absent IPCONFIG.DAT. Write-if-changed, so this is a no-op once it's current.
       pcall(PLDR.SyncSmbDat)
+      UI.NET_TRANSPORT = "SMB"
       UI.SceneChange(UI.SCENES.GSMBNET)
       entered = true
     end, "Failed to connect to SMB")
@@ -6769,6 +6790,61 @@ function UI.RunSmbConnectFlow()
     UI.SmbDraft = nil   -- force the settings editor to re-seed from the new value
     pcall(PLDR.SaveSettingsAtomic)
     pcall(PLDR.SyncSmbDat)
+  end
+end
+
+
+-- One network tile, two mutually exclusive NIC transports. The PS2's SMAP
+-- module and the UDPFS ministack cannot be unloaded/reloaded in a live session.
+-- The selector MUST run before either connection flow starts.
+function UI.RunUdpfsConnectFlow()
+  if type(System) ~= "table" or type(System.initUDPFS) ~= "function" then
+    UI.Notif_queue.add("USB+UDPFS menu support is missing from this build", "error")
+    return
+  end
+  local state = type(System.udpfsState) == "function" and System.udpfsState() or "idle"
+  if state == "smb" or state == "partial" then
+    UI.Notif_queue.add("The network adapter is already initialized in another mode.\nRestart POPSLoader to switch network protocols.", "error")
+    return
+  end
+  local ip, reason = PLDR.UdpfsStaticIp()
+  if ip == nil then
+    UI.Notif_queue.add(tostring(reason or "Set a static PS2 address in SMB / Network settings"), "error")
+    return
+  end
+  UI.RunBusyTask("Opening USB+UDPFS...", function(report)
+    local scan = UI.MakeBusyProgressReporter(report, "Scanning UDPFS PS1 games...", 0.55, 0.96)
+    report("Loading UDPFS network drivers...", 0.16)
+    local root, err = PLDR.InitUDPFSPopsRoot(report)
+    if type(root) ~= "string" then
+      UI.Notif_queue.add("USB+UDPFS: "..tostring(err or "Network initialization failed").."\nCheck the static PS2 IP, cable and UDPFS server", "error")
+      return
+    end
+    -- The UDPFS server is read-only as far as the menu is concerned. Do not
+    -- try to write a .gamecache onto it.
+    PLDR.CleanupGameList()
+    report("Reading network POPS folder...", 0.55)
+    PLDR.GetPS1GameLists(root, true, scan)
+    UI.NET_TRANSPORT = "UDPFS"
+    UI.SceneChange(UI.SCENES.GSMBNET)
+    if #PLDR.GAMES == 0 then
+      UI.Notif_queue.add("No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.", "warn")
+    end
+  end, "Could not open USB+UDPFS")
+end
+
+function UI.RunNetworkModePicker()
+  local choice = UI.RunSharePicker({ "SMBv1", "USB + UDPFS" }, "Ethernet protocol")
+  if choice == "SMBv1" then
+    local state = type(System) == "table" and type(System.udpfsState) == "function"
+      and System.udpfsState() or "idle"
+    if state == "ready" or state == "partial" then
+      UI.Notif_queue.add("UDPFS already owns the network adapter.\nRestart POPSLoader to switch to SMBv1.", "error")
+      return
+    end
+    UI.RunSmbConnectFlow()
+  elseif choice == "USB + UDPFS" then
+    UI.RunUdpfsConnectFlow()
   end
 end
 
