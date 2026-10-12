@@ -2,7 +2,7 @@
 
 Runs without the PS2 SDK and protects against publishing an incomplete binary
 pair or accidentally routing a network VCD through POPSTARTER's SMB selector.
-Hardware operation is verified separately.
+Hardware status: Unknown (verify on hardware).
 """
 from hashlib import sha1
 from pathlib import Path
@@ -39,6 +39,8 @@ assert "UI.RunUdpfsConnectFlow()" in ui
 assert 'UI.NET_TRANSPORT ~= "UDPFS"' in ui  # SMB-only launch and disconnect gates
 assert 'PLDR.InitUDPFSPopsRoot(report)' in ui
 assert 'UI.NET_TRANSPORT = "UDPFS"' in ui
+assert 'resolve_location = "mass:/POPS/"' in ui  # preflight matches the launch root
+assert 'PLDR.ResolveLaunchPopstarterPath(resolve_location, configured_popstarter_path)' in ui
 assert 'PLDR.SaveGameListCache(' not in ui[ui.index("function UI.RunUdpfsConnectFlow()"):
                                   ui.index("function UI.RunNetworkModePicker()")]
 
@@ -50,6 +52,10 @@ assert 'PLDR.ApplyBdmaModeOnce("UDPFS"' in system
 assert 'local adaptive_ok, adaptive_res = pcall(PLDR.MaybeApplyAdaptiveBdma' in system
 assert 'return "udpfs:/POPS/"' in system
 assert "UDPFS needs a static PS2 address" in system
+assert "local function ParseUdpfsIPv4(value)" in system
+assert "local function IsUdpfsContiguousMask(octets)" in system
+assert 'mask == "0.0.0.0"' in system
+assert 'mask == "255.255.255.255"' in system
 assert "doesFolderExist(dir)" in system
 assert "WriteBytesAtomicBounded(desired.." in system
 
@@ -58,6 +64,9 @@ assert '"udpfsState",              lua_udpfs_state' in cpp
 assert "net_stack_attempted" in cpp and "udpfs_nic_claimed" in cpp
 assert "SifExecModuleBuffer(udpfs_ioman_irx" in cpp
 assert 'snprintf(iparg,sizeof(iparg),"ip=%s",ip);' in cpp
+assert "strcmp(udpfs_initialized_ip, ip)" in cpp
+assert '"UDPFS_IP_CHANGED_RESTART"' in cpp
+assert 'snprintf(udpfs_initialized_ip,sizeof(udpfs_initialized_ip),"%s",ip);' in cpp
 for key in ("usbd.irx.udpfs", "usbhdfsd.irx.udpfs"):
     assert f'ASSET_ENTRY("{key}"' in assets
     assert f'ASSET_ENTRY("POPSLDR/{key}"' in assets
@@ -67,4 +76,4 @@ for key in ("udpfs_net_smap.o", "udpfs_ministack.o", "udpfs_ioman.o"):
 assert (ROOT / "docs/third_party/okeanos_udpfs/THIRD_PARTY_NOTICES.md").is_file()
 assert (ROOT / "docs/third_party/okeanos_udpfs/LICENSE").is_file()
 
-print("POPS UDPFS: pinned IRX blobs and 26 wiring/guard conditions verified")
+print("POPS UDPFS: pinned IRX blobs and UDPFS wiring, preflight, and network lifecycle guards verified")
