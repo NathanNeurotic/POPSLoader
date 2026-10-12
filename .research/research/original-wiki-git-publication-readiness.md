@@ -1,6 +1,6 @@
-# Original wiki Git ZIP: verified local source and public staging boundary (2026-10-11)
+# Original wiki Git ZIP: verified staging and publication (2026-10-11)
 
-The contributor-supplied original `wiki.zip` is **available in the maintainer's file Library**; it is **not yet available via `gh-pages/downloads/` or `.research/downloads/`**.
+The contributor-supplied original `wiki.zip` is preserved in the maintainer's file Library and was **uploaded byte-identically to `master`** as `.research/downloads/popstarter-documentation-stuff-wiki-git-20240731.zip` in [commit `c2c61bb`](https://github.com/NathanNeurotic/POPSLoader/commit/c2c61bb0ad6bec124018b7af5b4f20e576be6749). That upload changed **only** this ZIP. Online publication remains subject to the Docs Site workflow and verification of `gh-pages` after synchronizing `dev`.
 
 The exact, unmodified historical Git ZIP has been independently recovered from the attached original in its Library and inspected in an isolated temporary directory:
 
@@ -8,25 +8,22 @@ The exact, unmodified historical Git ZIP has been independently recovered from t
 - Length: **2,102,657 bytes**
 - SHA-256: `d0c243d91e417988825ed92b440224ed46cbbf448d0b67528e0957c15c0d029a`
 - ZIP member CRC test: PASS; **183 entries** including directories and original `wiki/.git/` objects
+- Source-controlled Git blob SHA-1: `044d315bcc55c5de7317af4d36b10222deeb86bf`, identical to the preserved original ZIP's computed Git blob identity
 - Original Git wiki HEAD: `960d675d278296a3a62143410b38aa8882d21a79`
 - Attribution: historical wiki contributors authored the source; **AstroSnail** recovered and supplied the ZIP; do not conflate uploader with original author.
 - This is a Git-history preservation artifact, **not** a PS2 game image, launcher or Sony POPS emulator package.
 
 ## Publisher contract: no placeholder masquerading as a download
 
-The source generator `.research/build_site.py` already has a **conditional** archival source card and checks the supplied ZIP SHA-256 before publishing. The `Downloads` page correctly states **not yet hosted** while the archive is absent. Do not create an empty file, redirect an arbitrary GitHub link, swap a recompressed archive, or claim this historical ZIP is published while the original bytes are still missing from the repository.
+The source generator `.research/build_site.py` has a **conditional** archival source card and checks the supplied ZIP SHA-256 before publishing. While absent from the generator's checked-out branch, the `Downloads` page must say **not yet hosted**; when present and verified, it must expose the exact downloadable archive. Do not create an empty file, redirect an arbitrary GitHub link, or substitute a recompressed archive.
 
 A new [build-time gate](../tools/audit_original_wiki_zip.py) checks the regenerated page against both states: without the ZIP it **rejects a fabricated download link** and requires a truthful missing-file notice; with the ZIP it enforces original byte count, SHA-256, ZIP CRC, Git/source member identity, generated copy byte identity, contributor attribution and a real link.
 
-## Exact staging step (still outstanding)
+## Exact GitHub staging (completed) and public publication verification
 
-The authenticated GitHub code connector in this workflow supports text changes and encoded in-memory Git blobs, **not uploading a Library file reference directly as binary bytes**. Therefore the ZIP has **not been pushed to GitHub** in this research change. Stage the verified original as the following exact new repository file in `master` or a reviewed PR:
+The maintainer used GitHub's own file-upload interface to add the **exact original bytes** as `.research/downloads/popstarter-documentation-stuff-wiki-git-20240731.zip` to `master`, commit [`c2c61bb`](https://github.com/NathanNeurotic/POPSLoader/commit/c2c61bb0ad6bec124018b7af5b4f20e576be6749). Repository tree metadata confirms **2,102,657 bytes** and Git blob SHA-1 `044d315bcc55c5de7317af4d36b10222deeb86bf`, exactly matching the locally preserved original; ZIP CRC and SHA-256 checks passed independently.
 
-```text
-.research/downloads/popstarter-documentation-stuff-wiki-git-20240731.zip
-```
-
-The site workflow builds on PRs and publishes only on a `dev` push; the existing `master`/ `dev` synchronization convention remains. Once staged with the **exact** verified bytes and merged, the generator will provide the credit-bearing original Git source ZIP as a separate download and include it in the generated offline documentation bundle. Re-run Docs Site, check the public `downloads.html` link and online SHA-256, and preserve the original authors' history. **Never claim this staging has already happened.**
+The Docs Site workflow builds on PRs and publishes only on `dev` pushes. The remaining publication process is to synchronize the verified `master` contents to `dev`, let the existing SHA-256, ZIP/attribution and page-link build gates pass, and then verify that `gh-pages/downloads/` and the live Downloads page actually serve the exact ZIP. The generator is configured to include it as a separate archival source download and in the offline documentation bundle. Do not equate successful GitHub staging with confirmed public hosting until the deployment succeeds.
 
 ## Independently corrected published historical guide
 
