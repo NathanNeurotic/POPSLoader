@@ -40,6 +40,7 @@ assert 'UI.NET_TRANSPORT ~= "UDPFS"' in ui  # SMB-only launch and disconnect gat
 assert 'PLDR.InitUDPFSPopsRoot(report)' in ui
 assert 'UI.NET_TRANSPORT = "UDPFS"' in ui
 assert 'resolve_location = "mass:/POPS/"' in ui  # preflight matches the launch root
+assert 'dir..name.."_COV.png"' in ui  # UDPFS-only POPS-side artwork fallback
 assert 'PLDR.ResolveLaunchPopstarterPath(resolve_location, configured_popstarter_path)' in ui
 assert 'PLDR.SaveGameListCache(' not in ui[ui.index("function UI.RunUdpfsConnectFlow()"):
                                   ui.index("function UI.RunNetworkModePicker()")]
