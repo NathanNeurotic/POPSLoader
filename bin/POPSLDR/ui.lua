@@ -1098,7 +1098,8 @@ UI = {
 	      { key = "USBEXFAT", label = "exFAT-USB" },
 	      { key = "MX4SIO", label = "MX4SIO" },
 	      { key = "MMCE", label = "MMCE" },
-	      { key = "ATA", label = "exFAT-HDD (ata)" }
+	      { key = "ATA", label = "exFAT-HDD (ata)" },
+	      { key = "UDPFS", label = "USB + UDPFS" }
 	    };
 	    VideoStandardModes = {
 	      {
@@ -6662,7 +6663,7 @@ function UI.SmbErrorMessage(err)
     MINISTACK_FAIL = "UDPFS network stack failed to load",
     IOMAN_FAIL = "UDPFS filesystem module failed to load",
     DEV9_FAIL = "DEV9 module failed to load",
-    IPCFG_FAIL = "Invalid static PS2 IP address",
+
   })[err] or "SMB connect failed"
 end
 
