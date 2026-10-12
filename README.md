@@ -12,13 +12,13 @@
 
 POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
 
-The current public release is **[1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2)** (2026-09-30). At this release cut, `master`, `dev`, and `experimental` share the same commit and version stamp. Floating channel artifacts continue to publish from their respective branches.
+The current **official stable release** is **[1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2)** (2026-09-30). Development channels advance independently; the opt-in [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) and [experimental release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) are prereleases, not certified stable builds.
 
 ---
 
 ## Highlights
 
-**POPS UDPFS / Okeanos's BDM-UDPFS Assault — Coming soon.** POPSLoader is preparing network VCD browsing and POPSTARTER's read-only UDPFS fallback after USB, based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). The proposed UDPFS settings, device page and BDMA staging do **not** ship yet. See the [planned integration guide](docs/UDPFS_BDMA.md) (**Coming soon**).
+**Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This is **not** included in official stable 1.2.2. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
 
 POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
 

@@ -4330,7 +4330,8 @@ local BDMA_SUFFIX = {
   USBEXFAT = ".usbexfat",
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
-  ATA = ".ata"
+  ATA = ".ata",
+  UDPFS = ".udpfs"  -- Okeanos BDM-UDPFS Assault pair
 }
 
 -- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
@@ -5112,6 +5113,8 @@ local function NormalizeBdmaModeKey(mode)
     return "MMCE"
   elseif value == "ATA" or value == "HDDEXFAT" then
     return "ATA"
+  elseif value == "UDPFS" then
+    return "UDPFS"
   end
   return nil
 end
@@ -7106,6 +7109,7 @@ function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   end
   if device_page == "MX4SIO" then return "MX4SIO" end
   if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
+  if device_page == "UDPFS" then return "UDPFS" end
   if device_page == "USB" then
     -- AUTO (Adaptive) ALWAYS stages USBEXFAT for USB (maintainer directive
     -- 2026-07-25): the exFAT BDMA pair reads FAT32 too, so ONE variant plays
@@ -7881,6 +7885,118 @@ end
 -- HERE (never at boot), then returns the cwd-relative games root device:/[PATH/]POPS/.
 -- Returns nil + an error code (NO_LINK/DHCP_FAIL/CONN_FAIL/LOGON_FAIL/ECHO_FAIL/
 -- SHARE_FAIL/IRX_LOAD_FAIL) for the UI to map to a message. Mirrors InitATAPopsRoot.
+-- The menu-side filesystem uses its own ministack and a static IPv4 address,
+-- while Okeanos's runtime pair reinitializes the NIC *after* POPStarter's IOP
+-- reset and reads settings from USB. These must describe the same console.
+-- Keep this check independent from the legacy SMB settings editor: saved values
+-- and existing IPCONFIG.DAT can bypass field validation in the UI.
+local function ParseUdpfsIPv4(value)
+  local a, b, c, d = tostring(value or ""):match("^(%d+)%.(%d+)%.(%d+)%.(%d+)$")
+  if a == nil then return nil end
+  local parts = { a, b, c, d }
+  local octets = {}
+  for i = 1, 4 do
+    if #parts[i] > 3 then return nil end
+    octets[i] = tonumber(parts[i])
+    if octets[i] == nil or octets[i] > 255 then return nil end
+  end
+  return string.format("%d.%d.%d.%d", octets[1], octets[2], octets[3], octets[4]), octets
+end
+
+-- A valid IPv4 subnet mask consists of leading one bits followed only by
+-- zero bits; dotted-quad range checks alone accept unusable values.
+local function IsUdpfsContiguousMask(octets)
+  local found_zero = false
+  for i = 1, 4 do
+    for bit = 7, 0, -1 do
+      local set = math.floor(octets[i] / (2 ^ bit)) % 2 == 1
+      if not set then
+        found_zero = true
+      elseif found_zero then
+        return false
+      end
+    end
+  end
+  return true
+end
+
+function PLDR.UdpfsStaticIp()
+  local c = PLDR.SMB or {}
+  if c.DHCP == true then
+    return nil, "UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network."
+  end
+  local ip, ip_octets = ParseUdpfsIPv4(c.PS2_IP)
+  local mask, mask_octets = ParseUdpfsIPv4(c.NETMASK)
+  local gw = ParseUdpfsIPv4(c.GATEWAY or "0.0.0.0")
+  if ip == nil or ip_octets[1] == 0 or ip_octets[1] == 127
+     or ip_octets[1] >= 224 or (ip_octets[1] == 169 and ip_octets[2] == 254)
+     or mask == nil or mask == "0.0.0.0" or mask == "255.255.255.255"
+     or not IsUdpfsContiguousMask(mask_octets) or gw == nil then
+    return nil, "Set a valid static PS2 IP, contiguous netmask and gateway in Settings > SMB / Network"
+  end
+  return ip, mask, gw
+end
+
+function PLDR.InitUDPFSPopsRoot(report)
+  if type(report) ~= "function" then report = function() end end
+  local ip, reason = PLDR.UdpfsStaticIp()
+  if ip == nil then return nil, reason end
+  if type(System) ~= "table" or type(System.initUDPFS) ~= "function" then
+    return nil, "UDPFS menu modules are not available"
+  end
+  pcall(report, "Initializing UDPFS network filesystem...", 0.22)
+  local ok, why = System.initUDPFS(ip)
+  if not ok then return nil, tostring(why or "UDPFS module initialization failed") end
+  -- The filesystem is an iomanX device, not the SMB RPC/TCP mount.
+  -- The R1 refresh and first-connect paths both use this exact root.
+  return "udpfs:/POPS/"
+end
+
+-- Returns false with a visible message on ambiguous/conflicting USB config.
+-- Never overwrites a user-created file; stage only files missing on a USB
+-- volume, so two USB drives cannot silently acquire conflicting IPs.
+function PLDR.PrepareUdpfsUsbConfig()
+  local ip, mask, gw = PLDR.UdpfsStaticIp()
+  if ip == nil then
+    if UI and UI.Notif_queue then UI.Notif_queue.add(tostring(mask), "error") end
+    return false
+  end
+  local roots = PLDR.GetRootsByType("usb")
+  if type(roots) ~= "table" or #roots == 0 then
+    if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires a USB volume with POPS/ installed", "error") end
+    return false
+  end
+  local desired = ip.." "..mask.." "..gw
+  for i = 1, #roots do
+    local root = roots[i]
+    local dir = root.."POPS/"
+    if not doesFolderExist(dir) then
+      if UI and UI.Notif_queue then UI.Notif_queue.add("Missing "..dir.." -- UDPFS requires the POPS folder on each USB volume", "error") end
+      return false
+    end
+    local path = dir.."IPCONFIG.DAT"
+    if doesFileExist(path) then
+      local current = ReadWholeFile(path)
+      local config_line = type(current) == "string" and string.match(current, "^[^\r\n]*") or ""
+      local a,b = string.match(config_line or "", "^%s*(%S+)%s+(%S+)")
+      if a ~= ip or b ~= mask then
+        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n"..path.."\nEdit it to match "..ip.." "..mask.." (not overwritten)", "error") end
+        return false
+      end
+    end
+  end
+  for i = 1, #roots do
+    local path = roots[i].."POPS/IPCONFIG.DAT"
+    if not doesFileExist(path) then
+      if not WriteBytesAtomicBounded(desired.."\n",path) then
+        if UI and UI.Notif_queue then UI.Notif_queue.add("Could not write UDPFS configuration:\n"..path, "error") end
+        return false
+      end
+    end
+  end
+  return true
+end
+
 function PLDR.InitSMBPopsRoot(report)
   if type(System) ~= "table" or type(System.connectSMB) ~= "function" then
     return nil, "IRX_LOAD_FAIL"
@@ -8750,6 +8866,11 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if game_name == nil or game_name == "" then
     return ""
   end
+  if device_page == "UDPFS" then
+    -- POPStarter reads this as a USB (XX.) VCD selector; Okeanos's BDMA
+    -- transparently falls back to UDPFS when the VCD is missing locally.
+    return "mass:/POPS/XX."..game_name..".ELF"
+  end
   if device_page == "SMB" then
     -- Net-SMB argv0 (this becomes POPSTARTER.ELF's argv[0]). POPStarter parses the
     -- basename "SB.<name>.ELF" -> SMB-stream mode + <name>, then reads <name>.VCD from
@@ -9225,6 +9346,9 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
     local mmce_device = string.match(mmce_prefix, "^([%a]+%d*)") or "mmce0"
     return BuildLaunchPolicy("MMCE", "mass", mmce_device, TranslateMMCEPathForPopStarter), "SMB/MMCE"
   end
+  if current_scene == UI.SCENES.GSMBNET and type(UI) == "table" and UI.NET_TRANSPORT == "UDPFS" then
+    return BuildLaunchPolicy("UDPFS", "mass", "mass", nil), "UDPFS"
+  end
   if current_scene == UI.SCENES.GSMBNET then
     -- Net-SMB launch (Increment 2). The menu device is smb0:, but POPStarter mounts
     -- its OWN smb:/ namespace via mc:/POPSTARTER/SMBCONFIG.DAT. A distinct policy
@@ -9316,7 +9440,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   local failure_context = {
     launch_diagnostics = launch_diagnostics
   }
-  local popstarter = PLDR.ResolveLaunchPopstarterPath(gamelocation, configured_popstarter, policy.name)
+  -- The UDPFS menu mount disappears on POPStarter's IOP reset. Only resolve
+  -- the executable from persistent devices; never try to exec it off udpfs:.
+  local exec_search_root = device_page == "UDPFS" and "mass:/POPS/" or gamelocation
+  local popstarter = PLDR.ResolveLaunchPopstarterPath(exec_search_root, configured_popstarter, policy.name)
   launch_diagnostics.effective_path = popstarter
   local popstarter_on_hdd = IsHddExecContextPath(popstarter)
   local popstarter_partition_context = nil
@@ -9436,6 +9563,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     pops_root = mmce_prefix.."POPS/"
     boot_source_mode = "mass"
     device_mode = mmce_prefix
+  elseif device_page == "UDPFS" then
+    pops_root = "mass:/POPS/"
+    boot_source_mode = "mass"
+    device_mode = "mass"
   elseif string.match(normalized_gamelocation, "^smb%d*:/") or device_page == "SMB/MMCE" or device_page == "SMB" then
     pops_root = "smb:/POPS/"
     boot_source_mode = "smb"
@@ -9544,9 +9675,29 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
   -- loop, the only place the queued warn toast can actually render. pcall'd:
   -- an unexpected staging ERROR falls through to a normal launch instead of
   -- taking the whole launch path down.
-  local adaptive_ok, adaptive_res = pcall(PLDR.MaybeApplyAdaptiveBdma, ui_scene, device_page)
-  if adaptive_ok and adaptive_res == false then
-    return
+  if device_page == "UDPFS" then
+    -- Network launch MUST stage Okeanos's pair regardless of the general
+    -- Adaptive BDMA preference. A half-written pair must abort the launch.
+    if PLDR.POPSTARTER_MC_FOLDER == false then
+      if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires POPSTARTER modules on a memory card", "error") end
+      return
+    end
+    if type(PLDR.PrepareUdpfsUsbConfig) ~= "function" or not PLDR.PrepareUdpfsUsbConfig() then
+      return
+    end
+    if not PLDR.IsBdmaModeEquipped("UDPFS") then
+      if type(PLDR.LaunchProgress) == "function" then
+        pcall(PLDR.LaunchProgress, "Staging UDPFS POPSTARTER drivers...", 0.65)
+      end
+      local staged, why = PLDR.ApplyBdmaModeOnce("UDPFS", PLDR.NextBdmaApplyToken(), true)
+      if not staged then
+        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS driver staging failed -- launch cancelled\n"..tostring(why or "Check the memory card"), "error") end
+        return
+      end
+    end
+  else
+    local adaptive_ok, adaptive_res = pcall(PLDR.MaybeApplyAdaptiveBdma, ui_scene, device_page)
+    if not adaptive_ok or adaptive_res == false then return end
   end
   local selector_prefix = SelectPopstarterSelectorPrefix(device_page)
   local launch_cmd = BuildPopstarterLaunchCommand(
