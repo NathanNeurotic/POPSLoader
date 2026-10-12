@@ -39,7 +39,7 @@ assert "UI.RunUdpfsConnectFlow()" in ui
 assert 'UI.NET_TRANSPORT ~= "UDPFS"' in ui  # SMB-only launch and disconnect gates
 assert 'PLDR.InitUDPFSPopsRoot(report)' in ui
 assert 'UI.NET_TRANSPORT = "UDPFS"' in ui
-assert '.gamecache' not in ui[ui.index("function UI.RunUdpfsConnectFlow()"):
+assert 'PLDR.SaveGameListCache(' not in ui[ui.index("function UI.RunUdpfsConnectFlow()"):
                                   ui.index("function UI.RunNetworkModePicker()")]
 
 assert 'if device_page == "UDPFS" then' in system
