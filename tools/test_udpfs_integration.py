@@ -19,9 +19,9 @@ BLOBS = {
 for path, (sha, length) in BLOBS.items():
     binary = (ROOT / path).read_bytes()
     assert len(binary) == length, (path, len(binary), length)
-    git_blob_sha = sha1(b"blob " + str(len(binary)).encode() + b"\\0" + binary).hexdigest()
+    git_blob_sha = sha1(b"blob " + str(len(binary)).encode() + b"\0" + binary).hexdigest()
     assert git_blob_sha == sha, (path, git_blob_sha)
-    assert binary[:4] == b"\\x7fELF", f"not a valid ELF: {path}"
+    assert binary[:4] == b"\x7fELF", f"not a valid ELF: {path}"
     assert binary[5] == 1, f"not little-endian: {path}"
     assert struct.unpack_from("<H", binary, 18)[0] == 8, f"not MIPS: {path}"
 
