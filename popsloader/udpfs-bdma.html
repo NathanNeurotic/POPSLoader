@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>POPS UDPFS / BDM-UDPFS Assault — Coming soon · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">All wiki pages</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>POPS UDPFS / BDM-UDPFS Assault — Coming soon</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/UDPFS_BDMA.md">view on GitHub ↗</a></p><p><strong>POPSLoader integration: Coming soon.</strong> This page documents the intended user workflow so it will be ready when implemented. No currently published POPSLoader release provides UDPFS VCD browsing, automatic driver staging, or the settings described below. Do not treat this guide as a release announcement.</p>
+<h2 id="about-this-support-coming-soon">About this support — Coming soon</h2>
+<p>POPSLoader is preparing support for PlayStation 1 <code>.VCD</code> titles served by UDPFS, using <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos's BDM-UDPFS Assault (Alpha)</a>. This is a <strong>read-only fallback</strong> in the POPSTARTER USB driver: POPSTARTER checks USB for the VCD first; when the requested VCD is not present there, it tries the same path on a UDPFS server <em>after</em> POPSTARTER resets the IOP. It is <strong>not</strong> the Neutrino/UDPFS PS2-game transport, and it does <strong>not</strong> make UDPBD or UDPFS image mode a POPSTARTER backend.</p>
+<p>The <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">upstream Alpha release</a> is already public, but POPSLoader's discovery, settings, BDMA staging and launch handoff are <strong>Coming soon</strong>. Upstream driver availability is not proof that any POPSLoader release integrates it.</p>
+<h2 id="planned-popsloader-workflow-coming-soon">Planned POPSLoader workflow — Coming soon</h2>
+<ol>
+<li>Place your PS1 <code>.VCD</code> files under <code>POPS/</code> in the folder exported by a UDPFS server (for example, <code>POPS/Example.VCD</code>). The upstream driver also recognizes <code>POPS0/</code> through <code>POPS9/</code>; use uppercase <code>.VCD</code>.</li>
+<li>Configure the PS2 and the UDPFS server on the same LAN/subnet. The planned <strong>POPS UDPFS Network Settings</strong> editor will manage the POPSTARTER-specific USB configuration files, separately from POPSLoader's SMB and launcher network settings (<strong>Coming soon</strong>).</li>
+<li>Open POPSLoader's proposed <strong>UDPFS Files</strong> PS1 page, choose the title, and launch. POPSLoader will enumerate network <code>.VCD</code> entries and prepare the matching driver pair for POPSTARTER (<strong>Coming soon</strong>). Enumeration in the menu and reading in POPSTARTER are separate responsibilities.</li>
+<li>With <strong>Adaptive BDMA</strong> enabled, POPSLoader will stage the UDPFS variant for network VCD launches. With automatic staging disabled, <strong>BDMA Mode → UDPFS</strong> will be the manual option (<strong>Coming soon</strong>). None of those new selectors exist in current releases.</li>
+</ol>
+<p>The planned behavior prefers a matching USB VCD over the server's copy. Missing or invalid network configuration, unavailable server, missing drivers, and driver staging failures must produce an actionable error rather than silently report a successful launch (<strong>Coming soon</strong>).</p>
+<h2 id="driver-and-configuration-reference-coming-soon-in-popsloader">Driver and configuration reference — Coming soon in POPSLoader</h2>
+<p>The upstream Alpha release contains drivers named:</p>
+<table>
+<thead>
+<tr>
+<th>Upstream file</th>
+<th>POPSTARTER destination</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bdm_udp_fs_assault.irx</code></td>
+<td><code>mc0:/POPSTARTER/usbd.irx</code> or <code>mc1:/POPSTARTER/usbd.irx</code></td>
+</tr>
+<tr>
+<td><code>usbd_bd_assault.irx</code></td>
+<td>matching card's <code>POPSTARTER/usbhdfsd.irx</code></td>
+</tr>
+</tbody>
+</table>
+<p>The POPSLoader integration will be prepared to stage them as a pair, preserving the current installation if a staged copy is incomplete (<strong>Coming soon</strong>). Driver names above describe <strong>upstream manual installation</strong>, not filenames already shipped in POPSLoader.</p>
+<p>The Alpha driver reads optional <code>mass:/POPS/IPCONFIG.DAT</code> (PS2 address and subnet) and <code>mass:/POPS/UDPFSCONFIG.DAT</code> (server address / discovery) from <strong>USB</strong>, not from <code>mc?:/POPSTARTER/</code>. Upstream permits both to be absent and uses its defaults/discovery, but explicit matching LAN settings are advisable. The planned POPSLoader editor will save those USB-side files and explain conflicts across multiple USB volumes (<strong>Coming soon</strong>). POPSLoader's SMB settings do <strong>not</strong> configure the UDPFS driver.</p>
+<p>Keep the necessary POPSTARTER executable and user-supplied POPS runtime files in their normal locations. The original upstream project supports <code>udpfsd</code> and <code>udpfs_server.py</code> servers; PS2-only UDPFS/Neutrino setup documentation does not replace these POPSTARTER requirements.</p>
+<h2 id="scope-and-current-availability">Scope and current availability</h2>
+<ul>
+<li><strong>Upstream BDM-UDPFS Assault Alpha:</strong> available now, separately from POPSLoader. <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Project and release</a>.</li>
+<li><strong>POPSLoader UDPFS VCD page / Favorites integration:</strong> <strong>Coming soon</strong>.</li>
+<li><strong>POPSLoader automatic/manual UDPFS BDMA staging:</strong> <strong>Coming soon</strong>.</li>
+<li><strong>POPSLoader POPS UDPFS network settings editor:</strong> <strong>Coming soon</strong>.</li>
+<li><strong>Real-console validation of the POPSLoader integration:</strong> pending implementation. No compatibility or performance guarantee is being claimed.</li>
+</ul>
+<h2 id="credits">Credits</h2>
+<p><strong><a href="https://github.com/Okeanos86">Okeanos</a></strong> developed <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">BDM-UDPFS Assault</a>, the POPSTARTER-specific read-only UDPFS fallback. It builds on <strong><a href="https://github.com/israpps/BDMAssault">israpps / El_isra's BDM Assault</a></strong> and the wider <strong><a href="https://github.com/ps2dev/ps2sdk">PS2SDK</a></strong> ecosystem. POPSTARTER itself is by <strong>krHACKen</strong>; the <code>udpfsd</code> server is by <strong><a href="https://github.com/pcm720/udpfsd">pcm720</a></strong>. All retain their own project and licensing credits.</p>
+<p>POPSLoader integration is <strong>Coming soon</strong>. This documentation is not a claim that any of these authors supplied an integrated POPSLoader build.</p>
+<p>When integration is released, removing the explicit <strong>Coming soon</strong> markers must be accompanied by working binaries, documented supported settings, real test results, and updated packaging/license notices.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>
