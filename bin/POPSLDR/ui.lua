@@ -3581,7 +3581,13 @@ UI = {
           -- found it (sAGA/oldman63). GHDD keeps GAMEPATH: its entries encode a partition
           -- name, not a device root.
           local resolve_location = PLDR.GAMEPATH
-          if UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
+          -- UDPFS is a transient menu filesystem: the executable must be found on
+          -- persistent local storage before POPStarter resets the IOP. Match the
+          -- mass:/POPS/ root used by RunPOPStarterGame, keeping the user's custom
+          -- POPSTARTER path first in the resolver's existing search ladder.
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS" then
+            resolve_location = "mass:/POPS/"
+          elseif UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
             resolve_location = root
           end
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
