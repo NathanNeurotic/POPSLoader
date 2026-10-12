@@ -7940,7 +7940,7 @@ function PLDR.PrepareUdpfsUsbConfig()
     local path = dir.."IPCONFIG.DAT"
     if doesFileExist(path) then
       local current = ReadWholeFile(path)
-      local config_line = type(current) == "string" and string.match(current, "^[^\\r\\n]*") or ""
+      local config_line = type(current) == "string" and string.match(current, "^[^\r\n]*") or ""
       local a,b = string.match(config_line or "", "^%s*(%S+)%s+(%S+)")
       if a ~= ip or b ~= mask then
         if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n"..path.."\nEdit it to match "..ip.." "..mask.." (not overwritten)", "error") end
@@ -7951,7 +7951,7 @@ function PLDR.PrepareUdpfsUsbConfig()
   for i = 1, #roots do
     local path = roots[i].."POPS/IPCONFIG.DAT"
     if not doesFileExist(path) then
-      if not WriteBytesAtomicBounded(desired.."\\n",path) then
+      if not WriteBytesAtomicBounded(desired.."\n",path) then
         if UI and UI.Notif_queue then UI.Notif_queue.add("Could not write UDPFS configuration:\n"..path, "error") end
         return false
       end
