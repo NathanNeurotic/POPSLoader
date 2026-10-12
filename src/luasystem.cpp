@@ -62,6 +62,9 @@ extern unsigned char smbman_irx[];   extern unsigned int size_smbman_irx;
 // SMSUTILS reused from the embedded popsmb pack (embed_assets.cpp).
 extern unsigned char asset_smb_smsutils_irx[];  extern unsigned int size_asset_smb_smsutils_irx;
 // ps2dev9 is the IOP_MODULES buffer also loaded by the HDD path (luaHDD.cpp).
+extern unsigned char udpfs_net_smap_irx[]; extern unsigned int size_udpfs_net_smap_irx;
+extern unsigned char udpfs_ministack_irx[]; extern unsigned int size_udpfs_ministack_irx;
+extern unsigned char udpfs_ioman_irx[]; extern unsigned int size_udpfs_ioman_irx;
 extern unsigned char ps2dev9_irx[];  extern unsigned int size_ps2dev9_irx;
 
 extern int pad_reinit();
@@ -1922,6 +1925,11 @@ static int lua_ata_init_modules(lua_State *L)
 bool g_dev9_loaded = false;   // shared with luaHDD.cpp Load_HDD_IRX (load ps2dev9 once)
 static bool net_irx_loaded = false;
 static bool smb_irx_loaded = false;
+// The UDPFS ministack and SMB netman stack cannot share the SMAP NIC. Once either
+// SMAP has registered, switching modes requires an IOP reset (not disconnectSMB).
+static bool net_nic_claimed = false;
+static bool udpfs_nic_claimed = false;
+static bool udpfs_ioman_loaded = false;
 static char SMB_IFNAME[] = "sm0";   // mutable: ps2ip_getconfig takes char*, not const char*
 
 bool EnsureDev9()
@@ -1940,6 +1948,7 @@ bool EnsureDev9()
 // ps2ip_init(). Mirrors OPL ethLoadModules; httpclient is intentionally skipped.
 static bool EnsureNet()
 {
+	if (udpfs_nic_claimed) return false;
 	if (net_irx_loaded) {
 		return true;
 	}
@@ -1956,6 +1965,7 @@ static bool EnsureNet()
 	if (!LoadIrxCheckedBuffer("smap.irx", smap_irx, size_smap_irx, NULL, NULL)) {
 		return false;
 	}
+	net_nic_claimed = true;
 	if (!LoadIrxCheckedBuffer("ps2ip.irx", ps2ip_irx, size_ps2ip_irx, NULL, NULL)) {
 		return false;
 	}
@@ -1978,6 +1988,7 @@ static bool EnsureNet()
 
 static bool EnsureSMB()
 {
+	if (udpfs_nic_claimed) return false;
 	if (smb_irx_loaded) {
 		return true;
 	}
@@ -2128,6 +2139,67 @@ static int lua_smb_getipconfig(lua_State *L)
 }
 
 // System.initSMB() -- load the SMB IRX stack (lazy). true / (false,"IRX_LOAD_FAIL").
+
+ // UDPFS directory browse uses the RiptOPL/Neutrino smap -> ministack ->
+ // udpfs_ioman chain. This is *not* Okeanos's POPSTARTER runtime pair: those
+ // two modules are staged separately at launch, before the inevitable IOP reset.
+ // Do not try to tear down and reload the ministack; its UDP socket is load-once.
+ static bool ValidUDPFSStaticIp(const char *s)
+ {
+     unsigned int a,b,c,d;
+     char extra;
+     if (!s || sscanf(s, "%u.%u.%u.%u%c", &a,&b,&c,&d,&extra) != 4)
+         return false;
+     if (a == 0 || a == 127 || a >= 224 || b > 255 || c > 255 || d > 255)
+         return false;
+     if (a == 169 && b == 254) return false;
+     return true;
+ }
+ static int lua_udpfs_init(lua_State *L)
+ {
+     if (lua_gettop(L) != 1 || !lua_isstring(L,1))
+         return luaL_error(L, "System.initUDPFS(ip) expects a static IPv4 string.");
+     const char *ip = lua_tostring(L,1);
+     if (!ValidUDPFSStaticIp(ip)) {
+         lua_pushboolean(L,false); lua_pushstring(L,"IPCFG_FAIL"); return 2;
+     }
+     if (net_nic_claimed || net_irx_loaded || smb_irx_loaded) {
+         lua_pushboolean(L,false); lua_pushstring(L,"NIC_BUSY_SMB"); return 2;
+     }
+     if (udpfs_ioman_loaded) { lua_pushboolean(L,true); return 1; }
+     if (udpfs_nic_claimed) {
+         lua_pushboolean(L,false); lua_pushstring(L,"NIC_PARTIAL_RESET"); return 2;
+     }
+     if (!EnsureDev9()) {
+         lua_pushboolean(L,false); lua_pushstring(L,"DEV9_FAIL"); return 2;
+     }
+     int result = -1;
+     if (SifExecModuleBuffer(udpfs_net_smap_irx,size_udpfs_net_smap_irx,0,NULL,&result) < 0 || result < 0) {
+         lua_pushboolean(L,false); lua_pushstring(L,"SMAP_FAIL"); return 2;
+     }
+     udpfs_nic_claimed = true;
+     char iparg[32];
+     snprintf(iparg,sizeof(iparg),"ip=%s",ip);
+     if (SifExecModuleBuffer(udpfs_ministack_irx,size_udpfs_ministack_irx,
+                 (int)strlen(iparg)+1,iparg,&result) < 0 || result < 0) {
+         lua_pushboolean(L,false); lua_pushstring(L,"MINISTACK_FAIL"); return 2;
+     }
+     if (SifExecModuleBuffer(udpfs_ioman_irx,size_udpfs_ioman_irx,0,NULL,&result) < 0 || result < 0) {
+         lua_pushboolean(L,false); lua_pushstring(L,"IOMAN_FAIL"); return 2;
+     }
+     udpfs_ioman_loaded = true;
+     lua_pushboolean(L,true);
+     return 1;
+ }
+ static int lua_udpfs_state(lua_State *L)
+ {
+     if (lua_gettop(L) != 0)
+         return luaL_error(L, "System.udpfsState() takes no arguments.");
+     lua_pushstring(L,udpfs_ioman_loaded ? "ready" : udpfs_nic_claimed ? "partial"
+                       : (net_nic_claimed || net_irx_loaded) ? "smb" : "idle");
+     return 1;
+ }
+ 
 static int lua_smb_init(lua_State *L)
 {
 	if (lua_gettop(L) > 0) {
@@ -2416,6 +2488,8 @@ static const luaL_Reg System_functions[] = {
 	{"getSio2Owner",           lua_get_sio2_owner},
 	{"retroGemGameId",         lua_retrogem_gameid},
 	{"retroGemDraw",           lua_retrogem_draw},
+	{"initUDPFS",              lua_udpfs_init},
+	{"udpfsState",              lua_udpfs_state},
 	{"initSMB",                lua_smb_init},
 	{"smbGetIPConfig",         lua_smb_getipconfig},
 	{"smbNetUp",               lua_smb_netup},
