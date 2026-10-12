@@ -1167,6 +1167,7 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
 <tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
+<tr><td>UDPFS Files PS1 VCDs <em>(Coming soon)</em></td><td>read-only UDPFS fallback after USB</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> POPSLoader integration: Coming soon</td></tr>
 <tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
@@ -1178,6 +1179,13 @@ validating on hardware). Everything except an APA/PFS internal HDD goes through 
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
 iLink backend extends the same BDM mechanism but is not hardware-tested yet. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div>'''
+
+POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
+POPSLoader is preparing a PS1 VCD network page and driver-staging support for
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault (Alpha)</a>.
+POPSTARTER reads USB first, then requests missing VCD files from a UDPFS server using its read-only fallback.
+The upstream Alpha exists today; POPSLoader integration is <em>Coming soon</em> and is not included in current releases.
+See the <a href="popsloader/udpfs-bdma.html">planned setup, files and credits</a>. This is not UDPBD or Neutrino&#39;s PS2 UDPFS mode.</div>'''
 
 HUGOPOCKED = '''<h2 id="hugopocked">Hugopocked fixes — the leading community compatibility pack</h2>
 <p class="lead">When POPS' built-in fixes and the compatibility modes above aren't enough, <b>Hugopocked's per-game
@@ -1369,7 +1377,7 @@ def build_sections():
     page('storage', 'Storage Backends',
          'Where the POPS folder, VCDs and support modules live on each device — USB, internal HDD, SMB, plus '
          'the modern MMCE / MX4SIO / exFAT backends — and the launch methods and per-mode ELF prefixes.',
-         DEVICE_MATRIX +
+         DEVICE_MATRIX + POPS_UDPFS_CALLOUT +
          wiki_content(['usb-mode', 'hdd-mode', 'smb-mode', 'ps1cd-mode']) +
          section_prose(['storage backends', 'launch methods']) +
          firstparty('verified-setups.md') +
@@ -1470,6 +1478,7 @@ POPSLOADER_DOCS = [
     ('TESTING.md', 'Testing'),
     ('CONTRIBUTING.md', 'Contributing'),
     ('docs/LAUNCH_ARGUMENTS.md', 'Launch arguments'),
+    ('docs/UDPFS_BDMA.md', 'POPS UDPFS / BDM-UDPFS Assault — Coming soon'),
     ('docs/PRESERVATION_CONTRACTS.md', 'Preservation contracts'),
 ]
 def pl_slug(path):
@@ -1566,7 +1575,7 @@ def build_popsloader():
              'menu — launched with <code>reboot_iop=0</code> for a clean handoff. '
              '<i>(Some third-party docs describe this as a &ldquo;Triangle&nbsp;=&nbsp;relaunch BOOT.ELF&rdquo; '
              'shortcut; in this fork Triangle opens the Exit menu and BOOT.ELF is one of its three choices.)</i></div>')
-    body = intro + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
+    body = intro + POPS_UDPFS_CALLOUT + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
            'Rendered straight from the repository.</p><div class="grid">' + ''.join(cards) + '</div>'
     write('popsloader.html', shell('POPSLoader', body, 'popsloader'))
     idx('POPSLoader — the modern launcher', 'popsloader',
@@ -1931,6 +1940,7 @@ CREDITS_SECTIONS = [
     ('Devices &amp; modern backends', [
         ('israpps (El_isra)', '<b>BDM Assault</b> (exFAT / BDMA), <code>MMCEMAN</code>, and much of the modern device tooling that lets POPStarter reach exFAT USB, MX4SIO and MMCE.'),
         ('saildot4k', '<b>BDMA-ATA</b> — the exFAT internal-HDD (ATA) backend for POPSLoader: implementation, fixes, feedback, and oversight that brought the <code>HDD (exFAT)</code> page to life.'),
+        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (<em>Coming soon</em> in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha"><b>BDM-UDPFS Assault Alpha</b></a>, the read-only POPSTARTER UDPFS VCD fallback, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, automatic BDMA equip and launch integration are <em>Coming soon</em>; <a href="popsloader/udpfs-bdma.html">planned setup and credits</a>.'),
         ('The Open PS2 Loader (OPL) project', 'The BDM device-backend ecosystem POPSLoader builds on — USB, MX4SIO, MMCE, ATA and iLink — and the patterns the fork mirrors. (OPL also ships a UDPBD network backend; POPSLoader does not.)'),
         ('Rick Gaiser', '<b>udpbd</b> — the UDP block-device network backend.'),
     ]),
@@ -1982,7 +1992,7 @@ def build_credits():
         'credits thanks acknowledgements who made authors contributors ShaolinAssassin krHACKen kHn POPStarter POPS Sony '
         'El_isra israpps Enceladus Daniel Santos Berion nuno6573 Hugopocked Ripto NathanNeurotic hardware testers '
         'gledson999 El_Patas arkl1t32 LopoTRI Rick Gaiser udpbd OPL Open PS2 Loader BDM Assault Retro-Jogos R3Z3N '
-        'saildot4k BDMA-ATA ATA exFAT HDD backend TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history', 'credits.html')
+        'saildot4k BDMA-ATA ATA exFAT HDD backend Okeanos BDM UDPFS Assault Coming soon TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history', 'credits.html')
 
 # ---------- HOME ----------
 def build_home():
@@ -2030,6 +2040,12 @@ deep reference, for when you need a specific answer.</div>
 Sony POPS emulator is <b>not</b> included anywhere; you supply your own legally-obtained files (verify them by the
 <a href="downloads.html">published MD5s</a>). Questions and support live on the
 <a href="https://www.psx-place.com/threads/popstarter.19139/">PSX-Place POPStarter thread</a>.</div>
+
+<div class="callout info" id="pops-udpfs-upcoming"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
+The POPSLoader fork is preparing read-only PS1 VCD network support based on
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault Alpha</a>.
+The upstream driver is available independently, but POPSLoader integration is <em>Coming soon</em>.
+<a href="popsloader/udpfs-bdma.html">Integration setup and credits</a>.</div>
 
 <h2 id="reference">Full reference</h2>
 <p class="lead">Already know your way around? Jump straight in — or use the search box up top to find any
