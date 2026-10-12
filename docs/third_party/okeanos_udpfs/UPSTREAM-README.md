@@ -37,7 +37,7 @@ Place the IRX binaries from the releases section of this repository into the pat
 
 ## Network configuration
 
-Both files are optional and live on the USB drive, in the `POPS` folder. Full details in [docs/README_CONFIG.txt](docs/README_CONFIG.txt).
+Both files are optional and live on the USB drive, in the `POPS` folder. Full details in [README_CONFIG.txt](README_CONFIG.txt).
 
 - `mass:/POPS/IPCONFIG.DAT`: the PS2's address, one line: `IP NETMASK [GATEWAY]`, for example `192.168.1.10 255.255.255.0 192.168.1.1`. If it is missing or invalid, the PS2 falls back to `192.168.1.10` / `255.255.255.0` (same default as UDPBD and Neutrino).
 - `mass:/POPS/UDPFSCONFIG.DAT`: the server's address, one line: `192.168.1.11`. If present and in the same network as the PS2, it takes priority over the discovery and the server is contacted directly. If it is missing, or its address belongs to another network, it is ignored and the server is found with a broadcast discovery.
@@ -60,7 +60,7 @@ Options (run `make clean` after changing one):
 
 ## License
 
-This project is distributed under the terms of the [LICENSE](../LICENSE) file of the repository (Academic Free License 2.0). It includes or derives from third-party works that keep their own licenses (PS2SDK, Neutrino/UDPBD/UDPFS, FatFs, udpfsd): the full list, with copyright notices and license texts, is in [docs/THIRD_PARTY_NOTICES.md](docs/THIRD_PARTY_NOTICES.md) and [licenses/](licenses/).
+This project is distributed under the terms of the [LICENSE](LICENSE) file of the repository (Academic Free License 2.0). It includes or derives from third-party works that keep their own licenses (PS2SDK, Neutrino/UDPBD/UDPFS, FatFs, udpfsd): the full list, with copyright notices and license texts, is in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [AFL-3.0.txt](AFL-3.0.txt).
 
 ## CREDITS
 
