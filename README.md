@@ -30,7 +30,7 @@ operation on real hardware; it does not block this integration's other goals.
 
 ## Project documentation and wiki
 
-The [GitHub-native project wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) is synchronized from the [maintained Markdown source](docs/wiki/Project-Wiki.md). covers [installation](docs/wiki/Installation-Guide.md), [Ember](docs/wiki/Ember-Core.md), [ZIP and PSU formats](docs/wiki/Release-Formats.md), and [device support](docs/wiki/Device-Support.md). The same pages are also published through [GitHub Pages](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html) separately from the preserved historical POPStarter wiki. [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) merged into `dev` on October 13, 2026. Its Ember integration is available in rolling prereleases, not in stable 1.2.3.
+The [GitHub-native project wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) is synchronized from the [maintained Markdown source](docs/wiki/Project-Wiki.md) and covers [installation](docs/wiki/Installation-Guide.md), [Ember](docs/wiki/Ember-Core.md), [ZIP and PSU formats](docs/wiki/Release-Formats.md), and [device support](docs/wiki/Device-Support.md). The same pages are also published through [GitHub Pages](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html) separately from the preserved historical POPStarter wiki. [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) merged into `dev` on October 13, 2026. Its Ember integration is available in rolling prereleases, not in stable 1.2.3.
 
 ## Highlights
 
