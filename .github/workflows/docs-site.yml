@@ -92,7 +92,9 @@ jobs:
           set -eu
           git ls-remote --heads origin | awk '{print $2}' | sed 's#refs/heads/##' | sort -u > /tmp/branches
           BAD=0
-          for b in $(grep -rhoE 'github\.com/[^/]+/[^/]+/blob/([^/"]+)/' .research/site --include='*.html' \
+          # Only inspect POPSLoader branches. RiptOPL's valid rebuild/main
+          # URL otherwise gets misread as POPSLoader branch "rebuild".
+          for b in $(grep -rhoE 'github\.com/NathanNeurotic/POPSLoader/blob/([^/"]+)/' .research/site --include='*.html' \
                      | sed -E 's#.*/blob/([^/"]+)/#\1#' | sort -u); do
             grep -qx "$b" /tmp/branches || { echo "::error::site links to branch '$b', which does not exist on origin"; BAD=1; }
           done
