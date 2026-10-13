@@ -11,10 +11,12 @@ The PS1 game page appends Ember titles from the **same current device**
 as the VCD list. Ember root scanning handles USB (including multiple
 independent drives), MX4SIO, MMCE, internal exFAT/ATA, network SMB and
 UDPFS Files where their corresponding mounts exist. It does not reinterpret
-a UDPFS source as USB. An APA/PFS HDD `__.EMBER` partition requires its own
-persistent, writable PFS mount and safe keep-IOP handoff; **that partition
-path is not yet implemented**. i.Link remains unavailable in POPSLoader's
-device carousel. Do not claim device parity until both are addressed.
+a UDPFS source as USB. APA/PFS HDD `__.EMBER` and `__.EMBER0` through
+`__.EMBER9` partitions now have a separate scanner and a writable PFS
+mount preserved across the keep-IOP handoff. This path is **host-tested
+only**; real console write-through, controller recovery and VMC behavior
+remain unverified. i.Link remains unavailable in POPSLoader's device
+carousel. Do not claim full hardware parity.
 
 ```text
 <mounted-device-root>/
@@ -85,7 +87,8 @@ Hardware verification must include: one/two USB drives, MX4SIO,
 MMCE, ATA exFAT, SMB, UDPFS Files, controller input after handoff,
 CUE/BIN launching, virtual-card writes, per-game/global setting
 persistence, and preserving prior POPSTARTER/UDPFS behavior.
-APA/PFS and i.Link require implementation before full RiptOPL parity.
+APA/PFS code is implemented but requires physical console verification.
+i.Link still requires implementation. Neither is certified for parity.
 
 Credits: Gageformer for Ember, RiptOPL/Open-PS2-Loader and
 contributors for the device scanning/settings model; RiptOPL's
