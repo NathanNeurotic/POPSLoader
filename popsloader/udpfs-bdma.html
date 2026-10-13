@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>POPS UDPFS / BDM-UDPFS Assault — Coming soon · POPSLoader · POPStarter Docs</title>
+<title>Experimental POPS UDPFS / BDM-UDPFS Assault · POPSLoader · POPStarter Docs</title>
 <meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
 <link rel="stylesheet" href="../assets/style.css">
 <link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
@@ -25,6 +25,10 @@
     <a href="../index.html">Home</a>
     <h4>POPSLoader · this project</h4>
     <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
     <a href="../launch-arguments.html">Launch arguments</a>
     <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
 <a href="../storage.html">Storage Backends</a>
@@ -44,22 +48,21 @@
     <a href="../compatibility-table.html">Compatibility table</a>
     <a href="../thread-study.html">Community knowledge</a>
     <a href="../credits.html">Credits</a>
-    <a href="../wiki/index.html">All wiki pages</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>POPS UDPFS / BDM-UDPFS Assault — Coming soon</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/UDPFS_BDMA.md">view on GitHub ↗</a></p><p><strong>Experimental development build, not an official compatibility release.</strong><br />
+  <main class="content"><h1>Experimental POPS UDPFS / BDM-UDPFS Assault</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/UDPFS_BDMA.md">view on GitHub ↗</a></p><p><strong>Experimental in official POPSLoader 1.2.3; not hardware-certified.</strong><br />
 The Ethernet mode selector, UDPFS VCD browser, and embedded POPSTARTER driver<br />
 staging are implemented. Cross-compilation and automated regression checks have<br />
 passed, but physical PS2 launch compatibility is <strong>Unknown (verify on hardware)</strong>.<br />
-The stable 1.2.2 release does not provide these features.</p>
+Official release 1.2.3 includes the opt-in Ethernet SMBv1 / USB + UDPFS picker and embedded Okeanos fallback staging, but does <strong>not</strong> certify real-console launch or device compatibility.</p>
 <h2 id="experimental-implementation">Experimental implementation</h2>
 <p>The POPSLoader feature branch implements the planned Ethernet protocol picker:<br />
 select <strong>SMBv1</strong> to use the existing SMB browsing and network-streaming modules,<br />
 or <strong>USB + UDPFS</strong> to use a read-only <code>udpfs:/POPS/</code> game list and Okeanos's<br />
-POPSTARTER runtime fallback. This implementation is available to development builds; it is <strong>not a<br />
-hardware-verified or official stable feature</strong>. Do not advertise stable support<br />
+POPSTARTER runtime fallback. This implementation is also included in official 1.2.3 <strong>as an experimental opt-in option</strong>, not as hardware-verified compatibility. Do not advertise stable support<br />
 until the release matrix records hardware validation.</p>
 <h3 id="usb-udpfs-configuration">USB + UDPFS configuration</h3>
 <ol>
@@ -145,7 +148,7 @@ and <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/third_party/o
 <ul>
 <li><strong>Upstream Okeanos Alpha:</strong> publicly available as a standalone driver.</li>
 <li><strong>POPSLoader SMBv1 / USB+UDPFS picker, VCD browsing and automatic staging:</strong><br />
-  implemented for experimental development builds; not in stable 1.2.2.</li>
+  included as an <strong>experimental feature in official 1.2.3</strong> and further developed on <code>dev</code>; game launch on physical PS2 remains unverified.</li>
 <li><strong>Dedicated POPS UDPFS settings editor:</strong> not implemented or required; the<br />
   feature branch uses the existing SMB / Network static address fields.</li>
 <li><strong>Hardware compatibility:</strong> <strong>Unknown (verify on hardware)</strong>. A passing<br />

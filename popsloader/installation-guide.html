@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Installation — ZIP, PSU and game folders · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>Installation — ZIP, PSU and game folders</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/wiki/Installation-Guide.md">view on GitHub ↗</a></p><h2 id="which-package">Which package?</h2>
+<p>Use the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">official POPSLoader 1.2.3 release</a> for the currently released stable line. Its ZIP uses the <em>legacy</em> <code>PS1_POPSLOADER/</code> root layout; it does <strong>not</strong> include PR #600's new Ember integration or its separate PSU.</p>
+<p>The updated installation layout below belongs to the <strong>development Ember package</strong> in <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>. When merged into <code>dev</code>, look for standalone <code>PS1_POPSLOADER.zip</code> and <code>PS1_POPSLOADER.psu</code> on the rolling prerelease. Do not mistake successful build tests for hardware approval.</p>
+<h2 id="development-zip-deployment">Development ZIP deployment</h2>
+<p>Extract <code>PS1_POPSLOADER.zip</code> onto your storage device, retaining the directory names:</p>
+<pre><code class="language-text">APPS/
+  PS1_POPSLOADER/
+    POPSLOADER.ELF
+    POPSTARTER.ELF
+    icon.sys
+    list.icn
+    copy.icn
+    del.icn
+    title.cfg
+    APPINFO.PBT
+POPS/                   RiptOPL-matched POPStarter files and device support
+EMBER/
+  ember.elf
+  LICENSE-BETA.txt
+  games/
+    ExampleGame/
+      ExampleGame.cue
+      ExampleGame.bin
+PS1_POPSLOADER.psu       alternative installation of the APPS application only
+</code></pre>
+<p>Copy <code>APPS/PS1_POPSLOADER/</code> to the application location used by your launcher; alternatively import <code>PS1_POPSLOADER.psu</code> with a PS2 PSU-capable save manager. You do <strong>not</strong> copy the PSU as a directory, and <strong>it contains no nested folder</strong>: its PS2 save header is named <code>PS1_POPSLOADER</code>, with eight direct file entries. The ELF inside is <code>POPSLOADER.ELF</code>.</p>
+<p>Place the <code>POPS/</code> and <code>EMBER/</code> trees at the supported device root, not inside the memory-card application save. The package includes homebrew and config assets, not proprietary Sony <code>POPS.ELF</code>, <code>POPS.PAK</code>, <code>POPS_IOX.PAK</code>, <code>IOPRP252.IMG</code>, PlayStation BIOS, or commercial disc images. Supply anything required from your own legally acquired sources.</p>
+<h2 id="game-formats">Game formats</h2>
+<p>POPS/POPStarter uses <code>POPS/&lt;game&gt;.VCD</code>. Ember uses <code>EMBER/games/&lt;GameFolder&gt;/&lt;disc&gt;.cue</code> and matching <code>.bin</code> track(s), or other formats explicitly supported by the Ember version. The provided <code>ExampleGame.bin</code> is <strong>zero bytes</strong> and is not a playable demonstration game; replace or delete the example folder. Ember also requires your own <strong>512 KiB <code>EMBER/bios.bin</code></strong>, which is not redistributed.</p>
+<p>Read the <a href="ember-core.html">Ember Core</a> page for settings, library scanning and current limitations. <a href="state.html">STATE.md</a> remains authoritative for live compatibility.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

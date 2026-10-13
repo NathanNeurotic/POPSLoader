@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ember PS1 core · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>Ember PS1 core</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/wiki/Ember-Core.md">view on GitHub ↗</a></p><p><strong>Development status:</strong> implemented on <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>, not included in stable POPSLoader 1.2.3, and <strong>not yet console-certified</strong>.</p>
+<p>Ember by <a href="https://github.com/Gageformer/Ember">Gageformer</a> is a separate PS1 emulator; it is <strong>not</strong> POPStarter and it does not run POPStarter VCD images through the POPStarter launch path. POPSLoader discovers compatible Ember game folders on the selected storage device, labels their list rows <code>[Ember]</code>, and provides Ember's Beta 2 global and per-game settings.</p>
+<h2 id="installation-and-game-layout">Installation and game layout</h2>
+<pre><code class="language-text">&lt;device-root&gt;/EMBER/
+  ember.elf                bundled, unmodified, with LICENSE-BETA.txt
+  LICENSE-BETA.txt
+  bios.bin                 user-supplied 512 KiB PS1 BIOS (NOT bundled)
+  settings.txt             native Ember global options (optional)
+  games/
+    YourGame/
+      disc.cue
+      track.bin
+      settings.txt         optional per-game options
+      MC1.vmc              created by Ember
+      MC2.vmc              created by Ember
+</code></pre>
+<p>Only immediate child game directories with supported disc/executable files count as library entries; the <code>ExampleGame.bin</code> shipped in the sample is <strong>empty</strong> and must not be treated as game media. Covers use the exact <strong>game-folder name</strong> with <code>_COV.png</code>, optional disc icons <code>_ICO.png</code>, in the selected device's <code>ART/</code> location.</p>
+<p>Global settings are in <strong>Settings → Ember PS1 Core</strong>, and a game's four per-game overrides are edited with <strong>L2</strong> on its list row. Native options cover timing, dither, shading and controller; display is global-only. An override set to Default inherits the global value. Consult <a href="ember-integration.html">technical integration</a> for exact allowed values and path handling.</p>
+<h2 id="device-policy-and-limits">Device policy and limits</h2>
+<p>Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SMB and UDPFS, plus APA/PFS partition support. <strong>This is not a statement of working console launches or safe save persistence.</strong> Before making hardware claims, verify controller input through keep-IOP handoff, game launch and VMC writes, device identification and other regression paths on physical PS2 consoles.</p>
+<p><strong>i.Link is deliberately deferred until RiptOPL demonstrates stable, tested i.Link support</strong>. It is out of scope for Ember PR #600 and does not hold back the other supported-device work. The UI continues to show i.Link as unsupported/hidden.</p>
+<h2 id="licensing-and-upstream-monitoring">Licensing and upstream monitoring</h2>
+<p>The binary must remain <strong>unmodified</strong> and accompanied by <code>LICENSE-BETA.txt</code> and attribution to Gageformer with a link to their <a href="https://github.com/Gageformer/Ember/releases">official release page</a>. The licence does not permit commercial redistribution without permission. No BIOS or game image is included.</p>
+<p>The weekly <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/github/workflows/ember-watch.yml">Ember Watch workflow</a> compares the published Ember asset's SHA-256 against RiptOPL's verified bundled version, supports same-tag asset changes, and updates only POPSLoader's Ember revision pin on <code>dev</code>; the original POPS support-file revision remains fixed. Watch activation requires this workflow on the repository's default branch; it does not independently certify hardware compatibility.</p>
+<p><a href="state.html">Full status and known issues</a> · <a href="qa-regression-matrix.html">QA matrix</a></p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

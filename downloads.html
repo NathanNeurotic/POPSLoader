@@ -25,6 +25,10 @@
     <a href="index.html">Home</a>
     <h4>POPSLoader · this project</h4>
     <a href="popsloader.html">POPSLoader docs</a>
+    <a href="popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="popsloader/release-formats.html">Release formats</a>
     <a href="launch-arguments.html">Launch arguments</a>
     <h4>POPStarter · documentation</h4><a href="getting-started.html">Getting Started</a>
 <a href="storage.html">Storage Backends</a>
@@ -44,7 +48,7 @@
     <a href="compatibility-table.html">Compatibility table</a>
     <a href="thread-study.html">Community knowledge</a>
     <a href="credits.html">Credits</a>
-    <a href="wiki/index.html">All wiki pages</a>
+    <a href="wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
@@ -53,7 +57,19 @@
 <p class="lead">Every POPStarter file in the tracked generator-hosted download collection, together with a separate inventory of historical references. Legacy Pages-only assets are retained separately pending individual review.
 24 files (POPStarter builds, Quickstarter packs, tools, patches &amp; cheat references) —
 all verified to contain <b>no Sony emulator binaries</b>.</p>
-<div class="callout info"><div class="h">Which of these do I need?</div>Most people need exactly one file from this page. If you are setting POPStarter up for the first time, the only decision you have to make is where your PS1 games will live: on a USB stick, on the PS2&#x27;s internal hard drive, or in a shared folder on your PC. Take the matching pack at the top and you get the launcher, the disc converter and a step-by-step readme in one download. Everything after that is a PC tool, a fix for one badly behaved game, an optional add-on, or an older build kept purely for the record. Nothing here is hidden or retired. Where two files look like the same thing in two archive formats, the note says whether they really are, because some are and some turn out to be different versions. The Sony POPS emulator files are not hosted here and never will be; check your own copies against the checksums listed above.</div>
+<div class="callout info"><div class="h">Current POPSLoader release packages (GitHub)</div>
+<b>Stable:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">POPSLoader 1.2.3</a>
+keeps the existing installer layout, with no Ember.
+<b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
+will expose standalone <code>PS1_POPSLOADER.zip</code> and <code>PS1_POPSLOADER.psu</code>
+after PR #600 is merged to dev and a successful release run publishes.
+The ZIP includes <code>APPS/</code>, <code>POPS/</code> and <code>EMBER/</code>;
+the PSU has only eight direct app files, no nested folder. The separate
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">Experimental Release</a>
+follows its own branch and is not automatically updated by merging dev.
+<a href="popsloader/installation-guide.html">Installation guide</a> ·
+<a href="popsloader/release-formats.html">Packaging specification</a>.</div>
+<div class="callout info"><div class="h">Which historical POPStarter file do I need?</div>Most people need exactly one file from this page. If you are setting POPStarter up for the first time, the only decision you have to make is where your PS1 games will live: on a USB stick, on the PS2&#x27;s internal hard drive, or in a shared folder on your PC. Take the matching pack at the top and you get the launcher, the disc converter and a step-by-step readme in one download. Everything after that is a PC tool, a fix for one badly behaved game, an optional add-on, or an older build kept purely for the record. Nothing here is hidden or retired. Where two files look like the same thing in two archive formats, the note says whether they really are, because some are and some turn out to be different versions. The Sony POPS emulator files are not hosted here and never will be; check your own copies against the checksums listed above.</div>
 <div class="archive-cta"><div class="h">Download generated documentation (offline)</div><p>Grab the <b>generated</b> documentation set as one self-contained <code>.zip</code> — all 63 wiki pages, every reference page (glossary, FAQ, command index, the full thread study), the generator-hosted downloads, the menu images, <i>and</i> the raw source markdown. Older Pages-only legacy files are retained separately pending provenance review. Open <code>index.html</code> inside it to browse the whole site offline. Contains <b>no Sony binaries</b>.</p><a class="btn" href="popstarter-docs-archive.zip" download> Download the full archive (17 MB)</a></div>
 <div class="callout amber"><div class="h">Historical NOPAL patch name conflict</div>
 The original <code>NOPAL_PATCH.7z</code> was listed in 2017 as <b>226 bytes</b> and is not recovered.

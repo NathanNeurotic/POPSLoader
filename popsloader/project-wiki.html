@@ -1,0 +1,85 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Project Wiki — start here · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>Project Wiki — start here</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/wiki/Project-Wiki.md">view on GitHub ↗</a></p><p>The maintained project guide for <strong>POPSLoader</strong>, alongside the preserved historical POPStarter reference. This wiki is kept in the POPSLoader repository and published in the POPSLoader section of the documentation website; the historical <code>.research/wiki/</code> pages are archival and remain unchanged.</p>
+<p><strong>Release status (October 2026):</strong> stable <strong>1.2.3</strong> is published. Ember support is under development in <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>, and is not in stable 1.2.3. Experimental UDPFS is present in 1.2.3 but <strong>not hardware-certified</strong>. Do not infer hardware compatibility from green CI.</p>
+<h2 id="start-here">Start here</h2>
+<ul>
+<li><a href="installation-guide.html">Installation Guide</a> — prerequisites, device-root directories, launcher installation.</li>
+<li><a href="release-formats.html">Release Formats</a> — the eight-file <code>APPS/PS1_POPSLOADER/</code> directory, flat memory-card <code>.psu</code>, full ZIP, development and stable channels.</li>
+<li><a href="ember-core.html">Ember Core</a> — Ember versus POPStarter, configuration, game format, licensing, test status and i.Link policy.</li>
+<li><a href="device-support.html">Device Support</a> — storage devices, which features are implemented, and what still needs testing.</li>
+<li><a href="ember-integration.html">Technical Ember integration</a> — detailed settings, paths and launch contract.</li>
+<li><a href="udpfs-bdma.html">UDPFS / BDM-UDPFS guide</a> — opt-in PS1 network support.</li>
+<li><a href="state.html">STATE.md</a> — authoritative changing status, regressions and hardware evidence.</li>
+<li><a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a> — detailed test records.</li>
+<li><a href="https://github.com/NathanNeurotic/POPSLoader/releases">POPSLoader release downloads</a>.</li>
+</ul>
+<h2 id="preserve-the-distinctions">Preserve the distinctions</h2>
+<p><strong>POPS</strong> is Sony's PS1 emulation software and is not supplied. <strong>POPStarter</strong> is the original PS1 game launcher. <strong>POPSLoader</strong> is the modern front-end, which can browse VCD games for POPStarter and is adding a separate <strong>Ember</strong> PS1 emulator pathway. The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.</p>
+<p><strong>Hardware testing is separate from CI.</strong> Ember game launch, controller availability after handoff and VMC saves still require actual PS2 confirmation. i.Link is intentionally deferred until RiptOPL demonstrates working hardware support; it does not block other Ember work.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

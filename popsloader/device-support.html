@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Device support &amp; hardware verification · POPSLoader · POPStarter Docs</title>
+<meta name="description" content="Resurrected, searchable POPStarter documentation — cheats, patches, config, storage, multi-disc, IGR, downloads, and the POPSLoader fork.">
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" type="image/x-icon" href="../assets/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="../assets/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+</head><body data-base="../">
+<header class="topbar">
+  <button class="menu-btn" aria-label="Menu"></button>
+  <a class="brand" href="../index.html">
+    <span class="psbtns"><i class="tri">&#9651;</i><i class="cir">&#9711;</i><i class="cro">&#10005;</i><i class="squ">&#9633;</i></span>
+    POPStarter <small>DOCS</small></a>
+  <div class="search">
+    <input id="q" type="search" placeholder="Search cheats, patches, config bytes…  ( / )" autocomplete="off">
+    <kbd>/</kbd>
+    <div id="results"></div>
+  </div>
+</header>
+<canvas id="ps2-orbs" class="ps2-orbs-canvas" aria-hidden="true"></canvas>
+<div class="layout">
+  <nav class="sidebar">
+    <a href="../index.html">Home</a>
+    <h4>POPSLoader · this project</h4>
+    <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
+    <a href="../launch-arguments.html">Launch arguments</a>
+    <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
+<a href="../storage.html">Storage Backends</a>
+<a href="../cheats.html">Cheats</a>
+<a href="../compatibility.html">Patches & TROJANs</a>
+<a href="../igr.html">IGR & Hotkeys</a>
+<a href="../config.html">Config Table</a>
+<a href="../multidisc.html">Multi-disc & VMC</a>
+<a href="../troubleshooting.html">Troubleshooting</a>
+<a href="../downloads.html">Downloads</a>
+<a href="../history.html">History</a>
+    <h4>Reference</h4>
+    <a href="../glossary.html">Glossary</a>
+    <a href="../commands.html">Command index</a>
+    <a href="../faq.html">FAQ &amp; known bugs</a>
+    <a href="../known-issues.html">Known issues</a>
+    <a href="../compatibility-table.html">Compatibility table</a>
+    <a href="../thread-study.html">Community knowledge</a>
+    <a href="../credits.html">Credits</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
+    <h4>Related projects</h4>
+    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
+  </nav>
+  <main class="content"><h1>Device support &amp; hardware verification</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/wiki/Device-Support.md">view on GitHub ↗</a></p><p>This is an overview of <strong>code coverage</strong>, not a blanket compatibility certification. For current regressions and dated hardware evidence, always use <a href="state.html">STATE.md</a> and <a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>.</p>
+<table>
+<thead>
+<tr>
+<th>Storage</th>
+<th>POPStarter/VCD</th>
+<th>Ember integration, PR #600</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>USB and two USB drives</td>
+<td>Existing VCD backend</td>
+<td>Library enumeration host-tested; console handoff and VMC unverified</td>
+</tr>
+<tr>
+<td>MX4SIO</td>
+<td>Existing backend</td>
+<td>Library enumeration host-tested; console handoff and VMC unverified</td>
+</tr>
+<tr>
+<td>MMCE</td>
+<td>Existing backend</td>
+<td>Library enumeration host-tested; console handoff and VMC unverified</td>
+</tr>
+<tr>
+<td>Internal exFAT / ATA</td>
+<td>Existing BDM-backed support</td>
+<td>Host-tested; actual device startup and VMC unverified</td>
+</tr>
+<tr>
+<td>APA/PFS HDD</td>
+<td>Existing backend</td>
+<td><code>__.EMBER</code> mount/scan host-tested; write-through unverified</td>
+</tr>
+<tr>
+<td>SMBv1</td>
+<td>Existing network VCD route</td>
+<td>Library host-tested; Ember handoff/mount lifetime unverified</td>
+</tr>
+<tr>
+<td>UDPFS</td>
+<td>Experimental BDM-UDPFS VCD option</td>
+<td>Library host-tested; end-to-end console path unverified</td>
+</tr>
+<tr>
+<td>i.Link</td>
+<td>Existing device-menu placeholder</td>
+<td><strong>Deferred</strong> until RiptOPL has proven hardware support</td>
+</tr>
+</tbody>
+</table>
+<p>The Ethernet menu supports choosing SMBv1 or experimental <strong>USB + UDPFS</strong> for POPStarter, with appropriate server, driver and setup requirements. Neither POPStarter's UDPFS path nor Ember's network handoff should be advertised as certified solely because host tests pass. Consult <a href="udpfs-bdma.html">UDPFS details</a>.</p>
+<p>POPSLoader's <a href="ember-core.html">Ember development guide</a> documents separate Ember settings and its keep-IOP launch path. <strong>i.Link is intentionally excluded from the PR #600 completion gate.</strong> Retain existing unsupported UI, revisit when RiptOPL demonstrates the device on real hardware, and do not call the resulting Ember release full-device parity.</p></main>
+  <aside class="toc"><div class="toc-h">On this page</div><nav id="toc-nav"></nav></aside>
+</div>
+<footer>
+  <p><b>POPStarter Documentation Archive</b> — community-recovered from the Wayback Machine
+  (ShaolinAssassin's <code>popstarter-documentation-stuff</code> wiki) and krHACKen's r13 changelog,
+  cross-checked and merged across snapshots. Built for the POPSLoader project.</p>
+  <p class="prov-inline">POPStarter is krHACKen's homebrew launcher. <b>POPS</b> is Sony's PS1-on-PS2
+  emulator and is <b>not</b> distributed here — it is referenced by checksum only. “TROJAN” is POPStarter's
+  own name for a patch file, <b>not</b> malware. Some external links were intentionally removed. Built on the
+  documentation of <b>ShaolinAssassin</b> and <b>krHACKen</b>. Historical wiki Git source supplied by <b>AstroSnail</b> — see <a href="../credits.html">Credits</a>.</p>
+</footer>
+<script src="../assets/app.js"></script>
+</body></html>

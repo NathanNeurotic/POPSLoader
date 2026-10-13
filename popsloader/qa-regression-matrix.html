@@ -25,6 +25,10 @@
     <a href="../index.html">Home</a>
     <h4>POPSLoader · this project</h4>
     <a href="../popsloader.html" class="active">POPSLoader docs</a>
+    <a href="../popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="../popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="../popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="../popsloader/release-formats.html">Release formats</a>
     <a href="../launch-arguments.html">Launch arguments</a>
     <h4>POPStarter · documentation</h4><a href="../getting-started.html">Getting Started</a>
 <a href="../storage.html">Storage Backends</a>
@@ -44,7 +48,7 @@
     <a href="../compatibility-table.html">Compatibility table</a>
     <a href="../thread-study.html">Community knowledge</a>
     <a href="../credits.html">Credits</a>
-    <a href="../wiki/index.html">All wiki pages</a>
+    <a href="../wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
@@ -87,6 +91,27 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
   current EXP71 runtime fixes artwork to <code>ART/</code>; <code>ART_LOCATION</code> persists as a<br />
   backward-compatible inert setting. Do not use S-11's old folder-selection<br />
   instructions as an active acceptance test.</li>
+</ul>
+<h2 id="ember-core-development-test-gate-2026-10-13">Ember core development test gate (2026-10-13)</h2>
+<p>The new Ember integration is not part of the official 1.2.3 binary.<br />
+Host tests: <code>T58</code> (valid directory+image scanning, separate roots for<br />
+one/two USB, MX4SIO/MMCE/ATA/SMB/UDPFS and no duplicate rows), <code>T59</code><br />
+(settings.txt preserves unknown keys/Default inherits, keep-IOP argv),<br />
+and <code>T60</code> (APA <code>__.EMBER</code> scanning, RW keep-PFS launch and safe cleanup).<br />
+Device tests still required for real CUE/BIN boot, VMC writes,<br />
+controller re-init, network persistence and storage regression.</p>
+<ul>
+<li><strong>USB with 2 devices:</strong> each <code>EMBER/games/</code> library lists only under<br />
+  its own mounted root; title and cover art must not cross volumes.</li>
+<li><strong>MX4SIO/MMCE/internal exFAT:</strong> typed root, correct game folder,<br />
+  no IOP reset, controller and saved VMC work.</li>
+<li><strong>SMB/UDPFS Files:</strong> network mount survives keep-IOP handoff and<br />
+  global/per-game native settings degrade safely on read-only shares.</li>
+<li><strong>APA/PFS:</strong> <code>__.EMBER[0-9]?</code> source support now builds and passes the<br />
+  T60 host regression for transient scanning, RW launch remount,<br />
+  write-through and preservation of its PFS mount across keep-IOP.<br />
+  Physical VMC/controller validation is still required.</li>
+<li><strong>Ember i.Link:</strong> intentionally deferred until RiptOPL demonstrates reliable i.Link integration on physical hardware. Out of scope for Ember PR #600; do not gate the other devices' readiness on it or claim full device parity. The existing generic i.Link menu remains unsupported/hidden.</li>
 </ul>
 <h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / Okeanos BDMA (2026-10-12)</h2>
 <table>
