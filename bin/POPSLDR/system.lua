@@ -8197,7 +8197,8 @@ function PLDR.EmberLaunch(entry)
   end
   if not ok then return false, "Ember launch error: "..tostring(result) end
   return false, "Ember ELF returned: "..tostring(result)
-endend
+end
+end
 
 function PLDR.GetPS1GameLists(path, updating, on_progress)
   local RET = {}
