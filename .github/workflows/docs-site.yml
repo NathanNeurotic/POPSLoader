@@ -21,6 +21,7 @@ on:
       # the markdown the mirrors are generated FROM
       - '*.md'
       - 'docs/**.md'
+      - 'docs/wiki/**'
       # the generator and its corpus
       - '.research/**'
       - '.github/workflows/docs-site.yml'
@@ -28,6 +29,7 @@ on:
     paths:
       - '*.md'
       - 'docs/**.md'
+      - 'docs/wiki/**'
       - '.research/**'
       - '.github/workflows/docs-site.yml'
   workflow_dispatch:
@@ -80,6 +82,21 @@ jobs:
       # Cheap invariants the audit does not cover. audit_site.py validates relative
       # links only and returns true for every http(s) href, which is exactly how 15
       # dead blob/BETA-13-PLAY/ links shipped unnoticed.
+      - name: Confirm project wiki and Ember pages are published
+        shell: bash
+        run: |
+          set -eu
+          for page in project-wiki installation-guide release-formats ember-core device-support ember-integration; do
+            test -s ".research/site/popsloader/${page}.html" || {
+              echo "::error::Missing POPSLoader documentation page: ${page}"; exit 1;
+            }
+          done
+          grep -Fq 'PS1_POPSLOADER.psu' .research/site/popsloader/release-formats.html
+          grep -Fq 'i.Link' .research/site/popsloader/ember-core.html
+          grep -Fq 'Project wiki' .research/site/popsloader.html
+          grep -Fq 'PS1_POPSLOADER.zip' .research/site/downloads.html
+          echo 'Maintained wiki, Ember guide, release links and PSU format all rendered.'
+
       - name: Gate historical patch and download descriptions
         run: python3 .research/tools/audit_published_provenance.py
 
