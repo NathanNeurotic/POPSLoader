@@ -1,4 +1,4 @@
-Last updated: 2026-10-12. **Official stable line: 1.2.2** (2026-09-30, documentation-only on top of 1.2.1). The development branches now include an experimental UDPFS integration. Neither rolling nor experimental prerelease publication implies PS2 hardware validation; see `QA_REGRESSION_MATRIX.md`.
+Last updated: 2026-10-13. **Official stable line: 1.2.3** (2026-10-13), including an opt-in **experimental USB + UDPFS VCD** path. Ember integration and eight-file flat-PSU packaging are development work in PR #600, with physical PS2 launches, controller retention and VMC persistence still unverified. Ember i.Link is explicitly deferred until RiptOPL proves reliable hardware support. CI/prerelease publication does not establish console compatibility; see `QA_REGRESSION_MATRIX.md`.
 
 # STATE
 
@@ -7,10 +7,11 @@ This is the **canonical status doc** for POPSLoader. Current runtime state, beha
 ## Project Identity
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`). The Lua is bin2c'd into the EE ELF at build time — so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI, and only surfaces on real PS2 / PCSX2. (`pops_profiles.lua` was removed 2026-07-13 with the profile-preset system.)
 
-## Experimental UDPFS integration status (2026-10-12)
+## Experimental UDPFS integration status (included in official 1.2.3)
 
 - UDPFS VCD browser and Okeanos Alpha fallback staging are integrated for
-  development channels; **official stable 1.2.2 remains unchanged**.
+  official 1.2.3 as an **experimental, opt-in feature** and continue on the
+  development channels for further work; there is no physical-console certification.
 - The Ethernet page now selects SMBv1 or USB+UDPFS, with restart required
   when changing network stacks. IP/netmask are shared from static SMB / Network
   settings and checked before writing missing USB `POPS/IPCONFIG.DAT`.
@@ -268,7 +269,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.2.2** is the public release (2026-09-30; previously 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.2.3** is the public release (2026-10-13; previously 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.
