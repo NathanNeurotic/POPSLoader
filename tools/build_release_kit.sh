@@ -1,11 +1,14 @@
 #!/bin/sh
 set -eu
 # Pin the reference install assets so POPS and EMBER cannot change
-# unexpectedly when upstream updates. Update only after review.
+# unexpectedly when upstream updates. POPS is pinned separately from Ember.
+# Ember Watch verifies Gageformer's release digest and updates the Ember pin.
 RIPTOPL_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
+RIPTOPL_EMBER_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
 git clone --quiet --filter=blob:none --no-checkout \
   https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
-git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS EMBER Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS
+git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS
+git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_EMBER_SHA" -- EMBER
 rm -rf dist_root POPSLOADER.zip PS1_POPSLOADER.psu
 mkdir -p dist_root/APPS/PS1_POPSLOADER dist_root/POPS dist_root/EMBER/games/ExampleGame
 test -s bin/POPSLOADER.ELF
