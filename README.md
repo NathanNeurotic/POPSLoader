@@ -1,131 +1,88 @@
-<p align="center"><img width="1774" height="887" alt="POPSLoader" src="https://github.com/user-attachments/assets/0a5ded44-3012-4608-bddf-9adbf1173cc6" />
-<img width="400" height="92" alt="LLMdevelopment" src="https://github.com/user-attachments/assets/9a3c3610-271d-4f9b-959b-bed32bcb9461" />
-</p>
-
----
-
 # POPSLoader
 
-<p align="center">
-  <a href="https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ"><img src="https://img.shields.io/badge/MEGA-Rolling%20Archive-%23D90007?style=flat&logo=mega&logoColor=white" alt="MEGA Rolling Archive"/></a>
-</p>
+![POPSLoader interface](https://github.com/user-attachments/assets/0a5ded44-3012-4608-bddf-9adbf1173cc6)
 
-POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.
+**POPSLoader** is a PlayStation 2 PS1-game browser and launcher. It supports the original **POPStarter + Sony POPS** VCD workflow, and the **Ember** PS1 core as a separate emulator in development releases. Browse by storage device, launch titles, manage settings and artwork, or return to BOOT.ELF.
 
-The current **official stable release** is **[1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3)** (2026-10-13). UDPFS remains an experimental, unverified option in this build. Development channels advance independently; the opt-in [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) and [experimental release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) are prereleases, not certified stable builds.
+**[Downloads](https://github.com/NathanNeurotic/POPSLoader/releases) · [GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) · [Website](https://nathanneurotic.github.io/POPSLoader/popsloader.html) · [Known issues / hardware status](STATE.md) · [Rolling archive](https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ)**
 
----
+## Choose your download
 
-## Ember PS1 emulator (rolling prerelease; not in stable 1.2.3)
+| Channel | Package | Who should use it |
+| --- | --- | --- |
+| **Stable 1.2.3** | [Official 1.2.3 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Existing POPStarter installations. Includes experimental, opt-in USB + UDPFS, **not Ember**. |
+| **Ember Beta 1** | [Versioned Ember beta](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0-ember-beta.1) | Opt-in Ember and POPStarter testing. Prerelease; **Ember launch, controller and VMC operation have not been hardware-certified**. |
+| **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
+| Experimental | [Experimental channel](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) | Independent `experimental` branch; it may differ from both stable and rolling. |
 
-POPSLoader's `dev` branch and [rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) now include experimental
-[Ember integration](docs/EMBER_INTEGRATION.md) modeled on RiptOPL. It
-discovers image-containing game folders under `<device>:/EMBER/games/`
-alongside `.VCD` titles, adds RiptOPL VCD-basename artwork, a native
-keep-IOP launch path and global/per-game Ember Beta 2 settings.
-**This is not part of official 1.2.3**, and no physical PS2
-compatibility claim is made. APA/PFS verification is pending. Ember i.Link
-integration is intentionally deferred until RiptOPL proves reliable i.Link
-operation on real hardware; it does not block this integration's other goals.
+Passing CI proves builds and packages passed automated checks; **it does not prove that a game, device, controller or VMC works on a physical PS2**. Consult the [hardware QA matrix](QA_REGRESSION_MATRIX.md).
 
-## Project documentation and wiki
+## Install the Ember beta / rolling package
 
-The [GitHub-native project wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) is synchronized from the [maintained Markdown source](docs/wiki/Project-Wiki.md) and covers [installation](docs/wiki/Installation-Guide.md), [Ember](docs/wiki/Ember-Core.md), [ZIP and PSU formats](docs/wiki/Release-Formats.md), and [device support](docs/wiki/Device-Support.md). The same pages are also published through [GitHub Pages](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html) separately from the preserved historical POPStarter wiki. [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) merged into `dev` on October 13, 2026. Its Ember integration is available in rolling prereleases, not in stable 1.2.3.
+Download the full [PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip) or the versioned-beta equivalent. Its device-root layout is:
 
-## Highlights
+~~~text
+APPS/
+  PS1_POPSLOADER/
+    POPSLOADER.ELF
+    POPSTARTER.ELF
+    icon.sys
+    list.icn
+    copy.icn
+    del.icn
+    title.cfg
+    APPINFO.PBT
 
-**Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This option **is included in official 1.2.3 as an experimental feature**, but physical-console compatibility remains unverified. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
+POPS/                      POPStarter and RiptOPL-matched support assets
 
-POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
+EMBER/
+  ember.elf                 Unmodified Ember core; beta licence included
+  LICENSE-BETA.txt
+  games/
+    ExampleGame/
+      ExampleGame.cue
+      ExampleGame.bin        ZERO-BYTE illustration, not a playable disc
 
-*   **Fixed HDD POPSTARTER Handoff (D-10)**: Resolved the long-standing "D-10" black-screen hang when launching games using an HDD-backed POPStarter configuration. Hardware-confirmed.
-*   **Fixed Cross-Device POPSTARTER (D-14 / D-15)**: HDD-backed POPSTARTER with non-HDD games and non-HDD POPSTARTER with HDD games both launch cleanly. Hardware-confirmed.
-*   **DKWDRV from Memory Card and custom HDD path**: Both launch routes work — the MC route via a reboot-IOP path with synthesized argv, the HDD custom path via a partition-aware route. Hardware-confirmed.
-*   **BOOT.ELF Exit from POPSLoader**: Returns to wLaunchELF / BOOT.ELF via the embedded-loader route, including the previously broken HDD-launched case (`U-10`). Hardware-confirmed.
-*   **Single-device Settings parity**: Every install — USB / MX4SIO / MMCE **and the internal HDD** — saves settings to `.pldrs` next to the launcher. HDD installs write it on the HDD's own boot partition (read-write mount take-over), no `mc0:` fallback (see [Settings Storage on HDD Installs](#settings-storage-on-hdd-installs)).
-*   **In-app HDD game hiding, PAL full-screen, BDMA + MC-folder controls**: The newer Settings work — see the [Settings](#settings) section below.
-*   **Polished User Interface**: Layout alignment corrections, cleaner typography, dynamic menu box adjustments, text wrapping, and notification toast hardening.
+PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
+~~~
 
-> [!NOTE]
-> The canonical, always-current **Known Issues** list and **hardware-verification status** live in **[STATE.md > Known Issues](STATE.md#known-issues-canonical--the-single-list-readme--agents--rolling_notes-point-here)** (with the full ledger in [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md)). The current open item is the config-specific "Failed to load HDD" from a non-HDD boot; the 2026-06 HDD/PAL/BDMA features are implemented and boot on PCSX2 (HDD confirmed read-write on hardware by provato) and are still validating on hardware.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
+3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
+4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.
 
----
+For **stable 1.2.3**, use that release's existing installation layout, which does **not** include Ember. See the [installation guide](docs/wiki/Installation-Guide.md) and [release ZIP/PSU specification](docs/wiki/Release-Formats.md).
 
-## Supported Devices
+### Storage and device status
 
-POPSLoader's main menu exposes the following backends:
+| Device | POPStarter / VCD | Ember development |
+| --- | --- | --- |
+| USB FAT32/exFAT, MX4SIO, MMCE | `<device>:/POPS/<Game>.VCD` | `<device>:/EMBER/games/<GameFolder>/`; scanning host-tested |
+| Internal exFAT HDD (BDMA/ATA) | Root `POPS/` on mounted `mass:` | Library scan host-tested; console handoff unverified |
+| Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
+| SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
+| USB + UDPFS | Opt-in `udpfs:/POPS/` read-only VCD route | Enumeration host-tested; console handoff unverified |
+| i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
 
-*   **MMCE** (Multi-Memory Card Emulator, e.g. MemoryCard PRO / SD2PSX)
-*   **MX4SIO** (SD card via memory card slot adapter)
-*   **HDD (PFS)** (internal HDD via the PS2 network/ATA adapter)
-*   **USB** (`mass:`)
-*   **HDD (exFAT)** (`mass:` via BDMA Mode `ATA` — an internal SATA/IDE drive formatted exFAT; **new — validating on hardware**)
-*   **Disc (DKWDRV)** (boot DKWDRV to play PS1 discs)
+HDD/PFS artwork belongs under `__common/POPS/ART/`. The stable 1.2.3 build includes **opt-in experimental USB + UDPFS VCD support**; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
-> [!NOTE]
-> The main menu can also list **i.Link**, but that flow is not implemented yet — it **ships Hidden by default** (show it under *Settings → Device List* if you want it), and selecting it shows a "not implemented" notice. **SMB (v1)** network game browsing is now implemented (CI + Rolling green) and is validating on hardware. (**HDD (exFAT)** is likewise implemented via BDMA Mode `ATA` and is validating on hardware.) See [Known Issues & Planned Improvements](#known-issues--planned-improvements).
+### Ember options and safety
 
-> [!NOTE]
-> Game compatibility and drive loading performance may vary depending on your specific console model, adapter type, and the quality of your POPStarter/POPS binaries.
+Set Ember's Beta 2 global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
 
----
+Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL / Open-PS2-Loader](https://github.com/NathanNeurotic/Open-PS2-Loader) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
 
-## Quick Install
+## Main features
 
-To set up POPSLoader:
+- Cover-art PS1 browser for POPStarter VCD games and separate labeled Ember games.
+- USB, MX4SIO, MMCE, APA/PFS and internal exFAT device flows, plus network modes.
+- Per-device game visibility, settings, game lists and RiptOPL-style artwork.
+- SMBv1 and opt-in USB + UDPFS VCD browsing with explicit network configuration.
+- Adjustable video, boot page, display and menu navigation; Triangle Exit menu and BOOT.ELF chainloading.
 
-1.  **Download the Release**: Official stable 1.2.3 uses its existing `PS1_POPSLOADER.zip` layout. The **rolling-development** Ember release kit (merged through PR #600, not in stable 1.2.3) provides a new `PS1_POPSLOADER.zip` containing `APPS/`, `POPS/`, `EMBER/` and a matching `PS1_POPSLOADER.psu`.
-2.  **Copy Launcher Files**: For stable 1.2.3 use its existing `PS1_POPSLOADER/` directory. For the **new development kit**, copy the eight direct files from `APPS/PS1_POPSLOADER/` to your application directory, or import `PS1_POPSLOADER.psu` as a PS2 memory-card save. **The PSU contains the eight files directly, with no nested directory.**
-3.  **Place POPS Files**: Put the `PATCH_5.BIN` file (included in the `POPS/` directory of the ZIP) into your active `POPS` folder (see directory structures below).
-4.  **Add POPStarter & POPS Files**: Add your POPStarter executable (`POPSTARTER.ELF`) and the required POPS support files (`IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`) to your `POPS` folder. These copyrighted Sony POPS files are not included in the release package.
-5.  **Add Games**: Copy your PS1 game images in `.VCD` format into the same `POPS` folder. Keep filenames reasonably short — roughly **73 characters is the safe maximum** for a standard `POPS/` folder; longer names can fail to launch (see Troubleshooting).
-6.  **Launch**: Run `POPSLOADER.ELF` using wLaunchELF, Free McBoot, or your preferred ELF launcher.
+**Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link remains unsupported; UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
 
----
-
-
-### Ember rolling-release kit packaging (merged PR #600)
-
-The new ZIP places the eight-file launcher in `APPS/PS1_POPSLOADER/`, RiptOPL-matched support files in `POPS/`, and the unmodified Ember core, licence and game layout in `EMBER/`. The separate [rolling `PS1_POPSLOADER.psu`](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) is the same eight launcher files in a **flat** PS2 save archive (no nested `PS1_POPSLOADER` subfolder). The rolling and experimental channels will publish the full ZIP and PSU separately once this PR is merged; stable 1.2.3 is unchanged. See [Ember integration and licensing](docs/EMBER_INTEGRATION.md).
-
-The supplied `EMBER/games/ExampleGame/ExampleGame.cue` points at a **zero-byte `ExampleGame.bin` placeholder**, not a runnable game; remove or replace this example with your own legally obtained image. Supply your own 512 KiB `EMBER/bios.bin`; neither the BIOS nor commercial game images are redistributed. Ember remains hardware-unverified. i.Link support is deferred until
-RiptOPL's i.Link implementation is proven on physical hardware, and is
-not a prerequisite for PR #600.
-
-## Folder Layout
-
-Ensure your directories and files match these paths exactly depending on your storage device:
-
-### USB / MX4SIO / MMCE Setup
-Place all files on the root of your storage device (`mass:/`, `mx4sio:/`, `mmce0:/`, etc.) in a folder named `POPS`:
-
-| File Path | Description |
-| :--- | :--- |
-| `<device>:/POPS/GameName.VCD` | Your PS1 game image |
-| `<device>:/ART/GameName_COV.png` | Optional cover art (200x200 8-bit PNG recommended). **One location, one name, no alternatives:** a top-level `ART/` folder at the device root, with the **OPL `_COV.png` convention**, so an existing OPL `ART` folder works as-is. There is no setting to change this and no fallback location — a cover anywhere else, or without the `_COV` suffix, simply will not show (it costs nothing to look for, so it will not slow anything down either). The matching `GameName.txt` *Game details* sidecar lives in the same folder. |
-| `<device>:/ART/GameName_ICO.png` | Optional disc icon next to the cover (RiptOPL/OPL convention; exact VCD filename without `.VCD`). `_LAB.png` and `_COV3.png` belong to RiptOPL's artwork naming family but are not rendered by POPSLoader yet. |
-| `<device>:/POPS/IOPRP252.IMG` | Required POPS support file |
-| `<device>:/POPS/POPSTARTER.ELF` | POPStarter launcher binary. A `POPSTARTER.ELF` dropped here is used automatically for that device's games (so you can keep, say, a USB-delay build on the USB drive without forcing it everywhere) — unless you set an explicit **POPSTARTER Path**, which always wins. See [Settings](#other-settings). |
-| `<device>:/POPS/POPS.ELF` | POPS emulator engine binary |
-| `<device>:/POPS/POPS.PAK` | Emulator resources payload |
-| `<device>:/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
-
-### Internal HDD Setup: HDD (PFS) / APA partitions
-This layout is for the classic **HDD (PFS)** drive (Sony APA partitions via the network/ATA adapter). Place VCD game files inside your dedicated POPS partitions, and system binaries inside `__common/POPS/`:
-
-| File Path | Description |
-| :--- | :--- |
-| `hdd:/__.POPS/GameName.VCD` | Your PS1 game image (can also use partitions `__.POPS0` through `__.POPS9`) |
-| `hdd:/PP.GameName/IMAGE0.VCD` | *(new, validating on hardware)* A **partition-installed** game (HDDOSD / PSBBN style: one partition per game, `PP.` visible or `__.` hidden, image always named `IMAGE0.VCD`). These are listed on the HDD page under the partition's name and launched with POPStarter's `PP.GameName.ELF` convention. |
-| `hdd:/__common/POPS/ART/GameName_COV.png` | Cover art folder (OPL `_COV.png` naming; partition-installed games use the partition name minus its `PP.` / `__.` prefix) |
-| `hdd:/__common/POPS/ART/GameName_ICO.png` | Optional disc icon, independent of whether a cover exists |
-| `hdd:/__common/POPS/IOPRP252.IMG` | Required POPS support file |
-| `hdd:/__common/POPS/POPSTARTER.ELF` | POPStarter launcher binary |
-| `hdd:/__common/POPS/POPS.ELF` | POPS emulator engine binary |
-| `hdd:/__common/POPS/POPS.PAK` | Emulator resources payload |
-| `hdd:/__common/POPS/POPS_IOX.PAK` | Emulator input/output resources payload |
-
-> **An exFAT internal drive is set up differently (like a USB drive, not like this).** The **HDD (exFAT)** drive (BDMA Mode `ATA`) mounts as `mass:` and uses the **same flat layout as a USB / removable drive**, not APA partitions. Put a single `POPS/` folder at the drive's root holding your `.VCD` games and the POPS system files (`PATCH_5.BIN`, `IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`, `POPSTARTER.ELF`), exactly like the **USB / removable** table above (`<device>:/POPS/...`), with covers under a top-level `ART/` folder at the drive root (same as any removable device). Do **not** create `__.POPS` partitions or a `__common/` folder on an exFAT drive.
+For complete menus, controls, recovery, troubleshooting and developer details, continue below or use the [maintained GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki).
 
 ---
 
@@ -302,7 +259,7 @@ Planned for subsequent updates:
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
 *   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **browse + launch hardware-confirmed on a static IP config**; the DHCP path was fixed in `bb62f2be` and is not yet confirmed.
-*   **`i.Link`** menu flow: currently surfaces as "Not Implemented Yet" until feature work lands.
+*   **`i.Link`** remains intentionally hidden/unsupported. Ember i.Link development is deferred until RiptOPL proves reliable support on physical PS2 hardware.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 
@@ -310,7 +267,9 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 ## Credits
 
-*   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator.
+*   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator and BDM Assault reference work.
+*   **[Gageformer](https://github.com/Gageformer/Ember)**: Ember PS1 emulator, bundled unmodified with its beta licence.
+*   **[Okeanos](https://github.com/Okeanos86/BDMAssault)**: BDM-UDPFS Assault Alpha PS1 network fallback.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
 *   **krHACKen**: Author of POPStarter.
 *   **[AstroSnail](https://github.com/AstroSnail)**: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See [provenance](.research/research/original-git-provenance.md).
