@@ -1,4 +1,4 @@
-Last updated: 2026-09-30. Released line: **1.2.2** (documentation-only on top of 1.2.1; launcher code identical apart from the version stamp). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.2` stamp. Hardware status remains governed by the recorded results below and `QA_REGRESSION_MATRIX.md`; publication does not imply a new hardware pass.
+Last updated: 2026-10-12. **Official stable line: 1.2.2** (2026-09-30, documentation-only on top of 1.2.1). The development branches now include an experimental UDPFS integration. Neither rolling nor experimental prerelease publication implies PS2 hardware validation; see `QA_REGRESSION_MATRIX.md`.
 
 # STATE
 
@@ -6,6 +6,22 @@ This is the **canonical status doc** for POPSLoader. Current runtime state, beha
 
 ## Project Identity
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`). The Lua is bin2c'd into the EE ELF at build time — so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI, and only surfaces on real PS2 / PCSX2. (`pops_profiles.lua` was removed 2026-07-13 with the profile-preset system.)
+
+## Experimental UDPFS integration status (2026-10-12)
+
+- UDPFS VCD browser and Okeanos Alpha fallback staging are integrated for
+  development channels; **official stable 1.2.2 remains unchanged**.
+- The Ethernet page now selects SMBv1 or USB+UDPFS, with restart required
+  when changing network stacks. IP/netmask are shared from static SMB / Network
+  settings and checked before writing missing USB `POPS/IPCONFIG.DAT`.
+- POPSTARTER.ELF is resolved only from persistent local storage; the network
+  browsing mount is not valid after IOP reset. Cover fallback checks
+  `udpfs:/ART/` then the per-game `udpfs:/POPS/` directory.
+- Automated Lua host tests, compiler and IRX checksum checks have passed on
+  the feature branch. **Hardware status: Unknown (verify on hardware)**, including
+  real USB/network VCD launch and SMB regression.
+- Do not issue a new official stable tag or compatibility claim until
+  console test results are recorded in `QA_REGRESSION_MATRIX.md`.
 
 ## Experimental channel state (EXP32–EXP73) — current goal state
 
@@ -45,7 +61,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - **The exFAT freeze channel is back (EXP43).** EXP11 split the silent "Locating exFAT HDD POPS folder... 42%" step into numbered sub-steps so a frozen screen names the stuck call; **the EXP32 device-layer rebuild dropped it**, and its absence is why EXP38, EXP39 and EXP40 each spent a hardware round and produced no evidence. `BuildMassRootIdentity` / `BuildBoundedIdentityDeferred` / `GetATAMassRootNow` / `InitATAPopsRoot` now take an **optional** `report(msg)` and paint **before** each call that can block: step 1 (starting the drive), step 2.N (checking `massN:`, the `dopen`), step 3.N (identifying `massN:`, the devctl), step 4 (reading the device list). A hung IOP call never returns to repaint, so whatever is on screen IS the diagnosis, from one photo. The reporter is optional at every level, so non-UI callers are unaffected. Guarded by harness **T33**, verified to FAIL against the pre-EXP43 tree.
 - **APA scans self-diagnose (EXP33/34):** `PLDR.HDD.SCAN_DIAG` counts partitions/files/VCDs and **why** a counted VCD yields zero games (hidden via Global Hide vs multi-disc-collapsed); the "no games" toast prints it (e.g. `1 part, 5 files, 1 VCD (1 hidden — Global Hide is on)`), so an accidentally-hidden game reads as hidden, not broken.
 - **i.Link (`ILINK`)** remains intentionally unimplemented **and is now hidden by default** — show it under *Settings → Device List* to see the "not implemented" notice.
-- **Regression net:** `tools/host_harness.py` runs the real `system.lua`/`ui.lua` under Lua mocks — **54/54** (device-classification, coexistence, cascade-bound, APA-diagnostics, hidden-count and config-defaults tests, plus **T29** slot-identity-not-parId, **T32** COVER_ART persistence, **T33** the exFAT freeze channel, from EXP73 **T40** game details actually reach the screen and **T41** `PLDR.LFmt` survives a malformed translation, **T42** L3 hides a game while *Hidden games = Hidden*, **T43** `IPCONFIG.DAT` is never deleted/synthesised and nothing is defaulted, **T44** the POPSTARTER `.DAT` are read as well as written, **T45** `SMBCONFIG.DAT` round-trips so hand-added credentials and blank guest lines survive a write, **T46** the SMB page reports a missing memory card and offers to install a missing pack, **T47** a launch is blocked (naming the empty fields) when POPSTARTER lacks required values, **T48** Adaptive BDMA defaults ON with `-bdma=<mode>` pinning the variant, and **T49** `-page`/`-mode` routing driven for real in a second Lua runtime (the layer had ZERO coverage and had regressed three times unnoticed), **T50** an ATA bring-up failure reports its status instead of guessing "reformat the drive", and **T51** ONE BDM device-kind-label resolver with ata probe-only at boot, and **T54** a bare game entry + `PLDR.GAMEPATH` joins to a device-qualified cover AND details path (issue #570); T34 was removed with the EXP44 revert). **T40 and T42-T54 were each verified to FAIL on the pre-fix tree before being accepted** (T49 against a deliberately reintroduced 2026-06-09 defect) — a test that cannot fail is not a regression net, which is how EXP72 shipped broken at a green 39/39.
+- **Regression net:** `tools/host_harness.py` runs the real `system.lua`/`ui.lua` under Lua mocks — **57/57** (device-classification, coexistence, cascade-bound, APA-diagnostics, hidden-count and config-defaults tests, plus **T29** slot-identity-not-parId, **T32** COVER_ART persistence, **T33** the exFAT freeze channel, from EXP73 **T40** game details actually reach the screen and **T41** `PLDR.LFmt` survives a malformed translation, **T42** L3 hides a game while *Hidden games = Hidden*, **T43** `IPCONFIG.DAT` is never deleted/synthesised and nothing is defaulted, **T44** the POPSTARTER `.DAT` are read as well as written, **T45** `SMBCONFIG.DAT` round-trips so hand-added credentials and blank guest lines survive a write, **T46** the SMB page reports a missing memory card and offers to install a missing pack, **T47** a launch is blocked (naming the empty fields) when POPSTARTER lacks required values, **T48** Adaptive BDMA defaults ON with `-bdma=<mode>` pinning the variant, and **T49** `-page`/`-mode` routing driven for real in a second Lua runtime (the layer had ZERO coverage and had regressed three times unnoticed), **T50** an ATA bring-up failure reports its status instead of guessing "reformat the drive", and **T51** ONE BDM device-kind-label resolver with ata probe-only at boot, and **T54** a bare game entry + `PLDR.GAMEPATH` joins to a device-qualified cover AND details path (issue #570); T34 was removed with the EXP44 revert). **T40 and T42-T54 were each verified to FAIL on the pre-fix tree before being accepted** (T49 against a deliberately reintroduced 2026-06-09 defect) — a test that cannot fail is not a regression net, which is how EXP72 shipped broken at a green 39/39.
 
 ## Repo-Verified Runtime State
 

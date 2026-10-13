@@ -25,6 +25,39 @@ This matrix tracks current behavior across:
 
 This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
 
+## Follow-up maintenance (2026-10-13; host-only until PS2 validation)
+
+- Issue #577: a failed native USB module load no longer sets the Lua USB-ready
+  latch. Driver discovery/mount failures still need hardware evidence; this does
+  not claim that the reporter's exFAT disk is repaired. Diagnostic and partition
+  handling investigation remains open.
+- Issue #568: selected PS1 VCD artwork now accepts RiptOPL's exact-basename
+  `_ICO.png` disc art in the matching `ART/` location (UDPFS additionally
+  accepts the VCD-directory fallback). The existing asynchronous worker loads
+  one icon after the cover; neither a missing icon nor a missing cover affects
+  game launching. Hardware visual verification still pending.
+- The former S-11 selectable Cover/details-folder regression row is historical:
+  current EXP71 runtime fixes artwork to `ART/`; `ART_LOCATION` persists as a
+  backward-compatible inert setting. Do not use S-11's old folder-selection
+  instructions as an active acceptance test.
+
+## Experimental UDPFS / Okeanos BDMA (2026-10-12)
+
+| Area | Status | Evidence or hardware check still required |
+| --- | --- | --- |
+| Lua configuration parsing / static IPv4, masks, gateway, DHCP | PASS (host only) | Real Lua configuration cases run through `tools/test_udpfs_config_runtime.py`; launch and settings integration on PS2 untested |
+| Menu network module embedding and PS2 compilation | PASS (CI) | PS2SDK build + pinned IRX checks in CI; real SMAP/ministack/ioman init unknown |
+| Ethernet SMBv1 / USB+UDPFS selector, R1 scan | Unknown (verify on hardware) | Boot, change modes, and enumerate `udpfs:/POPS/` on actual network |
+| USB mass selector / POPSTARTER executable resolution | Unknown (verify on hardware) | Cold boot + driver reset, VCD present only on server, POPSTARTER on USB/MC, two USB devices |
+| Driver pair staging / USB `IPCONFIG.DAT` | Unknown (verify on hardware) | Confirm the exact Okeanos pair and no overwrites; missing/mismatched config must cancel safely |
+| SMBv1, USB/exFAT, MX4SIO, MMCE, HDD regressions | Unknown (verify on hardware) | Reboot between exclusive network stacks; launch on prior working paths |
+| UDPFS cover fallback, ART then POPS | Unknown (verify on hardware) | Per-game `udpfs:/ART/` and `udpfs:/POPS/` cover cases |
+| Official stable release | BLOCKED (hardware validation required) | Keep official 1.2.2 distinct from experimental development builds |
+
+The development workflow is not a substitute for a recorded physical-console
+result. Until the rows above are updated from testing, hardware support must
+be described as **Unknown (verify on hardware)**.
+
 ## Issue #575: RGB PNG cover alpha (2026-09-11)
 
 | Artifact / environment | Result | Evidence / next check |

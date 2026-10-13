@@ -275,7 +275,37 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   -- EXACT game filename ONLY (maintainer directive, EXP71): <device>:/ART/
   -- <gamefilename>_COV.png. The disc-marker-stripped family name is GONE --
   -- tried first, it could shadow the exact per-disc art.
+  if string.match(string.lower(dir), "^udpfs:/pops/") then
+    -- Network games share the exact-basename ART convention with local games,
+    -- but may also keep their artwork beside the VCD. This second probe is
+    -- UDPFS-only; local device artwork policy and probe count stay unchanged.
+    return { artdir..name.."_COV.png", dir..name.."_COV.png" }
+  end
   return { artdir..name.."_COV.png" }
+end
+-- RiptOPL-compatible PS1 ART basename: EXACT VCD filename without .VCD,
+-- with _COV.png (cover) and _ICO.png (disc icon). _LAB.png and _COV3.png
+-- are reserved by the same art family but not drawn in POPSLoader yet.
+-- On HDD/PFS, icons resolve independently of covers: no _COV required.
+local function BuildIconCandidates(vcd_path, use_hdd_common_art, entry)
+  if use_hdd_common_art then
+    local basename = ExtractHddArtBasename(entry)
+    if basename == "" then basename = BasenameWithoutExtension(vcd_path) end
+    if basename == "" or type(PLDR) ~= "table"
+       or type(PLDR.ResolveHddPartitionReadablePath) ~= "function" then
+      return {}
+    end
+    local ok, path = pcall(PLDR.ResolveHddPartitionReadablePath,
+      "hdd0:__common", "POPS/ART/"..basename.."_ICO.png")
+    if ok and type(path) == "string" and path ~= "" then return { path } end
+    return {}
+  end
+  local covers = BuildCoverCandidates(vcd_path, false, entry)
+  local icons = {}
+  for i = 1, #covers do
+    icons[#icons + 1] = string.gsub(covers[i], "_COV%.png$", "_ICO.png")
+  end
+  return icons
 end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
@@ -334,7 +364,7 @@ local function WrapGameDetailsLines(text, max_chars)
   return out
 end
 local CoverCache = {
-  max = 3,
+  max = 4, -- bounded recent cover/icon textures
   entries = {},
   order = {},
   failed = {},
@@ -342,6 +372,9 @@ local CoverCache = {
   token = 0,         -- EXP49: request id, so a late result for an old selection is dropped
   last_key = nil,
   last_img = nil,
+  last_icon_img = nil,
+  icon_candidates = {},
+  icon_requested = false,
   last_desc = nil,
   last_desc_lines = nil,
   desc_scroll = 0
@@ -359,6 +392,9 @@ function CoverCache:Clear()
   self.pending = nil     -- EXP49: abandon any in-flight load; its result will be dropped as stale
   self.last_key = nil
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
@@ -379,6 +415,9 @@ function CoverCache:ReleaseTextures()
   self.order = {}
   self.last_key = nil
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
@@ -397,11 +436,17 @@ function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
     local img = self.entries[evict_key]
-    if img ~= nil then
-      if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
-        pcall(Graphics.freeImage, img)
+    -- Keep the currently displayed cover and icon alive even when an older
+    -- cached entry is reused and subsequently falls to the eviction front.
+    if img ~= nil and (img == self.last_img or img == self.last_icon_img) then
+      table.insert(self.order, evict_key)
+    else
+      if img ~= nil then
+        if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+          pcall(Graphics.freeImage, img)
+        end
+        self.entries[evict_key] = nil
       end
-      self.entries[evict_key] = nil
     end
   end
 end
@@ -465,6 +510,9 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   self.last_key = key
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
@@ -472,6 +520,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     return nil
   end
   local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true, entry)
+  self.icon_candidates = BuildIconCandidates(vcd_path, use_hdd_common_art == true, entry)
   -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
@@ -580,7 +629,7 @@ end
 -- Kick an async load for candidates[idx] of `key`. Falls back to the old synchronous
 -- load only when the worker is unavailable (older core), so behaviour degrades rather
 -- than breaks.
-function CoverCache:BeginLoad(key, candidates, idx)
+function CoverCache:BeginLoad(key, candidates, idx, icon_only)
   local path = candidates[idx]
   if path == nil then return end
   -- EXP53: drain an UNCOLLECTED result before requesting. Pump only runs on the
@@ -598,13 +647,16 @@ function CoverCache:BeginLoad(key, candidates, idx)
   end
   if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function" then
     local img = self:GetOrLoad(path)
-    if img ~= nil and self.last_key == key then self.last_img = img end
+    if img ~= nil and self.last_key == key then
+      if icon_only then self.last_icon_img = img else self.last_img = img end
+    end
     return
   end
   self.token = (self.token or 0) + 1
-  local dp = self.pending_desc_path
-  self.pending_desc_path = nil
-  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token, desc_path = dp }
+  local dp = (not icon_only) and self.pending_desc_path or nil
+  if not icon_only then self.pending_desc_path = nil end
+  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token,
+                   desc_path = dp, icon_only = icon_only == true }
   -- EXP73: ALWAYS set the companion text path here, clearing it with "" when this
   -- game has none. EXP72 set it only in the text-only and the worker-refused-retry
   -- branches, so this -- the path EVERY first-time cover load takes -- asked the
@@ -680,6 +732,26 @@ function CoverCache:CollectPendingText(p, stale)
   end
 end
 
+-- Once the cover (and any details job) has finished, use the SAME bounded
+-- asynchronous worker for the selected disc icon. Never add synchronous
+-- filesystem probes to a frame and never start a competing worker.
+function CoverCache:StartIconLoad()
+  if self.icon_requested or self.pending ~= nil or self.last_key == nil then return end
+  self.icon_requested = true
+  local candidates = self.icon_candidates or {}
+  for i = 1, #candidates do
+    local path = candidates[i]
+    if self.entries[path] ~= nil then
+      self.last_icon_img = self.entries[path]
+      return
+    end
+    if not self.failed[path] then
+      self:BeginLoad(self.last_key, candidates, i, true)
+      return
+    end
+  end
+end
+
 -- Called once per game-list frame. Adopts a finished load, advances to the next
 -- candidate on a miss, and retries a request the worker was too busy to accept.
 -- Does no filesystem work of its own and never blocks.
@@ -713,7 +785,10 @@ end
 
 function CoverCache:Pump()
   local p = self.pending
-  if p == nil then return end
+  if p == nil then
+    self:StartIconLoad()
+    return
+  end
   if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then
     self.pending = nil
     return
@@ -772,8 +847,8 @@ function CoverCache:Pump()
       end
       self.entries[ipath] = ptr
       table.insert(self.order, ipath)
+      if p.icon_only then self.last_icon_img = ptr else self.last_img = ptr end
       self:EvictIfNeeded()
-      self.last_img = ptr
     end
     self.pending = nil
     return
@@ -794,7 +869,7 @@ function CoverCache:Pump()
   if nxt == nil then
     self.pending = nil
   else
-    self:BeginLoad(p.key, p.candidates, nxt)
+    self:BeginLoad(p.key, p.candidates, nxt, p.icon_only)
   end
 end
 
@@ -1098,7 +1173,8 @@ UI = {
 	      { key = "USBEXFAT", label = "exFAT-USB" },
 	      { key = "MX4SIO", label = "MX4SIO" },
 	      { key = "MMCE", label = "MMCE" },
-	      { key = "ATA", label = "exFAT-HDD (ata)" }
+	      { key = "ATA", label = "exFAT-HDD (ata)" },
+	      { key = "UDPFS", label = "USB + UDPFS" }
 	    };
 	    VideoStandardModes = {
 	      {
@@ -1136,6 +1212,7 @@ UI = {
     PopstarterPathDraft = nil;
     DkwdrvPathDraft = nil;
     KeyboardLayoutDraft = nil;
+    NET_TRANSPORT = "SMB";
     SmbDraft = nil;
     SmbDirty = false;
     SmbModulesDraft = false;
@@ -3363,6 +3440,22 @@ UI = {
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
           end
+          -- An OPL-style _ICO.png sits beside the selected jewel case. It is
+          -- optional and uses the cover worker; rendering performs no I/O.
+          if cover_enabled and UI.CoverCache ~= nil
+             and UI.CoverCache.last_icon_img ~= nil then
+            local icon = UI.CoverCache.last_icon_img
+            local iw, ih = Graphics.getImageWidth(icon), Graphics.getImageHeight(icon)
+            if iw > 0 and ih > 0 then
+              local icon_box = math.min(48, math.max(32, Round((frame_h or draw_h) * 0.20)))
+              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+              local icon_w, icon_h
+              if ratio >= 1 then icon_w = icon_box; icon_h = Round(icon_box / ratio)
+              else icon_h = icon_box; icon_w = Round(icon_box * ratio) end
+              Graphics.drawScaleImage(icon, Round(frame_x - icon_w + 10),
+                Round(draw_y + (frame_h or draw_h) - icon_h - 8), icon_w, icon_h)
+            end
+          end
           -- (EXP56: the "Loading art..." line is REMOVED. It was added when a fetch
           -- could stall the frame; with loads off the render thread it resolves fast
           -- enough that the text only flickered. Maintainer: "unnecessary now.")
@@ -3415,7 +3508,8 @@ UI = {
         Input_GetEvent()
         if UI.HandleGlobalInput(false) then return end
         if UI.Pad.Events.BACK then
-          if UI.CURSCENE == UI.SCENES.GSMBNET and type(System) == "table" and type(System.disconnectSMB) == "function" then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT ~= "UDPFS"
+             and type(System) == "table" and type(System.disconnectSMB) == "function" then
             pcall(System.disconnectSMB)   -- free the share + connection when leaving the SMB page
           end
           -- Drop any transient R3 reveal on the way out (restore the real persisted hide
@@ -3578,7 +3672,13 @@ UI = {
           -- found it (sAGA/oldman63). GHDD keeps GAMEPATH: its entries encode a partition
           -- name, not a device root.
           local resolve_location = PLDR.GAMEPATH
-          if UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
+          -- UDPFS is a transient menu filesystem: the executable must be found on
+          -- persistent local storage before POPStarter resets the IOP. Match the
+          -- mass:/POPS/ root used by RunPOPStarterGame, keeping the user's custom
+          -- POPSTARTER path first in the resolver's existing search ladder.
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS" then
+            resolve_location = "mass:/POPS/"
+          elseif UI.CURSCENE ~= UI.SCENES.GHDD and root ~= nil and IsDevicePath(root) then
             resolve_location = root
           end
           if type(PLDR.ResolveLaunchPopstarterPath) == "function" then
@@ -3640,7 +3740,7 @@ UI = {
           -- no-op'd, handing POPStarter the placeholder SMBCONFIG.DAT the repo ships
           -- ("SMBip:SMBport SMBshareNAME"). The result is a launch that dies partway
           -- into loading with no explanation, which is issue #560's second symptom.
-          if UI.CURSCENE == UI.SCENES.GSMBNET then
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT ~= "UDPFS" then
             local modules_staged = (type(PLDR.AreSmbModulesStaged) == "function")
               and PLDR.AreSmbModulesStaged() or (PLDR.SMB_MODULES == true)
             if not modules_staged then
@@ -3670,6 +3770,12 @@ UI = {
                 ..table.concat(names, ", ").."\n"..PLDR.L("Settings > SMB / Network"), "error")
               return
             end
+          end
+          if UI.CURSCENE == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS"
+             and string.sub(tostring(rel or entry), -4) ~= ".VCD" then
+            unpaint()
+            UI.Notif_queue.add("Okeanos UDPFS requires uppercase .VCD filenames. Rename this image on your UDPFS server.", "error")
+            return
           end
           paint(PLDR.L("Checking the game file..."), 0.30)
           local vcd_full = ResolveSelectedVcdPath(entry, PLDR.GAMEPATH)
@@ -3865,6 +3971,16 @@ UI = {
                 report("Scanning exFAT HDD games...", 0.30)
                 PLDR.GetPS1GameLists(ata_root, true, scan)
                 PLDR.SaveGameListCache(ata_root..".gamecache", PLDR.GAMES, PLDR.HIDDEN)
+              end
+            elseif rescan_scene == UI.SCENES.GSMBNET and UI.NET_TRANSPORT == "UDPFS" then
+              report("Refreshing UDPFS directory...", 0.16)
+              local udpfs_root, udpfs_err = PLDR.InitUDPFSPopsRoot(report)
+              PLDR.CleanupGameList()
+              if type(udpfs_root) == "string" and udpfs_root ~= "" then
+                report("Scanning UDPFS games...", 0.30)
+                PLDR.GetPS1GameLists(udpfs_root, true, scan)
+              else
+                smb_rescan_err = udpfs_err or "UDPFS_NOT_READY"
               end
             elseif rescan_scene == UI.SCENES.GSMBNET then
               report("Reconnecting to SMB...", 0.16)
@@ -6024,7 +6140,7 @@ UI = {
             -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
             -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
             -- this menu handler's locals under Lua's per-function cap.
-            UI.RunSmbConnectFlow()
+            UI.RunNetworkModePicker()
 	          elseif UI.MainMenu.OPT == 8 then
 	            if type(System) == "table" and type(System.ensureCDFS) == "function" then
 	              System.ensureCDFS()
@@ -6576,7 +6692,7 @@ end
 -- cancels. Returns the chosen share name (string) or nil. Mirrors the RunConfirm modal
 -- (Screen.clear/flip + raw Pads.get), with EDGE-detected nav (one press = one move; also
 -- neutralises PCSX2's constant phantom PAD_UP) and a scrolling window for long lists.
-function UI.RunSharePicker(shares)
+function UI.RunSharePicker(shares, heading)
   if type(Screen) ~= "table" or type(Screen.flip) ~= "function"
      or type(Pads) ~= "table" or type(Pads.get) ~= "function" then
     return nil
@@ -6603,7 +6719,7 @@ function UI.RunSharePicker(shares)
       if top > #shares - MAXVIS + 1 then top = #shares - MAXVIS + 1 end
     end
     local y = UI.SCR.Y_MID - (vis * 11) - 18
-    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L("Select a share"), UI.CCOL.YELLOW)
+    Font.ftPrint(LFONT, UI.SCR.X_MID, y - 26, 8, UI.SCR.X, 24, PLDR.L(heading or "Select a share"), UI.CCOL.YELLOW)
     for i = top, math.min(top + MAXVIS - 1, #shares) do
       local is_sel = (i == sel)
       local label = is_sel and ("> "..tostring(shares[i]).." <") or tostring(shares[i])
@@ -6643,6 +6759,15 @@ function UI.SmbErrorMessage(err)
     SHARE_FAIL    = "Share not found\ncheck the Share name (host must allow SMB1)",
     IRX_LOAD_FAIL = "SMB modules failed to load",
     NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
+    UDPFS_NOT_READY = "UDPFS server unavailable\nCheck your network and UDPFS server",
+    UDPFS_IP_CHANGED_RESTART = "UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP",
+    NIC_BUSY_SMB = "SMB already owns the network adapter\nRestart POPSLoader to switch to USB+UDPFS",
+    NIC_PARTIAL_RESET = "UDPFS network initialization incomplete\nRestart POPSLoader",
+    SMAP_FAIL = "UDPFS SMAP driver failed to load",
+    MINISTACK_FAIL = "UDPFS network stack failed to load",
+    IOMAN_FAIL = "UDPFS filesystem module failed to load",
+    DEV9_FAIL = "DEV9 module failed to load",
+
   })[err] or "SMB connect failed"
 end
 
@@ -6743,6 +6868,7 @@ function UI.RunSmbConnectFlow()
       -- -- the ordinary "share already configured" path reached the launch with a stale
       -- or absent IPCONFIG.DAT. Write-if-changed, so this is a no-op once it's current.
       pcall(PLDR.SyncSmbDat)
+      UI.NET_TRANSPORT = "SMB"
       UI.SceneChange(UI.SCENES.GSMBNET)
       entered = true
     end, "Failed to connect to SMB")
@@ -6769,6 +6895,61 @@ function UI.RunSmbConnectFlow()
     UI.SmbDraft = nil   -- force the settings editor to re-seed from the new value
     pcall(PLDR.SaveSettingsAtomic)
     pcall(PLDR.SyncSmbDat)
+  end
+end
+
+
+-- One network tile, two mutually exclusive NIC transports. The PS2's SMAP
+-- module and the UDPFS ministack cannot be unloaded/reloaded in a live session.
+-- The selector MUST run before either connection flow starts.
+function UI.RunUdpfsConnectFlow()
+  if type(System) ~= "table" or type(System.initUDPFS) ~= "function" then
+    UI.Notif_queue.add("USB+UDPFS menu support is missing from this build", "error")
+    return
+  end
+  local state = type(System.udpfsState) == "function" and System.udpfsState() or "idle"
+  if state == "smb" or state == "partial" then
+    UI.Notif_queue.add("The network adapter is already initialized in another mode.\nRestart POPSLoader to switch network protocols.", "error")
+    return
+  end
+  local ip, reason = PLDR.UdpfsStaticIp()
+  if ip == nil then
+    UI.Notif_queue.add(tostring(reason or "Set a static PS2 address in SMB / Network settings"), "error")
+    return
+  end
+  UI.RunBusyTask("Opening USB+UDPFS...", function(report)
+    local scan = UI.MakeBusyProgressReporter(report, "Scanning UDPFS PS1 games...", 0.55, 0.96)
+    report("Loading UDPFS network drivers...", 0.16)
+    local root, err = PLDR.InitUDPFSPopsRoot(report)
+    if type(root) ~= "string" then
+      UI.Notif_queue.add("USB+UDPFS: "..tostring(err or "Network initialization failed").."\nCheck the static PS2 IP, cable and UDPFS server", "error")
+      return
+    end
+    -- The UDPFS server is read-only as far as the menu is concerned. Do not
+    -- try to write a .gamecache onto it.
+    PLDR.CleanupGameList()
+    report("Reading network POPS folder...", 0.55)
+    PLDR.GetPS1GameLists(root, true, scan)
+    UI.NET_TRANSPORT = "UDPFS"
+    UI.SceneChange(UI.SCENES.GSMBNET)
+    if #PLDR.GAMES == 0 then
+      UI.Notif_queue.add("No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.", "warn")
+    end
+  end, "Could not open USB+UDPFS")
+end
+
+function UI.RunNetworkModePicker()
+  local choice = UI.RunSharePicker({ "SMBv1", "USB + UDPFS" }, "Ethernet protocol")
+  if choice == "SMBv1" then
+    local state = type(System) == "table" and type(System.udpfsState) == "function"
+      and System.udpfsState() or "idle"
+    if state == "ready" or state == "partial" then
+      UI.Notif_queue.add("UDPFS already owns the network adapter.\nRestart POPSLoader to switch to SMBv1.", "error")
+      return
+    end
+    UI.RunSmbConnectFlow()
+  elseif choice == "USB + UDPFS" then
+    UI.RunUdpfsConnectFlow()
   end
 end
 

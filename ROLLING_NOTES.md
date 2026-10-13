@@ -1,4 +1,37 @@
-# POPSLoader 1.2.2 — Rolling Release
+# POPSLoader — Rolling Development Release
+
+**Stable baseline:** 1.2.3. The rolling `dev` channel is a **prerelease**;
+it is not an official hardware-verified compatibility release.
+
+### Maintenance update (October 13, 2026)
+
+- PS1 artwork follows RiptOPL's exact VCD-basename convention: `_COV.png`
+  for covers and optional `_ICO.png` for disc icons, read asynchronously.
+- Fixed a USB-backend initialization flag that could incorrectly latch failed
+  module initialization as successful. External exFAT HDD detection report #577
+  remains under investigation; no hardware-fix claim is made.
+- Official compatibility and UDPFS console launches still require physical
+  hardware validation.
+
+### Experimental UDPFS support (October 12, 2026)
+
+- Ethernet tile: choose **SMBv1** or **USB + UDPFS**.
+- List uppercase `.VCD` files under a UDPFS server's `POPS/` folder.
+- Stage Okeanos BDM-UDPFS Assault Alpha's memory-card drivers at launch,
+  without changing the console adapter's firmware.
+- Read USB `POPS/IPCONFIG.DAT` without overwriting incompatible settings.
+- Network stacks are exclusive; restart POPSLoader before switching SMBv1
+  and UDPFS.
+- Automated checks cover native PS2 compilation, embedded Lua runtime,
+  pinned driver binaries and network-address input validation.
+- **Hardware status: Unknown (verify on hardware)**. Game launch, multi-USB
+  configuration, controller behavior and legacy SMB regressions remain on
+  the PS2 test matrix. See [docs/UDPFS_BDMA.md](docs/UDPFS_BDMA.md) and
+  [QA_REGRESSION_MATRIX.md](QA_REGRESSION_MATRIX.md).
+
+---
+
+## Prior stable cut: POPSLoader 1.2.2
 
 At the 1.2.2 release cut, `master`, `dev`, and `experimental` share the same source commit. All three builds show **v1.2.2** in Settings → About; there is no EXP suffix for this cut.
 

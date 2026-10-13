@@ -102,7 +102,7 @@ IOP_MODULES = iomanX.o fileXio.o \
 # luasystem.cpp only on SMB-page entry, NEVER at boot (main.cpp boot-loads only its
 # explicit core set, not all of IOP_MODULES). ps2ip is the netman variant
 # (ps2ip-nm.irx) via the explicit rule below, bin2c'd as the symbol ps2ip_irx.
-IOP_MODULES += netman.o smap.o ps2ips.o smbman.o ps2ip.o
+IOP_MODULES += netman.o smap.o ps2ips.o smbman.o ps2ip.o udpfs_net_smap.o udpfs_ministack.o udpfs_ioman.o
 
 EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usb_png.o asset_smb_png.o asset_ilink_png.o asset_mmce_png.o asset_mx4sio_png.o asset_apahdd_png.o \
@@ -114,6 +114,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
 	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
+	asset_usbd_irx_udpfs.o asset_usbhdfsd_irx_udpfs.o \
 	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o \
 	asset_smb_poweroff_irx.o asset_smb_ps2dev9_irx.o asset_smb_ps2ip_irx.o \
 	asset_smb_ps2smap_irx.o asset_smb_smbman_irx.o asset_smb_smsutils_irx.o
@@ -228,6 +229,10 @@ $(EE_ASM_DIR)asset_usbd_irx_ata.c: bin/POPSLDR/usbd.irx.ata | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_ata
 $(EE_ASM_DIR)asset_usbhdfsd_irx_ata.c: bin/POPSLDR/usbhdfsd.irx.ata | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_ata
+$(EE_ASM_DIR)asset_usbd_irx_udpfs.c: bin/POPSLDR/usbd.irx.udpfs | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_udpfs
+$(EE_ASM_DIR)asset_usbhdfsd_irx_udpfs.c: bin/POPSLDR/usbhdfsd.irx.udpfs | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_udpfs
 $(EE_ASM_DIR)asset_icon_sys_bdma.c: bin/POPSLDR/icon.sys.bdma | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_icon_sys_bdma
 $(EE_ASM_DIR)asset_list_icn_bdma.c: bin/POPSLDR/list.icn.bdma | $(EE_ASM_DIR)
