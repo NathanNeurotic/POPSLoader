@@ -1,7 +1,7 @@
 # POPSLoader — Experimental USB + UDPFS Alpha
 
 **Opt-in test release, not official stable software.** The version field may
-still show the 1.2.2 baseline; identify the experimental binary from its
+still show the 1.2.3 baseline; identify the experimental binary from its
 `BUILD_INFO.txt` commit instead. Do not assume a version string proves hardware
 compatibility.
 
