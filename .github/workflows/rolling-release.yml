@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+  workflow_dispatch:
   pull_request:
     types:
       - opened
@@ -288,17 +289,23 @@ jobs:
           python3 tools/package_psu.py verify dist_root/APPS/PS1_POPSLOADER PS1_POPSLOADER.psu
           test -s POPSLOADER-rolling-release.zip
           test -d rolling_release_bundle
-          cp POPSLOADER.zip "rolling_release_bundle/PS1_POPSLOADER.zip"
+          cp POPSLOADER.zip PS1_POPSLOADER.zip
+          cp PS1_POPSLOADER.zip "rolling_release_bundle/PS1_POPSLOADER.zip"
           cp PS1_POPSLOADER.psu "rolling_release_bundle/PS1_POPSLOADER.psu"
           (cd "rolling_release_bundle" && zip -X -9 "../POPSLOADER-rolling-release.zip" PS1_POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
           unzip -tq "POPSLOADER-rolling-release.zip"
+          unzip -tq PS1_POPSLOADER.zip
+          test -s PS1_POPSLOADER.psu
 
       - name: Upload workflow artifact
         if: success()
         uses: actions/upload-artifact@v6
         with:
           name: POPSLOADER-rolling-release
-          path: POPSLOADER-rolling-release.zip
+          path: |
+            POPSLOADER-rolling-release.zip
+            PS1_POPSLOADER.zip
+            PS1_POPSLOADER.psu
           if-no-files-found: error
           compression-level: 0
 
@@ -341,6 +348,8 @@ jobs:
           asset_specs = [
               (pathlib.Path(os.environ["ASSET_PATH"]), os.environ["ASSET_NAME"]),
               (pathlib.Path("bin/POPSLOADER.ELF"), "POPSLOADER.ELF"),
+              (pathlib.Path("PS1_POPSLOADER.zip"), "PS1_POPSLOADER.zip"),
+              (pathlib.Path("PS1_POPSLOADER.psu"), "PS1_POPSLOADER.psu"),
           ]
           run_url = f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}/attempts/{os.environ['RUN_ATTEMPT']}"
 
