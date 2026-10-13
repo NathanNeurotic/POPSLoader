@@ -24,7 +24,9 @@ discovers image-containing game folders under `<device>:/EMBER/games/`
 alongside `.VCD` titles, adds RiptOPL VCD-basename artwork, a native
 keep-IOP launch path and global/per-game Ember Beta 2 settings.
 **This is not part of official 1.2.3**, and no physical PS2
-compatibility claim is made. APA/PFS and i.Link parity are pending.
+compatibility claim is made. APA/PFS verification is pending. Ember i.Link
+integration is intentionally deferred until RiptOPL proves reliable i.Link
+operation on real hardware; it does not block this integration's other goals.
 
 ## Highlights
 
@@ -82,7 +84,9 @@ To set up POPSLoader:
 
 The new ZIP places the eight-file launcher in `APPS/PS1_POPSLOADER/`, RiptOPL-matched support files in `POPS/`, and the unmodified Ember core, licence and game layout in `EMBER/`. The separate `PS1_POPSLOADER.psu` is the same eight launcher files in a **flat** PS2 save archive (no nested `PS1_POPSLOADER` subfolder). The rolling and experimental channels will publish the full ZIP and PSU separately once this PR is merged; stable 1.2.3 is unchanged. See [Ember integration and licensing](docs/EMBER_INTEGRATION.md).
 
-The supplied `EMBER/games/ExampleGame/ExampleGame.cue` points at a **zero-byte `ExampleGame.bin` placeholder**, not a runnable game; remove or replace this example with your own legally obtained image. Supply your own 512 KiB `EMBER/bios.bin`; neither the BIOS nor commercial game images are redistributed. Ember remains hardware-unverified, with i.Link parity pending.
+The supplied `EMBER/games/ExampleGame/ExampleGame.cue` points at a **zero-byte `ExampleGame.bin` placeholder**, not a runnable game; remove or replace this example with your own legally obtained image. Supply your own 512 KiB `EMBER/bios.bin`; neither the BIOS nor commercial game images are redistributed. Ember remains hardware-unverified. i.Link support is deferred until
+RiptOPL's i.Link implementation is proven on physical hardware, and is
+not a prerequisite for PR #600.
 
 ## Folder Layout
 
