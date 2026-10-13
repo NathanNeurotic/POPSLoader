@@ -5089,7 +5089,14 @@ local function EncodeSettings()
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "RETROGEM_GAMEID="..((PLDR.RETROGEM_GAMEID ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
-    "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
+    "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0"),
+    -- Absent/empty = preserve a hand-written Ember key; "-" = delete
+    -- it on next Ember launch; a selected value manages that key.
+    "EMBER_DISPLAY="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).display or ""),
+    "EMBER_TIMING="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).timing or ""),
+    "EMBER_DITHER="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).dither or ""),
+    "EMBER_SHADING="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).shading or ""),
+    "EMBER_CONTROLLER="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).controller or "")
   }
   PLDR.SmbAppendLines(lines, PLDR.SMB)
   return table.concat(lines, "\n").."\n"
@@ -5143,7 +5150,14 @@ local function SnapshotSettingsState()
     retrogem_gameid = (PLDR.RETROGEM_GAMEID ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     smb = PLDR.SmbCopy(PLDR.SMB),
-    smb_modules = (PLDR.SMB_MODULES == true)
+    smb_modules = (PLDR.SMB_MODULES == true),
+    ember_global = {
+      display = PLDR.EMBER and PLDR.EMBER.GLOBAL.display,
+      timing = PLDR.EMBER and PLDR.EMBER.GLOBAL.timing,
+      dither = PLDR.EMBER and PLDR.EMBER.GLOBAL.dither,
+      shading = PLDR.EMBER and PLDR.EMBER.GLOBAL.shading,
+      controller = PLDR.EMBER and PLDR.EMBER.GLOBAL.controller
+    }
   }
 end
 
@@ -5217,6 +5231,15 @@ local function ApplySettingsState(state)
   if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
     if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
+  end
+  if type(state.ember_global) == "table" and type(PLDR.EMBER) == "table" then
+    PLDR.EMBER.GLOBAL = {}
+    for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+      local value = state.ember_global[key]
+      if PLDR.EmberSettingValid(key, value) and value ~= nil then
+        PLDR.EMBER.GLOBAL[key] = value
+      end
+    end
   end
   if type(state.smb) == "table" then
     PLDR.SMB = PLDR.SmbCopy(state.smb)
@@ -5407,6 +5430,8 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
   PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
+  -- Ember Beta 2 settings: unset keys never overwrite hand-written files.
+  if type(PLDR.EMBER) == "table" then PLDR.EMBER.GLOBAL = {} end
   -- EXP56: Hide UI Text now defaults ON (graphics team). It is a DEFAULT-ON boolean,
   -- so an absent HIDE_TEXT= line must mean ON -- see the parse site, which only
   -- applies the sidecar value when the key is actually present.
@@ -5520,6 +5545,16 @@ function PLDR.LoadSettingsNonFatal()
   -- capture, silently reverting booleans/enums to defaults and appending a
   -- literal \r to paths. Also covers the SMB block (SmbParse gets this data).
   data = string.gsub(data, "\r\n?", "\n")
+  if type(PLDR.EMBER) == "table" then
+    for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+      local field = "EMBER_"..string.upper(key)
+      local value = string.match(data, "\n"..field.."=([^\n]*)")
+        or string.match(data, "^"..field.."=([^\n]*)")
+      if value ~= nil and value ~= "" and PLDR.EmberSettingValid(key, value) then
+        PLDR.EMBER.GLOBAL[key] = value
+      end
+    end
+  end
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
@@ -5778,7 +5813,8 @@ function PLDR.CommitSettingsChanges(opts)
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
-    smb_modules = next_smb_modules
+    smb_modules = next_smb_modules,
+    ember_global = (type(opts.ember_global) == "table") and opts.ember_global or prev.ember_global
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
