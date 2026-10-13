@@ -202,128 +202,72 @@ jobs:
           require_marker "PrepareForColdExternalELFLaunch" bin/enceladus.elf
           require_marker "BOOT.ELF launch failed" bin/enceladus.elf
 
-      - name: Create release package (PS1_POPSLOADER + POPS/PATCH_5.BIN)
+      - name: Create complete PS1 POPSLoader ZIP and flat PSU
         shell: sh
         run: |
           set -eu
+          # Pin the reference install assets so POPS and EMBER cannot change
+          # unexpectedly when upstream updates. Update only after review.
+          RIPTOPL_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
+          git clone --quiet --filter=blob:none --no-checkout \
+            https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
+          git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS EMBER Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS
+          rm -rf dist_root POPSLOADER.zip PS1_POPSLOADER.psu
+          mkdir -p dist_root/APPS/PS1_POPSLOADER dist_root/POPS dist_root/EMBER/games/ExampleGame
+          test -s bin/POPSLOADER.ELF
+          test -s bin/POPSLDR/POPSTARTER.ELF
+          cp bin/POPSLOADER.ELF dist_root/APPS/PS1_POPSLOADER/POPSLOADER.ELF
+          for f in POPSTARTER.ELF icon.sys list.icn copy.icn del.icn title.cfg APPINFO.PBT; do
+            test -s "bin/POPSLDR/$f"
+            cp "bin/POPSLDR/$f" "dist_root/APPS/PS1_POPSLOADER/$f"
+          done
+          cp -a /tmp/riptopl-kit/POPS/. dist_root/POPS/
+          cp -a /tmp/riptopl-kit/EMBER/. dist_root/EMBER/
+          for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.BIN; do
+            test -s "/tmp/riptopl-kit/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS/$f"
+            cp "/tmp/riptopl-kit/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS/$f" "dist_root/POPS/$f"
+          done
+          test -s dist_root/EMBER/ember.elf
+          test -s dist_root/EMBER/LICENSE-BETA.txt
+          test ! -e dist_root/EMBER/bios.bin
+          # ExampleGame.bin is deliberately empty: a game-image placement
+          # illustration, not copyrighted content or a bootable PS1 game.
+          printf 'FILE "ExampleGame.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n' > dist_root/EMBER/games/ExampleGame/ExampleGame.cue
+          : > dist_root/EMBER/games/ExampleGame/ExampleGame.bin
+          python3 tools/package_psu.py build dist_root/APPS/PS1_POPSLOADER dist_root/PS1_POPSLOADER.psu
+          cp dist_root/PS1_POPSLOADER.psu PS1_POPSLOADER.psu
+          (cd dist_root && find APPS POPS EMBER -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null)
+          (cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
 
-          rm -rf dist_root POPSLOADER.zip
-          mkdir -p dist_root/PS1_POPSLOADER dist_root/POPS
-
-          req() { [ -f "$1" ] || { echo "ERROR: required release file missing: $1" >&2; exit 1; }; }
-
-          req bin/POPSLOADER.ELF
-          req bin/POPSLDR/POPSTARTER.ELF
-          req bin/POPSLDR/APPINFO.PBT
-          req bin/POPSLDR/BUILD_INFO.txt
-          req bin/POPSLDR/title.cfg
-          req bin/POPSLDR/icon.sys
-          req bin/POPSLDR/list.icn
-          req bin/POPSLDR/copy.icn
-          req bin/POPSLDR/del.icn
-          req bin/POPSLDR/PATCH_5.BIN
-
-          cp -f bin/POPSLOADER.ELF dist_root/PS1_POPSLOADER/POPSLOADER.ELF
-          cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/PS1_POPSLOADER/POPSTARTER.ELF
-          cp -f bin/POPSLDR/APPINFO.PBT dist_root/PS1_POPSLOADER/APPINFO.PBT
-          cp -f bin/POPSLDR/BUILD_INFO.txt dist_root/PS1_POPSLOADER/BUILD_INFO.txt
-          cp -f bin/POPSLDR/title.cfg dist_root/PS1_POPSLOADER/title.cfg
-          cp -f bin/POPSLDR/icon.sys dist_root/PS1_POPSLOADER/icon.sys
-          cp -f bin/POPSLDR/list.icn dist_root/PS1_POPSLOADER/list.icn
-          cp -f bin/POPSLDR/copy.icn dist_root/PS1_POPSLOADER/copy.icn
-          cp -f bin/POPSLDR/del.icn dist_root/PS1_POPSLOADER/del.icn
-
-          cp -f bin/POPSLDR/PATCH_5.BIN dist_root/POPS/PATCH_5.BIN
-          cp -f bin/POPSLDR/POPSTARTER.ELF dist_root/POPS/POPSTARTER.ELF
-
-          # Ship the POPStarter version variants (tracked bin/POPSLDR/PROFILES) renamed
-          # "POPSTARTER VERSIONS" -- the MAIN/DEBUG/USBDELAY/USBDELAY_DEBUG builds, as-is.
-          # Its own find below (the folder name has a space).
-          if [ -d bin/POPSLDR/PROFILES ]; then
-            cp -r bin/POPSLDR/PROFILES "dist_root/POPSTARTER VERSIONS"
-          fi
-
-          cd dist_root
-          { find PS1_POPSLOADER POPS -type f; [ -d "POPSTARTER VERSIONS" ] && find "POPSTARTER VERSIONS" -type f; } | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null
-          cd - >/dev/null
-
-          echo "== Package contents =="
-          unzip -Z1 POPSLOADER.zip
-
-      - name: Verify release package contents (python)
+      - name: Verify complete release package
         shell: sh
         run: |
           set -eu
+          python3 tools/package_psu.py verify dist_root/APPS/PS1_POPSLOADER PS1_POPSLOADER.psu
           python3 - <<'PY'
-          import sys, zipfile
-
-          zpath = "POPSLOADER.zip"
-          expected = {
-              "POPS/PATCH_5.BIN",
-              "POPS/POPSTARTER.ELF",
-              "PS1_POPSLOADER/APPINFO.PBT",
-              "PS1_POPSLOADER/BUILD_INFO.txt",
-              "PS1_POPSLOADER/POPSLOADER.ELF",
-              "PS1_POPSLOADER/POPSTARTER.ELF",
-                  "PS1_POPSLOADER/copy.icn",
-                  "PS1_POPSLOADER/del.icn",
-                  "PS1_POPSLOADER/icon.sys",
-                  "PS1_POPSLOADER/list.icn",
-                  "PS1_POPSLOADER/title.cfg",
+          import pathlib, zipfile
+          expected = {"POPSLOADER.ELF", "POPSTARTER.ELF", "icon.sys", "list.icn",
+                      "copy.icn", "del.icn", "title.cfg", "APPINFO.PBT"}
+          with zipfile.ZipFile("POPSLOADER.zip") as z:
+              assert z.testzip() is None
+              names = [n for n in z.namelist() if not n.endswith("/")]
+              assert len(names) == len(set(names))
+              apps = {n.split("/")[-1] for n in names if n.startswith("APPS/PS1_POPSLOADER/")}
+              assert apps == expected, (apps, expected)
+              assert z.read("PS1_POPSLOADER.psu") == pathlib.Path("PS1_POPSLOADER.psu").read_bytes()
+              for n in expected:
+                  assert z.read("APPS/PS1_POPSLOADER/" + n) == pathlib.Path("dist_root/APPS/PS1_POPSLOADER", n).read_bytes()
+              for name in ("EMBER/ember.elf", "EMBER/LICENSE-BETA.txt",
+                           "EMBER/games/ExampleGame/ExampleGame.cue",
+                           "EMBER/games/ExampleGame/ExampleGame.bin",
+                           "POPS/POPSTARTER.ELF", "POPS/PATCH_5.BIN",
+                           "POPS/usbd.irx.ilink", "POPS/usbhdfsd.irx.ilink"):
+                  assert name in names, name
+              assert not any(n.lower() == "ember/bios.bin" for n in names)
+              assert {p.name for p in pathlib.Path("dist_root/POPS").iterdir()} <= {
+                  n.split("/", 1)[1].split("/", 1)[0] for n in names if n.startswith("POPS/")
               }
-
-          with zipfile.ZipFile(zpath, "r") as z:
-              names = [n for n in z.namelist() if n and not n.endswith("/")]
-          actual = set(names)
-
-          # The POPSTARTER VERSIONS/ folder (POPStarter build variants from
-          # bin/POPSLDR/PROFILES) is user-managed and variable, so verify it loosely
-          # (present + ELF-only) while exact-matching the curated installer payload.
-          versions = {n for n in actual if n.startswith("POPSTARTER VERSIONS/")}
-          core = actual - versions
-
-          # Root dirs
-          top = sorted({n.split("/", 1)[0] for n in names if "/" in n})
-          if top != ["POPS", "POPSTARTER VERSIONS", "PS1_POPSLOADER"]:
-              print("ERROR: zip root must contain exactly POPS/, POPSTARTER VERSIONS/ and PS1_POPSLOADER/")
-              print("Top dirs:", top)
-              sys.exit(1)
-
-          # No root files
-          root_files = [n for n in names if "/" not in n]
-          if root_files:
-              print("ERROR: zip must not contain files at root:", root_files)
-              sys.exit(1)
-
-          # Exact set for the curated installer payload (POPSTARTER VERSIONS excluded)
-          if core != expected:
-              missing = sorted(expected - core)
-              extra = sorted(core - expected)
-              print("ERROR: package file set mismatch")
-              if missing:
-                  print("Missing:")
-                  print("\n".join(missing))
-              if extra:
-                  print("Extra:")
-                  print("\n".join(extra))
-              sys.exit(1)
-
-          # POPSTARTER VERSIONS/: must be present and contain only .ELF builds
-          if not versions:
-              print("ERROR: POPSTARTER VERSIONS/ folder is missing from the zip")
-              sys.exit(1)
-          non_elf = sorted(n for n in versions if not n.upper().endswith(".ELF"))
-          if non_elf:
-              print("ERROR: POPSTARTER VERSIONS/ must contain only .ELF files; found:", non_elf)
-              sys.exit(1)
-
-          # Forbidden old TM2 payload entries
-          forbidden = [n for n in names if n.lower().endswith(".tm2") and n.startswith("POPS/")]
-          if forbidden:
-              print("ERROR: forbidden POPS TM2 file(s) found:", forbidden)
-              sys.exit(1)
-
-          print("OK: POPSLOADER.zip contents verified")
+              print("Verified: flat PSU, exact app payload, complete POPS and Ember kit")
           PY
 
       - name: Upload artifact (no release)
@@ -331,6 +275,6 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: POPSLOADER
-          path: POPSLOADER.zip
+          path: |\n            POPSLOADER.zip\n            PS1_POPSLOADER.psu
           if-no-files-found: error
           compression-level: 0
