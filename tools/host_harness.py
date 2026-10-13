@@ -2494,7 +2494,7 @@ t59 = E('''function()
   local base = "mass0:/EMBER/settings.txt"
   local core = "mass0:/EMBER/ember.elf"
   local bios = "mass0:/EMBER/bios.bin"
-  old_files[base] = "# manually managed\ncustom:yes\ndither:on\n"
+  old_files[base] = "# manually managed\\ncustom:yes\\ndither:on\\n"
   local ok = PLDR.EmberRewriteSettings(base, {dither="off",timing="pal"})
   local data = old_files[base]
   if not ok or not string.find(data,"custom:yes",1,true)
