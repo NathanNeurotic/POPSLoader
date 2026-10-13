@@ -295,6 +295,7 @@ def shell(title, body, active, base=''):
     <h4>POPSLoader · this project</h4>
     <a href="{base}popsloader.html"{plcls}>POPSLoader docs</a>
     <a href="{base}popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="https://github.com/NathanNeurotic/POPSLoader/wiki">Native GitHub Wiki ↗</a>
     <a href="{base}popsloader/installation-guide.html">Install &amp; PSU</a>
     <a href="{base}popsloader/ember-core.html">Ember PS1 core</a>
     <a href="{base}popsloader/release-formats.html">Release formats</a>
@@ -1105,8 +1106,11 @@ all verified to contain <b>no Sony emulator binaries</b>.</p>
 <b>Stable:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">POPSLoader 1.2.3</a>
 keeps the existing installer layout, with no Ember.
 <b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
-will expose standalone <code>PS1_POPSLOADER.zip</code> and <code>PS1_POPSLOADER.psu</code>
-after PR #600 is merged to dev and a successful release run publishes.
+now publishes
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip">PS1_POPSLOADER.zip</a>
+and
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a>
+as standalone release assets, following the merged PR #600.
 The ZIP includes <code>APPS/</code>, <code>POPS/</code> and <code>EMBER/</code>;
 the PSU has only eight direct app files, no nested folder. The separate
 <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">Experimental Release</a>
@@ -1556,8 +1560,12 @@ POPSLOADER_MODERN_CALLOUT = '''<div class="callout info"><div class="h">Current 
 Stable <b>1.2.3</b> is published. The <b>Ember</b> PS1 core path,
 RiptOPL-matched <code>APPS/PS1_POPSLOADER/</code>, full <code>POPS/</code> plus
 <code>EMBER/</code> ZIP, and flat eight-file <code>PS1_POPSLOADER.psu</code>
-are in <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>
-(development, not stable).
+were merged into <code>dev</code> through
+<a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>
+and are available in the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling prerelease</a>,
+but not in stable 1.2.3. The
+<a href="https://github.com/NathanNeurotic/POPSLoader/wiki">native GitHub Wiki</a>
+is synchronized from the same maintained guide.
 <a href="popsloader/project-wiki.html">Project wiki</a> ·
 <a href="popsloader/installation-guide.html">Install guide</a> ·
 <a href="popsloader/ember-core.html">Ember guide</a> ·
@@ -2083,8 +2091,9 @@ Sony POPS emulator is <b>not</b> included anywhere; you supply your own legally-
 Stable POPSLoader <b>1.2.3</b> is available separately from this preserved POPStarter wiki.
 Its <b>USB + UDPFS</b> VCD support is opt-in and hardware-unverified.
 A separate <b>Ember PS1</b> core, complete <code>POPS/</code> + <code>EMBER/</code> kit
-and flat <code>PS1_POPSLOADER.psu</code> are implemented in development
-<a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>.
+and flat <code>PS1_POPSLOADER.psu</code> are now available in
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling development builds</a>
+after <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a> merged.
 <a href="popsloader/project-wiki.html">Current POPSLoader wiki</a> ·
 <a href="popsloader/ember-core.html">Ember setup</a> ·
 <a href="popsloader/release-formats.html">Release formats</a>.
