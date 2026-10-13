@@ -2431,6 +2431,113 @@ end''')()
 check("T57 failed USB module init never latches; successful retry latches once", t57)
 
 
+# T58: model RiptOPL's only save-safe Ember layout (one directory per
+# title), per-device identities, and native file-extension acceptance.
+t58 = E('''function()
+  local roots = {
+    "mass0:/", "mass1:/", "mx4sio0:/", "mmce0:/", "ata0:/",
+    "smb0:/", "udpfs:/"
+  }
+  local old_list = System.listDirectory
+  local paths = {}
+  for i = 1, #roots do
+    local root = roots[i]
+    paths[root.."EMBER/games/"] = {
+      {name="Tomba!", directory=true},
+      {name="Empty", directory=true},
+      {name="Readme.txt", directory=false},
+      {name="..oops", directory=true},
+    }
+    paths[root.."EMBER/games/Tomba!/"] = {{name="CDROM.CUE",directory=false}}
+    paths[root.."EMBER/games/Empty/"] = {{name="readme.txt",directory=false}}
+  end
+  System.listDirectory = function(path) return paths[path] end
+  for i = 1, #roots do
+    local root = roots[i]
+    local found = PLDR.EmberScanRoot(root)
+    if #found ~= 1 then
+      System.listDirectory=old_list
+      return false, root.." found "..tostring(#found).." Ember entries"
+    end
+    local game = PLDR.EmberDecode(found[1])
+    if game == nil or game.root ~= root or game.name ~= "Tomba!" or
+       game.elf ~= root.."EMBER/ember.elf" then
+      System.listDirectory=old_list
+      return false, "wrong per-device identity for "..root
+    end
+    if PLDR.EmberArtVcdPath(found[1]) ~= root.."POPS/Tomba!.VCD" then
+      System.listDirectory=old_list
+      return false, "Ember RiptOPL _COV/_ICO lookup did not follow device root"
+    end
+  end
+  local old_games, old_scene = PLDR.GAMES, UI.CURSCENE
+  PLDR.GAMES = {"mass0:/POPS/|Tomba!.VCD"}
+  PLDR.EmberRootsForScene = function() return {"mass0:/","mass1:/"} end
+  PLDR.EmberAttachToList(UI.SCENES.GUSBFAT)
+  local first = #PLDR.GAMES
+  PLDR.EmberAttachToList(UI.SCENES.GUSBFAT)
+  local second = #PLDR.GAMES
+  PLDR.GAMES,UI.CURSCENE = old_games,old_scene
+  PLDR.EMBER.attached_list = nil
+  PLDR.EMBER.attached_scene = nil
+  System.listDirectory = old_list
+  return first == 3 and second == 3
+end''')()
+check("T58 Ember PS1 scanner filters images, keeps device identity, does not duplicate", t58)
+
+# T59: settings files stay compatible with Ember Beta 2; full ELF argv0
+# path and bare argv1 are essential for its ps2sdk cwd resolution.
+t59 = E('''function()
+  local old_files = FAKEFS.files
+  local old_elf = System.loadELFKeepIOP
+  local original = old_files["mass0:/EMBER/settings.txt"]
+  local base = "mass0:/EMBER/settings.txt"
+  local core = "mass0:/EMBER/ember.elf"
+  local bios = "mass0:/EMBER/bios.bin"
+  old_files[base] = "# manually managed\ncustom:yes\ndither:on\n"
+  local ok = PLDR.EmberRewriteSettings(base, {dither="off",timing="pal"})
+  local data = old_files[base]
+  if not ok or not string.find(data,"custom:yes",1,true)
+     or not string.find(data,"dither:off",1,true)
+     or not string.find(data,"timing:pal",1,true) then
+    old_files[base]=original
+    return false, "global native settings lost unknown keys"
+  end
+  if not PLDR.EmberRewriteSettings(base, {dither="-"}) then
+    old_files[base]=original
+    return false, "failed to remove a per-game override"
+  end
+  if string.find(old_files[base] or "", "dither:",1,true) then
+    old_files[base]=original
+    return false, "Default did not restore native inheritance"
+  end
+  local save_dir = "mass0:/EMBER/games/Tomba!/"
+  old_files[core] = "ELF"
+  old_files[bios] = string.rep("B",512*1024)
+  local saved_list = System.listDirectory
+  System.listDirectory = function(path)
+    if path == save_dir then return {{name="GAME.CUE",directory=false}} end
+    return nil
+  end
+  local argv = nil
+  System.loadELFKeepIOP = function(elf, arg0, arg1)
+    argv = {elf,arg0,arg1}
+    return -1
+  end
+  PLDR.EMBER.GLOBAL = {}
+  local launched, err = PLDR.EmberLaunch(PLDR.EmberEncode("mass0:/", "Tomba!"))
+  local passes = argv and argv[1] == core and argv[2] == core
+    and argv[3] == "Tomba!" and launched == false
+  System.listDirectory=saved_list
+  System.loadELFKeepIOP=old_elf
+  old_files[base]=original
+  old_files[core]=nil
+  old_files[bios]=nil
+  return passes == true, err
+end''')()
+check("T59 Ember Beta 2 settings preserve unknowns and keep-IOP handoff argv", t59)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
