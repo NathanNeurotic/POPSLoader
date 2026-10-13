@@ -7856,6 +7856,7 @@ end
 -- Keep the native VCD list/cache untouched; discover Ember rows on the live
 -- game page after the ordinary list was built or loaded.
 -- ========================================================================
+do
 PLDR.EMBER = PLDR.EMBER or {}
 PLDR.EMBER.GLOBAL = PLDR.EMBER.GLOBAL or {}
 local EMBER_PREFS = {
@@ -8107,6 +8108,7 @@ function PLDR.EmberLaunch(entry)
   local ok, result = pcall(System.loadELFKeepIOP, e.elf, e.elf, e.name)
   if not ok then return false, "Ember launch error: "..tostring(result) end
   return false, "Ember ELF returned: "..tostring(result)
+end
 end
 
 function PLDR.GetPS1GameLists(path, updating, on_progress)
