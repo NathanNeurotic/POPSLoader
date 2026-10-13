@@ -277,6 +277,19 @@ jobs:
           echo "== Experimental release bundle contents =="
           unzip -Z1 "$BUNDLE_ZIP" | sed -n '1,80p'
 
+      - name: Include installable PS1 ZIP and matching PSU
+        shell: sh
+        run: |
+          set -eu
+          sh tools/build_release_kit.sh
+          python3 tools/package_psu.py verify dist_root/APPS/PS1_POPSLOADER PS1_POPSLOADER.psu
+          test -s POPSLOADER-experimental.zip
+          test -d experimental_release_bundle
+          cp POPSLOADER.zip "experimental_release_bundle/PS1_POPSLOADER.zip"
+          cp PS1_POPSLOADER.psu "experimental_release_bundle/PS1_POPSLOADER.psu"
+          (cd "experimental_release_bundle" && zip -X -9 "../POPSLOADER-experimental.zip" PS1_POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
+          unzip -tq "POPSLOADER-experimental.zip"
+
       - name: Upload workflow artifact
         if: success()
         uses: actions/upload-artifact@v6
