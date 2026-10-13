@@ -26,7 +26,10 @@ a UDPFS source as USB. APA/PFS HDD `__.EMBER` and `__.EMBER0` through
 mount preserved across the keep-IOP handoff. This path is **host-tested
 only**; real console write-through, controller recovery and VMC behavior
 remain unverified. i.Link remains unavailable in POPSLoader's device
-carousel. Do not claim full hardware parity.
+carousel. **i.Link Ember integration is deliberately deferred** until RiptOPL
+has demonstrated reliable i.Link operation on physical hardware; it is
+out of scope for PR #600 and must not block shipping otherwise validated
+Ember support. Do not claim full device parity in the meantime.
 
 ```text
 <mounted-device-root>/
@@ -98,7 +101,11 @@ MMCE, ATA exFAT, SMB, UDPFS Files, controller input after handoff,
 CUE/BIN launching, virtual-card writes, per-game/global setting
 persistence, and preserving prior POPSTARTER/UDPFS behavior.
 APA/PFS code is implemented but requires physical console verification.
-i.Link still requires implementation. Neither is certified for parity.
+**i.Link is explicitly deferred**, not an open implementation task for
+this PR. Revisit it only after RiptOPL demonstrates reliable hardware
+operation and there is a reference integration worth adapting. Until then,
+keep the existing unsupported/hidden behavior; do not claim i.Link parity.
+APA/PFS is implemented but still requires physical-console verification.
 
 Credits: Gageformer for Ember, RiptOPL/Open-PS2-Loader and
 contributors for the device scanning/settings model; RiptOPL's
