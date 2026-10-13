@@ -3868,9 +3868,11 @@ UI = {
         local function OpenEmberGameSettings(entry)
           local e = type(PLDR.EmberDecode) == "function" and PLDR.EmberDecode(entry) or nil
           if e == nil then return end
-          local settings_file = e.game.."settings.txt"
-          local saved = (type(PLDR.EmberReadSettings) == "function")
-            and PLDR.EmberReadSettings(settings_file) or {}
+          local settings_file = (e.hdd_partition ~= nil)
+            and ("hdd0:"..e.hdd_partition.."/EMBER/games/"..e.name.."/settings.txt")
+            or (e.game.."settings.txt")
+          local saved = (type(PLDR.EmberReadGameSettings) == "function")
+            and PLDR.EmberReadGameSettings(entry) or {}
           local opts = {
             {"timing", "Timing", {"auto", "ntsc", "pal"}},
             {"dither", "Dithering", {"on", "off"}},
