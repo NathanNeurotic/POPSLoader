@@ -1,6 +1,6 @@
 # POPSLoader — Rolling Development Release
 
-**Stable baseline:** 1.2.2. The rolling `dev` channel is a **prerelease**;
+**Stable baseline:** 1.2.3. The rolling `dev` channel is a **prerelease**;
 it is not an official hardware-verified compatibility release.
 
 ### Maintenance update (October 13, 2026)
