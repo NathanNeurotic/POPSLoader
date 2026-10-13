@@ -46,7 +46,8 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 The new Ember integration is not part of the official 1.2.3 binary.
 Host tests: `T58` (valid directory+image scanning, separate roots for
 one/two USB, MX4SIO/MMCE/ATA/SMB/UDPFS and no duplicate rows), `T59`
-(settings.txt preserves unknown keys/Default inherits, keep-IOP argv).
+(settings.txt preserves unknown keys/Default inherits, keep-IOP argv),
+and `T60` (APA `__.EMBER` scanning, RW keep-PFS launch and safe cleanup).
 Device tests still required for real CUE/BIN boot, VMC writes,
 controller re-init, network persistence and storage regression.
 
@@ -56,8 +57,11 @@ controller re-init, network persistence and storage regression.
   no IOP reset, controller and saved VMC work.
 - **SMB/UDPFS Files:** network mount survives keep-IOP handoff and
   global/per-game native settings degrade safely on read-only shares.
-- **APA/PFS and i.Link:** implementation incomplete. Do not mark
-  hardware parity or official-release readiness for either.
+- **APA/PFS:** `__.EMBER[0-9]?` source support now builds and passes the
+  T60 host regression for transient scanning, RW launch remount,
+  write-through and preservation of its PFS mount across keep-IOP.
+  Physical VMC/controller validation is still required.
+- **i.Link:** implementation incomplete. Do not mark full hardware parity.
 
 ## Experimental UDPFS / Okeanos BDMA (2026-10-12)
 
