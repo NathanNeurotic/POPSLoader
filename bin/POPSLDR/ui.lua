@@ -3062,6 +3062,14 @@ UI = {
         UI.SettingsEntryArtLocation = UI.ArtLocation
         UI.CoverArt = (type(PLDR) == "table" and PLDR.COVER_ART ~= false)
         UI.SettingsEntryCoverArt = UI.CoverArt
+        UI.EmberGlobalDraft = {}
+        UI.SettingsEntryEmberGlobal = {}
+        for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+          local val = (type(PLDR.EMBER) == "table" and type(PLDR.EMBER.GLOBAL) == "table"
+            and PLDR.EMBER.GLOBAL[key]) or nil
+          UI.EmberGlobalDraft[key] = val
+          UI.SettingsEntryEmberGlobal[key] = val
+        end
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -4401,6 +4409,7 @@ UI = {
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 smb = UI.SmbDraft,
                 smb_modules = UI.SmbModulesDraft,
+                ember_global = UI.EmberGlobalDraft,
                 apply_smb = (UI.SmbModulesDirty == true)
                             or (UI.SmbModulesDraft == true and UI.SmbDirty == true),
                 apply_bdma = UI.BdmaDirty,
@@ -4631,6 +4640,14 @@ UI = {
           if UI.GameListCache == true then
             UI.GameListCache = false
             UI.ProfileDirty = true
+          end
+          if type(UI.EmberGlobalDraft) == "table" then
+            for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+              if UI.EmberGlobalDraft[key] ~= "-" then
+                UI.EmberGlobalDraft[key] = "-" -- reset unmanaged key in Ember
+                UI.ProfileDirty = true
+              end
+            end
           end
           if UI.CoverArt ~= true then   -- default ON
             UI.CoverArt = true
@@ -5156,6 +5173,55 @@ UI = {
           end
         end
 
+        AddSection("Ember PS1 Core")
+        -- Default does not invent keys in Ember's settings.txt. Unchanged
+        -- leaves a hand-written native setting alone; Default actively
+        -- removes that key, returning control to Ember's own defaults.
+        local ember_rows = {
+          {"display","Ember Display", {"", "-", "240", "480", "480p"}},
+          {"timing","Ember Timing", {"", "-", "auto", "ntsc", "pal"}},
+          {"dither","Ember Dithering", {"", "-", "on", "off"}},
+          {"shading","Ember Shading", {"", "-", "15", "24"}},
+          {"controller","Ember Controller", {"", "-", "auto", "analog", "d2a"}}
+        }
+        local function EmberDirty()
+          for _, row in ipairs(ember_rows) do
+            local key = row[1]
+            if tostring((UI.EmberGlobalDraft or {})[key] or "")
+               ~= tostring((UI.SettingsEntryEmberGlobal or {})[key] or "") then
+              return true
+            end
+          end
+          return false
+        end
+        for _, row in ipairs(ember_rows) do
+          local key, label, values = row[1], row[2], row[3]
+          local function step_ember(dir)
+            UI.EmberGlobalDraft = UI.EmberGlobalDraft or {}
+            local value = UI.EmberGlobalDraft[key] or ""
+            local at = 1
+            for i = 1, #values do if values[i] == value then at = i; break end end
+            local next_value = values[((at - 1 + dir) % #values) + 1]
+            UI.EmberGlobalDraft[key] = (next_value ~= "") and next_value or nil
+            if key == "display" and next_value == "480p" then
+              UI.Notif_queue.add("Ember 480p requires compatible video output", "warn")
+            end
+          end
+          AddCycle(label,
+            function()
+              local value = (UI.EmberGlobalDraft or {})[key]
+              if value == nil or value == "" then return "Unchanged" end
+              if value == "-" then return "Default" end
+              return value
+            end,
+            function() step_ember(-1) end,
+            function() step_ember(1) end,
+            function()
+              return tostring((UI.EmberGlobalDraft or {})[key] or "")
+                ~= tostring((UI.SettingsEntryEmberGlobal or {})[key] or "")
+            end)
+        end
+
         AddSection("POPSTARTER")
         -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
         -- system): one user-defined path, empty = Automatic (the launch ladder:
@@ -5192,6 +5258,7 @@ UI = {
             or HideTextDirty()
             or KeyboardLayoutDirty()
             or LanguageDirty()
+            or EmberDirty()
             -- Value-cycle settings are tracked by snapshot comparison (their cycle
             -- handlers set NO dirty flag), so they must be compared here too -- else a
             -- lone change to one is dropped on BACK with no save prompt. Same
