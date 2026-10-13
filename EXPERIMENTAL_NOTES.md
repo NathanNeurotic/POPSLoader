@@ -1,4 +1,45 @@
-# POPSLoader 1.2.2 — Experimental Release
+# POPSLoader — Experimental USB + UDPFS Alpha
+
+**Opt-in test release, not official stable software.** The version field may
+still show the 1.2.3 baseline; identify the experimental binary from its
+`BUILD_INFO.txt` commit instead. Do not assume a version string proves hardware
+compatibility.
+
+## Maintenance update (October 13, 2026)
+
+- RiptOPL-style PS1 VCD `_ICO.png` disc icons now appear beside the jewel
+  case when matching artwork exists; `_COV.png` lookup is unchanged.
+- The USB module-ready latch only records successful initialization; missing
+  or unsupported exFAT volumes still require hardware-level diagnosis.
+- Both changes are host-tested; physical PS2 behavior is not yet certified.
+
+## Experimental UDPFS integration (October 12, 2026)
+
+- The Ethernet tile offers **SMBv1** and **USB + UDPFS** choices.
+- Browse PS1 `.VCD` files on a UDPFS server and launch through POPSTARTER's
+  **USB-first, UDPFS-fallback** driver by **Okeanos86**, derived from **israpps**
+  BDM Assault.
+- Set a static console IP and contiguous netmask in **Settings → SMB / Network**;
+  UDPFS and SMB network drivers are mutually exclusive until a restart.
+- Keep a USB `POPS/` directory available. Existing conflicting
+  `POPS/IPCONFIG.DAT` files are never overwritten; missing ones are staged
+  on detected USB POPS volumes.
+- During UDPFS launch POPSLoader stages its embedded Okeanos driver pair under
+  `mc?:/POPSTARTER/`, not FreeMcBoot's `SYS-CONF/` folder.
+- Both real-Lua host configuration tests and pinned IRX integration tests gate
+  builds. Source and PS2SDK compilation checks are not real-console evidence.
+- **Hardware status: Unknown (verify on hardware).** PS2 USB/network VCD boot,
+  USB slot ordering, network behavior, game controllers, and existing SMBv1
+  compatibility require recorded smoke tests before an official stable tag.
+
+See [UDPFS setup](docs/UDPFS_BDMA.md) and
+[QA regression matrix](QA_REGRESSION_MATRIX.md). The official stable
+release remains [1.2.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2).
+
+---
+
+## Prior stable release: POPSLoader 1.2.2
+
 
 At the 1.2.2 release cut, `master`, `dev`, and `experimental` share the same source commit. All three builds show **v1.2.2** in Settings → About; there is no EXP suffix for this cut.
 
