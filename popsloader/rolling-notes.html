@@ -51,6 +51,16 @@
   </nav>
   <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><p><strong>Stable baseline:</strong> 1.2.2. The rolling <code>dev</code> channel is a <strong>prerelease</strong>;<br />
 it is not an official hardware-verified compatibility release.</p>
+<h3 id="maintenance-update-october-13-2026">Maintenance update (October 13, 2026)</h3>
+<ul>
+<li>PS1 artwork follows RiptOPL's exact VCD-basename convention: <code>_COV.png</code><br />
+  for covers and optional <code>_ICO.png</code> for disc icons, read asynchronously.</li>
+<li>Fixed a USB-backend initialization flag that could incorrectly latch failed<br />
+  module initialization as successful. External exFAT HDD detection report #577<br />
+  remains under investigation; no hardware-fix claim is made.</li>
+<li>Official compatibility and UDPFS console launches still require physical<br />
+  hardware validation.</li>
+</ul>
 <h3 id="experimental-udpfs-support-october-12-2026">Experimental UDPFS support (October 12, 2026)</h3>
 <ul>
 <li>Ethernet tile: choose <strong>SMBv1</strong> or <strong>USB + UDPFS</strong>.</li>

@@ -72,6 +72,22 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 - release package validation gates,<br />
 - repository automation workflows that are not runtime/hardware gates.</p>
 <p>This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.</p>
+<h2 id="follow-up-maintenance-2026-10-13-host-only-until-ps2-validation">Follow-up maintenance (2026-10-13; host-only until PS2 validation)</h2>
+<ul>
+<li>Issue #577: a failed native USB module load no longer sets the Lua USB-ready<br />
+  latch. Driver discovery/mount failures still need hardware evidence; this does<br />
+  not claim that the reporter's exFAT disk is repaired. Diagnostic and partition<br />
+  handling investigation remains open.</li>
+<li>Issue #568: selected PS1 VCD artwork now accepts RiptOPL's exact-basename<br />
+<code>_ICO.png</code> disc art in the matching <code>ART/</code> location (UDPFS additionally<br />
+  accepts the VCD-directory fallback). The existing asynchronous worker loads<br />
+  one icon after the cover; neither a missing icon nor a missing cover affects<br />
+  game launching. Hardware visual verification still pending.</li>
+<li>The former S-11 selectable Cover/details-folder regression row is historical:<br />
+  current EXP71 runtime fixes artwork to <code>ART/</code>; <code>ART_LOCATION</code> persists as a<br />
+  backward-compatible inert setting. Do not use S-11's old folder-selection<br />
+  instructions as an active acceptance test.</li>
+</ul>
 <h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / Okeanos BDMA (2026-10-12)</h2>
 <table>
 <thead>
