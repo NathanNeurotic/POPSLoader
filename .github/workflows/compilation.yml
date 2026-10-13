@@ -275,6 +275,8 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: POPSLOADER
-          path: |\n            POPSLOADER.zip\n            PS1_POPSLOADER.psu
+          path: |
+            POPSLOADER.zip
+            PS1_POPSLOADER.psu
           if-no-files-found: error
           compression-level: 0
