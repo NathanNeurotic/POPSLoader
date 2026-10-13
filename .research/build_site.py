@@ -294,6 +294,10 @@ def shell(title, body, active, base=''):
     <a href="{base}index.html"{homecls}>Home</a>
     <h4>POPSLoader · this project</h4>
     <a href="{base}popsloader.html"{plcls}>POPSLoader docs</a>
+    <a href="{base}popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="{base}popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="{base}popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="{base}popsloader/release-formats.html">Release formats</a>
     <a href="{base}launch-arguments.html"{refcls('launch-args')}>Launch arguments</a>
     <h4>POPStarter · documentation</h4>{psnav}
     <h4>Reference</h4>
@@ -304,7 +308,7 @@ def shell(title, body, active, base=''):
     <a href="{base}compatibility-table.html"{refcls('compat-table')}>Compatibility table</a>
     <a href="{base}thread-study.html"{refcls('thread-study')}>Community knowledge</a>
     <a href="{base}credits.html"{refcls('credits')}>Credits</a>
-    <a href="{base}wiki/index.html">All wiki pages</a>
+    <a href="{base}wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
@@ -1167,8 +1171,8 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
 <tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
-<tr><td>UDPFS Files PS1 VCDs <em>(Coming soon)</em></td><td>read-only UDPFS fallback after USB</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> POPSLoader integration: Coming soon</td></tr>
-<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
+<tr><td>UDPFS Files PS1 VCDs <em>(experimental)</em></td><td>opt-in USB + UDPFS for VCDs</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> Included in 1.2.3; console behavior unverified</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Unsupported/hidden; Ember i.Link deferred pending RiptOPL hardware validation</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
 In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
@@ -1177,15 +1181,16 @@ special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, <code>M
 validating on hardware). Everything except an APA/PFS internal HDD goes through BDMA — it loads the
 <b>BDM&nbsp;Assault</b> driver set, which is how the launcher reaches exFAT USB, the exFAT internal HDD, and the
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
-iLink backend extends the same BDM mechanism but is not hardware-tested yet. For large
+iLink is unsupported in POPSLoader; Ember i.Link is deferred until RiptOPL proves a stable hardware path. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div>'''
 
-POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
-POPSLoader is preparing a PS1 VCD network page and driver-staging support for
-<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault (Alpha)</a>.
-POPSTARTER reads USB first, then requests missing VCD files from a UDPFS server using its read-only fallback.
-The upstream Alpha exists today; POPSLoader integration is <em>Coming soon</em> and is not included in current releases.
-See the <a href="popsloader/udpfs-bdma.html">planned setup, files and credits</a>. This is not UDPBD or Neutrino&#39;s PS2 UDPFS mode.</div>'''
+POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — experimental</div>
+POPSLoader 1.2.3 includes an <b>opt-in</b> PS1 VCD network option using
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault Alpha</a>.
+Select <b>SMBv1</b> or <b>USB + UDPFS</b> from the Ethernet device tile. End-to-end VCD game launch,
+multi-USB handling and controller recovery remain hardware-unverified.
+See <a href="popsloader/udpfs-bdma.html">setup and limitations</a>.
+This is not the PS2 UDPBD/Neutrino transport.</div>'''
 
 HUGOPOCKED = '''<h2 id="hugopocked">Hugopocked fixes — the leading community compatibility pack</h2>
 <p class="lead">When POPS' built-in fixes and the compatibility modes above aren't enough, <b>Hugopocked's per-game
@@ -1478,7 +1483,13 @@ POPSLOADER_DOCS = [
     ('TESTING.md', 'Testing'),
     ('CONTRIBUTING.md', 'Contributing'),
     ('docs/LAUNCH_ARGUMENTS.md', 'Launch arguments'),
-    ('docs/UDPFS_BDMA.md', 'POPS UDPFS / BDM-UDPFS Assault — Coming soon'),
+    ('docs/EMBER_INTEGRATION.md', 'Ember PS1 — integration and settings'),
+    ('docs/wiki/Project-Wiki.md', 'Project Wiki — start here'),
+    ('docs/wiki/Installation-Guide.md', 'Installation — ZIP, PSU and game folders'),
+    ('docs/wiki/Release-Formats.md', 'Release formats and verification'),
+    ('docs/wiki/Ember-Core.md', 'Ember PS1 core'),
+    ('docs/wiki/Device-Support.md', 'Device support & hardware verification'),
+    ('docs/UDPFS_BDMA.md', 'Experimental POPS UDPFS / BDM-UDPFS Assault'),
     ('docs/PRESERVATION_CONTRACTS.md', 'Preservation contracts'),
 ]
 def pl_slug(path):
