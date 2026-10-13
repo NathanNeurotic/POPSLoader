@@ -24,9 +24,30 @@ for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.B
   test -s "/tmp/riptopl-kit/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS/$f"
   cp "/tmp/riptopl-kit/Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS/$f" "dist_root/POPS/$f"
 done
+# Fail closed if any reference POPS or Ember component was lost or changed.
+# Only the deliberately added ExampleGame placeholder may differ from source.
+python3 - <<'PY'
+from pathlib import Path
+for part in ('POPS', 'EMBER'):
+    original = Path('/tmp/riptopl-kit') / part
+    package = Path('dist_root') / part
+    files = [p for p in original.rglob('*') if p.is_file()]
+    if not files:
+        raise SystemExit(f"Empty pinned RiptOPL {part} source")
+    for path in files:
+        target = package / path.relative_to(original)
+        if not target.is_file() or target.read_bytes() != path.read_bytes():
+            raise SystemExit(f"Missing or modified reference payload: {path}")
+    print(f"{part}: verified {len(files)} pinned RiptOPL files")
+PY
 test -s dist_root/EMBER/ember.elf
 test -s dist_root/EMBER/LICENSE-BETA.txt
 test ! -e dist_root/EMBER/bios.bin
+# Never accidentally distribute user-owned BIOS dumps anywhere in the kit.
+if find dist_root -type f -iname 'bios.bin' | grep -q .; then
+  echo 'ERROR: BIOS file found in distribution' >&2
+  exit 1
+fi
 # ExampleGame.bin is deliberately empty: a game-image placement
 # illustration, not copyrighted content or a bootable PS1 game.
 printf 'FILE "ExampleGame.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n' > dist_root/EMBER/games/ExampleGame/ExampleGame.cue
