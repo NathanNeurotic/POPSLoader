@@ -284,10 +284,10 @@ jobs:
           sh tools/build_release_kit.sh
           python3 tools/package_psu.py verify dist_root/APPS/PS1_POPSLOADER PS1_POPSLOADER.psu
           test -s POPSLOADER-experimental.zip
-          test -d experimental_release_bundle
-          cp POPSLOADER.zip "experimental_release_bundle/PS1_POPSLOADER.zip"
-          cp PS1_POPSLOADER.psu "experimental_release_bundle/PS1_POPSLOADER.psu"
-          (cd "experimental_release_bundle" && zip -X -9 "../POPSLOADER-experimental.zip" PS1_POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
+          test -d experimental_bundle
+          cp POPSLOADER.zip "experimental_bundle/PS1_POPSLOADER.zip"
+          cp PS1_POPSLOADER.psu "experimental_bundle/PS1_POPSLOADER.psu"
+          (cd "experimental_bundle" && zip -X -9 "../POPSLOADER-experimental.zip" PS1_POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
           unzip -tq "POPSLOADER-experimental.zip"
 
       - name: Upload workflow artifact
