@@ -280,6 +280,19 @@ jobs:
           echo "== Rolling release bundle contents =="
           unzip -Z1 "$BUNDLE_ZIP" | sed -n '1,80p'
 
+      - name: Include installable PS1 ZIP and matching PSU
+        shell: sh
+        run: |
+          set -eu
+          sh tools/build_release_kit.sh
+          python3 tools/package_psu.py verify dist_root/APPS/PS1_POPSLOADER PS1_POPSLOADER.psu
+          test -s POPSLOADER-rolling-release.zip
+          test -d rolling_release_bundle
+          cp POPSLOADER.zip "rolling_release_bundle/PS1_POPSLOADER.zip"
+          cp PS1_POPSLOADER.psu "rolling_release_bundle/PS1_POPSLOADER.psu"
+          (cd "rolling_release_bundle" && zip -X -9 "../POPSLOADER-rolling-release.zip" PS1_POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
+          unzip -tq "POPSLOADER-rolling-release.zip"
+
       - name: Upload workflow artifact
         if: success()
         uses: actions/upload-artifact@v6
