@@ -68,14 +68,21 @@ POPSLoader's main menu exposes the following backends:
 
 To set up POPSLoader:
 
-1.  **Download the Release**: Download and extract the latest `POPSLOADER.zip` package.
-2.  **Copy Launcher Files**: Copy the `PS1_POPSLOADER/` folder to the device or memory card from which you want to launch POPSLoader.
+1.  **Download the Release**: Official stable 1.2.3 uses its existing `PS1_POPSLOADER.zip` layout. The **development** Ember release kit (PR #600, not yet in stable) provides a new `PS1_POPSLOADER.zip` containing `APPS/`, `POPS/`, `EMBER/` and a matching `PS1_POPSLOADER.psu`.
+2.  **Copy Launcher Files**: For stable 1.2.3 use its existing `PS1_POPSLOADER/` directory. For the **new development kit**, copy the eight direct files from `APPS/PS1_POPSLOADER/` to your application directory, or import `PS1_POPSLOADER.psu` as a PS2 memory-card save. **The PSU contains the eight files directly, with no nested directory.**
 3.  **Place POPS Files**: Put the `PATCH_5.BIN` file (included in the `POPS/` directory of the ZIP) into your active `POPS` folder (see directory structures below).
 4.  **Add POPStarter & POPS Files**: Add your POPStarter executable (`POPSTARTER.ELF`) and the required POPS support files (`IOPRP252.IMG`, `POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK`) to your `POPS` folder. These copyrighted Sony POPS files are not included in the release package.
 5.  **Add Games**: Copy your PS1 game images in `.VCD` format into the same `POPS` folder. Keep filenames reasonably short — roughly **73 characters is the safe maximum** for a standard `POPS/` folder; longer names can fail to launch (see Troubleshooting).
 6.  **Launch**: Run `POPSLOADER.ELF` using wLaunchELF, Free McBoot, or your preferred ELF launcher.
 
 ---
+
+
+### Ember development kit packaging (PR #600)
+
+The new ZIP places the eight-file launcher in `APPS/PS1_POPSLOADER/`, RiptOPL-matched support files in `POPS/`, and the unmodified Ember core, licence and game layout in `EMBER/`. The separate `PS1_POPSLOADER.psu` is the same eight launcher files in a **flat** PS2 save archive (no nested `PS1_POPSLOADER` subfolder). The rolling and experimental channels will publish the full ZIP and PSU separately once this PR is merged; stable 1.2.3 is unchanged. See [Ember integration and licensing](docs/EMBER_INTEGRATION.md).
+
+The supplied `EMBER/games/ExampleGame/ExampleGame.cue` points at a **zero-byte `ExampleGame.bin` placeholder**, not a runnable game; remove or replace this example with your own legally obtained image. Supply your own 512 KiB `EMBER/bios.bin`; neither the BIOS nor commercial game images are redistributed. Ember remains hardware-unverified, with i.Link parity pending.
 
 ## Folder Layout
 
