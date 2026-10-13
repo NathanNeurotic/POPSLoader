@@ -41,6 +41,24 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
   backward-compatible inert setting. Do not use S-11's old folder-selection
   instructions as an active acceptance test.
 
+## Ember core development test gate (2026-10-13)
+
+The new Ember integration is not part of the official 1.2.3 binary.
+Host tests: `T58` (valid directory+image scanning, separate roots for
+one/two USB, MX4SIO/MMCE/ATA/SMB/UDPFS and no duplicate rows), `T59`
+(settings.txt preserves unknown keys/Default inherits, keep-IOP argv).
+Device tests still required for real CUE/BIN boot, VMC writes,
+controller re-init, network persistence and storage regression.
+
+- **USB with 2 devices:** each `EMBER/games/` library lists only under
+  its own mounted root; title and cover art must not cross volumes.
+- **MX4SIO/MMCE/internal exFAT:** typed root, correct game folder,
+  no IOP reset, controller and saved VMC work.
+- **SMB/UDPFS Files:** network mount survives keep-IOP handoff and
+  global/per-game native settings degrade safely on read-only shares.
+- **APA/PFS and i.Link:** implementation incomplete. Do not mark
+  hardware parity or official-release readiness for either.
+
 ## Experimental UDPFS / Okeanos BDMA (2026-10-12)
 
 | Area | Status | Evidence or hardware check still required |
