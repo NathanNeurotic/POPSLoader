@@ -3,6 +3,16 @@
 **Stable baseline:** 1.2.2. The rolling `dev` channel is a **prerelease**;
 it is not an official hardware-verified compatibility release.
 
+### Maintenance update (October 13, 2026)
+
+- PS1 artwork follows RiptOPL's exact VCD-basename convention: `_COV.png`
+  for covers and optional `_ICO.png` for disc icons, read asynchronously.
+- Fixed a USB-backend initialization flag that could incorrectly latch failed
+  module initialization as successful. External exFAT HDD detection report #577
+  remains under investigation; no hardware-fix claim is made.
+- Official compatibility and UDPFS console launches still require physical
+  hardware validation.
+
 ### Experimental UDPFS support (October 12, 2026)
 
 - Ethernet tile: choose **SMBv1** or **USB + UDPFS**.

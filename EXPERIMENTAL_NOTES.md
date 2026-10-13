@@ -5,6 +5,14 @@ still show the 1.2.2 baseline; identify the experimental binary from its
 `BUILD_INFO.txt` commit instead. Do not assume a version string proves hardware
 compatibility.
 
+## Maintenance update (October 13, 2026)
+
+- RiptOPL-style PS1 VCD `_ICO.png` disc icons now appear beside the jewel
+  case when matching artwork exists; `_COV.png` lookup is unchanged.
+- The USB module-ready latch only records successful initialization; missing
+  or unsupported exFAT volumes still require hardware-level diagnosis.
+- Both changes are host-tested; physical PS2 behavior is not yet certified.
+
 ## Experimental UDPFS integration (October 12, 2026)
 
 - The Ethernet tile offers **SMBv1** and **USB + UDPFS** choices.

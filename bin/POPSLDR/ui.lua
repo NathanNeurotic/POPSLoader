@@ -283,6 +283,30 @@ local function BuildCoverCandidates(vcd_path, use_hdd_common_art, entry)
   end
   return { artdir..name.."_COV.png" }
 end
+-- RiptOPL-compatible PS1 ART basename: EXACT VCD filename without .VCD,
+-- with _COV.png (cover) and _ICO.png (disc icon). _LAB.png and _COV3.png
+-- are reserved by the same art family but not drawn in POPSLoader yet.
+-- On HDD/PFS, icons resolve independently of covers: no _COV required.
+local function BuildIconCandidates(vcd_path, use_hdd_common_art, entry)
+  if use_hdd_common_art then
+    local basename = ExtractHddArtBasename(entry)
+    if basename == "" then basename = BasenameWithoutExtension(vcd_path) end
+    if basename == "" or type(PLDR) ~= "table"
+       or type(PLDR.ResolveHddPartitionReadablePath) ~= "function" then
+      return {}
+    end
+    local ok, path = pcall(PLDR.ResolveHddPartitionReadablePath,
+      "hdd0:__common", "POPS/ART/"..basename.."_ICO.png")
+    if ok and type(path) == "string" and path ~= "" then return { path } end
+    return {}
+  end
+  local covers = BuildCoverCandidates(vcd_path, false, entry)
+  local icons = {}
+  for i = 1, #covers do
+    icons[#icons + 1] = string.gsub(covers[i], "_COV%.png$", "_ICO.png")
+  end
+  return icons
+end
 -- Read a game's "<name>.txt" details sidecar. Bounded so a stray huge file can't
 -- stall the snappy cover-load path it rides on.
 local function ReadGameDetailsText(path)
@@ -340,7 +364,7 @@ local function WrapGameDetailsLines(text, max_chars)
   return out
 end
 local CoverCache = {
-  max = 3,
+  max = 4, -- bounded recent cover/icon textures
   entries = {},
   order = {},
   failed = {},
@@ -348,6 +372,9 @@ local CoverCache = {
   token = 0,         -- EXP49: request id, so a late result for an old selection is dropped
   last_key = nil,
   last_img = nil,
+  last_icon_img = nil,
+  icon_candidates = {},
+  icon_requested = false,
   last_desc = nil,
   last_desc_lines = nil,
   desc_scroll = 0
@@ -365,6 +392,9 @@ function CoverCache:Clear()
   self.pending = nil     -- EXP49: abandon any in-flight load; its result will be dropped as stale
   self.last_key = nil
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
@@ -385,6 +415,9 @@ function CoverCache:ReleaseTextures()
   self.order = {}
   self.last_key = nil
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0
@@ -403,11 +436,17 @@ function CoverCache:EvictIfNeeded()
   while #self.order > self.max do
     local evict_key = table.remove(self.order, 1)
     local img = self.entries[evict_key]
-    if img ~= nil then
-      if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
-        pcall(Graphics.freeImage, img)
+    -- Keep the currently displayed cover and icon alive even when an older
+    -- cached entry is reused and subsequently falls to the eviction front.
+    if img ~= nil and (img == self.last_img or img == self.last_icon_img) then
+      table.insert(self.order, evict_key)
+    else
+      if img ~= nil then
+        if type(Graphics) == "table" and type(Graphics.freeImage) == "function" then
+          pcall(Graphics.freeImage, img)
+        end
+        self.entries[evict_key] = nil
       end
-      self.entries[evict_key] = nil
     end
   end
 end
@@ -471,6 +510,9 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
   end
   self.last_key = key
   self.last_img = nil
+  self.last_icon_img = nil
+  self.icon_candidates = {}
+  self.icon_requested = false
   self.last_desc = nil
   self.last_desc_lines = nil
   self.desc_scroll = 0  -- new selection -> start its description at the top
@@ -478,6 +520,7 @@ function CoverCache:UpdateSelection(vcd_path, use_hdd_common_art, entry)
     return nil
   end
   local candidates = BuildCoverCandidates(vcd_path, use_hdd_common_art == true, entry)
+  self.icon_candidates = BuildIconCandidates(vcd_path, use_hdd_common_art == true, entry)
   -- Game details: read "<cover-base>.txt" next to the cover art, but only when the
   -- feature is on (otherwise this read is skipped so navigation stays snappy).
   -- Stored raw; the list view word-wraps it under the cover.
@@ -586,7 +629,7 @@ end
 -- Kick an async load for candidates[idx] of `key`. Falls back to the old synchronous
 -- load only when the worker is unavailable (older core), so behaviour degrades rather
 -- than breaks.
-function CoverCache:BeginLoad(key, candidates, idx)
+function CoverCache:BeginLoad(key, candidates, idx, icon_only)
   local path = candidates[idx]
   if path == nil then return end
   -- EXP53: drain an UNCOLLECTED result before requesting. Pump only runs on the
@@ -604,13 +647,16 @@ function CoverCache:BeginLoad(key, candidates, idx)
   end
   if type(Graphics) ~= "table" or type(Graphics.coverLoadBegin) ~= "function" then
     local img = self:GetOrLoad(path)
-    if img ~= nil and self.last_key == key then self.last_img = img end
+    if img ~= nil and self.last_key == key then
+      if icon_only then self.last_icon_img = img else self.last_img = img end
+    end
     return
   end
   self.token = (self.token or 0) + 1
-  local dp = self.pending_desc_path
-  self.pending_desc_path = nil
-  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token, desc_path = dp }
+  local dp = (not icon_only) and self.pending_desc_path or nil
+  if not icon_only then self.pending_desc_path = nil end
+  self.pending = { key = key, candidates = candidates, idx = idx, token = self.token,
+                   desc_path = dp, icon_only = icon_only == true }
   -- EXP73: ALWAYS set the companion text path here, clearing it with "" when this
   -- game has none. EXP72 set it only in the text-only and the worker-refused-retry
   -- branches, so this -- the path EVERY first-time cover load takes -- asked the
@@ -686,6 +732,26 @@ function CoverCache:CollectPendingText(p, stale)
   end
 end
 
+-- Once the cover (and any details job) has finished, use the SAME bounded
+-- asynchronous worker for the selected disc icon. Never add synchronous
+-- filesystem probes to a frame and never start a competing worker.
+function CoverCache:StartIconLoad()
+  if self.icon_requested or self.pending ~= nil or self.last_key == nil then return end
+  self.icon_requested = true
+  local candidates = self.icon_candidates or {}
+  for i = 1, #candidates do
+    local path = candidates[i]
+    if self.entries[path] ~= nil then
+      self.last_icon_img = self.entries[path]
+      return
+    end
+    if not self.failed[path] then
+      self:BeginLoad(self.last_key, candidates, i, true)
+      return
+    end
+  end
+end
+
 -- Called once per game-list frame. Adopts a finished load, advances to the next
 -- candidate on a miss, and retries a request the worker was too busy to accept.
 -- Does no filesystem work of its own and never blocks.
@@ -719,7 +785,10 @@ end
 
 function CoverCache:Pump()
   local p = self.pending
-  if p == nil then return end
+  if p == nil then
+    self:StartIconLoad()
+    return
+  end
   if type(Graphics) ~= "table" or type(Graphics.coverLoadPoll) ~= "function" then
     self.pending = nil
     return
@@ -778,8 +847,8 @@ function CoverCache:Pump()
       end
       self.entries[ipath] = ptr
       table.insert(self.order, ipath)
+      if p.icon_only then self.last_icon_img = ptr else self.last_img = ptr end
       self:EvictIfNeeded()
-      self.last_img = ptr
     end
     self.pending = nil
     return
@@ -800,7 +869,7 @@ function CoverCache:Pump()
   if nxt == nil then
     self.pending = nil
   else
-    self:BeginLoad(p.key, p.candidates, nxt)
+    self:BeginLoad(p.key, p.candidates, nxt, p.icon_only)
   end
 end
 
@@ -3370,6 +3439,22 @@ UI = {
           end
           if IMG.frame ~= nil and frame_w ~= nil and frame_h ~= nil then
             Graphics.drawScaleImage(IMG.frame, frame_x, draw_y, frame_w, frame_h)
+          end
+          -- An OPL-style _ICO.png sits beside the selected jewel case. It is
+          -- optional and uses the cover worker; rendering performs no I/O.
+          if cover_enabled and UI.CoverCache ~= nil
+             and UI.CoverCache.last_icon_img ~= nil then
+            local icon = UI.CoverCache.last_icon_img
+            local iw, ih = Graphics.getImageWidth(icon), Graphics.getImageHeight(icon)
+            if iw > 0 and ih > 0 then
+              local icon_box = math.min(48, math.max(32, Round((frame_h or draw_h) * 0.20)))
+              local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
+              local icon_w, icon_h
+              if ratio >= 1 then icon_w = icon_box; icon_h = Round(icon_box / ratio)
+              else icon_h = icon_box; icon_w = Round(icon_box * ratio) end
+              Graphics.drawScaleImage(icon, Round(frame_x - icon_w + 10),
+                Round(draw_y + (frame_h or draw_h) - icon_h - 8), icon_w, icon_h)
+            end
           end
           -- (EXP56: the "Loading art..." line is REMOVED. It was added when a fetch
           -- could stall the frame; with loads off the render thread it resolves fast
