@@ -6706,7 +6706,9 @@ function PLDR.GetUsbDiagText()
       for _ in pairs(l) do n = n + 1 end
     end
   end
-  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?")
+  -- bdmList counts all block devices, not just USB. In multi-device setups
+  -- bdm=1 does not establish that the external USB HDD is what BDM saw.
+  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?") .. "(all)"
 
   if type(System.iopHeapProbe) == "function" then
     local ok_h, h = pcall(System.iopHeapProbe)
@@ -8093,8 +8095,12 @@ function PLDR.EmberLaunch(entry)
   if not EmberHasGameImage(game_entries) then
     return false, "No .cue/.exe/.bin directly in "..e.game
   end
-  if not PLDR.EmberApplyGlobal(e.root) then
-    return false, "Cannot save Ember global settings on "..e.root
+  -- SMB/UDPFS mounts can be read-only. A failed optional settings write
+  -- must not turn a bootable game into an unbootable one; notify and keep
+  -- the user's original native settings file intact.
+  if not PLDR.EmberApplyGlobal(e.root)
+     and type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    pcall(UI.Notif_queue.add, "Ember global settings could not be saved on "..e.root, "warn")
   end
   -- The executable's real path MUST be argv[0]. Ember's cwd derives from it.
   -- argv[1] MUST be a single folder name; absolute paths are refused.
