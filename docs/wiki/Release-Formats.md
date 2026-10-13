@@ -28,7 +28,7 @@ CI verifies the PSU files against `APPS/PS1_POPSLOADER/` **byte-for-byte**, usin
 ## Channels and compatibility
 
 - **Stable 1.2.3:** existing official package remains unchanged. New eight-file directory / PSU expectations must **not** be retroactively applied to that release.
-- **Rolling development:** after PR #600 merges into `dev`, use the rolling tag's separate `.zip` and `.psu` assets, or the traditional combined source bundle.
+- **Rolling development:** PR #600 is merged into `dev`; [PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip) and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets, alongside the traditional combined bundle.
 - **Experimental:** isolated prerelease channel, built independently from `experimental`. The PR alone does not add these features to that branch; they must be explicitly integrated before advertising the experimental packages.
 - **Official future release:** publish only from a separately reviewed, version-stamped source after compatibility disclosures and release gates are satisfied.
 
