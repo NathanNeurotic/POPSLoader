@@ -8174,19 +8174,25 @@ function PLDR.EmberLaunch(entry)
   if bios_bytes ~= 512*1024 then
     return fail("Ember needs a 512 KB BIOS: "..e.bios)
   end
-  local game_entries = System.listDirectory(e.game)
-  if not EmberHasGameImage(game_entries) then
+  local ok_dir, game_entries = pcall(System.listDirectory, e.game)
+  if not ok_dir or not EmberHasGameImage(game_entries) then
     return fail("No .cue/.exe/.bin directly in "..e.game)
   end
-  if not PLDR.EmberApplyGlobal(e.root)
+  local ok_global, global_saved = pcall(PLDR.EmberApplyGlobal, e.root)
+  if not (ok_global and global_saved)
      and type(UI) == "table" and type(UI.Notif_queue) == "table" then
     pcall(UI.Notif_queue.add,
       "Ember global settings could not be saved on "..e.root, "warn")
   end
   -- Keep the writable APA mount and its descriptors across the IOP-preserving
   -- ELF handoff. Other PFS mounts can close; the Ember game's slot cannot.
-  if apa_slot ~= nil and type(System.setExecKeepPfsMask) == "function" then
-    pcall(System.setExecKeepPfsMask, 1 << apa_slot)
+  if apa_slot ~= nil then
+    if apa_slot < 0 or apa_slot > 3
+       or type(System.setExecKeepPfsMask) ~= "function" then
+      return fail("Cannot preserve Ember's APA mount across ELF handoff")
+    end
+    local ok_keep = pcall(System.setExecKeepPfsMask, 1 << apa_slot)
+    if not ok_keep then return fail("Unable to keep Ember PFS mount") end
   end
   local ok, result = pcall(System.loadELFKeepIOP, e.elf, e.elf, e.name)
   if apa_slot ~= nil then
