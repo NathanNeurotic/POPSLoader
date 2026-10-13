@@ -16,6 +16,16 @@ The current **official stable release** is **[1.2.3](https://github.com/NathanNe
 
 ---
 
+## Ember PS1 emulator (development, not yet released)
+
+POPSLoader's active development branch now includes experimental
+[Ember integration](docs/EMBER_INTEGRATION.md) modeled on RiptOPL. It
+discovers image-containing game folders under `<device>:/EMBER/games/`
+alongside `.VCD` titles, adds RiptOPL VCD-basename artwork, a native
+keep-IOP launch path and global/per-game Ember Beta 2 settings.
+**This is not part of official 1.2.3**, and no physical PS2
+compatibility claim is made. APA/PFS and i.Link parity are pending.
+
 ## Highlights
 
 **Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This is **not** included in official stable 1.2.2. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
