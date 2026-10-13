@@ -1,0 +1,93 @@
+name: Sync GitHub Native Wiki
+
+# Source of truth is the current docs/wiki/*.md on dev.
+# Existing native Wiki pages and the historical POPStarter wiki are preserved.
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'docs/wiki/**'
+      - 'tools/sync_native_wiki.py'
+      - '.github/workflows/wiki-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: popsloader-native-wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout maintained wiki source
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          persist-credentials: false
+
+      - name: Validate wiki pages before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/sync_native_wiki.py --self-test
+
+      - name: Clone existing native GitHub Wiki
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # No GitHub REST API can create the very first Wiki page.
+          # Git sync works after the Wiki is initialized by its first page.
+          # Avoid embedding tokens in URL strings or job logs.
+          cat > "$RUNNER_TEMP/wiki-askpass.sh" <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' x-access-token ;;
+            *Password*) printf '%s\n' "$GH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 "$RUNNER_TEMP/wiki-askpass.sh"
+          echo "GIT_ASKPASS=$RUNNER_TEMP/wiki-askpass.sh" >> "$GITHUB_ENV"
+          echo "GIT_TERMINAL_PROMPT=0" >> "$GITHUB_ENV"
+          if ! git clone --quiet "https://github.com/$GITHUB_REPOSITORY.wiki.git" "$RUNNER_TEMP/popsloader-wiki"; then
+            echo "::error::Native Wiki cannot be cloned. If new, initialize its first Home page at https://github.com/$GITHUB_REPOSITORY/wiki/_new; then rerun this workflow. No force-push or untrusted PAT workaround is attempted."
+            exit 1
+          fi
+
+      - name: Synchronize pages without deleting user content
+        shell: bash
+        run: |
+          set -euo pipefail
+          WIKI="$RUNNER_TEMP/popsloader-wiki"
+          python3 tools/sync_native_wiki.py --destination "$WIKI"
+          git -C "$WIKI" config user.name "github-actions[bot]"
+          git -C "$WIKI" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$WIKI" add -- Home.md _Sidebar.md \
+            POPSLoader-Project.md POPSLoader-Installation.md \
+            POPSLoader-Release-Formats.md POPSLoader-Ember.md \
+            POPSLoader-Device-Support.md
+          if git -C "$WIKI" diff --cached --quiet; then
+            echo "Native Wiki already matches maintained Markdown."
+          else
+            git -C "$WIKI" commit -m "docs: sync POPSLoader native wiki from $GITHUB_SHA"
+            git -C "$WIKI" push origin HEAD
+          fi
+
+      - name: Verify native Wiki contains the managed pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          WIKI="$RUNNER_TEMP/popsloader-wiki"
+          git -C "$WIKI" fetch --quiet origin
+          for f in Home.md _Sidebar.md POPSLoader-Project.md \
+                   POPSLoader-Installation.md POPSLoader-Release-Formats.md \
+                   POPSLoader-Ember.md POPSLoader-Device-Support.md; do
+            git -C "$WIKI" cat-file -e "HEAD:$f"
+          done
+          echo "Published native Wiki: https://github.com/$GITHUB_REPOSITORY/wiki"
