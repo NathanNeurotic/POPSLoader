@@ -6265,8 +6265,14 @@ function PLDR.EnsureUsbMassReadyOnce()
     return true
   end
 
-  if type(System) == "table" and type(System.ensureUsbMass) == "function" then
-    pcall(System.ensureUsbMass)
+  -- Do not latch failed or throwing USB initialization. A BDM refresh
+  -- cannot recover failed module loading; later calls must be able to retry.
+  if type(System) ~= "table" or type(System.ensureUsbMass) ~= "function" then
+    return false
+  end
+  local ok, ready = pcall(System.ensureUsbMass)
+  if not ok or ready ~= true then
+    return false
   end
   if type(PLDR.RefreshMassBackends) == "function" then
     pcall(PLDR.RefreshMassBackends)
