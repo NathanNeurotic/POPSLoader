@@ -2343,6 +2343,94 @@ else:
 check("T55 SMB preserves mount (no pre-handoff disconnect), selector smb:/POPS/SB., KeepIOP BRAM routing, non-SMB intact", _t55_ok, _t55_why)
 
 
+# T56: RiptOPL PS1 artwork prefixes use the VCD filename, with a separate
+# background icon load only after the cover finishes. Cover misses must not
+# prevent _ICO.png from loading. A stale icon can never replace a new selection.
+t56 = E('''function()
+  local cc = UI.CoverCache
+  local real_begin, real_poll = Graphics.coverLoadBegin, Graphics.coverLoadPoll
+  local real_load, real_free = Graphics.loadImage, Graphics.freeImage
+  local begun, finished, freed, sync = {}, nil, 0, 0
+  Graphics.coverLoadBegin = function(path, token)
+    begun[#begun + 1] = { path = path, token = token }
+    return true
+  end
+  Graphics.coverLoadPoll = function()
+    if finished == nil then return nil end
+    local f = finished
+    finished = nil
+    return f[1], f[2]
+  end
+  Graphics.loadImage = function() sync = sync + 1; return nil end
+  Graphics.freeImage = function() freed = freed + 1 end
+  PLDR.SHOW_DETAILS = false
+  cc:Clear()
+  cc:UpdateSelection("usb0:/POPS/Soul Blade (Disc 1).VCD")
+  if #begun ~= 1 or begun[1].path ~= "usb0:/ART/Soul Blade (Disc 1)_COV.png"
+     then return false, "cover naming wrong" end
+  finished = { begun[1].token, 123 }
+  cc:Pump()
+  cc:Pump()
+  if #begun ~= 2 or begun[2].path ~= "usb0:/ART/Soul Blade (Disc 1)_ICO.png"
+     then return false, "icon did not follow cover, or _ICO naming wrong" end
+  finished = { begun[2].token, 456 }
+  cc:Pump()
+  if cc.last_img ~= 123 or cc.last_icon_img ~= 456 then
+    return false, "cover/icon not both retained"
+  end
+  cc:UpdateSelection("udpfs:/POPS/Another.VCD")
+  if cc.last_icon_img ~= nil then return false, "previous icon carried over" end
+  finished = { begun[#begun].token, nil }
+  cc:Pump()
+  if cc.pending == nil or cc.pending.candidates[cc.pending.idx] ~= "udpfs:/POPS/Another_COV.png" then
+    return false, "UDPFS cover fallback lost"
+  end
+  finished = { cc.pending.token, nil }
+  cc:Pump()
+  cc:Pump()
+  if begun[#begun].path ~= "udpfs:/ART/Another_ICO.png" then
+    return false, "UDPFS icon ART probe wrong"
+  end
+  finished = { cc.pending.token, nil }
+  cc:Pump()
+  if cc.pending == nil or cc.pending.candidates[cc.pending.idx] ~= "udpfs:/POPS/Another_ICO.png" then
+    return false, "UDPFS icon fallback lost"
+  end
+  finished = { cc.pending.token, 789 }
+  cc:Pump()
+  if cc.last_icon_img ~= 789 or sync ~= 0 then
+    return false, "icon fallback not adopted or synchronous I/O introduced"
+  end
+  Graphics.coverLoadBegin, Graphics.coverLoadPoll = real_begin, real_poll
+  Graphics.loadImage, Graphics.freeImage = real_load, real_free
+  cc:Clear()
+  return true
+end''')()
+check("T56 _COV/_ICO RiptOPL naming; async selection; UDPFS fallback", t56)
+
+# T57: Never permanently latch a failed native USB initialization.
+t57 = E('''function()
+  local saved_fn, saved_refresh = System.ensureUsbMass, PLDR.RefreshMassBackends
+  local calls, refreshes = 0, 0
+  PLDR._usb_mass_ready = false
+  System.ensureUsbMass = function()
+    calls = calls + 1
+    return calls >= 2
+  end
+  PLDR.RefreshMassBackends = function() refreshes = refreshes + 1; return true end
+  local first = PLDR.EnsureUsbMassReadyOnce()
+  local latch1 = PLDR._usb_mass_ready
+  local second = PLDR.EnsureUsbMassReadyOnce()
+  local third = PLDR.EnsureUsbMassReadyOnce()
+  local success = first == false and latch1 == false and second == true
+    and third == true and calls == 2 and refreshes == 1
+  PLDR._usb_mass_ready = false
+  System.ensureUsbMass, PLDR.RefreshMassBackends = saved_fn, saved_refresh
+  return success
+end''')()
+check("T57 failed USB module init never latches; successful retry latches once", t57)
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
