@@ -1,0 +1,150 @@
+name: Ember Watch
+
+# Follow RiptOPL's verified Gageformer/Ember updates without changing POPS.
+# Scheduled workflows run from GitHub's default branch. Once this workflow
+# is merged to master, updates target POPSLoader dev (the rolling channel).
+# Unlike RiptOPL's checked-in binary, POPSLoader pins the RiptOPL commit
+# containing EMBER/, so releases can reproduce the exact tested core.
+on:
+  schedule:
+    # One hour after RiptOPL's weekly 18:23 UTC watch.
+    - cron: "23 19 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: popsloader-ember-watch
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      EMBER_REPO: Gageformer/Ember
+    steps:
+      - name: Checkout POPSLoader dev
+        uses: actions/checkout@v5
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: Verify official asset and compare pinned RiptOPL Ember
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          release=$(gh api "repos/$EMBER_REPO/releases/latest")
+          tag=$(jq -r .tag_name <<< "$release")
+          url=$(jq -r .html_url <<< "$release")
+          digest=$(jq -r '[.assets[] | select(.name == "ember.elf")][0].digest // empty' <<< "$release")
+          updated=$(jq -r '[.assets[] | select(.name == "ember.elf")][0].updated_at // empty' <<< "$release")
+          if [[ ! "$digest" =~ ^sha256:[0-9a-fA-F]{64}$ ]]; then
+            echo "::error::Latest Ember release has no valid asset SHA-256. Not updating."
+            exit 1
+          fi
+          expected=$(echo "$digest" | cut -d: -f2 | tr A-F a-f)
+          mkdir -p "$RUNNER_TEMP/ember-watch"
+          root="$RUNNER_TEMP/ember-watch/riptopl"
+          git clone --quiet --filter=blob:none --single-branch --branch rebuild/main --no-checkout \
+            https://github.com/NathanNeurotic/Open-PS2-Loader.git "$root"
+          upstream_commit=$(git -C "$root" rev-parse HEAD)
+          git -C "$root" checkout --quiet "$upstream_commit" -- EMBER
+          test -s "$root/EMBER/ember.elf"
+          test -s "$root/EMBER/LICENSE-BETA.txt"
+          test -s "$root/EMBER/Ember Official Webpage.url"
+          actual=$(sha256sum "$root/EMBER/ember.elf" | cut -d' ' -f1)
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::RiptOPL's current EMBER/ember.elf ($actual) does not match $tag ($expected). Wait for RiptOPL's verified update; refusing mixed binaries."
+            exit 1
+          fi
+          python3 - "$root/EMBER/ember.elf" <<'PY'
+          import pathlib, struct, sys
+          core = pathlib.Path(sys.argv[1]).read_bytes()
+          if not (65536 <= len(core) <= 16 * 1024 * 1024):
+              raise SystemExit("Invalid Ember ELF size")
+          if core[:6] != b'\x7fELF\x01\x01' or struct.unpack_from('<H', core, 18)[0] != 8:
+              raise SystemExit("Ember core is not 32-bit little-endian MIPS ELF")
+          print("Verified Ember core format:", len(core), "bytes")
+          PY
+          pinned=$(sed -n 's/^RIPTOPL_EMBER_SHA=//p' tools/build_release_kit.sh)
+          [[ "$pinned" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Invalid current Ember pin"; exit 1; }
+          # Fetch old history if needed; absent pins must NEVER be silently updated.
+          if ! git -C "$root" cat-file -e "$pinned:EMBER/ember.elf" 2>/dev/null; then
+            git -C "$root" fetch --quiet origin "$pinned"
+          fi
+          old_digest=$(git -C "$root" show "$pinned:EMBER/ember.elf" | sha256sum | cut -d' ' -f1)
+          old_license=$(git -C "$root" show "$pinned:EMBER/LICENSE-BETA.txt" | sha256sum | cut -d' ' -f1)
+          new_license=$(sha256sum "$root/EMBER/LICENSE-BETA.txt" | cut -d' ' -f1)
+          {
+            echo "## Ember watch"
+            echo "Latest release: [$tag]($url)"
+            echo "Asset updated: $updated"
+            echo "Upstream SHA-256: $expected"
+            echo "RiptOPL core matches: yes ($upstream_commit)"
+            echo "POPSLoader pinned core: $old_digest"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$old_digest" = "$expected" ] && [ "$old_license" = "$new_license" ]; then
+            echo "No new Ember binary or license. No source changes."
+            exit 0
+          fi
+          echo "changed=yes" >> "$GITHUB_OUTPUT"
+          echo "commit=$upstream_commit" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "digest=$expected" >> "$GITHUB_OUTPUT"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+      - name: Update verified Ember source pin on dev
+        if: steps.compare.outputs.changed == 'yes'
+        shell: bash
+        env:
+          NEW_SHA: ${{ steps.compare.outputs.commit }}
+          EMBER_TAG: ${{ steps.compare.outputs.tag }}
+          EMBER_DIGEST: ${{ steps.compare.outputs.digest }}
+          EMBER_URL: ${{ steps.compare.outputs.url }}
+        run: |
+          set -euo pipefail
+          python3 - "$NEW_SHA" <<'PY'
+          import pathlib, re, sys
+          path = pathlib.Path("tools/build_release_kit.sh")
+          source = path.read_text()
+          new, count = re.subn(r"(?m)^RIPTOPL_EMBER_SHA=[0-9a-f]{40}$",
+                               f"RIPTOPL_EMBER_SHA={sys.argv[1]}", source)
+          if count != 1:
+              raise SystemExit("Expected exactly one pinned Ember commit")
+          path.write_text(new)
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/build_release_kit.sh
+          git commit -m "bundle: update Ember to $EMBER_TAG ($EMBER_DIGEST)" \
+                     -m "Upstream: $EMBER_URL; verified against RiptOPL release kit."
+          # Safe failure on conflicts / branch protection rather than bypassing them.
+          git push origin HEAD:dev
+          echo "Updated dev to $NEW_SHA; GitHub-token pushes need manual dispatch."
+
+      - name: Ensure rolling release carries the latest Ember pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --quiet origin dev
+          pin_commit=$(git log -1 --format=%H origin/dev -- tools/build_release_kit.sh)
+          test -n "$pin_commit"
+          tag_commit=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/rolling-release" \
+            --jq .object.sha 2>/dev/null || true)
+          if [ -n "$tag_commit" ] && git merge-base --is-ancestor "$pin_commit" "$tag_commit" 2>/dev/null; then
+            echo "Rolling already contains pinned Ember source $pin_commit."
+            exit 0
+          fi
+          active=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow rolling-release.yml \
+            --branch dev --limit 20 --json status \
+            --jq '[.[] | select(.status != "completed")] | length')
+          if [ "$active" != 0 ]; then
+            echo "Rolling build already in progress."
+            exit 0
+          fi
+          echo "Dispatching Rolling Release for dev's pinned Ember source."
+          gh workflow run rolling-release.yml --repo "$GITHUB_REPOSITORY" --ref dev
