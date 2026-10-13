@@ -1,6 +1,6 @@
 # Ember PS1 Core in POPSLoader
 
-**Development status:** implemented on [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600), not included in stable POPSLoader 1.2.3, and **not yet console-certified**.
+**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Not included in stable 1.2.3 and **not yet console-certified**.
 
 Ember by [Gageformer](https://github.com/Gageformer/Ember) is a separate PS1 emulator; it is **not** POPStarter and it does not run POPStarter VCD images through the POPStarter launch path. POPSLoader discovers compatible Ember game folders on the selected storage device, labels their list rows `[Ember]`, and provides Ember's Beta 2 global and per-game settings.
 
@@ -35,6 +35,6 @@ Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SM
 
 The binary must remain **unmodified** and accompanied by `LICENSE-BETA.txt` and attribution to Gageformer with a link to their [official release page](https://github.com/Gageformer/Ember/releases). The licence does not permit commercial redistribution without permission. No BIOS or game image is included.
 
-The weekly [Ember Watch workflow](../../.github/workflows/ember-watch.yml) compares the published Ember asset's SHA-256 against RiptOPL's verified bundled version, supports same-tag asset changes, and updates only POPSLoader's Ember revision pin on `dev`; the original POPS support-file revision remains fixed. Watch activation requires this workflow on the repository's default branch; it does not independently certify hardware compatibility.
+The weekly [Ember Watch workflow](../../.github/workflows/ember-watch.yml) compares the published Ember asset's SHA-256 against RiptOPL's verified bundled version, supports same-tag asset changes, and updates only POPSLoader's Ember revision pin on `dev`; the original POPS support-file revision remains fixed. The workflow is present on the default `master` branch and scheduled weekly; the first scheduled update has not yet been verified. This does not certify hardware compatibility.
 
 [Full status and known issues](../../STATE.md) · [QA matrix](../../QA_REGRESSION_MATRIX.md)
