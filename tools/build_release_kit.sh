@@ -7,7 +7,7 @@ RIPTOPL_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
 RIPTOPL_EMBER_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
 git clone --quiet --filter=blob:none --no-checkout \
   https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
-git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS
+git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS .github/scripts/verify_psu_with_psumanager.cpp third_party/PSUManager/src/core
 git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_EMBER_SHA" -- EMBER
 rm -rf dist_root POPSLOADER.zip PS1_POPSLOADER.psu
 mkdir -p dist_root/APPS/PS1_POPSLOADER dist_root/POPS dist_root/EMBER/games/ExampleGame
@@ -32,6 +32,13 @@ test ! -e dist_root/EMBER/bios.bin
 printf 'FILE "ExampleGame.bin" BINARY\n  TRACK 01 MODE2/2352\n    INDEX 01 00:00:00\n' > dist_root/EMBER/games/ExampleGame/ExampleGame.cue
 : > dist_root/EMBER/games/ExampleGame/ExampleGame.bin
 python3 tools/package_psu.py build dist_root/APPS/PS1_POPSLOADER dist_root/PS1_POPSLOADER.psu
+# Independent cross-check with RiptOPL's original PSUManager C++ reader:
+# reject malformed archives, nested files, extra entries and content drift.
+g++ -std=c++17 -O2 /tmp/riptopl-kit/.github/scripts/verify_psu_with_psumanager.cpp \
+  /tmp/riptopl-kit/third_party/PSUManager/src/core/PsuArchive.cpp \
+  /tmp/riptopl-kit/third_party/PSUManager/src/core/PsuDate.cpp \
+  -o /tmp/popsloader-verify-psu
+/tmp/popsloader-verify-psu dist_root/PS1_POPSLOADER.psu dist_root/APPS/PS1_POPSLOADER
 cp dist_root/PS1_POPSLOADER.psu PS1_POPSLOADER.psu
 (cd dist_root && find APPS POPS EMBER -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null)
 (cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
