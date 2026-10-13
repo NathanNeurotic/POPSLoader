@@ -28,9 +28,13 @@ compatibility claim is made. APA/PFS verification is pending. Ember i.Link
 integration is intentionally deferred until RiptOPL proves reliable i.Link
 operation on real hardware; it does not block this integration's other goals.
 
+## Project documentation and wiki
+
+The [maintained project wiki](docs/wiki/Project-Wiki.md) covers [installation](docs/wiki/Installation-Guide.md), [Ember](docs/wiki/Ember-Core.md), [ZIP and PSU formats](docs/wiki/Release-Formats.md), and [device support](docs/wiki/Device-Support.md). These pages are also published through [GitHub Pages](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html) separately from the preserved historical POPStarter wiki. [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) is an Ember development integration, not part of stable 1.2.3.
+
 ## Highlights
 
-**Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This is **not** included in official stable 1.2.2. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
+**Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).** The Ethernet tile now offers **SMBv1** or **USB + UDPFS**, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under **Settings → SMB / Network**; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on [Okeanos's Alpha release](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha) and [israpps' original BDM Assault](https://github.com/israpps/BDMAssault). **Hardware status: Unknown (verify on hardware).** This option **is included in official 1.2.3 as an experimental feature**, but physical-console compatibility remains unverified. See the [experimental setup and test guide](docs/UDPFS_BDMA.md) and [regression matrix](QA_REGRESSION_MATRIX.md).
 
 POPSLoader's stable backbone, hardware-confirmed across an extended validation pass:
 
