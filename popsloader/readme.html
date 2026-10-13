@@ -60,7 +60,7 @@
 </p>
 
 <p>POPSLoader is a graphical PlayStation 2 homebrew launcher designed to easily browse and launch your PS1 games (using POPStarter) from various storage devices. It features a clean, responsive layout, cover art support, sound effects, an on-screen keyboard, and direct memory card exit shortcuts.</p>
-<p>The current <strong>official stable release</strong> is <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2">1.2.2</a></strong> (2026-09-30). Development channels advance independently; the opt-in <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling release</a> and <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">experimental release</a> are prereleases, not certified stable builds.</p>
+<p>The current <strong>official stable release</strong> is <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">1.2.3</a></strong> (2026-10-13). UDPFS remains an experimental, unverified option in this build. Development channels advance independently; the opt-in <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling release</a> and <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">experimental release</a> are prereleases, not certified stable builds.</p>
 <hr />
 <h2 id="highlights">Highlights</h2>
 <p><strong>Experimental development feature: POPS USB + UDPFS (Okeanos BDM-UDPFS Assault Alpha).</strong> The Ethernet tile now offers <strong>SMBv1</strong> or <strong>USB + UDPFS</strong>, with a read-only network VCD browser and embedded POPSTARTER driver staging. Configure a static console IP under <strong>Settings → SMB / Network</strong>; the UDPFS and SMB NIC stacks cannot be switched without restarting POPSLoader. This is based on <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos's Alpha release</a> and <a href="https://github.com/israpps/BDMAssault">israpps' original BDM Assault</a>. <strong>Hardware status: Unknown (verify on hardware).</strong> This is <strong>not</strong> included in official stable 1.2.2. See the <a href="udpfs-bdma.html">experimental setup and test guide</a> and <a href="qa-regression-matrix.html">regression matrix</a>.</p>
@@ -128,6 +128,10 @@ Game compatibility and drive loading performance may vary depending on your spec
 <td style="text-align: left;">Optional cover art (200x200 8-bit PNG recommended). <strong>One location, one name, no alternatives:</strong> a top-level <code>ART/</code> folder at the device root, with the <strong>OPL <code>_COV.png</code> convention</strong>, so an existing OPL <code>ART</code> folder works as-is. There is no setting to change this and no fallback location — a cover anywhere else, or without the <code>_COV</code> suffix, simply will not show (it costs nothing to look for, so it will not slow anything down either). The matching <code>GameName.txt</code> <em>Game details</em> sidecar lives in the same folder.</td>
 </tr>
 <tr>
+<td style="text-align: left;"><code>&lt;device&gt;:/ART/GameName_ICO.png</code></td>
+<td style="text-align: left;">Optional disc icon next to the cover (RiptOPL/OPL convention; exact VCD filename without <code>.VCD</code>). <code>_LAB.png</code> and <code>_COV3.png</code> belong to RiptOPL's artwork naming family but are not rendered by POPSLoader yet.</td>
+</tr>
+<tr>
 <td style="text-align: left;"><code>&lt;device&gt;:/POPS/IOPRP252.IMG</code></td>
 <td style="text-align: left;">Required POPS support file</td>
 </tr>
@@ -170,6 +174,10 @@ Game compatibility and drive loading performance may vary depending on your spec
 <tr>
 <td style="text-align: left;"><code>hdd:/__common/POPS/ART/GameName_COV.png</code></td>
 <td style="text-align: left;">Cover art folder (OPL <code>_COV.png</code> naming; partition-installed games use the partition name minus its <code>PP.</code> / <code>__.</code> prefix)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>hdd:/__common/POPS/ART/GameName_ICO.png</code></td>
+<td style="text-align: left;">Optional disc icon, independent of whether a cover exists</td>
 </tr>
 <tr>
 <td style="text-align: left;"><code>hdd:/__common/POPS/IOPRP252.IMG</code></td>
@@ -365,7 +373,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 <tr>
 <td style="text-align: left;"><strong>Cover art</strong></td>
 <td style="text-align: left;"><strong>On</strong> (default) · Off</td>
-<td style="text-align: left;">Draws each game's cover in the preview box beside the list. <strong>Off</strong> shows the plain jewel-case placeholder instead. Covers are always read from one fixed place — a top-level <code>&lt;device&gt;:/ART/</code> folder, named <code>&lt;name&gt;_COV.png</code> (the OPL convention) — with no folder choice and no fallback. Each cover is fetched by a background worker, so browsing never stalls waiting on the card, and a cover that genuinely is not there is remembered as missing and not looked for again that session. The internal HDD keeps its fixed <code>__common/POPS/ART/</code> layout.</td>
+<td style="text-align: left;">Draws each game's cover in the preview box beside the list. <strong>Off</strong> shows the plain jewel-case placeholder instead and hides optional disc icons (<code>&lt;name&gt;_ICO.png</code>). Covers are always read from one fixed place — a top-level <code>&lt;device&gt;:/ART/</code> folder, named <code>&lt;name&gt;_COV.png</code> (the OPL convention) — with no folder choice for local devices (UDPFS also checks beside the VCD in <code>udpfs:/POPS/</code>). Both covers and optional <code>_ICO.png</code> icons are fetched by a shared background worker, so browsing never stalls waiting on the card, and a cover that genuinely is not there is remembered as missing and not looked for again that session. The internal HDD keeps its fixed <code>__common/POPS/ART/</code> layout.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Game list cache</strong></td>
@@ -481,7 +489,7 @@ Game compatibility and drive loading performance may vary depending on your spec
 <ul>
 <li>Check that the cover image is in <code>.png</code> format.</li>
 <li><strong>This is the most common reason art does not appear after updating.</strong> The PNG filename must match the <code>.VCD</code> game filename with the OPL <code>_COV</code> suffix (e.g. <code>Crash Bandicoot.VCD</code> requires <code>Crash Bandicoot_COV.png</code>). <strong>The <code>_COV</code> is not optional and will not be made optional:</strong> it is OPL's convention, and matching it is what lets one art folder serve both OPL and POPSLoader. Accepting a bare <code>&lt;name&gt;.png</code> here would break that sharing. Note the details sidecar does NOT take the suffix -- it is <code>&lt;name&gt;.txt</code> -- so it is easy to get one right and the other wrong. Only the exact game filename is tried, so a multi-disc game needs one cover <strong>per disc</strong> (<code>Game (Disc 1)_COV.png</code>, <code>Game (Disc 2)_COV.png</code>). A single shared cover for the whole set no longer works.</li>
-<li>Place the cover in a top-level <strong><code>ART/</code></strong> folder at the device root. That is the only location that is read; there is no setting and no fallback, so a cover in <code>POPS/</code> or <code>POPS/ART/</code> will not show. On the internal HDD covers live in <code>__common/POPS/ART/</code>.</li>
+<li>Place the cover or optional <code>_ICO.png</code> disc icon in the top-level <strong><code>ART/</code></strong> folder at the device root. For local devices this is the only artwork location; UDPFS additionally checks beside the VCD in <code>udpfs:/POPS/</code>. There is no user-selectable art folder. On the internal HDD covers live in <code>__common/POPS/ART/</code>.</li>
 <li>Confirm cover-art preview is enabled in <em>Settings → Game List → Cover art</em> (default <strong>On</strong>). Square is not bound in the game list.</li>
 <li>For best compatibility and performance, use 200x200 pixel, 8-bit-per-channel RGBA PNG images. Release 1.2.0 can render RGB PNG covers invisible; adding an opaque alpha channel is the workaround (<a href="https://github.com/NathanNeurotic/POPSLoader/issues/575">issue #575</a>). Version 1.2.1 includes the RGB decoder correction; hardware validation is tracked in <a href="state.html">STATE.md</a>.</li>
 </ul>
