@@ -1,0 +1,40 @@
+name: Retract mistaken Ember Beta 1 release
+
+# This cleanup only retracts the accidental same-session 1.3.0-ember-beta.1
+# POPSLoader tag. Gageformer's published Ember Beta-2 is unaffected.
+on:
+  push:
+    branches: [master]
+    paths: ['.github/workflows/retract-mislabeled-ember-beta.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  retract:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: 1.3.0-ember-beta.1
+      ERRONEOUS_SHA: b1c4178cf1c2fd3490ef6d3f36014044f56dc3a0
+    steps:
+      - name: Check accidental prerelease identity and remove it
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Mistaken prerelease already removed."
+            exit 0
+          fi
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .target_commitish)
+          prerelease=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" --jq .prerelease)
+          if [ "$actual" != "$ERRONEOUS_SHA" ] || [ "$prerelease" != true ]; then
+            echo "::error::Release identity changed; refusing to remove."
+            exit 1
+          fi
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Mistaken prerelease still visible"
+            exit 1
+          fi
+          echo "Retracted incorrect POPSLoader Beta 1. Official Ember Beta-2 is untouched."
