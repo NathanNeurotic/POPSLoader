@@ -2538,6 +2538,87 @@ end''')()
 check("T59 Ember Beta 2 settings preserve unknowns and keep-IOP handoff argv", t59)
 
 
+# T60: APA library names survive transient read-only PFS probes. The launch
+# re-mounts the owning __.EMBER partition RW and sets the keep-PFS bit
+# before calling the inherited IOP loader; never leave a stale mount on error.
+t60 = E('''function()
+  local orig_names, orig_part = FAKEHDD.names, FAKEHDD.parts["__.EMBER"]
+  local old_ls, old_open, old_size = System.listDirectory, System.openFile, System.sizeFile
+  local old_keep, old_exec = System.setExecKeepPfsMask, System.loadELFKeepIOP
+  local old_mount = HDD.MountPartition
+  local keep_log, mount_log = {}, {}
+  local called = nil
+  FAKEHDD.names = {"__.EMBER"}
+  FAKEHDD.parts["__.EMBER"] = { files = {
+      ["EMBER/ember.elf"] = true, ["EMBER/bios.bin"] = true
+    }, listing = {} }
+  System.listDirectory = function(path)
+    if string.match(path,"^pfs%d+:/EMBER/games/$") then
+      return {{name="Medievil",directory=true}}
+    end
+    if string.match(path,"^pfs%d+:/EMBER/games/Medievil/$") then
+      return {{name="game.cue",directory=false}}
+    end
+    return old_ls(path)
+  end
+  HDD.MountPartition = function(part,slot,mode)
+    mount_log[#mount_log+1]={part=part,slot=slot,mode=mode}
+    return old_mount(part,slot,mode)
+  end
+  local entries = PLDR.EmberScanHddPartitions()
+  if #entries ~= 1 or entries[1] ~= "!EMBER@__.EMBER|Medievil" then
+    System.listDirectory, HDD.MountPartition=old_ls,old_mount
+    FAKEHDD.names,FAKEHDD.parts["__.EMBER"]=orig_names,orig_part
+    return false,"APA enumeration did not preserve the partition identity"
+  end
+  local e = PLDR.EmberDecode(entries[1])
+  if e == nil or e.hdd_partition ~= "__.EMBER" or e.name ~= "Medievil" then
+    return false,"APA entry decode invalid"
+  end
+  System.openFile = function(path,mode)
+    if string.match(path,"^pfs%d+:/EMBER/bios%.bin$") then
+      return {path=path}
+    end
+    return old_open(path,mode)
+  end
+  System.sizeFile = function(fd)
+    if type(fd)=="table" and string.match(fd.path or "",
+      "^pfs%d+:/EMBER/bios%.bin$") then return 512*1024 end
+    return old_size(fd)
+  end
+  System.setExecKeepPfsMask = function(mask)
+    keep_log[#keep_log+1]=mask
+  end
+  System.loadELFKeepIOP = function(exec,arg0,arg1)
+    called = {exec=exec,arg0=arg0,arg1=arg1,mask=keep_log[#keep_log]}
+    return -1
+  end
+  PLDR.EMBER.GLOBAL = {}
+  local ok, why = PLDR.EmberLaunch(entries[1])
+  System.listDirectory,System.openFile,System.sizeFile=old_ls,old_open,old_size
+  System.setExecKeepPfsMask,System.loadELFKeepIOP=old_keep,old_exec
+  HDD.MountPartition=old_mount
+  FAKEHDD.names,FAKEHDD.parts["__.EMBER"]=orig_names,orig_part
+  if ok ~= false or called == nil then return false,"APA ELF not attempted: "..tostring(why) end
+  if called.arg0 ~= called.exec or called.arg1 ~= "Medievil"
+     or not string.match(called.exec,"^pfs%d+:/EMBER/ember%.elf$") then
+    return false,"APA argv0/argv1 are not the mounted core/folder"
+  end
+  local rw = false
+  for i=1,#mount_log do
+    local m=mount_log[i]
+    if m.part == "hdd0:__.EMBER" and (m.mode & 0x02) ~= 0 then
+      rw=true
+    end
+  end
+  return rw and called.mask ~= nil and called.mask > 0
+    and keep_log[#keep_log] == 0,
+    "APA RW write-through + keep-PFS mask not applied/restored"
+end''')()
+check("T60 APA __.EMBER scan, RW write-through + inherited PFS mount at launch",t60)
+
+
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
