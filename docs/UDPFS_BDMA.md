@@ -1,18 +1,17 @@
 # POPS UDPFS / BDM-UDPFS Assault — Experimental development feature
 
-**Experimental development build, not an official compatibility release.**
+**Experimental in official POPSLoader 1.2.3; not hardware-certified.**
 The Ethernet mode selector, UDPFS VCD browser, and embedded POPSTARTER driver
 staging are implemented. Cross-compilation and automated regression checks have
 passed, but physical PS2 launch compatibility is **Unknown (verify on hardware)**.
-The stable 1.2.2 release does not provide these features.
+Official release 1.2.3 includes the opt-in Ethernet SMBv1 / USB + UDPFS picker and embedded Okeanos fallback staging, but does **not** certify real-console launch or device compatibility.
 
 ## Experimental implementation
 
 The POPSLoader feature branch implements the planned Ethernet protocol picker:
 select **SMBv1** to use the existing SMB browsing and network-streaming modules,
 or **USB + UDPFS** to use a read-only `udpfs:/POPS/` game list and Okeanos's
-POPSTARTER runtime fallback. This implementation is available to development builds; it is **not a
-hardware-verified or official stable feature**. Do not advertise stable support
+POPSTARTER runtime fallback. This implementation is also included in official 1.2.3 **as an experimental opt-in option**, not as hardware-verified compatibility. Do not advertise stable support
 until the release matrix records hardware validation.
 
 ### USB + UDPFS configuration
@@ -95,7 +94,7 @@ and [license notices](third_party/okeanos_udpfs/THIRD_PARTY_NOTICES.md).
 
 - **Upstream Okeanos Alpha:** publicly available as a standalone driver.
 - **POPSLoader SMBv1 / USB+UDPFS picker, VCD browsing and automatic staging:**
-  implemented for experimental development builds; not in stable 1.2.2.
+  included as an **experimental feature in official 1.2.3** and further developed on `dev`; game launch on physical PS2 remains unverified.
 - **Dedicated POPS UDPFS settings editor:** not implemented or required; the
   feature branch uses the existing SMB / Network static address fields.
 - **Hardware compatibility:** **Unknown (verify on hardware)**. A passing

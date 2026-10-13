@@ -5089,7 +5089,14 @@ local function EncodeSettings()
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
     "RETROGEM_GAMEID="..((PLDR.RETROGEM_GAMEID ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
-    "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0")
+    "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0"),
+    -- Absent/empty = preserve a hand-written Ember key; "-" = delete
+    -- it on next Ember launch; a selected value manages that key.
+    "EMBER_DISPLAY="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).display or ""),
+    "EMBER_TIMING="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).timing or ""),
+    "EMBER_DITHER="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).dither or ""),
+    "EMBER_SHADING="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).shading or ""),
+    "EMBER_CONTROLLER="..tostring((PLDR.EMBER and PLDR.EMBER.GLOBAL or {}).controller or "")
   }
   PLDR.SmbAppendLines(lines, PLDR.SMB)
   return table.concat(lines, "\n").."\n"
@@ -5143,7 +5150,14 @@ local function SnapshotSettingsState()
     retrogem_gameid = (PLDR.RETROGEM_GAMEID ~= false),
     overscan = math.floor(tonumber(PLDR.OVERSCAN) or 0),
     smb = PLDR.SmbCopy(PLDR.SMB),
-    smb_modules = (PLDR.SMB_MODULES == true)
+    smb_modules = (PLDR.SMB_MODULES == true),
+    ember_global = {
+      display = PLDR.EMBER and PLDR.EMBER.GLOBAL.display,
+      timing = PLDR.EMBER and PLDR.EMBER.GLOBAL.timing,
+      dither = PLDR.EMBER and PLDR.EMBER.GLOBAL.dither,
+      shading = PLDR.EMBER and PLDR.EMBER.GLOBAL.shading,
+      controller = PLDR.EMBER and PLDR.EMBER.GLOBAL.controller
+    }
   }
 end
 
@@ -5217,6 +5231,15 @@ local function ApplySettingsState(state)
   if state.overscan ~= nil then
     PLDR.OVERSCAN = math.floor(tonumber(state.overscan) or 0)
     if type(Screen) == "table" and type(Screen.setOverscan) == "function" then pcall(Screen.setOverscan, PLDR.OVERSCAN) end
+  end
+  if type(state.ember_global) == "table" and type(PLDR.EMBER) == "table" then
+    PLDR.EMBER.GLOBAL = {}
+    for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+      local value = state.ember_global[key]
+      if PLDR.EmberSettingValid(key, value) and value ~= nil then
+        PLDR.EMBER.GLOBAL[key] = value
+      end
+    end
   end
   if type(state.smb) == "table" then
     PLDR.SMB = PLDR.SmbCopy(state.smb)
@@ -5407,6 +5430,8 @@ function PLDR.LoadSettingsNonFatal()
   PLDR.OVERSCAN = 0  -- CRT overscan inset, permille (0 = off; OPL rmSetOverscan units/math)
   PLDR.SMB = PLDR.SmbDefaults()  -- SMB/Network config (settings only; network loads lazily, never at boot)
   PLDR.SMB_MODULES = false  -- whether the SMB streaming pack is installed in mc:/POPSTARTER (sidecar-truthed)
+  -- Ember Beta 2 settings: unset keys never overwrite hand-written files.
+  if type(PLDR.EMBER) == "table" then PLDR.EMBER.GLOBAL = {} end
   -- EXP56: Hide UI Text now defaults ON (graphics team). It is a DEFAULT-ON boolean,
   -- so an absent HIDE_TEXT= line must mean ON -- see the parse site, which only
   -- applies the sidecar value when the key is actually present.
@@ -5520,6 +5545,16 @@ function PLDR.LoadSettingsNonFatal()
   -- capture, silently reverting booleans/enums to defaults and appending a
   -- literal \r to paths. Also covers the SMB block (SmbParse gets this data).
   data = string.gsub(data, "\r\n?", "\n")
+  if type(PLDR.EMBER) == "table" then
+    for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+      local field = "EMBER_"..string.upper(key)
+      local value = string.match(data, "\n"..field.."=([^\n]*)")
+        or string.match(data, "^"..field.."=([^\n]*)")
+      if value ~= nil and value ~= "" and PLDR.EmberSettingValid(key, value) then
+        PLDR.EMBER.GLOBAL[key] = value
+      end
+    end
+  end
   local popstarter_path = string.match(data, "\nPOPSTARTER_PATH=([^\n]*)") or string.match(data, "^POPSTARTER_PATH=([^\n]*)")
   local bdma_mode = string.match(data, "\nBDMA=([^\n]+)") or string.match(data, "^BDMA=([^\n]+)") or string.match(data, "\nBDMA_MODE=([^\n]+)") or string.match(data, "^BDMA_MODE=([^\n]+)")
   local dkwdrv_path = string.match(data, "\nDKWDRV_PATH=([^\n]*)") or string.match(data, "^DKWDRV_PATH=([^\n]*)")
@@ -5778,7 +5813,8 @@ function PLDR.CommitSettingsChanges(opts)
     overscan = next_overscan,
     hidden_devices = PLDR.NormalizeHiddenDevices(opts.hidden_devices or prev.hidden_devices),
     smb = (type(opts.smb) == "table") and PLDR.SmbCopy(opts.smb) or prev.smb,
-    smb_modules = next_smb_modules
+    smb_modules = next_smb_modules,
+    ember_global = (type(opts.ember_global) == "table") and opts.ember_global or prev.ember_global
   }
   local apply_bdma = opts.apply_bdma == true
   local bdma_token = opts.bdma_token
@@ -6670,7 +6706,9 @@ function PLDR.GetUsbDiagText()
       for _ in pairs(l) do n = n + 1 end
     end
   end
-  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?")
+  -- bdmList counts all block devices, not just USB. In multi-device setups
+  -- bdm=1 does not establish that the external USB HDD is what BDM saw.
+  parts[#parts + 1] = "bdm=" .. ((n >= 0) and tostring(n) or "?") .. "(all)"
 
   if type(System.iopHeapProbe) == "function" then
     local ok_h, h = pcall(System.iopHeapProbe)
@@ -7808,6 +7846,366 @@ function PLDR.SetHddGameHidden(entry, hide_bool)
   return true
 end
 
+-- ========================================================================
+-- Ember Beta 2: a second PS1 core alongside VCD/POPStarter.
+-- Based on NathanNeurotic/Open-PS2-Loader rebuild/main, cuesupport.c, and
+-- docs/EMBER-INTEGRATION-PLAN.md. Ember is separately supplied by the user.
+--
+-- Do NOT call POPSTARTER or reset the IOP for Ember. It inherits the menu's
+-- mounted storage/network drivers and resolves games/<folder> from argv[0].
+-- Keep the native VCD list/cache untouched; discover Ember rows on the live
+-- game page after the ordinary list was built or loaded.
+-- ========================================================================
+do
+PLDR.EMBER = PLDR.EMBER or {}
+PLDR.EMBER.GLOBAL = PLDR.EMBER.GLOBAL or {}
+local EMBER_PREFS = {
+  display = {"240", "480", "480p"},
+  timing = {"auto", "ntsc", "pal"},
+  dither = {"on", "off"},
+  shading = {"15", "24"},
+  controller = {"auto", "analog", "d2a"}
+}
+local EMBER_MARKER = "!EMBER|"
+
+local function EmberNameValid(name)
+  return type(name) == "string" and name ~= "" and #name <= 170
+     and not string.match(name, "^%.%.")
+     and not string.find(name, "[/:\\|\r\n]")
+     and name ~= "."
+end
+
+local function EmberRootValid(root)
+  return type(root) == "string" and string.match(root, "^%w+:/") ~= nil
+     and string.sub(root, -1) == "/"
+end
+
+function PLDR.EmberEncode(root, name)
+  if not EmberRootValid(root) or not EmberNameValid(name) then return nil end
+  return EMBER_MARKER..root.."|"..name
+end
+
+function PLDR.EmberDecode(entry)
+  local partition, hdd_name = string.match(tostring(entry or ""), "^!EMBER@([^|]+)|(.+)$")
+  if (partition == "__.EMBER" or string.match(tostring(partition or ""), "^__%.EMBER%d$"))
+     and EmberNameValid(hdd_name) then
+    return { hdd_partition = partition, name = hdd_name }
+  end
+  local root, name = string.match(tostring(entry or ""), "^!EMBER|([^|]+)|(.+)$")
+  if EmberRootValid(root) and EmberNameValid(name) then
+    return {root = root, name = name, elf = root.."EMBER/ember.elf",
+            bios = root.."EMBER/bios.bin", game = root.."EMBER/games/"..name.."/"}
+  end
+  return nil
+end
+
+function PLDR.EmberArtVcdPath(entry)
+  local e = PLDR.EmberDecode(entry)
+  if e == nil then return nil end
+  if e.hdd_partition ~= nil then return e.name..".VCD" end
+  -- Reuse the same VCD-prefix art path without inventing a second ART folder.
+  return e.root.."POPS/"..e.name..".VCD"
+end
+
+local function EmberHasGameImage(list)
+  if type(list) ~= "table" then return false end
+  for i = 1, #list do
+    local item = list[i]
+    local name = type(item) == "table" and item.name or nil
+    if type(name) == "string" and not item.directory then
+      local ext = string.lower(string.sub(name, -4))
+      if ext == ".cue" or ext == ".bin" or ext == ".exe" then return true end
+    end
+  end
+  return false
+end
+
+function PLDR.EmberScanRoot(root)
+  local out = {}
+  if not EmberRootValid(root) then return out end
+  local games_path = root.."EMBER/games/"
+  -- Missing or unreadable Ember folders are not treated as fatal POPS errors.
+  local ok, dirs = pcall(System.listDirectory, games_path)
+  if not ok or type(dirs) ~= "table" then return out end
+  for i = 1, #dirs do
+    local name = type(dirs[i]) == "table" and dirs[i].name or nil
+    if EmberNameValid(name) then
+      -- An image-bearing DIRECTORY is the only layout whose native VMC
+      -- files resolve into the actual selected game folder.
+      local ok_child, entries = pcall(System.listDirectory, games_path..name.."/")
+      if ok_child and EmberHasGameImage(entries) then
+        local enc = PLDR.EmberEncode(root, name)
+        if enc ~= nil then out[#out + 1] = enc end
+      end
+    end
+  end
+  return out
+end
+
+function PLDR.EmberScanHddPartitions()
+  local out = {}
+  if type(HDD) ~= "table" or type(HDD.ListPartitions) ~= "function" then return out end
+  local ok, parts = pcall(HDD.ListPartitions)
+  if not ok or type(parts) ~= "table" then return out end
+  for i = 1, #parts do
+    local part = tostring(parts[i] or "")
+    if part == "__.EMBER" or string.match(part, "^__%.EMBER%d$") then
+      local mounted, prefix, slot = MountHddGamePartitionTracked("hdd0:"..part, FIO_MT_RDONLY)
+      if mounted and prefix ~= nil and slot ~= nil then
+        local games = PLDR.EmberScanRoot(prefix)
+        for j = 1, #games do
+          local e = PLDR.EmberDecode(games[j])
+          if e ~= nil then out[#out + 1] = "!EMBER@"..part.."|"..e.name end
+        end
+        -- The scan mount is transient; the launch will acquire its own RW slot.
+        UMountHddPartitionTracked(slot)
+      end
+    end
+  end
+  return out
+end
+
+local function EmberAddRoot(roots, seen, root)
+  if EmberRootValid(root) and not seen[root] then
+    seen[root] = true
+    roots[#roots + 1] = root
+  end
+end
+
+function PLDR.EmberRootsForScene(scene)
+  local roots, seen = {}, {}
+  if type(UI) ~= "table" or type(UI.SCENES) ~= "table" then return roots end
+  local function from_type(t)
+    if type(PLDR.GetRootsByType) ~= "function" then return end
+    local ok, found = pcall(PLDR.GetRootsByType, t)
+    if ok and type(found) == "table" then
+      for i = 1, #found do EmberAddRoot(roots, seen, found[i]) end
+    end
+  end
+  if scene == UI.SCENES.GUSBFAT then
+    from_type("usb")
+  elseif scene == UI.SCENES.GMX4SIO then
+    from_type("mx4sio")
+  elseif scene == UI.SCENES.GBDMHDD then
+    from_type("ata")
+  elseif scene == UI.SCENES.GSMB then
+    EmberAddRoot(roots, seen, type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX or nil)
+  elseif scene == UI.SCENES.GSMBNET then
+    -- SMB share subfolder and UDPFS mount retain their own root, not mass:.
+    local base = string.gsub(tostring(PLDR.GAMEPATH or ""), "[Pp][Oo][Pp][Ss]/?$", "")
+    EmberAddRoot(roots, seen, base)
+  end
+  -- APA/PFS is NOT a mass:/ disk. Ember's self-contained __.EMBER
+  -- partitions require a held writable PFS mount and ExecKeepPfsMask.
+  -- Never misroute those titles to __common or free a live APA mount.
+  return roots
+end
+
+function PLDR.EmberAttachToList(scene)
+  if type(PLDR.GAMES) ~= "table" then return 0 end
+  if PLDR.EMBER.attached_list == PLDR.GAMES and PLDR.EMBER.attached_scene == scene then
+    return 0
+  end
+  local roots = PLDR.EmberRootsForScene(scene)
+  local count, seen = 0, {}
+  for i = 1, #PLDR.GAMES do seen[PLDR.GAMES[i]] = true end
+  if type(UI) == "table" and type(UI.SCENES) == "table" and scene == UI.SCENES.GHDD then
+    local games = PLDR.EmberScanHddPartitions()
+    for i = 1, #games do
+      if not seen[games[i]] then
+        seen[games[i]] = true
+        PLDR.GAMES[#PLDR.GAMES + 1] = games[i]
+        count = count + 1
+      end
+    end
+  end
+  for i = 1, #roots do
+    local more = PLDR.EmberScanRoot(roots[i])
+    for j = 1, #more do
+      if not seen[more[j]] then
+        seen[more[j]] = true
+        PLDR.GAMES[#PLDR.GAMES + 1] = more[j]
+        count = count + 1
+      end
+    end
+  end
+  if count > 0 then
+    table.sort(PLDR.GAMES, function(a, b)
+      local ea, eb = PLDR.EmberDecode(a), PLDR.EmberDecode(b)
+      local an = ea and ea.name or tostring(a):match("([^/|]+)$") or tostring(a)
+      local bn = eb and eb.name or tostring(b):match("([^/|]+)$") or tostring(b)
+      local al, bl = string.lower(an), string.lower(bn)
+      return al == bl and a < b or al < bl
+    end)
+  end
+  PLDR.EMBER.attached_list = PLDR.GAMES
+  PLDR.EMBER.attached_scene = scene
+  return count
+end
+
+-- For hand-written settings, nil means "not managed here". "-" means
+-- explicitly remove a key (restore native/global inheritance).
+function PLDR.EmberSettingValid(key, value)
+  if type(EMBER_PREFS[key]) ~= "table" then return false end
+  if value == nil or value == "-" then return true end
+  for i = 1, #EMBER_PREFS[key] do
+    if EMBER_PREFS[key][i] == value then return true end
+  end
+  return false
+end
+
+function PLDR.EmberReadSettings(path)
+  local result = {}
+  if type(path) ~= "string" or path == "" then return result end
+  local size = GetFileSizeSafe(path)
+  if size == nil or size > 8192 then return result end
+  local data = ReadWholeFile(path)
+  if type(data) ~= "string" then return result end
+  for line in string.gmatch(data.."\n", "([^\n]*)\n") do
+    local key, value = string.match(line, "^%s*([%a]+)%s*:%s*([^%s;#]+)")
+    if PLDR.EmberSettingValid(key, value) and value ~= nil then
+      result[key] = value
+    end
+  end
+  return result
+end
+
+function PLDR.EmberRewriteSettings(path, changes)
+  if type(path) ~= "string" or type(changes) ~= "table" then return false end
+  local chosen, n = {}, 0
+  for key, value in pairs(changes) do
+    if value ~= nil then
+      if not PLDR.EmberSettingValid(key, value) then return false end
+      chosen[key] = value
+      n = n + 1
+    end
+  end
+  if n == 0 then return true end
+  local exists = doesFileExist(path)
+  local before = exists and ReadWholeFile(path) or ""
+  -- Never destroy a file that exists but cannot be read in full.
+  if type(before) ~= "string" or #before > 8192 then return false end
+  local lines = {}
+  for line in string.gmatch(before.."\n", "([^\n]*)\n") do
+    line = string.gsub(line, "\r$", "")
+    if line ~= "" then
+      local key = string.match(line, "^%s*([%a]+)%s*:")
+      if chosen[key] == nil then lines[#lines + 1] = line end
+    end
+  end
+  local keys = {"display","timing","dither","shading","controller"}
+  for i = 1, #keys do
+    local key, value = keys[i], chosen[keys[i]]
+    if value ~= nil and value ~= "-" then
+      lines[#lines + 1] = key..":"..value
+    end
+  end
+  local after = table.concat(lines, "\n")
+  if after ~= "" then after = after.."\n" end
+  if after == before then return true end
+  if after == "" and not exists then return true end
+  return WriteAtomic(path, after)
+end
+
+function PLDR.EmberApplyGlobal(root)
+  local opts = PLDR.EMBER.GLOBAL or {}
+  return PLDR.EmberRewriteSettings(root.."EMBER/settings.txt", opts)
+end
+
+local function EmberMountHddGame(e, write)
+  local mode = write and FIO_MT_RDWR or FIO_MT_RDONLY
+  -- RiptOPL's PFS write-through flag: commit writes on close for VMC safety.
+  if write and type(mode) == "number" then mode = mode | 0x02 end
+  local ok, prefix, slot = MountHddGamePartitionTracked(
+    "hdd0:"..e.hdd_partition, mode)
+  if not ok or prefix == nil or slot == nil then return nil, nil end
+  return {root=prefix, elf=prefix.."EMBER/ember.elf",
+          bios=prefix.."EMBER/bios.bin",
+          game=prefix.."EMBER/games/"..e.name.."/",
+          name=e.name, hdd_partition=e.hdd_partition}, slot
+end
+
+function PLDR.EmberReadGameSettings(entry)
+  local e = PLDR.EmberDecode(entry)
+  if e == nil then return {} end
+  if e.hdd_partition == nil then
+    return PLDR.EmberReadSettings(e.game.."settings.txt")
+  end
+  local mounted, slot = EmberMountHddGame(e, false)
+  if mounted == nil then return {} end
+  local cfg = PLDR.EmberReadSettings(mounted.game.."settings.txt")
+  UMountHddPartitionTracked(slot)
+  return cfg
+end
+
+function PLDR.EmberSetGameSetting(entry, key, value)
+  local e = PLDR.EmberDecode(entry)
+  if e == nil or key == "display" or not PLDR.EmberSettingValid(key, value) then
+    return false
+  end
+  if e.hdd_partition == nil then
+    return PLDR.EmberRewriteSettings(e.game.."settings.txt", {[key] = value})
+  end
+  local mounted, slot = EmberMountHddGame(e, true)
+  if mounted == nil then return false end
+  local ok, saved = pcall(PLDR.EmberRewriteSettings,
+    mounted.game.."settings.txt", {[key] = value})
+  UMountHddPartitionTracked(slot)
+  return ok and saved == true
+end
+
+function PLDR.EmberLaunch(entry)
+  local e = PLDR.EmberDecode(entry)
+  if e == nil then return false, "Invalid Ember game selection" end
+  if type(System) ~= "table" or type(System.loadELFKeepIOP) ~= "function" then
+    return false, "Keep-IOP ELF loader unavailable"
+  end
+  local apa_slot = nil
+  if e.hdd_partition ~= nil then
+    e, apa_slot = EmberMountHddGame(e, true)
+    if e == nil then return false, "Cannot mount Ember partition read/write" end
+  end
+  local function fail(reason)
+    if apa_slot ~= nil then UMountHddPartitionTracked(apa_slot) end
+    return false, reason
+  end
+  if not doesFileExist(e.elf) then return fail("Missing "..e.elf) end
+  local bios_bytes = GetFileSizeSafe(e.bios)
+  if bios_bytes ~= 512*1024 then
+    return fail("Ember needs a 512 KB BIOS: "..e.bios)
+  end
+  local ok_dir, game_entries = pcall(System.listDirectory, e.game)
+  if not ok_dir or not EmberHasGameImage(game_entries) then
+    return fail("No .cue/.exe/.bin directly in "..e.game)
+  end
+  local ok_global, global_saved = pcall(PLDR.EmberApplyGlobal, e.root)
+  if not (ok_global and global_saved)
+     and type(UI) == "table" and type(UI.Notif_queue) == "table" then
+    pcall(UI.Notif_queue.add,
+      "Ember global settings could not be saved on "..e.root, "warn")
+  end
+  -- Keep the writable APA mount and its descriptors across the IOP-preserving
+  -- ELF handoff. Other PFS mounts can close; the Ember game's slot cannot.
+  if apa_slot ~= nil then
+    if apa_slot < 0 or apa_slot > 3
+       or type(System.setExecKeepPfsMask) ~= "function" then
+      return fail("Cannot preserve Ember's APA mount across ELF handoff")
+    end
+    local ok_keep = pcall(System.setExecKeepPfsMask, 1 << apa_slot)
+    if not ok_keep then return fail("Unable to keep Ember PFS mount") end
+  end
+  local ok, result = pcall(System.loadELFKeepIOP, e.elf, e.elf, e.name)
+  if apa_slot ~= nil then
+    if type(System.setExecKeepPfsMask) == "function" then
+      pcall(System.setExecKeepPfsMask, 0)
+    end
+    UMountHddPartitionTracked(apa_slot)
+  end
+  if not ok then return false, "Ember launch error: "..tostring(result) end
+  return false, "Ember ELF returned: "..tostring(result)
+end
+end
+
 function PLDR.GetPS1GameLists(path, updating, on_progress)
   local RET = {}
   local found_smth = false
@@ -8475,6 +8873,10 @@ function PLDR.LoadHDDModules()
 end
 
 function PLDR.CleanupGameList()
+  if PLDR.EMBER ~= nil then
+    PLDR.EMBER.attached_list = nil
+    PLDR.EMBER.attached_scene = nil
+  end
   local count = #PLDR.GAMES
   for i=0, count do PLDR.GAMES[i]=nil end
   -- EXP57: clear the hidden map too. It used to survive here, so hidden state LEAKED

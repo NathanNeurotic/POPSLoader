@@ -294,6 +294,10 @@ def shell(title, body, active, base=''):
     <a href="{base}index.html"{homecls}>Home</a>
     <h4>POPSLoader · this project</h4>
     <a href="{base}popsloader.html"{plcls}>POPSLoader docs</a>
+    <a href="{base}popsloader/project-wiki.html">Project wiki · current</a>
+    <a href="{base}popsloader/installation-guide.html">Install &amp; PSU</a>
+    <a href="{base}popsloader/ember-core.html">Ember PS1 core</a>
+    <a href="{base}popsloader/release-formats.html">Release formats</a>
     <a href="{base}launch-arguments.html"{refcls('launch-args')}>Launch arguments</a>
     <h4>POPStarter · documentation</h4>{psnav}
     <h4>Reference</h4>
@@ -304,7 +308,7 @@ def shell(title, body, active, base=''):
     <a href="{base}compatibility-table.html"{refcls('compat-table')}>Compatibility table</a>
     <a href="{base}thread-study.html"{refcls('thread-study')}>Community knowledge</a>
     <a href="{base}credits.html"{refcls('credits')}>Credits</a>
-    <a href="{base}wiki/index.html">All wiki pages</a>
+    <a href="{base}wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
@@ -1097,7 +1101,19 @@ def build_downloads():
 <p class="lead">Every POPStarter file in the tracked generator-hosted download collection, together with a separate inventory of historical references. Legacy Pages-only assets are retained separately pending individual review.
 {len(dl_files)} files (POPStarter builds, Quickstarter packs, tools, patches &amp; cheat references) —
 all verified to contain <b>no Sony emulator binaries</b>.</p>
-<div class="callout info"><div class="h">Which of these do I need?</div>{html.escape(DL_INTRO)}</div>
+<div class="callout info"><div class="h">Current POPSLoader release packages (GitHub)</div>
+<b>Stable:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">POPSLoader 1.2.3</a>
+keeps the existing installer layout, with no Ember.
+<b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
+will expose standalone <code>PS1_POPSLOADER.zip</code> and <code>PS1_POPSLOADER.psu</code>
+after PR #600 is merged to dev and a successful release run publishes.
+The ZIP includes <code>APPS/</code>, <code>POPS/</code> and <code>EMBER/</code>;
+the PSU has only eight direct app files, no nested folder. The separate
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">Experimental Release</a>
+follows its own branch and is not automatically updated by merging dev.
+<a href="popsloader/installation-guide.html">Installation guide</a> ·
+<a href="popsloader/release-formats.html">Packaging specification</a>.</div>
+<div class="callout info"><div class="h">Which historical POPStarter file do I need?</div>{html.escape(DL_INTRO)}</div>
 {archive_card}
 <div class="callout amber"><div class="h">Historical NOPAL patch name conflict</div>
 The original <code>NOPAL_PATCH.7z</code> was listed in 2017 as <b>226 bytes</b> and is not recovered.
@@ -1167,8 +1183,8 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>MMCE</td><td>SD2PSX / MemCard&nbsp;PRO2</td><td>BDMA <code>MMCE</code></td><td> Working</td></tr>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
 <tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
-<tr><td>UDPFS Files PS1 VCDs <em>(Coming soon)</em></td><td>read-only UDPFS fallback after USB</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> POPSLoader integration: Coming soon</td></tr>
-<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Stub — untested</td></tr>
+<tr><td>UDPFS Files PS1 VCDs <em>(experimental)</em></td><td>opt-in USB + UDPFS for VCDs</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> Included in 1.2.3; console behavior unverified</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Unsupported/hidden; Ember i.Link deferred pending RiptOPL hardware validation</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
 In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
@@ -1177,15 +1193,16 @@ special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, <code>M
 validating on hardware). Everything except an APA/PFS internal HDD goes through BDMA — it loads the
 <b>BDM&nbsp;Assault</b> driver set, which is how the launcher reaches exFAT USB, the exFAT internal HDD, and the
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
-iLink backend extends the same BDM mechanism but is not hardware-tested yet. For large
+iLink is unsupported in POPSLoader; Ember i.Link is deferred until RiptOPL proves a stable hardware path. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div>'''
 
-POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
-POPSLoader is preparing a PS1 VCD network page and driver-staging support for
-<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault (Alpha)</a>.
-POPSTARTER reads USB first, then requests missing VCD files from a UDPFS server using its read-only fallback.
-The upstream Alpha exists today; POPSLoader integration is <em>Coming soon</em> and is not included in current releases.
-See the <a href="popsloader/udpfs-bdma.html">planned setup, files and credits</a>. This is not UDPBD or Neutrino&#39;s PS2 UDPFS mode.</div>'''
+POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — experimental</div>
+POPSLoader 1.2.3 includes an <b>opt-in</b> PS1 VCD network option using
+<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault Alpha</a>.
+Select <b>SMBv1</b> or <b>USB + UDPFS</b> from the Ethernet device tile. End-to-end VCD game launch,
+multi-USB handling and controller recovery remain hardware-unverified.
+See <a href="popsloader/udpfs-bdma.html">setup and limitations</a>.
+This is not the PS2 UDPBD/Neutrino transport.</div>'''
 
 HUGOPOCKED = '''<h2 id="hugopocked">Hugopocked fixes — the leading community compatibility pack</h2>
 <p class="lead">When POPS' built-in fixes and the compatibility modes above aren't enough, <b>Hugopocked's per-game
@@ -1478,7 +1495,13 @@ POPSLOADER_DOCS = [
     ('TESTING.md', 'Testing'),
     ('CONTRIBUTING.md', 'Contributing'),
     ('docs/LAUNCH_ARGUMENTS.md', 'Launch arguments'),
-    ('docs/UDPFS_BDMA.md', 'POPS UDPFS / BDM-UDPFS Assault — Coming soon'),
+    ('docs/EMBER_INTEGRATION.md', 'Ember PS1 — integration and settings'),
+    ('docs/wiki/Project-Wiki.md', 'Project Wiki — start here'),
+    ('docs/wiki/Installation-Guide.md', 'Installation — ZIP, PSU and game folders'),
+    ('docs/wiki/Release-Formats.md', 'Release formats and verification'),
+    ('docs/wiki/Ember-Core.md', 'Ember PS1 core'),
+    ('docs/wiki/Device-Support.md', 'Device support & hardware verification'),
+    ('docs/UDPFS_BDMA.md', 'Experimental POPS UDPFS / BDM-UDPFS Assault'),
     ('docs/PRESERVATION_CONTRACTS.md', 'Preservation contracts'),
 ]
 def pl_slug(path):
@@ -1529,6 +1552,18 @@ def render_pl_doc(md):
                  out)
     return out
 
+POPSLOADER_MODERN_CALLOUT = '''<div class="callout info"><div class="h">Current POPSLoader wiki, Ember &amp; release formats</div>
+Stable <b>1.2.3</b> is published. The <b>Ember</b> PS1 core path,
+RiptOPL-matched <code>APPS/PS1_POPSLOADER/</code>, full <code>POPS/</code> plus
+<code>EMBER/</code> ZIP, and flat eight-file <code>PS1_POPSLOADER.psu</code>
+are in <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>
+(development, not stable).
+<a href="popsloader/project-wiki.html">Project wiki</a> ·
+<a href="popsloader/installation-guide.html">Install guide</a> ·
+<a href="popsloader/ember-core.html">Ember guide</a> ·
+<a href="popsloader/release-formats.html">ZIP/PSU specification</a>.
+Hardware validation remains outstanding. i.Link is deferred.</div>'''
+
 def build_popsloader():
     os.makedirs(os.path.join(SITE, 'popsloader'), exist_ok=True)
     cards = []
@@ -1563,11 +1598,14 @@ def build_popsloader():
              '<li><b>Multi-disc collapse</b>, <a href="launch-arguments.html">launch arguments</a> '
              '(boot straight to a device or game from your launcher), and HDD game-list caching.</li></ul>'
              '<div class="callout info"><div class="h">Supported devices &amp; status</div>'
-             '<b>Working today:</b> internal HDD (APA/PFS), USB (FAT32 &amp; exFAT via BDMA), MX4SIO, MMCE '
-             '(SD2PSX / MemCard&nbsp;PRO2), and physical disc (DKWDRV). <b>Newly added (via BDMA <code>ATA</code>, '
-             'validating on hardware):</b> the <b>exFAT internal HDD</b>. <b>Wired but not yet working:</b> iLink, '
-             'and SMB&nbsp;v1 — see the full <a href=\"storage.html#device-matrix\">device matrix</a>. '
-             'Live status &amp; known issues live in <a href="popsloader/state.html">STATE</a>.</div>'
+             '<b>Established VCD backends:</b> APA/PFS HDD, USB, MX4SIO, MMCE and existing DKWDRV routes. '
+             '<b>Implemented with remaining verification:</b> internal exFAT/ATA and SMBv1. '
+             '<b>Experimental in 1.2.3:</b> USB + UDPFS; console support unverified. '
+             '<b>Ember development:</b> PR #600 adds a separate emulator and device-aware game lists; '
+             'actual launching, controllers and VMC writes still need PS2 verification. '
+             '<b>i.Link:</b> unsupported; deferred until RiptOPL proves it on hardware. '
+             'See <a href="popsloader/device-support.html">device status</a> and '
+             '<a href="popsloader/state.html">canonical STATE</a>.</div>'
              '<div class="callout"><div class="h">Exit menu &amp; BOOT.ELF chaining (POPSLoader fork)</div>'
              'Press <b>Triangle</b> to open the launcher\'s Exit menu — <b>OSDSYS</b> (back to the PS2 browser), '
              '<b>Cancel</b>, or <b>BOOT.ELF</b>. <b>BOOT.ELF</b> chainloads <code>mc0:/BOOT/BOOT.ELF</code> '
@@ -1575,7 +1613,7 @@ def build_popsloader():
              'menu — launched with <code>reboot_iop=0</code> for a clean handoff. '
              '<i>(Some third-party docs describe this as a &ldquo;Triangle&nbsp;=&nbsp;relaunch BOOT.ELF&rdquo; '
              'shortcut; in this fork Triangle opens the Exit menu and BOOT.ELF is one of its three choices.)</i></div>')
-    body = intro + POPS_UDPFS_CALLOUT + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
+    body = intro + POPSLOADER_MODERN_CALLOUT + POPS_UDPFS_CALLOUT + '<h2>Project documentation</h2><p class="lead">The living docs for the POPSLoader codebase. ' \
            'Rendered straight from the repository.</p><div class="grid">' + ''.join(cards) + '</div>'
     write('popsloader.html', shell('POPSLoader', body, 'popsloader'))
     idx('POPSLoader — the modern launcher', 'popsloader',
@@ -1940,7 +1978,7 @@ CREDITS_SECTIONS = [
     ('Devices &amp; modern backends', [
         ('israpps (El_isra)', '<b>BDM Assault</b> (exFAT / BDMA), <code>MMCEMAN</code>, and much of the modern device tooling that lets POPStarter reach exFAT USB, MX4SIO and MMCE.'),
         ('saildot4k', '<b>BDMA-ATA</b> — the exFAT internal-HDD (ATA) backend for POPSLoader: implementation, fixes, feedback, and oversight that brought the <code>HDD (exFAT)</code> page to life.'),
-        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (<em>Coming soon</em> in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha"><b>BDM-UDPFS Assault Alpha</b></a>, the read-only POPSTARTER UDPFS VCD fallback, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, automatic BDMA equip and launch integration are <em>Coming soon</em>; <a href="popsloader/udpfs-bdma.html">planned setup and credits</a>.'),
+        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (experimental in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha"><b>BDM-UDPFS Assault Alpha</b></a>, the read-only POPSTARTER UDPFS VCD fallback, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, automatic BDMA equip and launch integration are <em>Coming soon</em>; <a href="popsloader/udpfs-bdma.html">planned setup and credits</a>.'),
         ('The Open PS2 Loader (OPL) project', 'The BDM device-backend ecosystem POPSLoader builds on — USB, MX4SIO, MMCE, ATA and iLink — and the patterns the fork mirrors. (OPL also ships a UDPBD network backend; POPSLoader does not.)'),
         ('Rick Gaiser', '<b>udpbd</b> — the UDP block-device network backend.'),
     ]),
@@ -2041,11 +2079,16 @@ Sony POPS emulator is <b>not</b> included anywhere; you supply your own legally-
 <a href="downloads.html">published MD5s</a>). Questions and support live on the
 <a href="https://www.psx-place.com/threads/popstarter.19139/">PSX-Place POPStarter thread</a>.</div>
 
-<div class="callout info" id="pops-udpfs-upcoming"><div class="h">POPS UDPFS / BDM-UDPFS Assault — <em>Coming soon</em></div>
-The POPSLoader fork is preparing read-only PS1 VCD network support based on
-<a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault Alpha</a>.
-The upstream driver is available independently, but POPSLoader integration is <em>Coming soon</em>.
-<a href="popsloader/udpfs-bdma.html">Integration setup and credits</a>.</div>
+<div class="callout info" id="popsloader-current"><div class="h">POPSLoader — current project</div>
+Stable POPSLoader <b>1.2.3</b> is available separately from this preserved POPStarter wiki.
+Its <b>USB + UDPFS</b> VCD support is opt-in and hardware-unverified.
+A separate <b>Ember PS1</b> core, complete <code>POPS/</code> + <code>EMBER/</code> kit
+and flat <code>PS1_POPSLOADER.psu</code> are implemented in development
+<a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a>.
+<a href="popsloader/project-wiki.html">Current POPSLoader wiki</a> ·
+<a href="popsloader/ember-core.html">Ember setup</a> ·
+<a href="popsloader/release-formats.html">Release formats</a>.
+i.Link remains deferred.</div>
 
 <h2 id="reference">Full reference</h2>
 <p class="lead">Already know your way around? Jump straight in — or use the search box up top to find any

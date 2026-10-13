@@ -45,11 +45,19 @@ jobs:
           grep -Fxq 'Version=1.2.3' bin/POPSLDR/title.cfg
           test "$(git rev-parse HEAD)" = "$VERIFIED_SHA"
           mv POPSLOADER.zip PS1_POPSLOADER.zip
-          unzip -p PS1_POPSLOADER.zip PS1_POPSLOADER/POPSLOADER.ELF > POPSLOADER.ELF
+          unzip -p PS1_POPSLOADER.zip APPS/PS1_POPSLOADER/POPSLOADER.ELF > POPSLOADER.ELF
           test -s POPSLOADER.ELF
+          test -s PS1_POPSLOADER.psu
+          python3 - <<'PY'
+          import tempfile, pathlib, zipfile, subprocess
+          with tempfile.TemporaryDirectory() as d, zipfile.ZipFile('PS1_POPSLOADER.zip') as z:
+              for name in ('POPSLOADER.ELF', 'POPSTARTER.ELF', 'icon.sys', 'list.icn', 'copy.icn', 'del.icn', 'title.cfg', 'APPINFO.PBT'):
+                  pathlib.Path(d, name).write_bytes(z.read('APPS/PS1_POPSLOADER/' + name))
+              subprocess.run(['python3', 'tools/package_psu.py', 'verify', d, 'PS1_POPSLOADER.psu'], check=True)
+          PY
           printf 'POPSLoader 1.2.3\nSource: %s\nCI run: %s\n' "$VERIFIED_SHA" \
             'https://github.com/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}' > BUILD-MANIFEST.txt
-          sha256sum POPSLOADER.ELF PS1_POPSLOADER.zip BUILD-MANIFEST.txt > SHA256SUMS.txt
+          sha256sum POPSLOADER.ELF PS1_POPSLOADER.zip PS1_POPSLOADER.psu BUILD-MANIFEST.txt > SHA256SUMS.txt
       - name: Publish verified official release once
         shell: bash
         env:
@@ -62,7 +70,7 @@ jobs:
             exit 0
           fi
           gh release create 1.2.3 \
-            POPSLOADER.ELF PS1_POPSLOADER.zip BUILD-MANIFEST.txt SHA256SUMS.txt \
+            POPSLOADER.ELF PS1_POPSLOADER.zip PS1_POPSLOADER.psu BUILD-MANIFEST.txt SHA256SUMS.txt \
             --target "$VERIFIED_SHA" \
             --title "POPSLoader 1.2.3" \
             --notes-file OFFICIAL_NOTES.md \

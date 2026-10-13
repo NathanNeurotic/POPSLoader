@@ -173,6 +173,12 @@ local function ResolveSelectedVcdPath(entry, game_path)
   if entry == nil or entry == "" then
     return nil
   end
+  -- Ember uses the identical VCD-basename ART loader: the path is an art
+  -- lookup identity, not a fake launchable VCD.
+  if type(PLDR) == "table" and type(PLDR.EmberArtVcdPath) == "function" then
+    local art_identity = PLDR.EmberArtVcdPath(entry)
+    if art_identity ~= nil then return art_identity end
+  end
 
   local root, rel = string.match(entry, "^([^|]+)|(.+)$")
   if root ~= nil and rel ~= nil then
@@ -3056,6 +3062,14 @@ UI = {
         UI.SettingsEntryArtLocation = UI.ArtLocation
         UI.CoverArt = (type(PLDR) == "table" and PLDR.COVER_ART ~= false)
         UI.SettingsEntryCoverArt = UI.CoverArt
+        UI.EmberGlobalDraft = {}
+        UI.SettingsEntryEmberGlobal = {}
+        for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+          local val = (type(PLDR.EMBER) == "table" and type(PLDR.EMBER.GLOBAL) == "table"
+            and PLDR.EMBER.GLOBAL[key]) or nil
+          UI.EmberGlobalDraft[key] = val
+          UI.SettingsEntryEmberGlobal[key] = val
+        end
         UI.GameListCache = (type(PLDR) == "table" and PLDR.GAMELIST_CACHE == true)
         UI.SettingsEntryGameListCache = UI.GameListCache
         UI.BootSound = (type(PLDR) == "table" and PLDR.BOOT_SOUND ~= false)
@@ -3102,6 +3116,19 @@ UI = {
       Play = function()
         local layout = UI.LAYOUT
         UI.GameList.MAXDRAW = layout.LIST_MAX
+        -- The VCD scanner/cache still owns the underlying list. Append Ember
+        -- rows ONCE per freshly built list or scene, within the busy overlay,
+        -- not once per render frame (per-folder directory I/O is blocking).
+        if type(PLDR.EmberAttachToList) == "function"
+           and type(PLDR.EMBER) == "table"
+           and (PLDR.EMBER.attached_list ~= PLDR.GAMES
+                or PLDR.EMBER.attached_scene ~= UI.CURSCENE) then
+          UI.RunBusyTask("Scanning Ember games...", function(report)
+            report("Checking per-device Ember libraries...", 0.35)
+            PLDR.EmberAttachToList(UI.CURSCENE)
+            report("Done", 1.0)
+          end, "Ember game scan unavailable")
+        end
         -- Device gamelist pages no longer show a top device-name label. MMCE /
         -- MX4SIO / HDD (PFS) never did; on the pages that had one (USB, exFAT,
         -- net-SMB) the label sat right above the first row and duplicated the
@@ -3190,8 +3217,12 @@ UI = {
           if i >= (UI.GameList.STARTUP+UI.GameList.MAXDRAW) then break end
           local Y = layout.LIST_Y + ((i-UI.GameList.STARTUP) * layout.LIST_ROW_H)
           local display_name = PLDR.GAMES[i]
+          local ember_item = type(PLDR.EmberDecode) == "function"
+            and PLDR.EmberDecode(display_name) or nil
           local hdd_part, hdd_relpath = string.match(display_name or "", "^([^|]+)|(.+)$")
-          if hdd_relpath ~= nil then
+          if ember_item ~= nil then
+            display_name = ember_item.name
+          elseif hdd_relpath ~= nil then
             if type(PLDR.IsPartitionInstalledHddEntry) == "function"
                and PLDR.IsPartitionInstalledHddEntry(hdd_part, hdd_relpath) then
               -- Partition-installed game: show the partition name minus its
@@ -3206,11 +3237,12 @@ UI = {
             c = (i == UI.GameList.CURR) and LIST_HIDDEN_SELECTED_COLOR or LIST_HIDDEN_COLOR
           end
           local label = StripVcdExtension(display_name)
+          if ember_item ~= nil then label = "[Ember] "..label end
           -- Collapsed multi-disc: the only disc-marked row visible is the disc-1
           -- representative, so drop its "(Disc N)" marker for a clean title. GATED on
           -- collapse -- with collapse OFF every disc shows and trimming would render the
           -- Disc 1 / Disc 2 rows identically.
-          if type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true then
+          if ember_item == nil and type(PLDR) == "table" and PLDR.COLLAPSE_MULTIDISC == true then
             local trimmed = StripDiscMarker(label)
             if trimmed ~= "" then label = trimmed end
           end
@@ -3644,6 +3676,22 @@ UI = {
             UI.Notif_queue.add("Couldn't read that game selection", "error")
             return
           end
+          local ember_item = type(PLDR.EmberDecode) == "function"
+            and PLDR.EmberDecode(entry) or nil
+          if ember_item ~= nil then
+            UI.ShowSavingOverlay("Checking Ember...", 0.20)
+            -- The cover worker can still hold a live fileXio call. Drain it
+            -- before handing the same live IOP filesystem over to Ember.
+            if UI.CoverCache ~= nil and type(UI.CoverCache.Quiesce) == "function" then
+              UI.CoverCache:Quiesce()
+            end
+            UI.ShowSavingOverlay("Starting Ember...", 0.65)
+            local ok, launched, reason = pcall(PLDR.EmberLaunch, entry)
+            UI.HideSavingOverlay()
+            UI.Notif_queue.add(ok and tostring(reason or "Ember did not launch")
+              or ("Ember launch error: "..tostring(launched)), "error")
+            return
+          end
           local root, rel = string.match(entry or "", "^([^|]+)|(.+)$")
           -- Launch progress (maintainer: an ATA launch sat "a very long time on a
           -- frozen state before the game launched"). Everything below -- the
@@ -3817,6 +3865,56 @@ UI = {
           -- is readable instead of sitting behind a stuck progress box.
           unpaint()
         end
+        local function OpenEmberGameSettings(entry)
+          local e = type(PLDR.EmberDecode) == "function" and PLDR.EmberDecode(entry) or nil
+          if e == nil then return end
+          local settings_file = (e.hdd_partition ~= nil)
+            and ("hdd0:"..e.hdd_partition.."/EMBER/games/"..e.name.."/settings.txt")
+            or (e.game.."settings.txt")
+          local saved = (type(PLDR.EmberReadGameSettings) == "function")
+            and PLDR.EmberReadGameSettings(entry) or {}
+          local opts = {
+            {"timing", "Timing", {"auto", "ntsc", "pal"}},
+            {"dither", "Dithering", {"on", "off"}},
+            {"shading", "Shading", {"15", "24"}},
+            {"controller", "Controller", {"auto", "analog", "d2a"}}
+          }
+          local items = {}
+          for i = 1, #opts do
+            local opt = opts[i]
+            local current = saved[opt[1]]
+            local label = opt[2]..": "..(current or "Default (global)")
+            items[#items + 1] = {
+              label = label,
+              action = function()
+                -- Selecting a row advances one step; Default removes the
+                -- per-game key so Ember inherits its native global value.
+                local next_value = opt[3][1]
+                for j = 1, #opt[3] do
+                  if current == opt[3][j] then
+                    next_value = opt[3][j + 1] or "-"
+                    break
+                  end
+                end
+                local ok, updated = pcall(PLDR.EmberSetGameSetting, entry, opt[1], next_value)
+                if not ok or updated ~= true then
+                  UI.Notif_queue.add("Couldn't write "..settings_file, "error")
+                end
+                OpenEmberGameSettings(entry)
+              end
+            }
+          end
+          items[#items + 1] = {label = "Close", action = function() end}
+          UI.Modal.active = true
+          UI.Modal.title = "Ember Game Settings"
+          UI.Modal.body = e.name
+          UI.Modal.menu_items = items
+          UI.Modal.menu_index = 1
+          UI.Modal.confirm_action = nil
+          UI.Modal.cancel_action = nil
+          UI.Modal.triangle_action = nil
+          UI.Modal.ignore_until_release = true
+        end
         -- R3 = reveal / re-hide this device's hidden games. The "Hidden games"
         -- setting (GLOBAL_HIDE) filters hidden entries out of the list at SCAN
         -- time, so flipping it requires rebuilding the current device's list --
@@ -3874,7 +3972,11 @@ UI = {
           UI.PendingHideRebuild = false
           UI.Pad.Events.R1 = true
         end
-        if UI.Pad.Events.CONFIRM then
+        if UI.Pad.Events.L2 and ammount > 0
+           and type(PLDR.EmberDecode) == "function"
+           and PLDR.EmberDecode(PLDR.GAMES[UI.GameList.CURR]) ~= nil then
+          OpenEmberGameSettings(PLDR.GAMES[UI.GameList.CURR])
+        elseif UI.Pad.Events.CONFIRM then
           LaunchSelectedGame(nil)
         elseif UI.Pad.Events.R2 and UI.CURSCENE == UI.SCENES.GHDD then
           LaunchSelectedGame({ hdd_selector_mode = "full_hdd_pfs0" })
@@ -4028,7 +4130,9 @@ UI = {
             UI.Notif_queue.add("List refreshed", "ok")
           end
         end
-        if UI.Pad.Events.L3 and ammount > 0 then
+        if UI.Pad.Events.L3 and ammount > 0
+           and not (type(PLDR.EmberDecode) == "function"
+             and PLDR.EmberDecode(PLDR.GAMES[UI.GameList.CURR]) ~= nil) then
           -- Refuse ONLY when the selected game is already hidden, i.e. the user is
           -- trying to unhide something the filter is keeping off screen. With
           -- GLOBAL_HIDE on, the scan drops hidden entries outright (system.lua:
@@ -4307,6 +4411,7 @@ UI = {
                 prev_hide_text = UI.SettingsEntryHideTextMode == true,
                 smb = UI.SmbDraft,
                 smb_modules = UI.SmbModulesDraft,
+                ember_global = UI.EmberGlobalDraft,
                 apply_smb = (UI.SmbModulesDirty == true)
                             or (UI.SmbModulesDraft == true and UI.SmbDirty == true),
                 apply_bdma = UI.BdmaDirty,
@@ -4537,6 +4642,14 @@ UI = {
           if UI.GameListCache == true then
             UI.GameListCache = false
             UI.ProfileDirty = true
+          end
+          if type(UI.EmberGlobalDraft) == "table" then
+            for _, key in ipairs({"display","timing","dither","shading","controller"}) do
+              if UI.EmberGlobalDraft[key] ~= "-" then
+                UI.EmberGlobalDraft[key] = "-" -- reset unmanaged key in Ember
+                UI.ProfileDirty = true
+              end
+            end
           end
           if UI.CoverArt ~= true then   -- default ON
             UI.CoverArt = true
@@ -5062,6 +5175,55 @@ UI = {
           end
         end
 
+        AddSection("Ember PS1 Core")
+        -- Default does not invent keys in Ember's settings.txt. Unchanged
+        -- leaves a hand-written native setting alone; Default actively
+        -- removes that key, returning control to Ember's own defaults.
+        local ember_rows = {
+          {"display","Ember Display", {"", "-", "240", "480", "480p"}},
+          {"timing","Ember Timing", {"", "-", "auto", "ntsc", "pal"}},
+          {"dither","Ember Dithering", {"", "-", "on", "off"}},
+          {"shading","Ember Shading", {"", "-", "15", "24"}},
+          {"controller","Ember Controller", {"", "-", "auto", "analog", "d2a"}}
+        }
+        local function EmberDirty()
+          for _, row in ipairs(ember_rows) do
+            local key = row[1]
+            if tostring((UI.EmberGlobalDraft or {})[key] or "")
+               ~= tostring((UI.SettingsEntryEmberGlobal or {})[key] or "") then
+              return true
+            end
+          end
+          return false
+        end
+        for _, row in ipairs(ember_rows) do
+          local key, label, values = row[1], row[2], row[3]
+          local function step_ember(dir)
+            UI.EmberGlobalDraft = UI.EmberGlobalDraft or {}
+            local value = UI.EmberGlobalDraft[key] or ""
+            local at = 1
+            for i = 1, #values do if values[i] == value then at = i; break end end
+            local next_value = values[((at - 1 + dir) % #values) + 1]
+            UI.EmberGlobalDraft[key] = (next_value ~= "") and next_value or nil
+            if key == "display" and next_value == "480p" then
+              UI.Notif_queue.add("Ember 480p requires compatible video output", "warn")
+            end
+          end
+          AddCycle(label,
+            function()
+              local value = (UI.EmberGlobalDraft or {})[key]
+              if value == nil or value == "" then return "Unchanged" end
+              if value == "-" then return "Default" end
+              return value
+            end,
+            function() step_ember(-1) end,
+            function() step_ember(1) end,
+            function()
+              return tostring((UI.EmberGlobalDraft or {})[key] or "")
+                ~= tostring((UI.SettingsEntryEmberGlobal or {})[key] or "")
+            end)
+        end
+
         AddSection("POPSTARTER")
         -- No Profile preset row anymore (R3Z3N: dropped the inherited profile
         -- system): one user-defined path, empty = Automatic (the launch ladder:
@@ -5098,6 +5260,7 @@ UI = {
             or HideTextDirty()
             or KeyboardLayoutDirty()
             or LanguageDirty()
+            or EmberDirty()
             -- Value-cycle settings are tracked by snapshot comparison (their cycle
             -- handlers set NO dirty flag), so they must be compared here too -- else a
             -- lone change to one is dropped on BACK with no save prompt. Same
