@@ -4,7 +4,7 @@
 
 Use the [official POPSLoader 1.2.3 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) for the currently released stable line. Its ZIP uses the *legacy* `PS1_POPSLOADER/` root layout; it does **not** include PR #600's new Ember integration or its separate PSU.
 
-The updated installation layout below belongs to the **development Ember package** in [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600). When merged into `dev`, look for standalone `PS1_POPSLOADER.zip` and `PS1_POPSLOADER.psu` on the rolling prerelease. Do not mistake successful build tests for hardware approval.
+The updated installation layout below is available now in the **rolling Ember development package**, merged through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600). Download [PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip) or [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) from the rolling prerelease. Do not mistake successful build tests for hardware approval.
 
 ## Development ZIP deployment
 
