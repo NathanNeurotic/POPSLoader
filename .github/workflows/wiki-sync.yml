@@ -22,6 +22,8 @@ concurrency:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout maintained wiki source
         uses: actions/checkout@v5
@@ -37,8 +39,6 @@ jobs:
 
       - name: Clone existing native GitHub Wiki
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # No GitHub REST API can create the very first Wiki page.
