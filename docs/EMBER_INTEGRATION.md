@@ -5,6 +5,16 @@ This is adapted from [RiptOPL's Ember integration](https://github.com/NathanNeur
 Ember is a second PS1 emulator alongside POPStarter, *not* a VCD decoder.
 POPSLoader never bundles a console BIOS.
 
+## Development release package (PR #600)
+
+The new installable `PS1_POPSLOADER.zip` has `APPS/PS1_POPSLOADER/` with **exactly eight** files: `POPSLOADER.ELF`, `POPSTARTER.ELF`, `icon.sys`, `list.icn`, `copy.icn`, `del.icn`, `title.cfg`, and `APPINFO.PBT`. `POPS/` is populated from a pinned RiptOPL source revision, including its POPStarter versions and device modules; `EMBER/` is populated from a separately pinned RiptOPL Ember revision. The ZIP also carries `PS1_POPSLOADER.psu`.
+
+The standalone `PS1_POPSLOADER.psu` is a PS2 memory-card save with save-directory **header** `PS1_POPSLOADER` and only the eight files immediately below that header. There is no nested folder in the PSU; its contents are verified byte-for-byte against `APPS/PS1_POPSLOADER/`. Import the PSU to a memory card, or copy the application directory manually; deploy `POPS/` and `EMBER/` to the storage-device root independently.
+
+`EMBER/games/ExampleGame/ExampleGame.cue` and `ExampleGame.bin` illustrate the expected filenames. **ExampleGame.bin is intentionally empty and not playable.** Remove the example or replace it with your own legal disc image; do not mistake it for test media. Add your own BIOS and games separately. The Ember core is redistributed **unmodified** with `EMBER/LICENSE-BETA.txt` and its official-project link, under Gageformer's beta distribution conditions; no console BIOS is supplied.
+
+The [Ember Watch](../.github/workflows/ember-watch.yml) compares the official `ember.elf` SHA-256 with RiptOPL's current verified copy (including same-tag hotfixes). After merging into the repository's default branch, its weekly schedule can advance **only the Ember source pin on `dev`**, leaving the tested POPS pin fixed and dispatching a rolling build when needed. A missing digest, unverified RiptOPL copy, invalid MIPS ELF or missing licence stops the update.
+
 ## Device roots and library
 
 The PS1 game page appends Ember titles from the **same current device**
@@ -28,7 +38,7 @@ carousel. Do not claim full hardware parity.
     Ember Folder_COV.png     # Ember art by FOLDER name
     Ember Folder_ICO.png
   EMBER/
-    ember.elf               # user-provided current Ember core
+    ember.elf               # bundled unmodified Gageformer Ember beta core; licence included
     bios.bin                # user-owned 512 KiB PlayStation BIOS
     settings.txt            # optional native global settings
     games/
