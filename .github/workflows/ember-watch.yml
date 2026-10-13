@@ -1,0 +1,35 @@
+name: Ember Upstream Watch
+# Monitor-only until verified packaging and hardware support are ready.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 18 * * 1'
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Ember upstream release and bundled core
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          release=$(gh api repos/Gageformer/Ember/releases/latest)
+          tag=$(jq -r '.tag_name' <<< "$release")
+          url=$(jq -r '.html_url' <<< "$release")
+          asset=$(jq -c '[.assets[] | select(.name == "ember.elf")][0] // {}' <<< "$release")
+          digest=$(jq -r '.digest // empty' <<< "$asset")
+          updated=$(jq -r '.updated_at // empty' <<< "$asset")
+          {
+            echo "## Ember upstream watch"
+            echo "Latest release: [$tag]($url)"
+            echo "ember.elf updated: ${updated:-unknown}"
+            echo "Published digest: ${digest:-not provided}"
+            echo "POPSLoader Ember integration: [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ -z "$digest" ]]; then
+            echo "::warning::Ember release has no verifiable asset digest; review upstream manually."
+          fi
+          echo "Monitor-only: do not silently modify, download into or distribute the core."
