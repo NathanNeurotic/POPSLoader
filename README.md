@@ -11,15 +11,15 @@
 | Channel | Package | Who should use it |
 | --- | --- | --- |
 | **Stable 1.2.3** | [Official 1.2.3 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Existing POPStarter installations. Includes experimental, opt-in USB + UDPFS, **not Ember**. |
-| **Ember Beta 1** | [Versioned Ember beta](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0-ember-beta.1) | Opt-in Ember and POPStarter testing. Prerelease; **Ember launch, controller and VMC operation have not been hardware-certified**. |
+| **POPSLoader 1.3.0 (Ember Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with Gageformer's **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
 | Experimental | [Experimental channel](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) | Independent `experimental` branch; it may differ from both stable and rolling. |
 
 Passing CI proves builds and packages passed automated checks; **it does not prove that a game, device, controller or VMC works on a physical PS2**. Consult the [hardware QA matrix](QA_REGRESSION_MATRIX.md).
 
-## Install the Ember beta / rolling package
+## Install POPSLoader with Ember Beta-2
 
-Download the full [PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip) or the versioned-beta equivalent. Its device-root layout is:
+Download the full [POPSLoader 1.3.0 PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.0/PS1_POPSLOADER.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
 
 ~~~text
 APPS/
@@ -46,7 +46,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 ~~~
 
-1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.0/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
 2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
 3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
 4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.
@@ -68,7 +68,7 @@ HDD/PFS artwork belongs under `__common/POPS/ART/`. The stable 1.2.3 build inclu
 
 ### Ember options and safety
 
-Set Ember's Beta 2 global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
+Set the bundled **Ember Beta-2** core's global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
 
 Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL / Open-PS2-Loader](https://github.com/NathanNeurotic/Open-PS2-Loader) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
 
