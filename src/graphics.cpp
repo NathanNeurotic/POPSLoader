@@ -1160,12 +1160,16 @@ int GetInterlacedFrameMode()
 GSGLOBAL *getGSGLOBAL(){return gsGlobal;}
 
 void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 field, bool zbuffering, int psmz) {
+	int effective_height = ((interlace == GS_INTERLACED) && (field == GS_FRAME)) ? (height / 2) : height;
+	/* Mask the outgoing picture before the GS reprograms the TV signal. */
+	if (gsGlobal != NULL && (gsGlobal->Mode != mode || gsGlobal->Width != width ||
+	                         gsGlobal->Height != effective_height ||
+	                         gsGlobal->Interlace != interlace || gsGlobal->Field != field)) {
+		fadeScreenToBlack();
+	}
 	gsGlobal->Mode = mode;
 	gsGlobal->Width = width;
-	if ((interlace == GS_INTERLACED) && (field == GS_FRAME))
-		gsGlobal->Height = height / 2;
-	else
-		gsGlobal->Height = height;
+	gsGlobal->Height = effective_height;
 
 	gsGlobal->PSM = psm;
 	gsGlobal->PSMZ = psmz;
@@ -1295,6 +1299,31 @@ void initGraphics()
 	gsKit_vsync_wait();
 	flipScreen();
 
+}
+
+/* Fade the currently displayed Lua UI before changing executable.  This
+ * leaves device selection, the IOP and video timings to the child ELF. */
+void fadeScreenToBlack()
+{
+    if (gsGlobal == NULL)
+        return;
+    int oldAlpha = gsGlobal->PrimAlphaEnable;
+    bool oldVsync = vsync;
+    vsync = true; /* Even when the Lua UI is uncapped, the fade takes real frames. */
+    gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
+    gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
+    for (int frame = 1; frame <= 8; ++frame) {
+        gsKit_prim_sprite(gsGlobal, 0, 0, gsGlobal->Width, gsGlobal->Height, 0,
+                          GS_SETREG_RGBA(0, 0, 0, (frame * 0x80) / 8));
+        flipScreen();
+    }
+    gsGlobal->PrimAlphaEnable = oldAlpha;
+    /* Last opaque clears cover both buffers even on a dropped frame. */
+    gsKit_clear(gsGlobal, BLACK_RGBAQ);
+    flipScreen();
+    gsKit_clear(gsGlobal, BLACK_RGBAQ);
+    flipScreen();
+    vsync = oldVsync;
 }
 
 void flipScreen()
