@@ -68,6 +68,8 @@ extern void initGraphics();
 extern void clearScreen(Color color);
 
 extern void flipScreen();
+/* A VBLANK-paced black handoff for the Lua game/ELF launcher. */
+extern void fadeScreenToBlack();
 
 extern void graphicWaitVblankStart();
 
