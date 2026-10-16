@@ -1160,6 +1160,10 @@ int GetInterlacedFrameMode()
 GSGLOBAL *getGSGLOBAL(){return gsGlobal;}
 
 void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 field, bool zbuffering, int psmz) {
+	/* Mask the outgoing picture before the GS reprograms the TV signal. */
+	if (gsGlobal != NULL && (gsGlobal->Mode != mode || gsGlobal->Width != width ||
+	                         gsGlobal->Interlace != interlace || gsGlobal->Field != field))
+		fadeScreenToBlack();
 	gsGlobal->Mode = mode;
 	gsGlobal->Width = width;
 	if ((interlace == GS_INTERLACED) && (field == GS_FRAME))
@@ -1304,6 +1308,8 @@ void fadeScreenToBlack()
     if (gsGlobal == NULL)
         return;
     int oldAlpha = gsGlobal->PrimAlphaEnable;
+    bool oldVsync = vsync;
+    vsync = true; /* Even when the Lua UI is uncapped, the fade takes real frames. */
     gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
     gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
     for (int frame = 1; frame <= 8; ++frame) {
@@ -1317,6 +1323,7 @@ void fadeScreenToBlack()
     flipScreen();
     gsKit_clear(gsGlobal, BLACK_RGBAQ);
     flipScreen();
+    vsync = oldVsync;
 }
 
 void flipScreen()
