@@ -1160,16 +1160,16 @@ int GetInterlacedFrameMode()
 GSGLOBAL *getGSGLOBAL(){return gsGlobal;}
 
 void setVideoMode(s16 mode, int width, int height, int psm, s16 interlace, s16 field, bool zbuffering, int psmz) {
+	int effective_height = ((interlace == GS_INTERLACED) && (field == GS_FRAME)) ? (height / 2) : height;
 	/* Mask the outgoing picture before the GS reprograms the TV signal. */
 	if (gsGlobal != NULL && (gsGlobal->Mode != mode || gsGlobal->Width != width ||
-	                         gsGlobal->Interlace != interlace || gsGlobal->Field != field))
+	                         gsGlobal->Height != effective_height ||
+	                         gsGlobal->Interlace != interlace || gsGlobal->Field != field)) {
 		fadeScreenToBlack();
+	}
 	gsGlobal->Mode = mode;
 	gsGlobal->Width = width;
-	if ((interlace == GS_INTERLACED) && (field == GS_FRAME))
-		gsGlobal->Height = height / 2;
-	else
-		gsGlobal->Height = height;
+	gsGlobal->Height = effective_height;
 
 	gsGlobal->PSM = psm;
 	gsGlobal->PSMZ = psmz;
