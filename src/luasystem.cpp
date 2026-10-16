@@ -1079,6 +1079,7 @@ static int lua_loadELF(lua_State *L)
 		}
 		argv_static[argn] = NULL;
 		DPRINTF("# Loading ELF argv0='%s' argc=%d\n", argv_static[0], argn);
+		fadeScreenToBlack();
 		int rc;
 		if (rebootIOP != 0) {
 			rc = LoadELFFromFileExecPS2RebootIOP(elftoload, argn, argv_static);
@@ -1091,6 +1092,7 @@ static int lua_loadELF(lua_State *L)
 	}
 
 	DPRINTF("# Loading ELF argv0 default (argc=0)\n");
+	fadeScreenToBlack();
 	int rc;
 	if (rebootIOP != 0) {
 		rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
@@ -1145,6 +1147,7 @@ static int lua_loadELFWithPartition(lua_State *L)
 	}
 	argv_static[arg_count] = NULL;
 
+	fadeScreenToBlack();
 	if (arg_count > 0) {
 		rc = LoadELFFromFileExecPS2RebootIOPWithPartition(elftoload, partition_context, arg_count, argv_static);
 	} else {
@@ -1167,11 +1170,13 @@ static int lua_loadELFRebootIOP(lua_State *L)
 		snprintf(argv0_buf, sizeof(argv0_buf), "%s", argv0 ? argv0 : "");
 		argv_static[0] = argv0_buf;
 		argv_static[1] = NULL;
+		fadeScreenToBlack();
 		int rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 1, argv_static);
 		ClearExecKeepPfsMask();
 		lua_pushinteger(L, rc);
 		return 1;
 	}
+	fadeScreenToBlack();
 	int rc = LoadELFFromFileExecPS2RebootIOP(elftoload, 0, NULL);
 	ClearExecKeepPfsMask();
 	lua_pushinteger(L, rc);
@@ -1204,6 +1209,7 @@ static int lua_loadELFKeepIOP(lua_State *L)
 	argv_static[arg_count] = NULL;
 	DPRINTF("# KeepIOP ELF '%s' argc=%d\n", elftoload, arg_count);
 	for (int i = 0; i < arg_count; i++) DPRINTF("#  argv[%d]='%s'\n", i, argv_static[i]);
+	fadeScreenToBlack();
 	int rc;
 	if (arg_count > 0) {
 		rc = LoadELFFromFileKeepIOP(elftoload, arg_count, argv_static);
