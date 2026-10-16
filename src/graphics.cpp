@@ -1297,6 +1297,28 @@ void initGraphics()
 
 }
 
+/* Fade the currently displayed Lua UI before changing executable.  This
+ * leaves device selection, the IOP and video timings to the child ELF. */
+void fadeScreenToBlack()
+{
+    if (gsGlobal == NULL)
+        return;
+    int oldAlpha = gsGlobal->PrimAlphaEnable;
+    gsGlobal->PrimAlphaEnable = GS_SETTING_ON;
+    gsKit_set_primalpha(gsGlobal, GS_SETREG_ALPHA(0, 1, 0, 1, 0), 0);
+    for (int frame = 1; frame <= 8; ++frame) {
+        gsKit_prim_sprite(gsGlobal, 0, 0, gsGlobal->Width, gsGlobal->Height, 0,
+                          GS_SETREG_RGBA(0, 0, 0, (frame * 0x80) / 8));
+        flipScreen();
+    }
+    gsGlobal->PrimAlphaEnable = oldAlpha;
+    /* Last opaque clears cover both buffers even on a dropped frame. */
+    gsKit_clear(gsGlobal, BLACK_RGBAQ);
+    flipScreen();
+    gsKit_clear(gsGlobal, BLACK_RGBAQ);
+    flipScreen();
+}
+
 void flipScreen()
 {
 	//gsKit_set_finish(gsGlobal);
