@@ -1,4 +1,4 @@
-Last updated: 2026-10-13. **Official stable line: 1.2.3** (2026-10-13), including an opt-in **experimental USB + UDPFS VCD** path. Ember integration and eight-file flat-PSU packaging are development work in PR #600, with physical PS2 launches, controller retention and VMC persistence still unverified. Ember i.Link is explicitly deferred until RiptOPL proves reliable hardware support. CI/prerelease publication does not establish console compatibility; see `QA_REGRESSION_MATRIX.md`.
+Last updated: 2026-10-19. **Official release: 1.3.1**. At this cut, `master`, `dev`, and `experimental` share the same source and `v1.3.1` stamp. Includes the bounded controller-free boot fix (#603), enlarged `_ICO.png` disc artwork (#568), current installable ZIP/flat-PSU packaging, and the existing Ember Beta-2 and USB + UDPFS options. **Physical-console verification remains pending** for the new fixes, Ember launch/controller/VMC behavior, and UDPFS; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 stay open for reporter verification. Ember i.Link remains deferred.
 
 # STATE
 

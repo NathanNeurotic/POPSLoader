@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-09-30 (1.2.2 release cut)
-Released line: **1.2.2** (2026-09-30; previously 1.2.1 2026-09-11). At this cut, `master`, `dev`, and `experimental` share one commit and the `v1.2.2` stamp. 1.2.2 changes documentation only; the launcher code is identical to 1.2.1 apart from the version stamp. Earlier rows retain their original artifact identity and hardware status.
+Last updated: 2026-10-19 (1.3.1 release cut)
+Released line: **1.3.1** (2026-10-19). `master`, `dev`, and `experimental` share the release source and `v1.3.1` stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
@@ -24,6 +24,12 @@ This matrix tracks current behavior across:
 - repository automation workflows that are not runtime/hardware gates.
 
 This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
+
+## 1.3.1 release validation (2026-10-19)
+
+- Host controller harness: 13/13 passed; real-Lua disc layout: 30/30 passed; embedded Lua runtime: 60/60 passed on the pre-release source. Release-stamp and package changes are checked again before publication.
+- Canonical GitHub Actions builds gate channel publication; the official release reuses the exact successful master CI artifact and verifies ZIP/PSU contents and checksums.
+- Hardware result: **Unknown (verify on hardware)**. No console test was performed for this release. #603 and #568 remain open for their reporters to close.
 
 ## Controller boot and disc-icon follow-up (2026-10-18)
 

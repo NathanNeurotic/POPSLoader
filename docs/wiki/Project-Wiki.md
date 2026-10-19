@@ -2,7 +2,7 @@
 
 The maintained project guide for **POPSLoader**, alongside the preserved historical POPStarter reference. The [native GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) is synchronized from this repository's maintained Markdown and mirrored in the [GitHub Pages project section](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html); the historical `.research/wiki/` pages are archival and remain unchanged.
 
-**Release status (October 2026):** stable **1.2.3** is published. Ember support merged into `dev` via [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and is available in the [rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release), **not** stable 1.2.3. Experimental UDPFS is present in 1.2.3 but **not hardware-certified**. Do not infer hardware compatibility from green CI.
+**Release status (October 19, 2026):** official **[1.3.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.1)** includes controller-free boot handling, larger disc artwork, the Ember Beta-2 option and full ZIP/flat-PSU installation kits. Rolling and experimental are built from the same source at this cut. Ember and USB + UDPFS remain experimental and **not hardware-certified**. Do not infer hardware compatibility from green CI.
 
 ## Start here
 

@@ -1,33 +1,27 @@
-# POPSLoader 1.2.3 — Disc Icons, USB Recovery and Experimental UDPFS
+# POPSLoader 1.3.1
 
-This release advances the official source from 1.2.2. It incorporates the reviewed
-October 2026 storage/network integration and maintenance changes.
+This maintenance release includes the controller-free boot fix and larger disc artwork, with the existing Ember Beta-2 option and complete installation kit.
 
-## Highlights
+## Changes
 
-- RiptOPL-compatible PS1 disc icons: exact VCD basename + `_ICO.png` from
-  the same `ART/` folder as `_COV.png`, displayed beside the selected cover.
-  Both use the asynchronous image-loading path. HDD/PFS uses
-  `hdd0:__common/POPS/ART/`; UDPFS also checks artwork beside the VCD.
-- Fixed a USB initialization-success flag that incorrectly latched failed
-  module initialization, preventing its bounded retry.
-- Includes the new Ethernet **SMBv1 / USB + UDPFS** selection and embedded
-  Okeanos86 USB + UDPFS BDMA support. Existing SMBv1 remains selectable.
-- Updated documentation, hardware QA matrix, and executable Lua host tests.
+- **Boot without a controller in port 1 (#603):** disconnected/error pads stop initialization immediately; transient readiness waits are bounded to one second. The port remains open for a controller connected later. The error-screen button poll also returns without waiting on unavailable input.
+- **Readable disc artwork (#568):** matching `<gamefilename>_ICO.png` art now draws at approximately 45% of the case height (112-pixel cap), inside the preview panel and clear of game titles. Loading stays asynchronous.
+- Includes the current black-fade launch/video transitions, Ember integration and complete installable ZIP / eight-file flat PSU package from the development channel.
+- **Issues #603 and #568 remain open for their reporters to verify and close.**
 
-## Compatibility disclosures
+## Downloads
 
-- **USB + UDPFS is experimental.** Native PS2 build and host-Lua tests have
-  passed, but end-to-end PS2 VCD launch, multi-USB behavior, and controller
-  recovery have NOT been certified on physical hardware. Treat the network
-  option as opt-in; see `docs/UDPFS_BDMA.md` for setup and limitations.
-- **Issue #577 remains open:** a reported Samsung external exFAT HDD was
-  enumerated by BDM but not mounted. This release corrects the USB readiness
-  latch; it does not establish that the reporter's disk now works, and it
-  does not require or advise reformatting on speculation.
-- Normal POPStarter, local storage and SMB launch paths require regression
-  checks on hardware before claiming broader parity.
-- Third-party drivers retain their upstream attribution and licenses.
+- `PS1_POPSLOADER.zip`: device-root installation kit with `APPS/PS1_POPSLOADER/`, pinned `POPS/` and `EMBER/` trees, and the flat PSU.
+- `PS1_POPSLOADER.psu`: the same eight app files directly under the `PS1_POPSLOADER` save header; POPS and EMBER support folders are installed separately from the ZIP.
+- `POPSLOADER.ELF`: standalone executable.
+- `BUILD-MANIFEST.txt` and `SHA256SUMS.txt`: exact source/CI provenance and asset checksums.
 
-**This official release has passed automated build and source-level test gates;
-physical-console UDPFS support remains experimental and unverified.**
+## Validation and limitations
+
+Automated gates cover the real controller source, embedded Lua runtime, NTSC/PAL disc layout, PNG decoding, UDPFS configuration/integration and package contents. The official assets come from the exact passing master CI run.
+
+**Physical-console verification of #603 and #568 is pending.** Ember game launch, controller behavior after handoff, writable VMC saves and UDPFS/storage compatibility still require recorded PS2 tests. Ember and USB + UDPFS remain experimental options within this official launcher release. i.Link for Ember remains deferred.
+
+Ember is Gageformer's existing, unmodified **Beta-2**, not a new emulator release. Its upstream license ships with the kit. Supply your own BIOS, games and proprietary Sony POPS components as needed; none are provided. `ExampleGame.bin` is an empty placement example.
+
+[Installation guide](https://github.com/NathanNeurotic/POPSLoader/wiki/Installation-Guide) ? [Hardware QA matrix](https://github.com/NathanNeurotic/POPSLoader/blob/master/QA_REGRESSION_MATRIX.md) ? [Ember Beta-2](https://github.com/Gageformer/Ember/releases/tag/Beta-2)

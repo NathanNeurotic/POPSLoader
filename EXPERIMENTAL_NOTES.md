@@ -1,3 +1,22 @@
+# POPSLoader ? Experimental Release
+
+## 1.3.1 channel cut (October 19, 2026)
+
+**Experimental is a prerelease channel.** At this cut, `master`, `dev` and
+`experimental` share the same source and **v1.3.1** stamp. The official versioned
+release is [POPSLoader 1.3.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.1).
+
+- Boot continues without a controller in port 1; readiness is bounded (#603).
+- `_ICO.png` disc art grows to about 45% of case height, capped at 112 pixels (#568).
+- Includes the existing Ember Beta-2 option, black-fade transitions and complete
+  ZIP / flat-PSU installation kit.
+- Both issues remain open for reporter verification. Hardware validation of
+  the new fixes, Ember and UDPFS remains pending; see `QA_REGRESSION_MATRIX.md`.
+
+---
+
+## Historical channel notes
+
 # POPSLoader — Experimental USB + UDPFS Alpha
 
 **Opt-in test release, not official stable software.** The version field may
