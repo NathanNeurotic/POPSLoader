@@ -54,7 +54,22 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><p><strong>Stable baseline:</strong> 1.2.3. The rolling <code>dev</code> channel is a <strong>prerelease</strong>;<br />
+  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><h2 id="131-channel-cut-october-19-2026">1.3.1 channel cut (October 19, 2026)</h2>
+<p><strong>Rolling is a prerelease channel.</strong> At this cut, <code>master</code>, <code>dev</code> and<br />
+<code>experimental</code> share the same source and <strong>v1.3.1</strong> stamp. The official versioned<br />
+release is <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.1">POPSLoader 1.3.1</a>.</p>
+<ul>
+<li>Boot continues without a controller in port 1; readiness is bounded (#603).</li>
+<li><code>_ICO.png</code> disc art grows to about 45% of case height, capped at 112 pixels (#568).</li>
+<li>Includes the existing Ember Beta-2 option, black-fade transitions and complete<br />
+  ZIP / flat-PSU installation kit.</li>
+<li>Both issues remain open for reporter verification. Hardware validation of<br />
+  the new fixes, Ember and UDPFS remains pending; see <code>QA_REGRESSION_MATRIX.md</code>.</li>
+</ul>
+<hr />
+<h2 id="historical-channel-notes">Historical channel notes</h2>
+<h1 id="popsloader-rolling-development-release">POPSLoader — Rolling Development Release</h1>
+<p><strong>Stable baseline:</strong> 1.2.3. The rolling <code>dev</code> channel is a <strong>prerelease</strong>;<br />
 it is not an official hardware-verified compatibility release.</p>
 <h3 id="ember-integration-and-installable-development-package-pr-600">Ember integration and installable development package (PR #600)</h3>
 <ul>
@@ -99,7 +114,7 @@ it is not an official hardware-verified compatibility release.</p>
 <p>The launcher code is identical to 1.2.1 apart from the version stamp. 1.2.1 included the RGB PNG alpha correction (#575), MX4SIO cover/details path correction (#570), and SMB POPStarter handoff correction (#571). Host tests and CI do not replace PS2 testing; hardware validation for those changes remains pending. See <a href="state.html">STATE.md</a> and <a href="qa-regression-matrix.html">QA_REGRESSION_MATRIX.md</a>.</p>
 <p>The versioned release is <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.2">POPSLoader 1.2.2</a>. Floating channel builds may advance after this cut.</p>
 <hr />
-<h2 id="historical-channel-notes">Historical channel notes</h2>
+<h2 id="historical-channel-notes_1">Historical channel notes</h2>
 <p>The entries below describe earlier builds and their validation at the time.</p>
 <h2 id="just-graduated-from-the-experimental-channel-2026-07-20-the-storage-wave"> Just graduated from the experimental channel (2026-07-20 — the storage wave)</h2>
 <p>Six experimental builds proved out on real hardware in one intensive day and have all landed here:</p>

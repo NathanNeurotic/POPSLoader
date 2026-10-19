@@ -55,7 +55,7 @@
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>README — Overview</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/README.md">view on GitHub ↗</a></p><p><img alt="POPSLoader interface" src="https://github.com/user-attachments/assets/0a5ded44-3012-4608-bddf-9adbf1173cc6" /></p>
-<p><strong>POPSLoader</strong> is a PlayStation 2 PS1-game browser and launcher. It supports the original <strong>POPStarter + Sony POPS</strong> VCD workflow, and the <strong>Ember</strong> PS1 core as a separate emulator in development releases. Browse by storage device, launch titles, manage settings and artwork, or return to BOOT.ELF.</p>
+<p><strong>POPSLoader</strong> is a PlayStation 2 PS1-game browser and launcher. It supports the original <strong>POPStarter + Sony POPS</strong> VCD workflow, and the <strong>Ember</strong> PS1 core as a separate, experimental emulator. Browse by storage device, launch titles, manage settings and artwork, or return to BOOT.ELF.</p>
 <p><strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases">Downloads</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/wiki">GitHub Wiki</a> · <a href="https://nathanneurotic.github.io/POPSLoader/popsloader.html">Website</a> · <a href="state.html">Known issues / hardware status</a> · <a href="https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ">Rolling archive</a></strong></p>
 <h2 id="choose-your-download">Choose your download</h2>
 <table>
@@ -68,9 +68,14 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Stable 1.2.3</strong></td>
-<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">Official 1.2.3 release</a></td>
-<td>Existing POPStarter installations. Includes experimental, opt-in USB + UDPFS, <strong>not Ember</strong>.</td>
+<td><strong>Official 1.3.1</strong></td>
+<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.1">Official 1.3.1 release</a></td>
+<td>Current versioned release: controller-free boot fix, larger disc artwork, and the existing experimental Ember Beta-2 / USB + UDPFS options.</td>
+</tr>
+<tr>
+<td>Prior stable 1.2.3</td>
+<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3">Release 1.2.3</a></td>
+<td>Preserved POPStarter-only baseline without Ember.</td>
 </tr>
 <tr>
 <td><strong>POPSLoader 1.3.0 (Ember Beta-2)</strong></td>
@@ -91,7 +96,7 @@
 </table>
 <p>Passing CI proves builds and packages passed automated checks; <strong>it does not prove that a game, device, controller or VMC works on a physical PS2</strong>. Consult the <a href="qa-regression-matrix.html">hardware QA matrix</a>.</p>
 <h2 id="install-popsloader-with-ember-beta-2">Install POPSLoader with Ember Beta-2</h2>
-<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.0/PS1_POPSLOADER.zip">POPSLoader 1.3.0 PS1_POPSLOADER.zip</a> or the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip">latest rolling package</a>. Its device-root layout is:</p>
+<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.1/PS1_POPSLOADER.zip">POPSLoader 1.3.1 PS1_POPSLOADER.zip</a> or the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip">latest rolling package</a>. Its device-root layout is:</p>
 <pre><code class="language-text">APPS/
   PS1_POPSLOADER/
     POPSLOADER.ELF
@@ -116,7 +121,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 </code></pre>
 <ol>
-<li><strong>Application:</strong> Copy <code>APPS/PS1_POPSLOADER/</code> to your launcher’s APPS location and run <code>POPSLOADER.ELF</code>. Alternatively import <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.0/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a></strong> using a PS2 PSU-capable save manager. Its PS2 save header is named <code>PS1_POPSLOADER</code> and contains <strong>exactly those eight direct files, with no nested folder</strong>.</li>
+<li><strong>Application:</strong> Copy <code>APPS/PS1_POPSLOADER/</code> to your launcher’s APPS location and run <code>POPSLOADER.ELF</code>. Alternatively import <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.1/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a></strong> using a PS2 PSU-capable save manager. Its PS2 save header is named <code>PS1_POPSLOADER</code> and contains <strong>exactly those eight direct files, with no nested folder</strong>.</li>
 <li><strong>POPStarter:</strong> Copy <code>POPS/</code> to the storage-device root. Add your own lawfully obtained Sony POPS files (<code>POPS.ELF</code>, <code>POPS.PAK</code>, <code>POPS_IOX.PAK</code> and <code>IOPRP252.IMG</code>) as required. Those copyrighted emulator components are <strong>not included</strong>.</li>
 <li><strong>Ember:</strong> Copy <code>EMBER/</code> to the same device root. Add <strong>your own 512 KiB PlayStation BIOS</strong> at <code>EMBER/bios.bin</code> and your own disc images under <code>EMBER/games/&lt;GameFolder&gt;/</code>, with a <code>.cue</code> and matching <code>.bin</code> tracks. <strong>No BIOS or commercial game images are provided</strong>. The included <code>ExampleGame.bin</code> is intentionally empty: delete or replace this non-playable example.</li>
 <li><strong>Artwork:</strong> POPStarter uses <code>POPS/&lt;GameName&gt;.VCD</code>; Ember uses <code>EMBER/games/&lt;GameFolder&gt;/</code>. For removable storage, covers go in the device-root <code>ART/</code> as <code>&lt;VCD-basename&gt;_COV.png</code> or <code>&lt;Ember-folder&gt;_COV.png</code>; <code>_ICO.png</code> is the optional disc icon.</li>
