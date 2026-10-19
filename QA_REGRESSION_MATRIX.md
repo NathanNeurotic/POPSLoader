@@ -25,6 +25,13 @@ This matrix tracks current behavior across:
 
 This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
 
+## Controller boot and disc-icon follow-up (2026-10-18)
+
+| Case | Evidence / result | Remaining verification |
+|---|---|---|
+| #603: boot with no controller in port 1 | Reporter reports black screen until plugging in a controller. Source: unbounded `waitPadReady` before Lua startup. Fix returns on disconnect/error and bounds transient states; host pad harness passes 13 scripted cases. | Unknown (verify on hardware): boot with empty port 1, connect pad after menu appears, USB/BT-only boot, normal digital/DualShock boot, MMCE pad reinit. Issue stays open. |
+| #568: selected disc icon readability | happyh3arts reports icons visible but too small. Enlarged from a 48px cap to about 45% of case height, capped at 112px. Host Lua draw-block checks cover NTSC/PAL, details lift, aspect, panel bounds and missing/disabled art. | Unknown (verify on hardware): NTSC/PAL/CRT readability, details on/off and no title/footer overlap. Issue stays open. |
+
 ## Follow-up maintenance (2026-10-13; host-only until PS2 validation)
 
 - Issue #577: a failed native USB module load no longer sets the Lua USB-ready

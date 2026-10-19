@@ -1,3 +1,8 @@
+[Unreleased]
+- Fix: boot without a controller in port 1; disconnected/error pads abort setup, and transient readiness waits are bounded (#603).
+- UI: enlarge optional disc artwork from the 48px cap to roughly half the jewel-case height; keep it clear of the game list (#568).
+- Hardware: reporter verification pending; both issues remain open.
+
 [1.2.2] - September 30th, 2026
 - Docs: BDMAssault exFAT drivers go only in mc?:/POPSTARTER/ (usbd.irx, usbhdfsd.irx). The docs site also listed mc?:/SYS-CONF/, which POPStarter never reads; replacing FreeMcBoot's drivers there can stop FMCB from booting.
 - Docs site: the PS2 orb cursor and favicon set are now built from the tracked site source instead of existing only on gh-pages.

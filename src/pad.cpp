@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 #include "include/pad.h"
 #include "include/dprintf.h"
 
@@ -14,24 +15,20 @@ static int port, slot;
 
 int waitPadReady(int port, int slot)
 {
-    int state;
-    int lastState;
-    char stateString[16];
-
-    state = padGetState(port, slot);
-    lastState = -1;
-    while((state != PAD_STATE_STABLE) && (state != PAD_STATE_FINDCTP1)) {
-        if (state != lastState) {
-            padStateInt2String(state, stateString);
-            DPRINTF("Please wait, pad(%d,%d) is in state %s\n",
-                       port, slot, stateString);
-        }
-        lastState = state;
-        state=padGetState(port, slot);
-    }
-    // Were the pad ever 'out of sync'?
-    if (lastState != -1) {
-        DPRINTF("Pad OK!\n");
+    // Called before the Lua UI starts and again after SIO2 reinitialization.
+    // An empty port must not hold either path hostage. Keep the port open so
+    // normal per-frame reads can see a controller connected later.
+    const clock_t started = clock();
+    for (;;) {
+        const int state = padGetState(port, slot);
+        if (state == PAD_STATE_STABLE || state == PAD_STATE_FINDCTP1)
+            break;
+        if (state == PAD_STATE_DISCONN || state == PAD_STATE_ERROR)
+            return -1;
+        // clock() is microseconds on EE; CLOCKS_PER_SEC keeps the bound explicit.
+        if (clock() - started >= CLOCKS_PER_SEC)
+            return -1;
+        usleep(1000);
     }
     return 0;
 }
@@ -47,7 +44,7 @@ int initializePad(int port, int slot)
     int modes;
     int i;
 
-    waitPadReady(port, slot);
+    if (waitPadReady(port, slot) != 0) return 0;
 
     // How many different modes can this device operate in?
     // i.e. get # entrys in the modetable
@@ -97,13 +94,13 @@ int initializePad(int port, int slot)
     // When using MMODE_LOCK, user cant change mode with Select button
     padSetMainMode(port, slot, PAD_MMODE_DUALSHOCK, PAD_MMODE_LOCK);
 
-    waitPadReady(port, slot);
+    if (waitPadReady(port, slot) != 0) return 0;
     DPRINTF("infoPressMode: %d\n", padInfoPressMode(port, slot));
 
-    waitPadReady(port, slot);
+    if (waitPadReady(port, slot) != 0) return 0;
     DPRINTF("enterPressMode: %d\n", padEnterPressMode(port, slot));
 
-    waitPadReady(port, slot);
+    if (waitPadReady(port, slot) != 0) return 0;
     actuators = padInfoAct(port, slot, -1, 0);
     DPRINTF("# of actuators: %d\n",actuators);
 
@@ -115,7 +112,7 @@ int initializePad(int port, int slot)
         actAlign[4] = 0xff;
         actAlign[5] = 0xff;
 
-        waitPadReady(port, slot);
+        if (waitPadReady(port, slot) != 0) return 0;
         DPRINTF("padSetActAlign: %d\n",
                    padSetActAlign(port, slot, actAlign));
     }
@@ -123,19 +120,19 @@ int initializePad(int port, int slot)
         DPRINTF("Did not find any actuators.\n");
     }
 
-    waitPadReady(port, slot);
+    if (waitPadReady(port, slot) != 0) return 0;
 
     return 1;
 }
 
 int isButtonPressed(u32 button)
 {
-   int ret;
    u32 paddata;
    
    struct padButtonStatus padbuttons;
    
-   while (((ret=padGetState(0, 0)) != PAD_STATE_STABLE)&&(ret!=PAD_STATE_FINDCTP1)&&(ret != PAD_STATE_DISCONN)); // more error check ?
+   const int state = padGetState(0, 0);
+   if (state != PAD_STATE_STABLE && state != PAD_STATE_FINDCTP1) return 0;
    if (padRead(0, 0, &padbuttons) != 0)
    {
     	paddata = 0xffff ^ padbuttons.btns;

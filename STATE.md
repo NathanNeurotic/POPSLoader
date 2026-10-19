@@ -211,6 +211,11 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## Known Issues *(canonical — the single list; README / AGENTS / ROLLING_NOTES point here)*
 
+**Reporter verification pending (2026-10-18):**
+- **#603, boot without a controller in port 1:** the pre-Lua readiness loop waited forever on a disconnected port. It now returns on disconnect/error and bounds transient waits to one second; callers stop pad setup on failure without closing the port. Host-scripted pad states cover absent/stuck pads, normal setup and later button reads. Hardware status: **Unknown (verify on hardware)**. Leave the issue open for the reporter.
+- **#568, disc icons too small:** reporter happyh3arts confirms icons are visible but too small (2026-10-18 follow-up). The icon now scales to about 45% of the case height (112px cap, formerly 48px), overlapping the lower-left case corner within the preview panel to avoid game titles. Async lookup and loading are unchanged. Hardware status for the enlarged layout: **Unknown (verify on hardware)**. Leave the issue open for the reporter.
+
+
 **Open (awaiting the hardware retest):**
 - **RGB PNG covers invisible (#575)** — release 1.2.0 reporter observed RGB covers invisible and equivalent RGBA covers visible on SCPH-70004 over SMB. The decoder now routes RGB (including promoted grayscale) through the existing CT32 RGBA conversion, retaining the opaque filler as explicit alpha instead of using CT24 with gsKit's zero `TEXA.TA0`. Existing RGBA transparency and indexed textures are preserved. This is separate from the earlier RGB stride correction below. Hardware status: **Unknown (verify on hardware)**; see the issue #575 entry in `QA_REGRESSION_MATRIX.md`.
 - ~~**"No USB backend detected"** (issue #508)~~ — **RESOLVED on hardware** (sAGA, EXP23-29 era, 2026-07-20): fixed by the R3Z BDM driver-blob adoption (`c1debd1`, EXP7) + the boot-time usbmass load; USB confirmed working through the whole 2026-07-20 storage wave. `-Os` was exonerated (the bug outlived its revert). NOTE the same `c1debd1` half-swap is what broke MX4SIO for five days — see the matched-driver-set invariant below.

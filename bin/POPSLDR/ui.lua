@@ -3479,12 +3479,15 @@ UI = {
             local icon = UI.CoverCache.last_icon_img
             local iw, ih = Graphics.getImageWidth(icon), Graphics.getImageHeight(icon)
             if iw > 0 and ih > 0 then
-              local icon_box = math.min(48, math.max(32, Round((frame_h or draw_h) * 0.20)))
+              -- About half the case height: the old 48px cap made disc art
+              -- unreadable on a TV. Overlap the lower-left case corner and
+              -- keep it inside the preview panel, clear of the game-name list.
+              local icon_box = math.min(112, Round((frame_h or draw_h) * 0.45))
               local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
               local icon_w, icon_h
               if ratio >= 1 then icon_w = icon_box; icon_h = Round(icon_box / ratio)
               else icon_h = icon_box; icon_w = Round(icon_box * ratio) end
-              Graphics.drawScaleImage(icon, Round(frame_x - icon_w + 10),
+              Graphics.drawScaleImage(icon, math.max(draw_x, Round(frame_x - icon_w + 10)),
                 Round(draw_y + (frame_h or draw_h) - icon_h - 8), icon_w, icon_h)
             end
           end
