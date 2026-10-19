@@ -42,6 +42,8 @@ jobs:
             || python3 -m pip install --quiet --break-system-packages lupa \
             || { echo "lupa install failed on ubuntu (infra); skipping"; exit 0; }
           python3 tools/host_harness.py
+          python3 tools/pad_harness.py
+          python3 tools/test_disc_layout.py
           python3 tools/test_udpfs_config_runtime.py
       - name: Verify Okeanos UDPFS integration and pinned binaries
         shell: bash
