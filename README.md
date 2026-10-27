@@ -62,10 +62,10 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | Internal exFAT HDD (BDMA/ATA) | Root `POPS/` on mounted `mass:` | Library scan host-tested; console handoff unverified |
 | Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
 | SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
-| USB + UDPFS | Opt-in `udpfs:/POPS/` read-only VCD route | Enumeration host-tested; console handoff unverified |
+| UDPFS | Development: full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
 | i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
 
-HDD/PFS artwork belongs under `__common/POPS/ART/`. The stable 1.2.3 build includes **opt-in experimental USB + UDPFS VCD support**; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
+HDD/PFS artwork belongs under `__common/POPS/ART/`. The development UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
 ### Ember options and safety
 
@@ -78,7 +78,7 @@ Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/E
 - Cover-art PS1 browser for POPStarter VCD games and separate labeled Ember games.
 - USB, MX4SIO, MMCE, APA/PFS and internal exFAT device flows, plus network modes.
 - Per-device game visibility, settings, game lists and RiptOPL-style artwork.
-- SMBv1 and opt-in USB + UDPFS VCD browsing with explicit network configuration.
+- SMBv1 and opt-in UDPFS VCD browsing with explicit network configuration.
 - Adjustable video, boot page, display and menu navigation; Triangle Exit menu and BOOT.ELF chainloading.
 
 **Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link remains unsupported; UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
@@ -270,7 +270,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 
 *   **[israpps (El_isra)](https://github.com/israpps)**: Original POPSLoader project creator and BDM Assault reference work.
 *   **[Gageformer](https://github.com/Gageformer/Ember)**: Ember PS1 emulator, bundled unmodified with its beta licence.
-*   **[Okeanos](https://github.com/Okeanos86/BDMAssault)**: BDM-UDPFS Assault Alpha PS1 network fallback.
+*   **[Okeanos](https://github.com/Okeanos86/BDMAssault)**: UDPFS Assault PS1 network read/write driver.
 *   **Daniel Santos**: Creator of the Enceladus runtime foundation.
 *   **krHACKen**: Author of POPStarter.
 *   **[AstroSnail](https://github.com/AstroSnail)**: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See [provenance](.research/research/original-git-provenance.md).

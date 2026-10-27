@@ -40,6 +40,14 @@ for part in ('POPS', 'EMBER'):
             raise SystemExit(f"Missing or modified reference payload: {path}")
     print(f"{part}: verified {len(files)} pinned RiptOPL files")
 PY
+# Replace the historical reference bundle's Alpha UDPFS payload and notices.
+# The existing .udpfs suffix now always means the full-network 1.0.0 release.
+cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
+rm -rf dist_root/POPS/UDPFS-NOTICES
+mkdir -p dist_root/POPS/UDPFS-NOTICES
+cp docs/third_party/okeanos_udpfs/* dist_root/POPS/UDPFS-NOTICES/
+cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
+
 test -s dist_root/EMBER/ember.elf
 test -s dist_root/EMBER/LICENSE-BETA.txt
 test ! -e dist_root/EMBER/bios.bin
@@ -64,3 +72,4 @@ cp dist_root/PS1_POPSLOADER.psu PS1_POPSLOADER.psu
 (cd dist_root && find APPS POPS EMBER -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null)
 (cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
 
+python3 tools/test_udpfs_integration.py POPSLOADER.zip

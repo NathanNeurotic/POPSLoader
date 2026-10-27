@@ -1,0 +1,18 @@
+{
+  "1.0.0": {
+    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
+    "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
+    "files": {
+      "usbd.irx.udpfs": {
+        "source": "udp_fs_assault.irx",
+        "sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7",
+        "size": 44597
+      },
+      "usbhdfsd.irx.udpfs": {
+        "source": "usbd_bd_assault.irx",
+        "sha256": "70a369e47745e7f995fa771edbbfed086727b759fba915a7070c0fbcf061dd34",
+        "size": 34508
+      }
+    }
+  }
+}

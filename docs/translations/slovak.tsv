@@ -70,17 +70,18 @@ Confirm
 Connecting to SMB...	
 Controller	
 Could not install the SMB modules\nCheck the memory card is inserted and has free space	
-Could not open USB+UDPFS	
+Could not open UDPFS	
 Could not open the SMB share	
+Could not read UDPFS configuration:\n%s	
 Could not start MX4SIO	
 Could not start the internal drive	
 Could not write UDPFS configuration:\n%s	
 Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	
 Couldn't read that game selection	
 Couldn't restore BDMA mode	
-Couldn't save settings\n%s may be read-only	
 Couldn't save settings -- POPSTARTER folder NOT deleted	
 Couldn't save settings -- POPSTARTER folder NOT restored	
+Couldn't save settings\n%s may be read-only	
 Couldn't update hidden state	
 Couldn't write %s	
 Couldn't write .hide to the HDD	
@@ -227,7 +228,6 @@ MX4SIO driver failed to load\ntry the page again, or reboot
 Memory Card	
 Menu	
 Missing %s	
-Missing %s -- UDPFS requires the POPS folder on each USB volume	
 Missing BDMA UI source (tried):	
 Missing BDMA source (tried):	
 Missing SMB module (tried):	
@@ -269,8 +269,8 @@ Opening HDD list...
 Opening MMCE list...	
 Opening MX4SIO list...	
 Opening SMB list...	
+Opening UDPFS...	
 Opening USB list...	
-Opening USB+UDPFS...	
 Opening exFAT HDD list...	
 Operation failed	
 Overscan (CRT inset)	
@@ -311,7 +311,7 @@ Reverting in
 Right aligned	
 SMB (v1)	
 SMB / Network	
-SMB already owns the network adapter\nRestart POPSLoader to switch to USB+UDPFS	
+SMB already owns the network adapter\nRestart POPSLoader to switch to UDPFS	
 SMB connect failed	
 SMB connection dropped	
 SMB login failed\ncheck User / Password	
@@ -367,24 +367,25 @@ This backend isn't implemented yet
 This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	
 Timing	
 Triangle	
+UDPFS (network R/W)	
 UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP	
+UDPFS IPCONFIG.DAT conflicts with menu settings:\n%s\nEdit it to match %s %s (not overwritten)	
 UDPFS SMAP driver failed to load	
-UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n%s\nEdit it to match %s %s (not overwritten)	
 UDPFS already owns the network adapter.\nRestart POPSLoader to switch to SMBv1.	
+UDPFS config must contain 1-120 bytes:\n%s	
 UDPFS driver staging failed -- launch cancelled	
 UDPFS filesystem module failed to load	
 UDPFS menu modules are not available	
+UDPFS menu support is missing from this build	
 UDPFS module initialization failed	
 UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network.	
 UDPFS network initialization incomplete\nRestart POPSLoader	
 UDPFS network stack failed to load	
+UDPFS requires POPSTARTER modules on a memory card	
 UDPFS server unavailable\nCheck your network and UDPFS server	
+UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server	
 UI text hidden	
 UI text shown	
-USB+UDPFS menu support is missing from this build	
-USB+UDPFS requires POPSTARTER modules on a memory card	
-USB+UDPFS requires a USB volume with POPS/ installed	
-USB+UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server	
 Unable to keep Ember PFS mount	
 Unchanged	
 Unknown BDMA mode:	

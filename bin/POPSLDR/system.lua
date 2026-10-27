@@ -4379,7 +4379,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
-  UDPFS = ".udpfs"  -- Okeanos BDM-UDPFS Assault pair
+  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.0 full network read/write
 }
 
 -- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
@@ -7080,7 +7080,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return true
   end
 
-  if not PLDR.EnsurePopstarterUiAssets() then
+  -- EnsurePopstarterDir already installs embedded icons. UDPFS must not
+  -- probe an external backend for legacy overrides.
+  if selected ~= "UDPFS" and not PLDR.EnsurePopstarterUiAssets() then
     return false
   end
 
@@ -7092,7 +7094,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return false
   end
 
-  if launch_fast == true then
+  if launch_fast == true or selected == "UDPFS" then
+    -- UDPFS always uses the released embedded pair, including Settings apply:
+    -- a stale external Alpha override must not reinstall the removed backend.
     -- Launch staging: two embed pastes, nothing else. No backend init, no
     -- external probing, no tmp/.bak. Self-healing: the marker goes last, so
     -- any failure leaves marker ~= target and the next launch re-stages.
@@ -7113,12 +7117,13 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
         return false
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteBytesDirectBounded, bytes, dest)
+      local writer = launch_fast == true and WriteBytesDirectBounded or WriteBytesAtomicBounded
+      local ok_write, wrote = pcall(writer, bytes, dest)
       if not ok_write or not wrote then
         return false
       end
     end
-    if not WriteBdmaModeMarker(selected, true) then
+    if not WriteBdmaModeMarker(selected, launch_fast) then
       return false
     end
     return true
@@ -7237,6 +7242,14 @@ function PLDR.IsBdmaModeEquipped(mode_key)
   end
   if not have_all then
     return false
+  end
+  if target == "UDPFS" then
+    for _, name in ipairs(BDMA_COPY_FILES) do
+      local expected = GetEmbeddedAssetBytes(name..BDMA_SUFFIX[target])
+      if type(expected) ~= "string" or ReadWholeFile(POPSTARTER_PACK_ROOT.."/"..name) ~= expected then
+        return false
+      end
+    end
   end
   return ResolveEffectiveBdmaMode() == target
 end
@@ -8339,7 +8352,7 @@ end
 -- SHARE_FAIL/IRX_LOAD_FAIL) for the UI to map to a message. Mirrors InitATAPopsRoot.
 -- The menu-side filesystem uses its own ministack and a static IPv4 address,
 -- while Okeanos's runtime pair reinitializes the NIC *after* POPStarter's IOP
--- reset and reads settings from USB. These must describe the same console.
+-- reset and reads settings from memory-card SYS-CONF. These must describe the same console.
 -- Keep this check independent from the legacy SMB settings editor: saved values
 -- and existing IPCONFIG.DAT can bypass field validation in the UI.
 local function ParseUdpfsIPv4(value)
@@ -8404,45 +8417,63 @@ function PLDR.InitUDPFSPopsRoot(report)
   return "udpfs:/POPS/"
 end
 
--- Returns false with a visible message on ambiguous/conflicting USB config.
--- Never overwrites a user-created file; stage only files missing on a USB
--- volume, so two USB drives cannot silently acquire conflicting IPs.
-function PLDR.PrepareUdpfsUsbConfig()
+-- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
+-- existing files on either card; only create missing files in SYS-CONF.
+function PLDR.PrepareUdpfsConfig()
   local ip, mask, gw = PLDR.UdpfsStaticIp()
-  if ip == nil then
-    if UI and UI.Notif_queue then UI.Notif_queue.add(tostring(mask), "error") end
+  local function fail(message)
+    if UI and UI.Notif_queue then UI.Notif_queue.add(message, "error") end
     return false
   end
-  local roots = PLDR.GetRootsByType("usb")
-  if type(roots) ~= "table" or #roots == 0 then
-    if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires a USB volume with POPS/ installed", "error") end
-    return false
-  end
-  local desired = ip.." "..mask.." "..gw
-  for i = 1, #roots do
-    local root = roots[i]
-    local dir = root.."POPS/"
-    if not doesFolderExist(dir) then
-      if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("Missing %s -- UDPFS requires the POPS folder on each USB volume", dir), "error") end
-      return false
+  if ip == nil then return fail(tostring(mask)) end
+  local dest_dir = string.match(POPSTARTER_PACK_ROOT, "^(mc%d:)/").."/SYS-CONF"
+  for _, name in ipairs({ "IPCONFIG.DAT", "UDPFSCONFIG.DAT" }) do
+    local effective = nil
+    for _, card in ipairs({ "mc0:", "mc1:" }) do
+      local path = card.."/SYS-CONF/"..name
+      if doesFileExist(path) then effective = path; break end
     end
-    local path = dir.."IPCONFIG.DAT"
-    if doesFileExist(path) then
-      local current = ReadWholeFile(path)
-      local config_line = type(current) == "string" and string.match(current, "^[^\r\n]*") or ""
-      local a,b = string.match(config_line or "", "^%s*(%S+)%s+(%S+)")
-      if a ~= ip or b ~= mask then
-        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n%s\nEdit it to match %s %s (not overwritten)", path, ip, mask), "error") end
-        return false
+    if effective then
+      if name == "IPCONFIG.DAT" then
+        local body = ReadWholeFile(effective)
+        local a, b = nil, nil
+        if type(body) == "string" and #body > 0 and #body <= 120 then
+          body = body:gsub("^\239\187\191", "")
+          for line in body:gmatch("[^\r\n]+") do
+            if not line:match("^%s*$") and not line:match("^%s*[#;]") then
+              a, b = line:match("^%s*(%S+)%s+(%S+)")
+              a = ParseUdpfsIPv4(a); b = ParseUdpfsIPv4(b)
+              break
+            end
+          end
+        end
+        if a ~= ip or b ~= mask then
+          return fail(PLDR.LFmt("UDPFS IPCONFIG.DAT conflicts with menu settings:\n%s\nEdit it to match %s %s (not overwritten)", effective, ip, mask))
+        end
       end
-    end
-  end
-  for i = 1, #roots do
-    local path = roots[i].."POPS/IPCONFIG.DAT"
-    if not doesFileExist(path) then
-      if not WriteBytesAtomicBounded(desired.."\n",path) then
-        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("Could not write UDPFS configuration:\n%s", path), "error") end
-        return false
+    else
+      local body = nil
+      if name == "IPCONFIG.DAT" then
+        body = ip.." "..mask.." "..gw.."\n"
+      else
+        local source = "udpfs:/POPS/"..name
+        if doesFileExist(source) then
+          local size = GetFileSizeSafe(source)
+          if size == nil or size < 1 or size > 120 then
+            return fail(PLDR.LFmt("UDPFS config must contain 1-120 bytes:\n%s", source))
+          end
+          body = ReadWholeFile(source)
+          if type(body) ~= "string" or #body ~= size then
+            return fail(PLDR.LFmt("Could not read UDPFS configuration:\n%s", source))
+          end
+        end
+      end
+      if body ~= nil then
+        local dest = dest_dir.."/"..name
+        if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
+           or not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
       end
     end
   end
@@ -9324,7 +9355,7 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   end
   if device_page == "UDPFS" then
     -- POPStarter reads this as a USB (XX.) VCD selector; Okeanos's BDMA
-    -- transparently falls back to UDPFS when the VCD is missing locally.
+    -- serves the mass: namespace entirely from the UDPFS server.
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "SMB" then
@@ -10135,10 +10166,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     -- Network launch MUST stage Okeanos's pair regardless of the general
     -- Adaptive BDMA preference. A half-written pair must abort the launch.
     if PLDR.POPSTARTER_MC_FOLDER == false then
-      if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires POPSTARTER modules on a memory card", "error") end
+      if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS requires POPSTARTER modules on a memory card", "error") end
       return
     end
-    if type(PLDR.PrepareUdpfsUsbConfig) ~= "function" or not PLDR.PrepareUdpfsUsbConfig() then
+    if type(PLDR.PrepareUdpfsConfig) ~= "function" or not PLDR.PrepareUdpfsConfig() then
       return
     end
     if not PLDR.IsBdmaModeEquipped("UDPFS") then
