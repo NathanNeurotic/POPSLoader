@@ -12,7 +12,7 @@ translations in the yellow cells in column B. The **Instructions** sheet explain
 the format. A [UTF-8 TSV alternative](slovak.tsv) has the same English keys and a
 blank Slovak column.
 
-The October 27, 2026 handoff contains **408 distinct current English strings**,
+The October 27, 2026 handoff contains **409 distinct current English strings**,
 reviewed against the 1.3.1 development sources: settings, Ember, network/UDPFS,
 progress messages, dialogs, errors, and credits. The workbook includes source
 references and context for ambiguous rows. Debug traces, configuration keys,
