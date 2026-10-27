@@ -8419,11 +8419,22 @@ end
 
 -- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
 -- existing files on either card; only create missing files in SYS-CONF.
+-- A destination that failed verification belongs to this write, not to the
+-- user. If removal fails, never treat it as an existing user config on retry.
+local udpfs_config_cleanup_pending = nil
 function PLDR.PrepareUdpfsConfig()
   local ip, mask, gw = PLDR.UdpfsStaticIp()
   local function fail(message)
     if UI and UI.Notif_queue then UI.Notif_queue.add(message, "error") end
     return false
+  end
+  if udpfs_config_cleanup_pending ~= nil then
+    local path = udpfs_config_cleanup_pending
+    pcall(System.removeFile, path)
+    if doesFileExist(path) then
+      return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", path))
+    end
+    udpfs_config_cleanup_pending = nil
   end
   if ip == nil then return fail(tostring(mask)) end
   local dest_dir = string.match(POPSTARTER_PACK_ROOT, "^(mc%d:)/").."/SYS-CONF"
@@ -8472,6 +8483,11 @@ function PLDR.PrepareUdpfsConfig()
         local dest = dest_dir.."/"..name
         if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
            or not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
+          -- This branch only creates a file absent from BOTH cards. Remove
+          -- an unverified result; existing user configuration never enters it.
+          udpfs_config_cleanup_pending = dest
+          pcall(System.removeFile, dest)
+          if not doesFileExist(dest) then udpfs_config_cleanup_pending = nil end
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end
       end

@@ -45,8 +45,17 @@ The released runtime searches **each file independently**, first
 | `IPCONFIG.DAT` | `PS2_IP NETMASK [GATEWAY]` | Preserve the effective MC file; create a missing file from the menu's static settings. Cancel launch if an existing address or mask disagrees. |
 | `UDPFSCONFIG.DAT` | Server IPv4 address | Preserve any existing MC file. If absent from both cards, copy optional `udpfs:/POPS/UDPFSCONFIG.DAT`; otherwise use upstream broadcast discovery. |
 
+The installation kit ships `UDPFSCONFIG.DAT.example`, which is ignored by the
+loader. To pin a server, edit the address and rename it to `UDPFSCONFIG.DAT`
+in the server's `POPS/` folder. An unedited kit uses broadcast discovery.
+When upgrading a server folder populated from an older kit, remove an unedited
+active `UDPFSCONFIG.DAT` example (often `192.168.1.11`) if you want discovery;
+existing MC configurations still take precedence.
+
 New files go to `SYS-CONF` on the card selected for the POPSTARTER pack.
-Writes are checked by readback. Configuration is checked even when the driver
+Writes are checked by readback. A failed newly created configuration is removed;
+if removal fails, further preparation attempts in the same session stay blocked
+until it can be removed. Configuration is checked even when the driver
 pair is already equipped. Both optional runtime config files must fit within
 upstream's 120-byte limit. An empty or oversized server source file is rejected;
 remove that optional source file to use discovery.

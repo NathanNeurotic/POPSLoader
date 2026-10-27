@@ -89,6 +89,9 @@ for name, record in provenance["1.0.0"]["files"].items():
 assert provenance["1.0.0"]["files"]["usbd.irx.udpfs"]["sha256"] == "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7"
 if len(sys.argv) > 1:
     with zipfile.ZipFile(sys.argv[1]) as kit:
+        assert "POPS/UDPFSCONFIG.DAT" not in kit.namelist(), "sample server IP must not be active"
+        sample = kit.read("POPS/UDPFSCONFIG.DAT.example")
+        assert sample.strip() == b"192.168.1.11"
         for name in provenance["1.0.0"]["files"]:
             assert kit.read("POPS/" + name) == (ROOT / "bin/POPSLDR" / name).read_bytes()
         for path in (ROOT / "docs/third_party/okeanos_udpfs").iterdir():

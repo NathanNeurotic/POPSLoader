@@ -209,3 +209,39 @@ vm.execute(r"""
   assert(PLDR.IsBdmaModeEquipped("UDPFS"))
 """)
 print("PASS UDPFS: Settings apply cannot reinstall an external Alpha override")
+
+for cleanup_fails in (False, True):
+    vm = boot()
+    vm.execute(r"""
+      FAKEFS.files["udpfs:/POPS/UDPFSCONFIG.DAT"] = "192.168.1.88\n"
+      local write = System.writeFile
+      ORIGINAL_WRITE = write
+      System.writeFile = function(fd, body, size)
+        if fd.path:find("UDPFSCONFIG.DAT", 1, true) then
+          write(fd, string.rep("x", size), size); return size
+        end
+        return write(fd, body, size)
+      end
+    """)
+    if cleanup_fails:
+        vm.execute('ORIGINAL_REMOVE = System.removeFile; System.removeFile = function() return -1 end')
+    vm.execute('assert(not PLDR.PrepareUdpfsConfig()); System.writeFile = ORIGINAL_WRITE')
+    if cleanup_fails:
+        vm.execute('assert(not PLDR.PrepareUdpfsConfig(), "failed cleanup must block retry")')
+        vm.execute('System.removeFile = ORIGINAL_REMOVE; assert(PLDR.PrepareUdpfsConfig())')
+        vm.execute('assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == "192.168.1.88\\n")')
+    else:
+        vm.execute(r"""
+          assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == nil, "bad destination must be removed")
+          assert(PLDR.PrepareUdpfsConfig())
+          assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == "192.168.1.88\n")
+        """)
+    print("PASS UDPFS: corrupt config retry; cleanup failure =", cleanup_fails)
+
+vm = boot()
+vm.execute(r"""
+  FAKEFS.files["udpfs:/POPS/UDPFSCONFIG.DAT.example"] = "192.168.1.11\n"
+  assert(PLDR.PrepareUdpfsConfig())
+  assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == nil)
+""")
+print("PASS UDPFS: unedited kit example leaves server discovery enabled")

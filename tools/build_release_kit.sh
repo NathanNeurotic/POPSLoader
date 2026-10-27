@@ -47,6 +47,9 @@ rm -rf dist_root/POPS/UDPFS-NOTICES
 mkdir -p dist_root/POPS/UDPFS-NOTICES
 cp docs/third_party/okeanos_udpfs/* dist_root/POPS/UDPFS-NOTICES/
 cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
+# The reference bundle's example server IP must never become active MC config.
+# Preserve it as an explicit opt-in example; unedited kits use discovery.
+mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example
 
 test -s dist_root/EMBER/ember.elf
 test -s dist_root/EMBER/LICENSE-BETA.txt

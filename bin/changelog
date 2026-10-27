@@ -1,4 +1,5 @@
 [Unreleased]
+- UDPFS: ship the server-address sample as .example so a fresh kit uses discovery; remove newly written configs after failed verification and block retries if cleanup fails.
 - Translation: provide the 408-string Slovak Excel/TSV handoff requested in #605, refresh existing community handoffs, and validate returned translations before Lua integration.
 - Fix: translate Ember per-game labels before composing them, and translate error templates before inserting paths or values.
 - Translation: correct language-name accents, resolved-path labels, and the Hungarian collapsed-disc count.
