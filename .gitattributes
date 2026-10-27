@@ -1,2 +1,4 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Translator TSVs need their trailing tab when the target cell is empty.
+docs/translations/*.tsv text eol=lf whitespace=-blank-at-eol

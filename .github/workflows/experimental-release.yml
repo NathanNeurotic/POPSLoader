@@ -45,6 +45,8 @@ jobs:
           python3 tools/pad_harness.py
           python3 tools/test_disc_layout.py
           python3 tools/test_udpfs_config_runtime.py
+      - name: Validate translation handoffs and returned workbook handling
+        run: python3 -m unittest discover -s tools -p test_translation_handoff.py
       - name: Verify Okeanos UDPFS integration and pinned binaries
         shell: bash
         run: python3 tools/test_udpfs_integration.py
