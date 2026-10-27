@@ -1,6 +1,6 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-10-19 (1.3.1 release cut)
+Last updated: 2026-10-27 (Slovak translation handoff; host checks)
 Released line: **1.3.1** (2026-10-19). `master`, `dev`, and `experimental` share the release source and `v1.3.1` stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
@@ -24,6 +24,14 @@ This matrix tracks current behavior across:
 - repository automation workflows that are not runtime/hardware gates.
 
 This file is the authoritative detailed run ledger for CI and hardware outcomes. The other root docs should summarize the active state and point here for chronology.
+
+## Translation handoff and localization corrections (2026-10-27)
+
+| Case | Evidence / result | Remaining verification |
+|---|---|---|
+| #605 Slovak handoff | 408 source-reviewed English keys in Excel and TSV; workbook rendered and checked; six importer/catalog regression tests pass. Blank target cells remain English on import. | Awaiting SVKghost's Slovak contribution; SK is not yet a selectable language. |
+| Existing localization corrections | Embedded Lua harness 60/60; Ember returned/missing-ELF messages exercise translated templates with paths intact. UDPFS IPv4 runtime suite 26/26. Placeholder/duplicate/source checks pass for existing dictionaries and all handoffs. | Unknown (verify on hardware): Ember per-game labels, error messages, native language-name accents, resolved-path labels and Hungarian collapsed-disc count. |
+| Slovak font repertoire | The embedded TrueType font's Unicode cmap has glyphs for all 34 checked uppercase/lowercase Slovak accented letters. | Unknown (verify on hardware): actual Slovak text rendering and menu/dialog fit after translation integration. Font coverage is not console acceptance. |
 
 ## 1.3.1 release validation (2026-10-19)
 

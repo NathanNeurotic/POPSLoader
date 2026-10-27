@@ -2,6 +2,12 @@ Last updated: 2026-10-19. **Official release: 1.3.1**. At this cut, `master`, `d
 
 # STATE
 
+Translation follow-up (2026-10-27): the [Slovak Excel/TSV handoff](docs/translations/README.md)
+is available for issue #605. Slovak wording awaits the contributor; `SK` is not
+yet in the picker. Existing-language corrections and translation reachability
+changes are host-tested; console display verification is pending. See the
+dated translation section in `QA_REGRESSION_MATRIX.md` for evidence and limits.
+
 This is the **canonical status doc** for POPSLoader. Current runtime state, behavioral invariants, preservation contracts, known issues, and hardware-verification status all live **here**; the other docs (README, AGENTS, CONTRIBUTING, ROADMAP, ROLLING_NOTES) point here instead of duplicating, so this is the one place to keep current. `QA_REGRESSION_MATRIX.md` is the detailed run ledger.
 
 ## Project Identity

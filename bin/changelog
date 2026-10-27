@@ -1,3 +1,9 @@
+[Unreleased]
+- Translation: provide the 408-string Slovak Excel/TSV handoff requested in #605, refresh existing community handoffs, and validate returned translations before Lua integration.
+- Fix: translate Ember per-game labels before composing them, and translate error templates before inserting paths or values.
+- Translation: correct language-name accents, resolved-path labels, and the Hungarian collapsed-disc count.
+- Validation: host-tested; Slovak wording awaits the contributor and console rendering remains unverified.
+
 [1.3.1] - October 19th, 2026
 - Fix: boot without a controller in port 1; disconnected/error pads abort setup, and transient readiness waits are bounded (#603).
 - UI: enlarge optional disc artwork from the 48px cap to roughly half the jewel-case height; keep it clear of the game list (#568).

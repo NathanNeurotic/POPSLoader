@@ -3886,7 +3886,7 @@ UI = {
           for i = 1, #opts do
             local opt = opts[i]
             local current = saved[opt[1]]
-            local label = opt[2]..": "..(current or "Default (global)")
+            local label = PLDR.L(opt[2])..": "..(current or PLDR.L("Default (global)"))
             items[#items + 1] = {
               label = label,
               action = function()
@@ -3901,7 +3901,7 @@ UI = {
                 end
                 local ok, updated = pcall(PLDR.EmberSetGameSetting, entry, opt[1], next_value)
                 if not ok or updated ~= true then
-                  UI.Notif_queue.add("Couldn't write "..settings_file, "error")
+                  UI.Notif_queue.add(PLDR.LFmt("Couldn't write %s", settings_file), "error")
                 end
                 OpenEmberGameSettings(entry)
               end
@@ -7088,7 +7088,7 @@ function UI.RunUdpfsConnectFlow()
     report("Loading UDPFS network drivers...", 0.16)
     local root, err = PLDR.InitUDPFSPopsRoot(report)
     if type(root) ~= "string" then
-      UI.Notif_queue.add("USB+UDPFS: "..tostring(err or "Network initialization failed").."\nCheck the static PS2 IP, cable and UDPFS server", "error")
+      UI.Notif_queue.add(PLDR.LFmt("USB+UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server", tostring(err or PLDR.L("Network initialization failed"))), "error")
       return
     end
     -- The UDPFS server is read-only as far as the menu is concerned. Do not

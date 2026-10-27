@@ -50,6 +50,8 @@ jobs:
       - name: Verify docs against source
         shell: bash
         run: python3 tools/docs_verify.py
+      - name: Validate translation handoffs and returned workbook handling
+        run: python3 -m unittest discover -s tools -p test_translation_handoff.py
       - name: Verify Okeanos UDPFS integration and pinned binaries
         shell: bash
         run: python3 tools/test_udpfs_integration.py

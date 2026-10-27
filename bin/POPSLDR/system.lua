@@ -2557,7 +2557,7 @@ end
 -- has no table -- it is the fallback).
 PLDR.LANGUAGE_EN = "EN"
 PLDR.LANGUAGE_ORDER = {"EN", "FR", "DE", "PT", "ES", "IT", "HU"}
-PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Francais", DE = "Deutsch", PT = "Portugues", ES = "Espanol", IT = "Italiano", HU = "Magyar" }
+PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Français", DE = "Deutsch", PT = "Português", ES = "Español", IT = "Italiano", HU = "Magyar" }
 PLDR.LANGUAGE = PLDR.LANGUAGE or "EN"
 local function NormalizeLanguage(value)
   local key = string.upper(tostring(value or ""))
@@ -2787,7 +2787,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Aucun DKWDRV trouvé à ce chemin",
     ["No POPSTARTER found at this path"] = "Aucun POPSTARTER trouvé à ce chemin",
     ["Path saved, file not found:"] = "Chemin enregistré, fichier introuvable :",
-    ["Resolved:"] = "Résolu :",
+    ["Resolved:"] = "Chemin résolu :",
+    ["Timing"] = "Synchronisation",
+    ["Dithering"] = "Tramage",
+    ["Shading"] = "Ombrage",
+    ["Controller"] = "Manette",
+    ["Default (global)"] = "Par défaut (global)",
+    ["Default"] = "Par défaut",
+    ["Unchanged"] = "Inchangé",
+    ["Close"] = "Fermer",
     ["Reverting in"] = "Annulation dans",
     ["Saved to"] = "Enregistré dans",
     ["Slot:"] = "Emplacement :",
@@ -3020,7 +3028,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Kein DKWDRV unter diesem Pfad gefunden",
     ["No POPSTARTER found at this path"] = "Kein POPSTARTER unter diesem Pfad gefunden",
     ["Path saved, file not found:"] = "Pfad gespeichert, Datei nicht gefunden:",
-    ["Resolved:"] = "Aufgelöst:",
+    ["Resolved:"] = "Aufgelöster Pfad:",
+    ["Timing"] = "Timing",
+    ["Dithering"] = "Dithering",
+    ["Shading"] = "Schattierung",
+    ["Controller"] = "Controller",
+    ["Default (global)"] = "Standard (global)",
+    ["Default"] = "Standard",
+    ["Unchanged"] = "Unverändert",
+    ["Close"] = "Schließen",
     ["Reverting in"] = "Zurücksetzen in",
     ["Saved to"] = "Gespeichert in",
     ["Slot:"] = "Slot:",
@@ -3251,7 +3267,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Nenhum DKWDRV encontrado neste caminho",
     ["No POPSTARTER found at this path"] = "Nenhum POPSTARTER encontrado neste caminho",
     ["Path saved, file not found:"] = "Caminho salvo, arquivo não encontrado:",
-    ["Resolved:"] = "Resolvido:",
+    ["Resolved:"] = "Caminho resolvido:",
+    ["Timing"] = "Temporização",
+    ["Dithering"] = "Pontilhamento",
+    ["Shading"] = "Sombreamento",
+    ["Controller"] = "Controle",
+    ["Default (global)"] = "Padrão (global)",
+    ["Default"] = "Padrão",
+    ["Unchanged"] = "Inalterado",
+    ["Close"] = "Fechar",
     ["Reverting in"] = "Revertendo em",
     ["Saved to"] = "Salvo em",
     ["Slot:"] = "Slot:",
@@ -3486,7 +3510,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "No se encontró DKWDRV en esta ruta",
     ["No POPSTARTER found at this path"] = "No se encontró POPSTARTER en esta ruta",
     ["Path saved, file not found:"] = "Ruta guardada, archivo no encontrado:",
-    ["Resolved:"] = "Resuelto:",
+    ["Resolved:"] = "Ruta resuelta:",
+    ["Timing"] = "Temporización",
+    ["Dithering"] = "Tramado",
+    ["Shading"] = "Sombreado",
+    ["Controller"] = "Mando",
+    ["Default (global)"] = "Predeterminado (global)",
+    ["Default"] = "Predeterminado",
+    ["Unchanged"] = "Sin cambios",
+    ["Close"] = "Cerrar",
     ["Reverting in"] = "Revirtiendo en",
     ["Saved to"] = "Guardado en",
     ["Slot:"] = "Ranura:",
@@ -3717,7 +3749,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Nessun DKWDRV trovato in questo percorso",
     ["No POPSTARTER found at this path"] = "Nessun POPSTARTER trovato in questo percorso",
     ["Path saved, file not found:"] = "Percorso salvato, file non trovato:",
-    ["Resolved:"] = "Risolto:",
+    ["Resolved:"] = "Percorso risolto:",
+    ["Timing"] = "Temporizzazione",
+    ["Dithering"] = "Dithering",
+    ["Shading"] = "Ombreggiatura",
+    ["Controller"] = "Controller",
+    ["Default (global)"] = "Predefinito (globale)",
+    ["Default"] = "Predefinito",
+    ["Unchanged"] = "Invariato",
+    ["Close"] = "Chiudi",
     ["Reverting in"] = "Ripristino tra",
     ["Saved to"] = "Salvato in",
     ["Slot:"] = "Slot:",
@@ -3997,12 +4037,20 @@ PLDR.I18N = {
     -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
     ["Edit %s"] = "%s szerkesztése",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a „Rejtett játékok elrejtése” opciót, hogy kiszűrje őket",
-    ["Resolved:"] = "Megoldva:",
+    ["Resolved:"] = "Feloldott útvonal:",
+    ["Timing"] = "Időzítés",
+    ["Dithering"] = "Színkeverés",
+    ["Shading"] = "Árnyalás",
+    ["Controller"] = "Kontroller",
+    ["Default (global)"] = "Alapértelmezett (globális)",
+    ["Default"] = "Alapértelmezett",
+    ["Unchanged"] = "Változatlan",
+    ["Close"] = "Bezárás",
     ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy kis idő múlva",
     -- PR #559 (oldman63, 2026-07-27): strings made translatable by the
     -- EXP73 i18n sweep, plus rows that had never been offered to a translator.
     [" (%d hidden -- Global Hide is on)"] = " (%d rejtett -- A Globális elrejtés be van kapcsolva)",
-    [" (%d multi-disc collapsed)"] = " (%d többlemezesek kibontva)",
+    [" (%d multi-disc collapsed)"] = " (%d többlemezes bejegyzés összevonva)",
     ["Both"] = "Mindegyik",
     ["Couldn't save settings\n%s may be read-only"] = "A beállításokat nem sikerült menteni\nLehet, hogy a %s írásvédett",
     ["Done"] = "Kész",
@@ -8169,20 +8217,20 @@ function PLDR.EmberLaunch(entry)
     if apa_slot ~= nil then UMountHddPartitionTracked(apa_slot) end
     return false, reason
   end
-  if not doesFileExist(e.elf) then return fail("Missing "..e.elf) end
+  if not doesFileExist(e.elf) then return fail(PLDR.LFmt("Missing %s", e.elf)) end
   local bios_bytes = GetFileSizeSafe(e.bios)
   if bios_bytes ~= 512*1024 then
-    return fail("Ember needs a 512 KB BIOS: "..e.bios)
+    return fail(PLDR.LFmt("Ember needs a 512 KB BIOS: %s", e.bios))
   end
   local ok_dir, game_entries = pcall(System.listDirectory, e.game)
   if not ok_dir or not EmberHasGameImage(game_entries) then
-    return fail("No .cue/.exe/.bin directly in "..e.game)
+    return fail(PLDR.LFmt("No .cue/.exe/.bin directly in %s", e.game))
   end
   local ok_global, global_saved = pcall(PLDR.EmberApplyGlobal, e.root)
   if not (ok_global and global_saved)
      and type(UI) == "table" and type(UI.Notif_queue) == "table" then
     pcall(UI.Notif_queue.add,
-      "Ember global settings could not be saved on "..e.root, "warn")
+      PLDR.LFmt("Ember global settings could not be saved on %s", e.root), "warn")
   end
   -- Keep the writable APA mount and its descriptors across the IOP-preserving
   -- ELF handoff. Other PFS mounts can close; the Ember game's slot cannot.
@@ -8201,8 +8249,8 @@ function PLDR.EmberLaunch(entry)
     end
     UMountHddPartitionTracked(apa_slot)
   end
-  if not ok then return false, "Ember launch error: "..tostring(result) end
-  return false, "Ember ELF returned: "..tostring(result)
+  if not ok then return false, PLDR.LFmt("Ember launch error: %s", tostring(result)) end
+  return false, PLDR.LFmt("Ember ELF returned: %s", tostring(result))
 end
 end
 
@@ -8375,7 +8423,7 @@ function PLDR.PrepareUdpfsUsbConfig()
     local root = roots[i]
     local dir = root.."POPS/"
     if not doesFolderExist(dir) then
-      if UI and UI.Notif_queue then UI.Notif_queue.add("Missing "..dir.." -- UDPFS requires the POPS folder on each USB volume", "error") end
+      if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("Missing %s -- UDPFS requires the POPS folder on each USB volume", dir), "error") end
       return false
     end
     local path = dir.."IPCONFIG.DAT"
@@ -8384,7 +8432,7 @@ function PLDR.PrepareUdpfsUsbConfig()
       local config_line = type(current) == "string" and string.match(current, "^[^\r\n]*") or ""
       local a,b = string.match(config_line or "", "^%s*(%S+)%s+(%S+)")
       if a ~= ip or b ~= mask then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n"..path.."\nEdit it to match "..ip.." "..mask.." (not overwritten)", "error") end
+        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n%s\nEdit it to match %s %s (not overwritten)", path, ip, mask), "error") end
         return false
       end
     end
@@ -8393,7 +8441,7 @@ function PLDR.PrepareUdpfsUsbConfig()
     local path = roots[i].."POPS/IPCONFIG.DAT"
     if not doesFileExist(path) then
       if not WriteBytesAtomicBounded(desired.."\n",path) then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("Could not write UDPFS configuration:\n"..path, "error") end
+        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.LFmt("Could not write UDPFS configuration:\n%s", path), "error") end
         return false
       end
     end
@@ -10099,7 +10147,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       end
       local staged, why = PLDR.ApplyBdmaModeOnce("UDPFS", PLDR.NextBdmaApplyToken(), true)
       if not staged then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS driver staging failed -- launch cancelled\n"..tostring(why or "Check the memory card"), "error") end
+        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.L("UDPFS driver staging failed -- launch cancelled").."\n"..tostring(why or PLDR.L("Check the memory card")), "error") end
         return
       end
     end
@@ -10452,7 +10500,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
     gamelocation = smb_root
   else
     if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-      UI.Notif_queue.add("Auto-launch page not supported: "..tostring(page), "warn")
+      UI.Notif_queue.add(PLDR.LFmt("Auto-launch page not supported: %s", tostring(page)), "warn")
     end
     return false
   end
@@ -10501,7 +10549,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
     if not exists then
       if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-        UI.Notif_queue.add("-game not found:\n"..raw_path, "error")
+        UI.Notif_queue.add(PLDR.LFmt("-game not found:\n%s", raw_path), "error")
       end
       return false
     end
@@ -10509,7 +10557,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
 
   local ok, err = pcall(PLDR.RunPOPStarterGame, gamelocation, game, scene, nil)
   if not ok and type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-    UI.Notif_queue.add("Auto-launch failed: "..tostring(err), "error")
+    UI.Notif_queue.add(PLDR.LFmt("Auto-launch failed: %s", tostring(err)), "error")
   end
   return ok
 end
