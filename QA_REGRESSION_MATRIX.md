@@ -6,6 +6,19 @@ Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BE
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
 
+## UDPFS Assault 1.0.0 replacement ? 2026-10-27 (unreleased)
+
+| Validation | Result | Evidence / remaining acceptance |
+|---|---|---|
+| Production Lua no-USB launch and equipped-driver path | PASS (host mocks only) | `tools/test_udpfs_config_runtime.py` executes the real boot chunks and `RunPOPStarterGame`, reaches the native exec boundary without USB enumeration, and checks configuration even when already equipped. |
+| Config precedence, MC1-only, write/readback faults and stale Alpha migration | PASS (host mocks only) | 26 added configuration/staging/launch scenarios, plus the existing IPv4 validator suite. Config conflict, missing driver and disabled pack prevent exec. Review follow-ups verify corruption cleanup/retry, blocked retry and recovery after failed removal, and an inert packaged server example. The new cleanup and package regressions failed on the previous tree before the fixes. CodeRabbit follow-ups add size-before-read checks, durable MC0/MC1 restart recovery and malformed-journal handling. |
+| Existing boot/runtime harness | PASS (host mocks only) | 60/60 checks; no new hardware claim. |
+| Released IRX pair | PASS (host bytes only) | `tools/test_udpfs_integration.py` checks exact upstream SHA-256 hashes, MIPS ELF format and existing embedding/wiring. |
+| Installation ZIP / flat PSU | PASS (host package only) | ZIP exact UDPFS driver/setup/notice bytes, Python PSU verification and independent C++ PSUManager reader; no BIOS included. |
+| Local target build | PASS (cross-compilation only) | Pinned `ps2dev/ps2dev:v2.0.0`; native exec, gameplay and VMC saves not exercised. |
+| Cold/repeated network-only launch, controller input and VMC save/reload | Unknown (verify on hardware) | No console run. Use a writable server and backed-up VMCs. |
+| Network drop/reconnect, server read-only/missing and SMB regression | Unknown (verify on hardware) | No console run. Network writes can leave incomplete VMCs after prolonged interruption. |
+
 ## Scope
 This matrix tracks current behavior across:
 - settings load/save/apply transaction flow,

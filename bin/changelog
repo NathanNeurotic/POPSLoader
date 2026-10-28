@@ -1,8 +1,14 @@
 [Unreleased]
+- UDPFS: bound installed-driver/config reads, journal new configuration writes for restart-safe cleanup, and clarify mirrored installation/license documentation.
+- UDPFS: ship the server-address sample as .example so a fresh kit uses discovery; remove newly written configs after failed verification and block retries if cleanup fails.
 - Translation: provide the 408-string Slovak Excel/TSV handoff requested in #605, refresh existing community handoffs, and validate returned translations before Lua integration.
 - Fix: translate Ember per-game labels before composing them, and translate error templates before inserting paths or values.
 - Translation: correct language-name accents, resolved-path labels, and the Hungarian collapsed-disc count.
 - Validation: host-tested; Slovak wording awaits the contributor and console rendering remains unverified.
+- UDPFS: replace USB-first Alpha fallback with Okeanos UDPFS Assault 1.0.0 network read/write; USB is no longer required.
+- UDPFS: preserve memory-card SYS-CONF configuration, create missing console IP settings, and optionally populate the server address from the network POPS folder.
+- UDPFS: re-equip stale Alpha drivers even with an existing UDPFS marker; ship matching drivers and upstream notices in release kits.
+- Hardware: no-USB launch and network VMC save/reload require physical-console validation.
 
 [1.3.1] - October 19th, 2026
 - Fix: boot without a controller in port 1; disconnected/error pads abort setup, and transient readiness waits are bounded (#603).

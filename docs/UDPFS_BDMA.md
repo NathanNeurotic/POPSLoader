@@ -1,109 +1,90 @@
-# POPS UDPFS / BDM-UDPFS Assault — Experimental development feature
+# POPS UDPFS / UDPFS Assault
 
-**Experimental in official POPSLoader 1.2.3; not hardware-certified.**
-The Ethernet mode selector, UDPFS VCD browser, and embedded POPSTARTER driver
-staging are implemented. Cross-compilation and automated regression checks have
-passed, but physical PS2 launch compatibility is **Unknown (verify on hardware)**.
-Official release 1.2.3 includes the opt-in Ethernet SMBv1 / USB + UDPFS picker and embedded Okeanos fallback staging, but does **not** certify real-console launch or device compatibility.
+The development version replaces USB-first BDM-UDPFS Assault Alpha with
+[Okeanos UDPFS Assault 1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0).
+USB is no longer required. The `UDPFS` settings key and `.udpfs` asset names are
+retained for upgrades; they now select the full network read/write driver.
+The old USB-first mode is removed. Physical-console status is
+**Unknown (verify on hardware)**; see [the QA ledger](../QA_REGRESSION_MATRIX.md).
 
-## Experimental implementation
+## Setup
 
-The POPSLoader feature branch implements the planned Ethernet protocol picker:
-select **SMBv1** to use the existing SMB browsing and network-streaming modules,
-or **USB + UDPFS** to use a read-only `udpfs:/POPS/` game list and Okeanos's
-POPSTARTER runtime fallback. This implementation is also included in official 1.2.3 **as an experimental opt-in option**, not as hardware-verified compatibility. Do not advertise stable support
-until the release matrix records hardware validation.
+1. Run `udpfsd` without `-ro`, or `udpfs_server.py` without `--read-only`, on
+   the same subnet as the PS2. The server must permit writes for VMC saving.
+2. Put the complete POPS runtime files under the server's shared root:
+   `POPS/POPS_IOX.PAK`, `POPS/<game>.VCD`, the corresponding VMC directories,
+   and optional patches, cheats and IGR artwork. Filenames are case sensitive
+   on Linux, and the `.VCD` extension must be uppercase. Existing USB saves
+   are not automatically migrated; copy backups deliberately before use.
+3. Keep `POPSTARTER.ELF` on persistent local storage, such as a memory card.
+   Set **POPSTARTER Path** if needed. The temporary menu `udpfs:` mount is
+   discarded when POPStarter resets the IOP, so it cannot supply that ELF.
+4. In **Settings > SMB / Network**, disable DHCP and set the console's
+   static PS2 IP, contiguous netmask and optional gateway. The server must be
+   on the same subnet; the runtime does not route through the gateway.
+5. Enable the **POPSTARTER Folder** on a memory card. Select
+   **Ethernet > UDPFS**, then a game. POPSLoader installs the embedded released
+   pair into `mc?:/POPSTARTER/usbd.irx` and `usbhdfsd.irx` before handoff,
+   independently of Adaptive BDMA. **BDMA Mode > UDPFS (network R/W)** also
+   installs this pair. No USB-first option remains.
 
-### USB + UDPFS configuration
+Every runtime `mass:` operation goes to the server, including dependency reads
+and VMC writes. The `XX.<game>.ELF` mass selector remains correct: `mass:` is the
+namespace supplied by the network driver after POPStarter's IOP reset.
+The menu filesystem remains read-only and uses its existing transport modules.
+Ember retains its existing inherited-network handoff; this POPStarter update
+does not replace Ember's backend.
 
-1. Start `udpfsd` or `udpfs_server.py` on the same LAN with `POPS/<title>.VCD`
-   in the server's exported folder. The extension must be uppercase `.VCD` for
-   the upstream POPSTARTER driver.
-2. In **Settings → SMB / Network**, disable DHCP and enter the console's static
-   **PS2 IP** and **Netmask**, and optionally its gateway. The in-game Okeanos
-   driver and the menu-side UDPFS filesystem must use the same console IP.
-   The gateway is ignored by the driver; the server must be on the same subnet.
-3. Put a USB drive with a `POPS/` directory in the console. On launch,
-   POPSLoader checks existing `POPS/IPCONFIG.DAT` on every detected USB volume:
-   if addresses disagree, it cancels without overwriting the user's file; if
-   missing, it generates one using the configured static address.
-   `POPS/UDPFSCONFIG.DAT` is optional and is **not** automatically modified;
-   create one containing the server IPv4 address to bypass discovery.
-4. Select **Ethernet → USB + UDPFS**. The network game page can list VCDs
-   without an SMB login. Press **R1** to rescan after starting/restarting the
-   server.
-5. Choose a game. POPSLoader resolves **POPSTARTER.ELF from a local device**
-   (never from the network filesystem), prepares the USB settings, and equips
-   the embedded `usbd.irx.udpfs` / `usbhdfsd.irx.udpfs` pair on the memory
-   card as `POPSTARTER/usbd.irx` and `POPSTARTER/usbhdfsd.irx`.
-   The `XX.<title>.ELF` mass selector starts the USB-first / UDPFS-fallback
-   read path after POPSTARTER's IOP reset. **Do not expect the in-menu
-   `udpfs:` filesystem to survive that reset.**
+## Configuration and upgrades
 
-SMB and the UDPFS ministack cannot share the PS2's network adapter at once.
-To change from one protocol to the other after a connection, **restart
-POPSLoader / reset the IOP**. There is intentionally no attempt to reflash
-any adapter firmware, change the UDPFS server implementation, or forcibly
-unload the resident network IRX modules.
+The released runtime searches **each file independently**, first
+`mc0:/SYS-CONF/`, then `mc1:/SYS-CONF/`:
 
-The binary pair is pinned from the RiptOPL copy of Okeanos's Alpha release;
-the menu filesystem modules are pinned from its Neutrino bundle. The upstream
-license notices and configuration reference are mirrored under
-[`docs/third_party/okeanos_udpfs/`](third_party/okeanos_udpfs/).
-**Build success is not hardware compatibility proof.** Verify physical PS2
-USB enumeration, UDPFS directory scanning, launch, return/restart behavior,
-and SMBv1 regression before a public release.
+| File | Content | POPSLoader behavior |
+|---|---|---|
+| `IPCONFIG.DAT` | `PS2_IP NETMASK [GATEWAY]` | Preserve the effective MC file; create a missing file from the menu's static settings. Cancel launch if an existing address or mask disagrees. |
+| `UDPFSCONFIG.DAT` | Server IPv4 address | Preserve any existing MC file. If absent from both cards, copy optional `udpfs:/POPS/UDPFSCONFIG.DAT`; otherwise use upstream broadcast discovery. |
 
----
+The installation kit ships `UDPFSCONFIG.DAT.example`, which is ignored by the
+loader. To pin a server, edit the address and rename it to `UDPFSCONFIG.DAT`
+in the server's `POPS/` folder. An unedited kit uses broadcast discovery.
+When upgrading a server folder populated from an older kit, remove an unedited
+active `UDPFSCONFIG.DAT` example (often `192.168.1.11`) if you want discovery;
+existing MC configurations still take precedence.
 
-## How USB + UDPFS works
+New files go to `SYS-CONF` on the card selected for the POPSTARTER pack.
+Writes are checked by readback. A verified `.pldr-pending` journal is written before creating each configuration.
+If verification or cleanup fails, that journal survives a restart and prevents
+the incomplete file from being accepted as user configuration. Recovery checks
+both cards before applying configuration precedence; malformed journals block
+launch rather than authorize file deletion. Configuration is checked even when the driver
+pair is already equipped. Both optional runtime config files must fit within
+upstream's 120-byte limit. An empty or oversized server source file is rejected;
+remove that optional source file to use discovery.
 
-The [upstream BDM-UDPFS Assault Alpha](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha)
-is a POPSTARTER-specific, read-only network fallback. POPSTARTER first checks
-for the VCD on USB and then, if absent, looks for the same file under `POPS/`
-(or upstream-supported `POPS0/` … `POPS9/`) on a UDPFS server. It is not
-the Neutrino PS2 game transport and does not add UDPBD image mode to POPSTARTER.
+Old USB `POPS/IPCONFIG.DAT` and `POPS/UDPFSCONFIG.DAT` are no longer read or written
+by this integration. Move a custom server address to MC `SYS-CONF` or the server
+`POPS/UDPFSCONFIG.DAT` source. Existing MC files take precedence and are never
+silently overwritten, including MC1 files when MC0 is also present.
 
-The feature branch implements this through the existing **Ethernet** tile:
-choose **SMBv1** or **USB + UDPFS**. To configure the UDPFS choice, use
-**Settings → SMB / Network**, turn DHCP off, and enter a valid static PS2 IP
-and contiguous subnet mask. Those settings supply the menu-side UDPFS
-ministack and the USB `POPS/IPCONFIG.DAT` used by Okeanos's POPSTARTER driver.
-An existing file must agree with the settings; POPSLoader does not overwrite
-conflicting user files. `POPS/UDPFSCONFIG.DAT` is optional and stays under
-the user's control, with broadcast discovery used when appropriate.
+A saved `BDMA=UDPFS` remains valid. The equipped check compares both installed
+files with the embedded release bytes, so an old Alpha pair, damaged driver,
+or stale marker triggers restaging before launch. Settings apply uses the embedded pair as well, so an old external Alpha override
+cannot reinstall the removed backend. Release kits replace the
+historical reference bundle's UDPFS files and notices with this same pair.
+[Provenance and SHA-256 hashes](third_party/okeanos_udpfs/PROVENANCE.json),
+[upstream instructions with local link corrections](third_party/okeanos_udpfs/UPSTREAM-README.md)
+and [configuration details](third_party/okeanos_udpfs/README_CONFIG.txt) accompany it.
 
-When a UDPFS title launches, POPSLoader stages the matching Okeanos driver
-pair on the memory card **regardless of the global Adaptive BDMA setting**.
-It resolves POPSTARTER.ELF from persistent local storage, never `udpfs:/`,
-because the temporary browsing filesystem disappears on the IOP reset.
-SMBv1 keeps its existing module, share, and POPSTARTER launch workflow.
+## Limits and validation
 
-### Upstream driver names (manual-install reference)
+SMBv1 and the UDPFS menu stack cannot share the network adapter. Restart
+POPSLoader before switching protocols after connection. Press **R1** to rescan.
+Upstream does not support `rename` or files of 4 GiB or larger.
 
-| Upstream file | POPSTARTER destination |
-| --- | --- |
-| `bdm_udp_fs_assault.irx` | `mc?:/POPSTARTER/usbd.irx` |
-| `usbd_bd_assault.irx` | `mc?:/POPSTARTER/usbhdfsd.irx` |
-
-These are the upstream names; the feature branch embeds the corresponding
-renamed driver images. See the [mirrored upstream configuration reference](third_party/okeanos_udpfs/README_CONFIG.txt)
-and [license notices](third_party/okeanos_udpfs/THIRD_PARTY_NOTICES.md).
-
-## Scope and current availability
-
-- **Upstream Okeanos Alpha:** publicly available as a standalone driver.
-- **POPSLoader SMBv1 / USB+UDPFS picker, VCD browsing and automatic staging:**
-  included as an **experimental feature in official 1.2.3** and further developed on `dev`; game launch on physical PS2 remains unverified.
-- **Dedicated POPS UDPFS settings editor:** not implemented or required; the
-  feature branch uses the existing SMB / Network static address fields.
-- **Hardware compatibility:** **Unknown (verify on hardware)**. A passing
-  build and host test are not PS2 hardware confirmation.
-
-## Credits
-
-**[Okeanos](https://github.com/Okeanos86)** developed [BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha), the POPSTARTER-specific read-only UDPFS fallback. It builds on **[israpps / El_isra's BDM Assault](https://github.com/israpps/BDMAssault)** and the wider **[PS2SDK](https://github.com/ps2dev/ps2sdk)** ecosystem. POPSTARTER itself is by **krHACKen**; the `udpfsd` server is by **[pcm720](https://github.com/pcm720/udpfsd)**. All retain their own project and licensing credits.
-
-POPSLoader's **official stable integration remains pending hardware validation**. This documentation is not a claim that any of these authors supplied or verified the integrated POPSLoader build.
-
-An official release requires documented PS2 hardware test results, regression checks for existing SMB/USB modes, working binaries, and complete packaging/license notices.
+Keep VMC backups. The upstream driver retries interrupted writes for roughly
+10 seconds; a longer interruption can leave a file incomplete. Network writes
+are not atomic. Console acceptance must cover cold and repeated no-USB launch,
+controller input, real VMC save/reload, missing/read-only server behavior,
+reconnection, MC0/MC1 configuration and SMB regression. Host tests and a target
+build cannot establish those outcomes.

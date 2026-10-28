@@ -10,9 +10,9 @@ This is an overview of **code coverage**, not a blanket compatibility certificat
 | Internal exFAT / ATA | Existing BDM-backed support | Host-tested; actual device startup and VMC unverified |
 | APA/PFS HDD | Existing backend | `__.EMBER` mount/scan host-tested; write-through unverified |
 | SMBv1 | Existing network VCD route | Library host-tested; Ember handoff/mount lifetime unverified |
-| UDPFS | Experimental BDM-UDPFS VCD option | Library host-tested; end-to-end console path unverified |
+| UDPFS | Experimental UDPFS network read/write | Library host-tested; end-to-end console path unverified |
 | i.Link | Existing device-menu placeholder | **Deferred** until RiptOPL has proven hardware support |
 
-The Ethernet menu supports choosing SMBv1 or experimental **USB + UDPFS** for POPStarter, with appropriate server, driver and setup requirements. Neither POPStarter's UDPFS path nor Ember's network handoff should be advertised as certified solely because host tests pass. Consult [UDPFS details](../UDPFS_BDMA.md).
+The Ethernet menu supports choosing SMBv1 or experimental **UDPFS** for POPStarter, with appropriate server, driver and setup requirements. Neither POPStarter's UDPFS path nor Ember's network handoff should be advertised as certified solely because host tests pass. Consult [UDPFS details](../UDPFS_BDMA.md).
 
 POPSLoader's [Ember development guide](Ember-Core.md) documents separate Ember settings and its keep-IOP launch path. **i.Link is intentionally excluded from the PR #600 completion gate.** Retain existing unsupported UI, revisit when RiptOPL demonstrates the device on real hardware, and do not call the resulting Ember release full-device parity.

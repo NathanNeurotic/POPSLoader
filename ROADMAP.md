@@ -21,7 +21,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ## Immediate Priorities
 
-**POPS UDPFS — experimental in 1.2.3:** SMBv1 / USB + UDPFS selector, read-only VCD list and Okeanos BDMA driver staging are implemented. Hardware game launch, multi-USB/controller behavior and regression checks remain unverified. See [setup and limitations](docs/UDPFS_BDMA.md).
+**POPS UDPFS ? unreleased:** UDPFS Assault 1.0.0 replaces the USB-first mode with network reads and VMC writes; USB is no longer required. Physical-console acceptance remains pending. See [setup and limitations](docs/UDPFS_BDMA.md).
 
 **Ember PR #600:** separate Ember library/launcher and Beta 2 global/per-game settings; RiptOPL-matched `POPS/` and `EMBER/` packaging; exact eight-file `APPS/PS1_POPSLOADER/` plus flat PSU with independent verification; digest-verified upstream Ember Watch. Real PS2 Ember game launch, controllers and VMC saves remain hardware-unverified. **i.Link is explicitly deferred until RiptOPL proves it on real PS2 hardware** and is not a completion/merge requirement for this PR. See the [maintained wiki](docs/wiki/Project-Wiki.md).
 

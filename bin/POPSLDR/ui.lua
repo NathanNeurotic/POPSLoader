@@ -1180,7 +1180,7 @@ UI = {
 	      { key = "MX4SIO", label = "MX4SIO" },
 	      { key = "MMCE", label = "MMCE" },
 	      { key = "ATA", label = "exFAT-HDD (ata)" },
-	      { key = "UDPFS", label = "USB + UDPFS" }
+	      { key = "UDPFS", label = "UDPFS (network R/W)" }
 	    };
 	    VideoStandardModes = {
 	      {
@@ -6927,7 +6927,7 @@ function UI.SmbErrorMessage(err)
     NETBIOS_NA    = "NetBIOS isn't supported\nset Address type = IP + a Server IP",
     UDPFS_NOT_READY = "UDPFS server unavailable\nCheck your network and UDPFS server",
     UDPFS_IP_CHANGED_RESTART = "UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP",
-    NIC_BUSY_SMB = "SMB already owns the network adapter\nRestart POPSLoader to switch to USB+UDPFS",
+    NIC_BUSY_SMB = "SMB already owns the network adapter\nRestart POPSLoader to switch to UDPFS",
     NIC_PARTIAL_RESET = "UDPFS network initialization incomplete\nRestart POPSLoader",
     SMAP_FAIL = "UDPFS SMAP driver failed to load",
     MINISTACK_FAIL = "UDPFS network stack failed to load",
@@ -7070,7 +7070,7 @@ end
 -- The selector MUST run before either connection flow starts.
 function UI.RunUdpfsConnectFlow()
   if type(System) ~= "table" or type(System.initUDPFS) ~= "function" then
-    UI.Notif_queue.add("USB+UDPFS menu support is missing from this build", "error")
+    UI.Notif_queue.add("UDPFS menu support is missing from this build", "error")
     return
   end
   local state = type(System.udpfsState) == "function" and System.udpfsState() or "idle"
@@ -7083,12 +7083,12 @@ function UI.RunUdpfsConnectFlow()
     UI.Notif_queue.add(tostring(reason or "Set a static PS2 address in SMB / Network settings"), "error")
     return
   end
-  UI.RunBusyTask("Opening USB+UDPFS...", function(report)
+  UI.RunBusyTask("Opening UDPFS...", function(report)
     local scan = UI.MakeBusyProgressReporter(report, "Scanning UDPFS PS1 games...", 0.55, 0.96)
     report("Loading UDPFS network drivers...", 0.16)
     local root, err = PLDR.InitUDPFSPopsRoot(report)
     if type(root) ~= "string" then
-      UI.Notif_queue.add(PLDR.LFmt("USB+UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server", tostring(err or PLDR.L("Network initialization failed"))), "error")
+      UI.Notif_queue.add(PLDR.LFmt("UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server", tostring(err or PLDR.L("Network initialization failed"))), "error")
       return
     end
     -- The UDPFS server is read-only as far as the menu is concerned. Do not
@@ -7101,11 +7101,11 @@ function UI.RunUdpfsConnectFlow()
     if #PLDR.GAMES == 0 then
       UI.Notif_queue.add("No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.", "warn")
     end
-  end, "Could not open USB+UDPFS")
+  end, "Could not open UDPFS")
 end
 
 function UI.RunNetworkModePicker()
-  local choice = UI.RunSharePicker({ "SMBv1", "USB + UDPFS" }, "Ethernet protocol")
+  local choice = UI.RunSharePicker({ "SMBv1", "UDPFS" }, "Ethernet protocol")
   if choice == "SMBv1" then
     local state = type(System) == "table" and type(System.udpfsState) == "function"
       and System.udpfsState() or "idle"
@@ -7114,7 +7114,7 @@ function UI.RunNetworkModePicker()
       return
     end
     UI.RunSmbConnectFlow()
-  elseif choice == "USB + UDPFS" then
+  elseif choice == "UDPFS" then
     UI.RunUdpfsConnectFlow()
   end
 end
