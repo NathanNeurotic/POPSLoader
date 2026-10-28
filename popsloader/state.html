@@ -64,22 +64,23 @@ dated translation section in <code>QA_REGRESSION_MATRIX.md</code> for evidence a
 <p>This is the <strong>canonical status doc</strong> for POPSLoader. Current runtime state, behavioral invariants, preservation contracts, known issues, and hardware-verification status all live <strong>here</strong>; the other docs (README, AGENTS, CONTRIBUTING, ROADMAP, ROLLING_NOTES) point here instead of duplicating, so this is the one place to keep current. <code>QA_REGRESSION_MATRIX.md</code> is the detailed run ledger.</p>
 <h2 id="project-identity">Project Identity</h2>
 <p>POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (<code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code>). The Lua is bin2c'd into the EE ELF at build time — so a <em>runtime</em> Lua error (nil global, type error, <strong>load-order</strong> error) is invisible to <code>luac -p</code> and to CI, and only surfaces on real PS2 / PCSX2. (<code>pops_profiles.lua</code> was removed 2026-07-13 with the profile-preset system.)</p>
-<h2 id="experimental-udpfs-integration-status-included-in-official-123">Experimental UDPFS integration status (included in official 1.2.3)</h2>
+<h2 id="udpfs-development-update-unreleased">UDPFS development update (unreleased)</h2>
 <ul>
-<li>UDPFS VCD browser and Okeanos Alpha fallback staging are integrated for<br />
-  official 1.2.3 as an <strong>experimental, opt-in feature</strong> and continue on the<br />
-  development channels for further work; there is no physical-console certification.</li>
-<li>The Ethernet page now selects SMBv1 or USB+UDPFS, with restart required<br />
-  when changing network stacks. IP/netmask are shared from static SMB / Network<br />
-  settings and checked before writing missing USB <code>POPS/IPCONFIG.DAT</code>.</li>
-<li>POPSTARTER.ELF is resolved only from persistent local storage; the network<br />
-  browsing mount is not valid after IOP reset. Cover fallback checks<br />
-<code>udpfs:/ART/</code> then the per-game <code>udpfs:/POPS/</code> directory.</li>
-<li>Automated Lua host tests, compiler and IRX checksum checks have passed on<br />
-  the feature branch. <strong>Hardware status: Unknown (verify on hardware)</strong>, including<br />
-  real USB/network VCD launch and SMB regression.</li>
-<li>Do not issue a new official stable tag or compatibility claim until<br />
-  console test results are recorded in <code>QA_REGRESSION_MATRIX.md</code>.</li>
+<li>USB-first fallback is removed. The <code>UDPFS</code> mode now embeds Okeanos's<br />
+  UDPFS Assault 1.0.0 and companion, serving POPS dependencies and VMC writes<br />
+  entirely over the network. No USB volume is required.</li>
+<li>Runtime configuration uses per-file MC0 then MC1 <code>SYS-CONF</code> precedence.<br />
+  Missing console IP configuration is created from the menu's static settings;<br />
+  existing MC files are preserved, and conflicting IP settings block launch.<br />
+  An optional server config is copied from <code>udpfs:/POPS/UDPFSCONFIG.DAT</code> only<br />
+  when absent from both cards. Otherwise upstream discovery applies.</li>
+<li>Existing <code>BDMA=UDPFS</code> selections migrate in place. Installed bytes are checked<br />
+  against the embedded release, so stale Alpha/torn pairs are restaged.</li>
+<li>POPSTARTER.ELF still comes from persistent local storage. The menu mount does<br />
+  not survive POPStarter's reset. Ember keeps its inherited network backend.</li>
+<li>Setup, upstream requirements and save risks: <a href="udpfs-bdma.html">UDPFS guide</a>.<br />
+  Hardware status: <strong>Unknown (verify on hardware)</strong>. No new stable release is<br />
+  implied; detailed validation belongs in <code>QA_REGRESSION_MATRIX.md</code>.</li>
 </ul>
 <h2 id="experimental-channel-state-exp32exp73-current-goal-state">Experimental channel state (EXP32–EXP73) — current goal state</h2>
 <blockquote>

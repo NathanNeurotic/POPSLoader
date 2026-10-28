@@ -158,8 +158,8 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <td>Enumeration host-tested; mount and handoff unverified</td>
 </tr>
 <tr>
-<td>USB + UDPFS</td>
-<td>Opt-in <code>udpfs:/POPS/</code> read-only VCD route</td>
+<td>UDPFS</td>
+<td>Development: full network POPS reads / VMC writes; no USB required</td>
 <td>Enumeration host-tested; console handoff unverified</td>
 </tr>
 <tr>
@@ -169,7 +169,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 </tr>
 </tbody>
 </table>
-<p>HDD/PFS artwork belongs under <code>__common/POPS/ART/</code>. The stable 1.2.3 build includes <strong>opt-in experimental USB + UDPFS VCD support</strong>; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See <a href="device-support.html">device details</a> and <a href="udpfs-bdma.html">UDPFS setup</a>.</p>
+<p>HDD/PFS artwork belongs under <code>__common/POPS/ART/</code>. The development UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See <a href="device-support.html">device details</a> and <a href="udpfs-bdma.html">UDPFS setup</a>.</p>
 <h3 id="ember-options-and-safety">Ember options and safety</h3>
 <p>Set the bundled <strong>Ember Beta-2</strong> core's global options under <strong>Settings → Ember PS1 Core</strong>. On an <code>[Ember]</code> game row, press <strong>L2</strong> for timing, dither, shading and controller overrides; <code>Default</code> inherits the global option. Ember may create virtual memory cards in each game folder on writable media. <strong>Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.</strong> POPStarter VCD success does not establish Ember success.</p>
 <p>Credits and redistribution: <a href="https://github.com/Gageformer/Ember">Gageformer's Ember</a> (unmodified core with <code>EMBER/LICENSE-BETA.txt</code>), <a href="https://github.com/NathanNeurotic/Open-PS2-Loader">RiptOPL / Open-PS2-Loader</a> (device/backend reference), <a href="https://github.com/Okeanos86/BDMAssault">Okeanos's BDM-UDPFS Assault</a> and <a href="https://github.com/israpps/BDMAssault">israpps BDM Assault</a>. The <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/github/workflows/ember-watch.yml">weekly Ember Watch</a> verifies upstream asset digests, <strong>not</strong> hardware gameplay.</p>
@@ -178,7 +178,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <li>Cover-art PS1 browser for POPStarter VCD games and separate labeled Ember games.</li>
 <li>USB, MX4SIO, MMCE, APA/PFS and internal exFAT device flows, plus network modes.</li>
 <li>Per-device game visibility, settings, game lists and RiptOPL-style artwork.</li>
-<li>SMBv1 and opt-in USB + UDPFS VCD browsing with explicit network configuration.</li>
+<li>SMBv1 and opt-in UDPFS VCD browsing with explicit network configuration.</li>
 <li>Adjustable video, boot page, display and menu navigation; Triangle Exit menu and BOOT.ELF chainloading.</li>
 </ul>
 <p><strong>Current limitations:</strong> Ember console game launch, controller and VMC support still require evidence; i.Link remains unsupported; UDPFS and reported device issues require physical testing. Track verified regressions and dates in <a href="state.html">STATE.md</a> and the <a href="qa-regression-matrix.html">QA matrix</a>.</p>
@@ -493,7 +493,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <ul>
 <li><strong><a href="https://github.com/israpps">israpps (El_isra)</a></strong>: Original POPSLoader project creator and BDM Assault reference work.</li>
 <li><strong><a href="https://github.com/Gageformer/Ember">Gageformer</a></strong>: Ember PS1 emulator, bundled unmodified with its beta licence.</li>
-<li><strong><a href="https://github.com/Okeanos86/BDMAssault">Okeanos</a></strong>: BDM-UDPFS Assault Alpha PS1 network fallback.</li>
+<li><strong><a href="https://github.com/Okeanos86/BDMAssault">Okeanos</a></strong>: UDPFS Assault PS1 network read/write driver.</li>
 <li><strong>Daniel Santos</strong>: Creator of the Enceladus runtime foundation.</li>
 <li><strong>krHACKen</strong>: Author of POPStarter.</li>
 <li><strong><a href="https://github.com/AstroSnail">AstroSnail</a></strong>: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/research/research/original-git-provenance.md">provenance</a>.</li>

@@ -60,6 +60,58 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 <blockquote>
 <p>This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see <strong><code>STATE.md</code></strong>; those shared blocks are not restated here.</p>
 </blockquote>
+<h2 id="udpfs-assault-100-replacement-2026-10-27-unreleased">UDPFS Assault 1.0.0 replacement ? 2026-10-27 (unreleased)</h2>
+<table>
+<thead>
+<tr>
+<th>Validation</th>
+<th>Result</th>
+<th>Evidence / remaining acceptance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Production Lua no-USB launch and equipped-driver path</td>
+<td>PASS (host mocks only)</td>
+<td><code>tools/test_udpfs_config_runtime.py</code> executes the real boot chunks and <code>RunPOPStarterGame</code>, reaches the native exec boundary without USB enumeration, and checks configuration even when already equipped.</td>
+</tr>
+<tr>
+<td>Config precedence, MC1-only, write/readback faults and stale Alpha migration</td>
+<td>PASS (host mocks only)</td>
+<td>26 added configuration/staging/launch scenarios, plus the existing IPv4 validator suite. Config conflict, missing driver and disabled pack prevent exec. Review follow-ups verify corruption cleanup/retry, blocked retry and recovery after failed removal, and an inert packaged server example. The new cleanup and package regressions failed on the previous tree before the fixes. CodeRabbit follow-ups add size-before-read checks, durable MC0/MC1 restart recovery and malformed-journal handling.</td>
+</tr>
+<tr>
+<td>Existing boot/runtime harness</td>
+<td>PASS (host mocks only)</td>
+<td>60/60 checks; no new hardware claim.</td>
+</tr>
+<tr>
+<td>Released IRX pair</td>
+<td>PASS (host bytes only)</td>
+<td><code>tools/test_udpfs_integration.py</code> checks exact upstream SHA-256 hashes, MIPS ELF format and existing embedding/wiring.</td>
+</tr>
+<tr>
+<td>Installation ZIP / flat PSU</td>
+<td>PASS (host package only)</td>
+<td>ZIP exact UDPFS driver/setup/notice bytes, Python PSU verification and independent C++ PSUManager reader; no BIOS included.</td>
+</tr>
+<tr>
+<td>Local target build</td>
+<td>PASS (cross-compilation only)</td>
+<td>Pinned <code>ps2dev/ps2dev:v2.0.0</code>; native exec, gameplay and VMC saves not exercised.</td>
+</tr>
+<tr>
+<td>Cold/repeated network-only launch, controller input and VMC save/reload</td>
+<td>Unknown (verify on hardware)</td>
+<td>No console run. Use a writable server and backed-up VMCs.</td>
+</tr>
+<tr>
+<td>Network drop/reconnect, server read-only/missing and SMB regression</td>
+<td>Unknown (verify on hardware)</td>
+<td>No console run. Network writes can leave incomplete VMCs after prolonged interruption.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="scope">Scope</h2>
 <p>This matrix tracks current behavior across:<br />
 - settings load/save/apply transaction flow,<br />
