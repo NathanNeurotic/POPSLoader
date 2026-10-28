@@ -7246,7 +7246,8 @@ function PLDR.IsBdmaModeEquipped(mode_key)
   if target == "UDPFS" then
     for _, name in ipairs(BDMA_COPY_FILES) do
       local expected = GetEmbeddedAssetBytes(name..BDMA_SUFFIX[target])
-      if type(expected) ~= "string" or ReadWholeFile(POPSTARTER_PACK_ROOT.."/"..name) ~= expected then
+      local path = POPSTARTER_PACK_ROOT.."/"..name
+      if type(expected) ~= "string" or GetFileSizeSafe(path) ~= #expected or ReadWholeFile(path) ~= expected then
         return false
       end
     end
@@ -8419,22 +8420,32 @@ end
 
 -- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
 -- existing files on either card; only create missing files in SYS-CONF.
--- A destination that failed verification belongs to this write, not to the
--- user. If removal fails, never treat it as an existing user config on retry.
-local udpfs_config_cleanup_pending = nil
+-- A verified journal is written BEFORE a new config's final name is touched.
+-- Restart recovery checks both cards before applying per-file precedence.
 function PLDR.PrepareUdpfsConfig()
   local ip, mask, gw = PLDR.UdpfsStaticIp()
+  local pending_body = "POPSLoader UDPFS config pending\n"
   local function fail(message)
     if UI and UI.Notif_queue then UI.Notif_queue.add(message, "error") end
     return false
   end
-  if udpfs_config_cleanup_pending ~= nil then
-    local path = udpfs_config_cleanup_pending
-    pcall(System.removeFile, path)
-    if doesFileExist(path) then
-      return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", path))
+  local function cleanup(dest)
+    local marker = dest..".pldr-pending"
+    if not doesFileExist(marker) then return true end
+    -- A malformed journal blocks recovery instead of authorizing deletion.
+    if GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then return false end
+    pcall(System.removeFile, dest)
+    if doesFileExist(dest) then return false end
+    pcall(System.removeFile, marker)
+    return not doesFileExist(marker)
+  end
+  for _, card in ipairs({ "mc0:", "mc1:" }) do
+    for _, name in ipairs({ "IPCONFIG.DAT", "UDPFSCONFIG.DAT" }) do
+      local dest = card.."/SYS-CONF/"..name
+      if not cleanup(dest) then
+        return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+      end
     end
-    udpfs_config_cleanup_pending = nil
   end
   if ip == nil then return fail(tostring(mask)) end
   local dest_dir = string.match(POPSTARTER_PACK_ROOT, "^(mc%d:)/").."/SYS-CONF"
@@ -8446,9 +8457,11 @@ function PLDR.PrepareUdpfsConfig()
     end
     if effective then
       if name == "IPCONFIG.DAT" then
-        local body = ReadWholeFile(effective)
+        local size = GetFileSizeSafe(effective)
+        local body = nil
+        if size ~= nil and size > 0 and size <= 120 then body = ReadWholeFile(effective) end
         local a, b = nil, nil
-        if type(body) == "string" and #body > 0 and #body <= 120 then
+        if type(body) == "string" and #body == size then
           body = body:gsub("^\239\187\191", "")
           for line in body:gmatch("[^\r\n]+") do
             if not line:match("^%s*$") and not line:match("^%s*[#;]") then
@@ -8481,13 +8494,18 @@ function PLDR.PrepareUdpfsConfig()
       end
       if body ~= nil then
         local dest = dest_dir.."/"..name
+        local marker = dest..".pldr-pending"
         if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
-           or not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
-          -- This branch only creates a file absent from BOTH cards. Remove
-          -- an unverified result; existing user configuration never enters it.
-          udpfs_config_cleanup_pending = dest
-          pcall(System.removeFile, dest)
-          if not doesFileExist(dest) then udpfs_config_cleanup_pending = nil end
+           or not WriteBytesAtomicBounded(pending_body, marker)
+           or GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
+        if not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
+          cleanup(dest) -- journal remains if deletion fails, including across restart
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
+        pcall(System.removeFile, marker)
+        if doesFileExist(marker) then
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end
       end

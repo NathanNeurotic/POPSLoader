@@ -53,9 +53,11 @@ active `UDPFSCONFIG.DAT` example (often `192.168.1.11`) if you want discovery;
 existing MC configurations still take precedence.
 
 New files go to `SYS-CONF` on the card selected for the POPSTARTER pack.
-Writes are checked by readback. A failed newly created configuration is removed;
-if removal fails, further preparation attempts in the same session stay blocked
-until it can be removed. Configuration is checked even when the driver
+Writes are checked by readback. A verified `.pldr-pending` journal is written before creating each configuration.
+If verification or cleanup fails, that journal survives a restart and prevents
+the incomplete file from being accepted as user configuration. Recovery checks
+both cards before applying configuration precedence; malformed journals block
+launch rather than authorize file deletion. Configuration is checked even when the driver
 pair is already equipped. Both optional runtime config files must fit within
 upstream's 120-byte limit. An empty or oversized server source file is rejected;
 remove that optional source file to use discovery.
@@ -71,7 +73,7 @@ or stale marker triggers restaging before launch. Settings apply uses the embedd
 cannot reinstall the removed backend. Release kits replace the
 historical reference bundle's UDPFS files and notices with this same pair.
 [Provenance and SHA-256 hashes](third_party/okeanos_udpfs/PROVENANCE.json),
-[unmodified upstream instructions](third_party/okeanos_udpfs/UPSTREAM-README.md)
+[upstream instructions with local link corrections](third_party/okeanos_udpfs/UPSTREAM-README.md)
 and [configuration details](third_party/okeanos_udpfs/README_CONFIG.txt) accompany it.
 
 ## Limits and validation

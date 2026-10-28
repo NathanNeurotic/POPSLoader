@@ -13,6 +13,11 @@
         "sha256": "70a369e47745e7f995fa771edbbfed086727b759fba915a7070c0fbcf061dd34",
         "size": 34508
       }
-    }
+    },
+    "documentation_edits": [
+      "README_CONFIG.txt: clarify driver and companion destinations",
+      "UPSTREAM-README.md: repair relative links for the mirrored layout",
+      "THIRD_PARTY_NOTICES.md: point to packaged AFL license texts"
+    ]
   }
 }

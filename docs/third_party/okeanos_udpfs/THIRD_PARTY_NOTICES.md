@@ -10,10 +10,11 @@ The license of this project itself is in the `LICENSE` file.
 | Neutrino, UDPFS, UDPBD, UDPRDMA, `udpfs_server.py` (all in the Neutrino repository) | ps2max32 | Academic Free License 3.0 | protocol implemented by the client; `src/net/` derives from UDPBD |
 | udpfsd | Copyright 2026 Ivan V (pcm720) | BSD-3-Clause (below) | reference for the protocol (no code copied); the server the module is tested with |
 
-Full license texts (AFL 2.0, AFL 3.0) are in the `licenses/` folder of `__udp_fs_assault`:
+Full license texts (AFL 2.0, AFL 3.0) are provided alongside this notice
+in POPSLoader source and the packaged `POPS/UDPFS-NOTICES/` folder:
 
-- `licenses/AFL-2.0.txt`
-- `licenses/AFL-3.0.txt`
+- [AFL-2.0.txt](AFL-2.0.txt)
+- [AFL-3.0.txt](AFL-3.0.txt)
 
 ---
 

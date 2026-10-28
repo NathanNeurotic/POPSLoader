@@ -185,7 +185,7 @@ for failure in (None, "config", "stage", "folder", "already-equipped"):
         vm.execute('PLDR.ApplyBdmaModeOnce = function() error("already equipped must not write drivers") end')
     try:
         vm.execute('PLDR.RunPOPStarterGame("udpfs:/POPS/", "Game.VCD", UI.SCENES.GSMBNET)')
-    except Exception as error:
+    except lua54.LuaError as error:
         assert "EXEC_BOUNDARY" in str(error), str(error)
     assert vm.globals().EXECS == (1 if failure in (None, "already-equipped") else 0), (failure, list(vm.globals().NOTICES.values()))
     if failure in (None, "already-equipped"):
@@ -217,7 +217,7 @@ for cleanup_fails in (False, True):
       local write = System.writeFile
       ORIGINAL_WRITE = write
       System.writeFile = function(fd, body, size)
-        if fd.path:find("UDPFSCONFIG.DAT", 1, true) then
+        if fd.path:find("UDPFSCONFIG.DAT", 1, true) and not fd.path:find(".pldr-pending", 1, true) then
           write(fd, string.rep("x", size), size); return size
         end
         return write(fd, body, size)
@@ -245,3 +245,52 @@ vm.execute(r"""
   assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == nil)
 """)
 print("PASS UDPFS: unedited kit example leaves server discovery enabled")
+
+for target in ("mc0:/POPSTARTER/usbd.irx", "mc0:/SYS-CONF/IPCONFIG.DAT"):
+    vm = boot()
+    vm.globals().OVERSIZED_PATH = target
+    vm.execute(r"""
+      FAKEFS.files[OVERSIZED_PATH] = string.rep("x", 1000000)
+      FAKEFS.files["mc0:/POPSTARTER/usbhdfsd.irx"] = "companion"
+      local read = System.readFile
+      System.readFile = function(fd, size)
+        if fd.path == OVERSIZED_PATH then OVERSIZED_READ = true; error("oversized read") end
+        return read(fd, size)
+      end
+      if OVERSIZED_PATH:find("IPCONFIG", 1, true) then assert(not PLDR.PrepareUdpfsConfig())
+      else assert(not PLDR.IsBdmaModeEquipped("UDPFS")) end
+      assert(not OVERSIZED_READ, "oversized file must not be read, even inside pcall")
+    """)
+    print("PASS UDPFS: size check before read:", target)
+
+for card in ("mc0:", "mc1:"):
+    vm = boot()
+    vm.globals().CARD = card
+    vm.execute(r"""
+      local dest = CARD.."/SYS-CONF/UDPFSCONFIG.DAT"
+      FAKEFS.files[dest] = "192.168.1.77\n" -- wrong but valid in-subnet address
+      FAKEFS.files[dest..".pldr-pending"] = "POPSLoader UDPFS config pending\n"
+      FAKEFS.files["udpfs:/POPS/UDPFSCONFIG.DAT"] = "192.168.1.88\n"
+    """)
+    # Boot a new Lua VM, carrying only filesystem contents across the restart.
+    saved = dict(vm.globals().FAKEFS.files.items())
+    restarted = boot()
+    restarted.globals().FAKEFS.files = restarted.table_from(saved)
+    restarted.execute(r"""
+      local remove = System.removeFile
+      System.removeFile = function() return -1 end
+      assert(not PLDR.PrepareUdpfsConfig(), "pending journal must block after restart")
+      System.removeFile = remove
+      assert(PLDR.PrepareUdpfsConfig())
+      assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == "192.168.1.88\n")
+    """)
+    print("PASS UDPFS: restart recovery on", card)
+
+vm = boot()
+vm.execute(r"""
+  FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] = "192.168.1.77\n"
+  FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT.pldr-pending"] = "damaged"
+  assert(not PLDR.PrepareUdpfsConfig())
+  assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == "192.168.1.77\n")
+""")
+print("PASS UDPFS: malformed journal blocks without deleting config")

@@ -1,3 +1,6 @@
+POPSLoader editorial note: the installation wording below clarifies the two
+module destinations; driver binaries are the unmodified upstream 1.0.0 release.
+
 UDP FS ASSAULT: CONFIGURATION AND BEHAVIOR
 ==========================================
 
@@ -63,7 +66,8 @@ Which programs, and how the memory card is read
 -----------------------------------------------
 POPStarter needs the file mc?:/POPSTARTER/usbhdfsd.irx on the memory card to
 start: use usbd_bd_assault.irx of the BDM Assault project, renamed to
-usbhdfsd.irx. This module goes into mc?:/POPSTARTER/usbd.irx.
+usbhdfsd.irx. Copy it to mc?:/POPSTARTER/usbhdfsd.irx.
+The UDPFS module (udp_fs_assault.irx) goes into mc?:/POPSTARTER/usbd.irx.
 
 POPStarter loads this module twice: once before and once after an IOP reset.
 In the first load the memory card is readable; after the reset the memory card
