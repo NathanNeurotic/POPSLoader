@@ -162,6 +162,10 @@ def check_version_stamps():
         fail("version", "title.cfg says %s but etc/boot.lua says %s"
              % (cfgv.group(1), bootv.group(1)))
     build = cfgv.group(1)
+    pbt = read("bin/POPSLDR/APPINFO.PBT") or ""
+    pbtv = re.search(r'^SET "VERSION" "([^"\n]+)"$', pbt, re.M)
+    if not pbtv or pbtv.group(1) != build:
+        fail("version", "APPINFO.PBT must match title.cfg version %s" % build)
     note("version", "build stamp is %s" % build)
 
     # The release notes tell testers which version to look for; a stale number there

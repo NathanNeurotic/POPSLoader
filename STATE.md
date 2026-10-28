@@ -1,4 +1,4 @@
-Last updated: 2026-10-19. **Official release: 1.3.1**. At this cut, `master`, `dev`, and `experimental` share the same source and `v1.3.1` stamp. Includes the bounded controller-free boot fix (#603), enlarged `_ICO.png` disc artwork (#568), current installable ZIP/flat-PSU packaging, and the existing Ember Beta-2 and USB + UDPFS options. **Physical-console verification remains pending** for the new fixes, Ember launch/controller/VMC behavior, and UDPFS; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 stay open for reporter verification. Ember i.Link remains deferred.
+Last updated: 2026-10-28. **Official release: 1.4.0**. This release includes network-only UDPFS Assault 1.0.0, persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master, dev and experimental are aligned at the release cut. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. Ember i.Link remains deferred.
 
 # STATE
 
@@ -13,7 +13,7 @@ This is the **canonical status doc** for POPSLoader. Current runtime state, beha
 ## Project Identity
 POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (`system.lua`, `ui.lua`, `images.lua`). The Lua is bin2c'd into the EE ELF at build time — so a *runtime* Lua error (nil global, type error, **load-order** error) is invisible to `luac -p` and to CI, and only surfaces on real PS2 / PCSX2. (`pops_profiles.lua` was removed 2026-07-13 with the profile-preset system.)
 
-## UDPFS development update (unreleased)
+## UDPFS Assault 1.0.0 (included in 1.4.0)
 
 - USB-first fallback is removed. The `UDPFS` mode now embeds Okeanos's
   UDPFS Assault 1.0.0 and companion, serving POPS dependencies and VMC writes
@@ -28,8 +28,8 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - POPSTARTER.ELF still comes from persistent local storage. The menu mount does
   not survive POPStarter's reset. Ember keeps its inherited network backend.
 - Setup, upstream requirements and save risks: [UDPFS guide](docs/UDPFS_BDMA.md).
-  Hardware status: **Unknown (verify on hardware)**. No new stable release is
-  implied; detailed validation belongs in `QA_REGRESSION_MATRIX.md`.
+  Hardware status: **Unknown (verify on hardware)**; detailed validation belongs
+  in `QA_REGRESSION_MATRIX.md`.
 
 ## Experimental channel state (EXP32–EXP73) — current goal state
 
@@ -281,7 +281,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.2.3** is the public release (2026-10-13; previously 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.4.0** is the public release (2026-10-28; previously 1.3.1 2026-10-19, 1.3.0, 1.2.3 2026-10-13, 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.

@@ -10,7 +10,7 @@
 
 | Channel | Package | Who should use it |
 | --- | --- | --- |
-| **Official 1.3.1** | [Official 1.3.1 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.1) | Current versioned release: controller-free boot fix, larger disc artwork, and the existing experimental Ember Beta-2 / USB + UDPFS options. |
+| **Official 1.4.0** | [Official 1.4.0 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.0) | Network-only UDPFS with restart-safe configuration, localization fixes, and the existing Ember Beta-2 option. Console UDPFS/Ember acceptance remains pending. |
 | Prior stable 1.2.3 | [Release 1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Preserved POPStarter-only baseline without Ember. |
 | **POPSLoader 1.3.0 (Ember Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with Gageformer's **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.3.1 PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.1/PS1_POPSLOADER.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
+Download the full [POPSLoader 1.4.0 PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.0/PS1_POPSLOADER.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
 
 ~~~text
 APPS/
@@ -47,7 +47,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 ~~~
 
-1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.3.1/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.0/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
 2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
 3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
 4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.
@@ -62,10 +62,10 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | Internal exFAT HDD (BDMA/ATA) | Root `POPS/` on mounted `mass:` | Library scan host-tested; console handoff unverified |
 | Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
 | SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
-| UDPFS | Development: full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
+| UDPFS | Full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
 | i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
 
-HDD/PFS artwork belongs under `__common/POPS/ART/`. The development UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
+HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
 ### Ember options and safety
 

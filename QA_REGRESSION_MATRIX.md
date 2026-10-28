@@ -1,12 +1,21 @@
 # POPSLoader Regression Matrix
 
 Last updated: 2026-10-27 (Slovak translation handoff; host checks)
-Released line: **1.3.1** (2026-10-19). `master`, `dev`, and `experimental` share the release source and `v1.3.1` stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
+Released line: **1.4.0** (2026-10-28). `master`, `dev`, and `experimental` share the release source and `v1.4.0` stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
 
-## UDPFS Assault 1.0.0 replacement ? 2026-10-27 (unreleased)
+## 1.4.0 release validation (2026-10-28)
+
+The release source carries matching 1.4.0 stamps in `etc/boot.lua`, `title.cfg`
+and `APPINFO.PBT`. The official workflow publishes the exact passing master CI
+artifact, checking the ZIP/PSU, packaged version stamps, UDPFS driver hashes and
+sample/notice contents, and the unchanged official Ember Beta-2 digest. Local
+host gates are rerun for the release cut; CI supplies the exact target/package
+validation. No physical-console result is added by this release.
+
+## UDPFS Assault 1.0.0 replacement ? included in 1.4.0 (host checks 2026-10-27/28)
 
 | Validation | Result | Evidence / remaining acceptance |
 |---|---|---|
