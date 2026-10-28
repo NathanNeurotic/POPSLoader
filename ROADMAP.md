@@ -1,4 +1,4 @@
-Last updated: 2026-10-13 (official release 1.2.3; Ember PR #600 in development)
+Last updated: 2026-10-28 (official release 1.4.0)
 
 # ROADMAP
 
@@ -6,7 +6,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ## Status Snapshot
 
-- **Public release is 1.2.3** (tag `1.2.3`, 2026-10-13). USB + UDPFS VCD support is opt-in **experimental and console-unverified**. Ember integration and packaging are on [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) against `dev`, not stable. Do not assume `master`, `dev` and `experimental` remain on identical commits.
+- **Public release is 1.4.0** (2026-10-28). Network-only UDPFS and Ember remain experimental and console-unverified. See STATE.md for current status.
 - The 2026-06 (BETA-12-era) deliverables: HDD-resident settings save + in-app HDD `.hide` (boot-partition RW take-over via `EnsureBootPartitionWritable`), PAL native 640×512 full-screen render + auto-revert display-change confirm, the `bdma_mode.txt` marker rename (legacy names still read), the POPSTARTER Memory Card Folder toggle + BDMA⟺folder interlock, the launch-args auto-launch consumer, and the live CI luac syntax gate. See **STATE.md > Repo-Verified Runtime State** for the detail.
 - The BETA-13 session added: gated analog-stick→d-pad fold + frame-counted nav auto-repeat + frame-counted description scroll (all **hardware-confirmed**), the Boot sound On/Off setting (**hardware-confirmed**), the layered `cover_default.png` + `cover_missing.png` cover placeholder (replacing the removed `MISSING.png`, −62 KB ELF), the OPL-style Overscan (CRT inset) render-inset adjuster, the HDD save-after-scan fix + Proposal A scan-slot steering, a 6-finding Codex audit pass, POPSTARTER.ELF / SMB-pack release-zip packaging, and **per-device POPSTARTER.ELF resolution** (`PLDR.ResolveLaunchPopstarterPath`; removable order: explicit custom/absolute-profile path → the game's own `<device>:/POPS/POPSTARTER.ELF` → launcher cwd → `mc0:`/`mc1:` net; APA order: custom → `hdd0:__common/POPS/POPSTARTER.ELF` via the same `__common` partition machinery → cwd → net — an explicit custom path now wins and Profiles act as presets, superseding the earlier device-local-first precedence; commits `28e40bb`/`9f2477c`/`26bb06c`, **not yet hardware-tested**). See **STATE.md > Repo-Verified Runtime State**.
 - The 2026-07-09 wave added: **Adaptive BDMA** (issue #509; per-launch BDMA variant staging with an equipped-check-before-write, launch-cancel on a staging failure, and an adaptive-off restage of the chosen mode), **partition-installed POPS games** on the HDD (PFS) page (HDDOSD/PSBBN `PP.`/`__.` one-partition-per-game installs via the new `HDD.ListPartitions` APA enumerator + an `IMAGE0.VCD` mount-probe; launch argv0 `PP.<partition>.ELF`), the **boot chime re-encode** (22.05 kHz mono, −190.9 KB raw, zero code changes), and **HDD-page diagnostics** for the open non-HDD-boot list failure (real mount rc surfaced, dir-read-fault toast, status re-probe instead of a dead latch). Commits `6d6a368`..`3eff270`, adversarially reviewed pre-push (8 confirmed findings, all fixed), **none hardware-tested**. See **STATE.md**.
@@ -21,7 +21,7 @@ This is the **forward plan**. For current runtime state, the canonical Known-Iss
 
 ## Immediate Priorities
 
-**POPS UDPFS — experimental in 1.2.3:** SMBv1 / USB + UDPFS selector, read-only VCD list and Okeanos BDMA driver staging are implemented. Hardware game launch, multi-USB/controller behavior and regression checks remain unverified. See [setup and limitations](docs/UDPFS_BDMA.md).
+**POPS UDPFS ? included in 1.4.0:** UDPFS Assault 1.0.0 replaces the USB-first mode with network reads and VMC writes; USB is no longer required. Physical-console acceptance remains pending. See [setup and limitations](docs/UDPFS_BDMA.md).
 
 **Ember PR #600:** separate Ember library/launcher and Beta 2 global/per-game settings; RiptOPL-matched `POPS/` and `EMBER/` packaging; exact eight-file `APPS/PS1_POPSLOADER/` plus flat PSU with independent verification; digest-verified upstream Ember Watch. Real PS2 Ember game launch, controllers and VMC saves remain hardware-unverified. **i.Link is explicitly deferred until RiptOPL proves it on real PS2 hardware** and is not a completion/merge requirement for this PR. See the [maintained wiki](docs/wiki/Project-Wiki.md).
 

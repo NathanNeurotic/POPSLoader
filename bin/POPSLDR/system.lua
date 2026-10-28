@@ -2557,7 +2557,7 @@ end
 -- has no table -- it is the fallback).
 PLDR.LANGUAGE_EN = "EN"
 PLDR.LANGUAGE_ORDER = {"EN", "FR", "DE", "PT", "ES", "IT", "HU"}
-PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Francais", DE = "Deutsch", PT = "Portugues", ES = "Espanol", IT = "Italiano", HU = "Magyar" }
+PLDR.LANGUAGE_NAMES = { EN = "English", FR = "Français", DE = "Deutsch", PT = "Português", ES = "Español", IT = "Italiano", HU = "Magyar" }
 PLDR.LANGUAGE = PLDR.LANGUAGE or "EN"
 local function NormalizeLanguage(value)
   local key = string.upper(tostring(value or ""))
@@ -2787,7 +2787,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Aucun DKWDRV trouvé à ce chemin",
     ["No POPSTARTER found at this path"] = "Aucun POPSTARTER trouvé à ce chemin",
     ["Path saved, file not found:"] = "Chemin enregistré, fichier introuvable :",
-    ["Resolved:"] = "Résolu :",
+    ["Resolved:"] = "Chemin résolu :",
+    ["Timing"] = "Synchronisation",
+    ["Dithering"] = "Tramage",
+    ["Shading"] = "Ombrage",
+    ["Controller"] = "Manette",
+    ["Default (global)"] = "Par défaut (global)",
+    ["Default"] = "Par défaut",
+    ["Unchanged"] = "Inchangé",
+    ["Close"] = "Fermer",
     ["Reverting in"] = "Annulation dans",
     ["Saved to"] = "Enregistré dans",
     ["Slot:"] = "Emplacement :",
@@ -3020,7 +3028,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Kein DKWDRV unter diesem Pfad gefunden",
     ["No POPSTARTER found at this path"] = "Kein POPSTARTER unter diesem Pfad gefunden",
     ["Path saved, file not found:"] = "Pfad gespeichert, Datei nicht gefunden:",
-    ["Resolved:"] = "Aufgelöst:",
+    ["Resolved:"] = "Aufgelöster Pfad:",
+    ["Timing"] = "Timing",
+    ["Dithering"] = "Dithering",
+    ["Shading"] = "Schattierung",
+    ["Controller"] = "Controller",
+    ["Default (global)"] = "Standard (global)",
+    ["Default"] = "Standard",
+    ["Unchanged"] = "Unverändert",
+    ["Close"] = "Schließen",
     ["Reverting in"] = "Zurücksetzen in",
     ["Saved to"] = "Gespeichert in",
     ["Slot:"] = "Slot:",
@@ -3251,7 +3267,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Nenhum DKWDRV encontrado neste caminho",
     ["No POPSTARTER found at this path"] = "Nenhum POPSTARTER encontrado neste caminho",
     ["Path saved, file not found:"] = "Caminho salvo, arquivo não encontrado:",
-    ["Resolved:"] = "Resolvido:",
+    ["Resolved:"] = "Caminho resolvido:",
+    ["Timing"] = "Temporização",
+    ["Dithering"] = "Pontilhamento",
+    ["Shading"] = "Sombreamento",
+    ["Controller"] = "Controle",
+    ["Default (global)"] = "Padrão (global)",
+    ["Default"] = "Padrão",
+    ["Unchanged"] = "Inalterado",
+    ["Close"] = "Fechar",
     ["Reverting in"] = "Revertendo em",
     ["Saved to"] = "Salvo em",
     ["Slot:"] = "Slot:",
@@ -3486,7 +3510,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "No se encontró DKWDRV en esta ruta",
     ["No POPSTARTER found at this path"] = "No se encontró POPSTARTER en esta ruta",
     ["Path saved, file not found:"] = "Ruta guardada, archivo no encontrado:",
-    ["Resolved:"] = "Resuelto:",
+    ["Resolved:"] = "Ruta resuelta:",
+    ["Timing"] = "Temporización",
+    ["Dithering"] = "Tramado",
+    ["Shading"] = "Sombreado",
+    ["Controller"] = "Mando",
+    ["Default (global)"] = "Predeterminado (global)",
+    ["Default"] = "Predeterminado",
+    ["Unchanged"] = "Sin cambios",
+    ["Close"] = "Cerrar",
     ["Reverting in"] = "Revirtiendo en",
     ["Saved to"] = "Guardado en",
     ["Slot:"] = "Ranura:",
@@ -3717,7 +3749,15 @@ PLDR.I18N = {
     ["No DKWDRV found at this path"] = "Nessun DKWDRV trovato in questo percorso",
     ["No POPSTARTER found at this path"] = "Nessun POPSTARTER trovato in questo percorso",
     ["Path saved, file not found:"] = "Percorso salvato, file non trovato:",
-    ["Resolved:"] = "Risolto:",
+    ["Resolved:"] = "Percorso risolto:",
+    ["Timing"] = "Temporizzazione",
+    ["Dithering"] = "Dithering",
+    ["Shading"] = "Ombreggiatura",
+    ["Controller"] = "Controller",
+    ["Default (global)"] = "Predefinito (globale)",
+    ["Default"] = "Predefinito",
+    ["Unchanged"] = "Invariato",
+    ["Close"] = "Chiudi",
     ["Reverting in"] = "Ripristino tra",
     ["Saved to"] = "Salvato in",
     ["Slot:"] = "Slot:",
@@ -3997,12 +4037,20 @@ PLDR.I18N = {
     -- EXP34: fill currently-used strings that were untranslated (machine-assisted)
     ["Edit %s"] = "%s szerkesztése",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "A rejtett játékok itt is megjelennek (halványítva)\nA Beállításokban engedélyezze a „Rejtett játékok elrejtése” opciót, hogy kiszűrje őket",
-    ["Resolved:"] = "Megoldva:",
+    ["Resolved:"] = "Feloldott útvonal:",
+    ["Timing"] = "Időzítés",
+    ["Dithering"] = "Színkeverés",
+    ["Shading"] = "Árnyalás",
+    ["Controller"] = "Kontroller",
+    ["Default (global)"] = "Alapértelmezett (globális)",
+    ["Default"] = "Alapértelmezett",
+    ["Unchanged"] = "Változatlan",
+    ["Close"] = "Bezárás",
     ["The internal drive is still starting\nopen this page again in a moment"] = "A belső meghajtó még indul\nnyissa meg újra ezt az oldalt egy kis idő múlva",
     -- PR #559 (oldman63, 2026-07-27): strings made translatable by the
     -- EXP73 i18n sweep, plus rows that had never been offered to a translator.
     [" (%d hidden -- Global Hide is on)"] = " (%d rejtett -- A Globális elrejtés be van kapcsolva)",
-    [" (%d multi-disc collapsed)"] = " (%d többlemezesek kibontva)",
+    [" (%d multi-disc collapsed)"] = " (%d többlemezes bejegyzés összevonva)",
     ["Both"] = "Mindegyik",
     ["Couldn't save settings\n%s may be read-only"] = "A beállításokat nem sikerült menteni\nLehet, hogy a %s írásvédett",
     ["Done"] = "Kész",
@@ -4331,7 +4379,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
-  UDPFS = ".udpfs"  -- Okeanos BDM-UDPFS Assault pair
+  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.0 full network read/write
 }
 
 -- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
@@ -7032,7 +7080,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return true
   end
 
-  if not PLDR.EnsurePopstarterUiAssets() then
+  -- EnsurePopstarterDir already installs embedded icons. UDPFS must not
+  -- probe an external backend for legacy overrides.
+  if selected ~= "UDPFS" and not PLDR.EnsurePopstarterUiAssets() then
     return false
   end
 
@@ -7044,7 +7094,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return false
   end
 
-  if launch_fast == true then
+  if launch_fast == true or selected == "UDPFS" then
+    -- UDPFS always uses the released embedded pair, including Settings apply:
+    -- a stale external Alpha override must not reinstall the removed backend.
     -- Launch staging: two embed pastes, nothing else. No backend init, no
     -- external probing, no tmp/.bak. Self-healing: the marker goes last, so
     -- any failure leaves marker ~= target and the next launch re-stages.
@@ -7065,12 +7117,13 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
         return false
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteBytesDirectBounded, bytes, dest)
+      local writer = launch_fast == true and WriteBytesDirectBounded or WriteBytesAtomicBounded
+      local ok_write, wrote = pcall(writer, bytes, dest)
       if not ok_write or not wrote then
         return false
       end
     end
-    if not WriteBdmaModeMarker(selected, true) then
+    if not WriteBdmaModeMarker(selected, launch_fast) then
       return false
     end
     return true
@@ -7189,6 +7242,15 @@ function PLDR.IsBdmaModeEquipped(mode_key)
   end
   if not have_all then
     return false
+  end
+  if target == "UDPFS" then
+    for _, name in ipairs(BDMA_COPY_FILES) do
+      local expected = GetEmbeddedAssetBytes(name..BDMA_SUFFIX[target])
+      local path = POPSTARTER_PACK_ROOT.."/"..name
+      if type(expected) ~= "string" or GetFileSizeSafe(path) ~= #expected or ReadWholeFile(path) ~= expected then
+        return false
+      end
+    end
   end
   return ResolveEffectiveBdmaMode() == target
 end
@@ -8169,20 +8231,20 @@ function PLDR.EmberLaunch(entry)
     if apa_slot ~= nil then UMountHddPartitionTracked(apa_slot) end
     return false, reason
   end
-  if not doesFileExist(e.elf) then return fail("Missing "..e.elf) end
+  if not doesFileExist(e.elf) then return fail(PLDR.LFmt("Missing %s", e.elf)) end
   local bios_bytes = GetFileSizeSafe(e.bios)
   if bios_bytes ~= 512*1024 then
-    return fail("Ember needs a 512 KB BIOS: "..e.bios)
+    return fail(PLDR.LFmt("Ember needs a 512 KB BIOS: %s", e.bios))
   end
   local ok_dir, game_entries = pcall(System.listDirectory, e.game)
   if not ok_dir or not EmberHasGameImage(game_entries) then
-    return fail("No .cue/.exe/.bin directly in "..e.game)
+    return fail(PLDR.LFmt("No .cue/.exe/.bin directly in %s", e.game))
   end
   local ok_global, global_saved = pcall(PLDR.EmberApplyGlobal, e.root)
   if not (ok_global and global_saved)
      and type(UI) == "table" and type(UI.Notif_queue) == "table" then
     pcall(UI.Notif_queue.add,
-      "Ember global settings could not be saved on "..e.root, "warn")
+      PLDR.LFmt("Ember global settings could not be saved on %s", e.root), "warn")
   end
   -- Keep the writable APA mount and its descriptors across the IOP-preserving
   -- ELF handoff. Other PFS mounts can close; the Ember game's slot cannot.
@@ -8201,8 +8263,8 @@ function PLDR.EmberLaunch(entry)
     end
     UMountHddPartitionTracked(apa_slot)
   end
-  if not ok then return false, "Ember launch error: "..tostring(result) end
-  return false, "Ember ELF returned: "..tostring(result)
+  if not ok then return false, PLDR.LFmt("Ember launch error: %s", tostring(result)) end
+  return false, PLDR.LFmt("Ember ELF returned: %s", tostring(result))
 end
 end
 
@@ -8291,7 +8353,7 @@ end
 -- SHARE_FAIL/IRX_LOAD_FAIL) for the UI to map to a message. Mirrors InitATAPopsRoot.
 -- The menu-side filesystem uses its own ministack and a static IPv4 address,
 -- while Okeanos's runtime pair reinitializes the NIC *after* POPStarter's IOP
--- reset and reads settings from USB. These must describe the same console.
+-- reset and reads settings from memory-card SYS-CONF. These must describe the same console.
 -- Keep this check independent from the legacy SMB settings editor: saved values
 -- and existing IPCONFIG.DAT can bypass field validation in the UI.
 local function ParseUdpfsIPv4(value)
@@ -8356,45 +8418,96 @@ function PLDR.InitUDPFSPopsRoot(report)
   return "udpfs:/POPS/"
 end
 
--- Returns false with a visible message on ambiguous/conflicting USB config.
--- Never overwrites a user-created file; stage only files missing on a USB
--- volume, so two USB drives cannot silently acquire conflicting IPs.
-function PLDR.PrepareUdpfsUsbConfig()
+-- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
+-- existing files on either card; only create missing files in SYS-CONF.
+-- A verified journal is written BEFORE a new config's final name is touched.
+-- Restart recovery checks both cards before applying per-file precedence.
+function PLDR.PrepareUdpfsConfig()
   local ip, mask, gw = PLDR.UdpfsStaticIp()
-  if ip == nil then
-    if UI and UI.Notif_queue then UI.Notif_queue.add(tostring(mask), "error") end
+  local pending_body = "POPSLoader UDPFS config pending\n"
+  local function fail(message)
+    if UI and UI.Notif_queue then UI.Notif_queue.add(message, "error") end
     return false
   end
-  local roots = PLDR.GetRootsByType("usb")
-  if type(roots) ~= "table" or #roots == 0 then
-    if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires a USB volume with POPS/ installed", "error") end
-    return false
+  local function cleanup(dest)
+    local marker = dest..".pldr-pending"
+    if not doesFileExist(marker) then return true end
+    -- A malformed journal blocks recovery instead of authorizing deletion.
+    if GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then return false end
+    pcall(System.removeFile, dest)
+    if doesFileExist(dest) then return false end
+    pcall(System.removeFile, marker)
+    return not doesFileExist(marker)
   end
-  local desired = ip.." "..mask.." "..gw
-  for i = 1, #roots do
-    local root = roots[i]
-    local dir = root.."POPS/"
-    if not doesFolderExist(dir) then
-      if UI and UI.Notif_queue then UI.Notif_queue.add("Missing "..dir.." -- UDPFS requires the POPS folder on each USB volume", "error") end
-      return false
-    end
-    local path = dir.."IPCONFIG.DAT"
-    if doesFileExist(path) then
-      local current = ReadWholeFile(path)
-      local config_line = type(current) == "string" and string.match(current, "^[^\r\n]*") or ""
-      local a,b = string.match(config_line or "", "^%s*(%S+)%s+(%S+)")
-      if a ~= ip or b ~= mask then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS USB IPCONFIG.DAT conflicts with the menu settings:\n"..path.."\nEdit it to match "..ip.." "..mask.." (not overwritten)", "error") end
-        return false
+  for _, card in ipairs({ "mc0:", "mc1:" }) do
+    for _, name in ipairs({ "IPCONFIG.DAT", "UDPFSCONFIG.DAT" }) do
+      local dest = card.."/SYS-CONF/"..name
+      if not cleanup(dest) then
+        return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
       end
     end
   end
-  for i = 1, #roots do
-    local path = roots[i].."POPS/IPCONFIG.DAT"
-    if not doesFileExist(path) then
-      if not WriteBytesAtomicBounded(desired.."\n",path) then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("Could not write UDPFS configuration:\n"..path, "error") end
-        return false
+  if ip == nil then return fail(tostring(mask)) end
+  local dest_dir = string.match(POPSTARTER_PACK_ROOT, "^(mc%d:)/").."/SYS-CONF"
+  for _, name in ipairs({ "IPCONFIG.DAT", "UDPFSCONFIG.DAT" }) do
+    local effective = nil
+    for _, card in ipairs({ "mc0:", "mc1:" }) do
+      local path = card.."/SYS-CONF/"..name
+      if doesFileExist(path) then effective = path; break end
+    end
+    if effective then
+      if name == "IPCONFIG.DAT" then
+        local size = GetFileSizeSafe(effective)
+        local body = nil
+        if size ~= nil and size > 0 and size <= 120 then body = ReadWholeFile(effective) end
+        local a, b = nil, nil
+        if type(body) == "string" and #body == size then
+          body = body:gsub("^\239\187\191", "")
+          for line in body:gmatch("[^\r\n]+") do
+            if not line:match("^%s*$") and not line:match("^%s*[#;]") then
+              a, b = line:match("^%s*(%S+)%s+(%S+)")
+              a = ParseUdpfsIPv4(a); b = ParseUdpfsIPv4(b)
+              break
+            end
+          end
+        end
+        if a ~= ip or b ~= mask then
+          return fail(PLDR.LFmt("UDPFS IPCONFIG.DAT conflicts with menu settings:\n%s\nEdit it to match %s %s (not overwritten)", effective, ip, mask))
+        end
+      end
+    else
+      local body = nil
+      if name == "IPCONFIG.DAT" then
+        body = ip.." "..mask.." "..gw.."\n"
+      else
+        local source = "udpfs:/POPS/"..name
+        if doesFileExist(source) then
+          local size = GetFileSizeSafe(source)
+          if size == nil or size < 1 or size > 120 then
+            return fail(PLDR.LFmt("UDPFS config must contain 1-120 bytes:\n%s", source))
+          end
+          body = ReadWholeFile(source)
+          if type(body) ~= "string" or #body ~= size then
+            return fail(PLDR.LFmt("Could not read UDPFS configuration:\n%s", source))
+          end
+        end
+      end
+      if body ~= nil then
+        local dest = dest_dir.."/"..name
+        local marker = dest..".pldr-pending"
+        if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
+           or not WriteBytesAtomicBounded(pending_body, marker)
+           or GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
+        if not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
+          cleanup(dest) -- journal remains if deletion fails, including across restart
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
+        pcall(System.removeFile, marker)
+        if doesFileExist(marker) then
+          return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
+        end
       end
     end
   end
@@ -9276,7 +9389,7 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   end
   if device_page == "UDPFS" then
     -- POPStarter reads this as a USB (XX.) VCD selector; Okeanos's BDMA
-    -- transparently falls back to UDPFS when the VCD is missing locally.
+    -- serves the mass: namespace entirely from the UDPFS server.
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "SMB" then
@@ -10087,10 +10200,10 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     -- Network launch MUST stage Okeanos's pair regardless of the general
     -- Adaptive BDMA preference. A half-written pair must abort the launch.
     if PLDR.POPSTARTER_MC_FOLDER == false then
-      if UI and UI.Notif_queue then UI.Notif_queue.add("USB+UDPFS requires POPSTARTER modules on a memory card", "error") end
+      if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS requires POPSTARTER modules on a memory card", "error") end
       return
     end
-    if type(PLDR.PrepareUdpfsUsbConfig) ~= "function" or not PLDR.PrepareUdpfsUsbConfig() then
+    if type(PLDR.PrepareUdpfsConfig) ~= "function" or not PLDR.PrepareUdpfsConfig() then
       return
     end
     if not PLDR.IsBdmaModeEquipped("UDPFS") then
@@ -10099,7 +10212,7 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
       end
       local staged, why = PLDR.ApplyBdmaModeOnce("UDPFS", PLDR.NextBdmaApplyToken(), true)
       if not staged then
-        if UI and UI.Notif_queue then UI.Notif_queue.add("UDPFS driver staging failed -- launch cancelled\n"..tostring(why or "Check the memory card"), "error") end
+        if UI and UI.Notif_queue then UI.Notif_queue.add(PLDR.L("UDPFS driver staging failed -- launch cancelled").."\n"..tostring(why or PLDR.L("Check the memory card")), "error") end
         return
       end
     end
@@ -10452,7 +10565,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
     gamelocation = smb_root
   else
     if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-      UI.Notif_queue.add("Auto-launch page not supported: "..tostring(page), "warn")
+      UI.Notif_queue.add(PLDR.LFmt("Auto-launch page not supported: %s", tostring(page)), "warn")
     end
     return false
   end
@@ -10501,7 +10614,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
     end
     if not exists then
       if type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-        UI.Notif_queue.add("-game not found:\n"..raw_path, "error")
+        UI.Notif_queue.add(PLDR.LFmt("-game not found:\n%s", raw_path), "error")
       end
       return false
     end
@@ -10509,7 +10622,7 @@ function PLDR.AutoLaunchFromLaunchArgs()
 
   local ok, err = pcall(PLDR.RunPOPStarterGame, gamelocation, game, scene, nil)
   if not ok and type(UI.Notif_queue) == "table" and type(UI.Notif_queue.add) == "function" then
-    UI.Notif_queue.add("Auto-launch failed: "..tostring(err), "error")
+    UI.Notif_queue.add(PLDR.LFmt("Auto-launch failed: %s", tostring(err)), "error")
   end
   return ok
 end

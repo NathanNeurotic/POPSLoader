@@ -162,6 +162,10 @@ def check_version_stamps():
         fail("version", "title.cfg says %s but etc/boot.lua says %s"
              % (cfgv.group(1), bootv.group(1)))
     build = cfgv.group(1)
+    pbt = read("bin/POPSLDR/APPINFO.PBT") or ""
+    pbtv = re.search(r'^SET "VERSION" "([^"\n]+)"$', pbt, re.M)
+    if not pbtv or pbtv.group(1) != build:
+        fail("version", "APPINFO.PBT must match title.cfg version %s" % build)
     note("version", "build stamp is %s" % build)
 
     # The release notes tell testers which version to look for; a stale number there
@@ -229,53 +233,10 @@ def check_cover_layout():
 
 
 def check_translation_handoff():
-    """The translator .tsv files must be parseable and must not ask for dead strings.
-
-    Both failures have burned a volunteer's time already. oldman63 hit them in the
-    same sitting (2026-07-27): the exporter had written an embedded \\n as a REAL
-    newline, which split two records across three physical lines each and left
-    fragments that read as untranslated rows; and several rows were for a dialog
-    deleted back in EXP32, so no translation of them could ever appear on screen.
-
-    A row is legitimate only if its English key is a PLDR.I18N key in some language
-    or a literal in the Lua sources. Anything else cannot reach a user.
-    """
-    lua = ""
-    for rel in ("bin/POPSLDR/system.lua", "bin/POPSLDR/ui.lua",
-                "bin/POPSLDR/images.lua", "etc/boot.lua"):
-        lua += read(rel) or ""
-    if not lua:
-        note("i18n-handoff", "could not read the Lua sources; skipping")
-        return
-    i18n_keys = set(re.findall(r'\["((?:[^"\\]|\\.)*)"\]\s*=\s*"', lua))
-
-    tsv_dir = os.path.join(REPO, "docs", "translations")
-    if not os.path.isdir(tsv_dir):
-        note("i18n-handoff", "no docs/translations directory; skipping")
-        return
-    for name in sorted(os.listdir(tsv_dir)):
-        if not name.endswith(".tsv"):
-            continue
-        rel = "docs/translations/" + name
-        raw = read(rel) or ""
-        rows = [l for l in raw.replace("\r\n", "\n").split("\n") if l.strip()][1:]
-        for i, line in enumerate(rows, start=2):
-            if line.count("\t") != 1:
-                fail("i18n-handoff",
-                     "%s:%d has %d tabs, not 1 -- a record was written with a real "
-                     "newline instead of the two characters \\n, so it is split across "
-                     "physical lines and unparseable: %r"
-                     % (rel, i, line.count("\t"), line[:70]))
-        for i, line in enumerate(rows, start=2):
-            if line.count("\t") != 1:
-                continue
-            en = line.split("\t", 1)[0]
-            if en in i18n_keys or ('"' + en.replace('"', '\\"') + '"') in lua or en in lua:
-                continue
-            fail("i18n-handoff",
-                 "%s:%d asks for a translation of a string that exists nowhere in the "
-                 "app -- delete the row rather than make a volunteer translate it: %r"
-                 % (rel, i, en[:70]))
+    """Check live keys, runtime dictionaries, TSVs and the Excel handoff together."""
+    from translation_handoff import check_catalogs
+    for error in check_catalogs():
+        fail("i18n-handoff", error)
 
 
 for fn in (check_settings_keys, check_removed_behaviour, check_version_stamps,

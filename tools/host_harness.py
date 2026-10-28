@@ -2525,9 +2525,18 @@ t59 = E('''function()
     return -1
   end
   PLDR.EMBER.GLOBAL = {}
+  local old_lang, old_hu = PLDR.LANGUAGE, PLDR.I18N.HU
+  PLDR.LANGUAGE, PLDR.I18N.HU = "HU", {
+    ["Ember ELF returned: %s"] = "Visszatért: %s",
+    ["Missing %s"] = "Hiányzik: %s"
+  }
   local launched, err = PLDR.EmberLaunch(PLDR.EmberEncode("mass0:/", "Tomba!"))
   local passes = argv and argv[1] == core and argv[2] == core
-    and argv[3] == "Tomba!" and launched == false
+    and argv[3] == "Tomba!" and launched == false and err == "Visszatért: -1"
+  old_files[core] = nil
+  local missing_ok, missing_err = PLDR.EmberLaunch(PLDR.EmberEncode("mass0:/", "Tomba!"))
+  passes = passes and missing_ok == false and missing_err == "Hiányzik: "..core
+  PLDR.LANGUAGE, PLDR.I18N.HU = old_lang, old_hu
   System.listDirectory=saved_list
   System.loadELFKeepIOP=old_elf
   old_files[base]=original

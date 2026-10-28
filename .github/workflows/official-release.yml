@@ -1,4 +1,4 @@
-name: POPSLoader 1.3.1 Release
+name: POPSLoader 1.4.0 Release
 
 # RiptOPL-style reproducible release: publish the exact passing CI artifact.
 # Ember is upstream Beta-2, not a newly named Ember beta.
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: popsloader-1.3.1-release
+  group: popsloader-1.4.0-release
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify 1.3.1 ZIP, flat PSU and official Ember Beta-2
+      - name: Verify 1.4.0 ZIP, flat PSU and official Ember Beta-2
         shell: bash
         env:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -44,13 +44,14 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$VERIFIED_SHA"
-          grep -Fxq 'POPSLDR_VER = "v1.3.1"' etc/boot.lua
-          grep -Fxq 'Version=1.3.1' bin/POPSLDR/title.cfg
-          test -s RELEASE_1.3.1.md
+          grep -Fxq 'POPSLDR_VER = "v1.4.0"' etc/boot.lua
+          grep -Fxq 'Version=1.4.0' bin/POPSLDR/title.cfg
+          test -s RELEASE_1.4.0.md
           test -s POPSLOADER.zip
           test -s PS1_POPSLOADER.psu
           unzip -tq POPSLOADER.zip
           mv POPSLOADER.zip PS1_POPSLOADER.zip
+          python3 tools/test_udpfs_integration.py PS1_POPSLOADER.zip
           # Ensure the unmodified bundled binary IS Gageformer's latest Beta-2,
           # including their 2026-09-28 asset replacement.
           REMOTE_TAG="$(gh api repos/Gageformer/Ember/releases/latest --jq .tag_name)"
@@ -75,7 +76,8 @@ jobs:
                   assert required in entries, required
               assert not any(p.lower().endswith("/bios.bin") for p in entries)
               assert not z.read("EMBER/games/ExampleGame/ExampleGame.bin")
-              assert b"Version=1.3.1" in z.read("APPS/PS1_POPSLOADER/title.cfg")
+              assert b"Version=1.4.0" in z.read("APPS/PS1_POPSLOADER/title.cfg")
+              assert b'SET "VERSION" "1.4.0"' in z.read("APPS/PS1_POPSLOADER/APPINFO.PBT")
               elf = z.read("EMBER/ember.elf")
               assert elf[:6] == b"\x7fELF\x01\x01" and struct.unpack_from("<H", elf, 18)[0] == 8
               digest = hashlib.sha256(elf).hexdigest()
@@ -88,10 +90,10 @@ jobs:
                   subprocess.run(["python3", "tools/package_psu.py", "verify", d,
                                   "PS1_POPSLOADER.psu"], check=True)
               pathlib.Path("POPSLOADER.ELF").write_bytes(z.read("APPS/PS1_POPSLOADER/POPSLOADER.ELF"))
-          print("PASS: POPSLoader 1.3.1, unmodified official Ember Beta-2, exact 8-file PSU")
+          print("PASS: POPSLoader 1.4.0, unmodified official Ember Beta-2, exact 8-file PSU")
           PY
           {
-            echo "POPSLoader 1.3.1 (upstream Ember Beta-2)"
+            echo "POPSLoader 1.4.0 (upstream Ember Beta-2)"
             echo "Source: $VERIFIED_SHA"
             echo "CI: https://github.com/$GITHUB_REPOSITORY/actions/runs/$CI_RUN"
             echo "Build image: ps2dev/ps2dev:v2.0.0"
@@ -108,20 +110,20 @@ jobs:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          if gh release view 1.3.1 >/dev/null 2>&1; then
-            echo "1.3.1 already published. Preserving immutable versioned assets."
+          if gh release view 1.4.0 >/dev/null 2>&1; then
+            echo "1.4.0 already published. Preserving immutable versioned assets."
             exit 0
           fi
-          if git ls-remote --exit-code --tags origin refs/tags/1.3.1 >/dev/null 2>&1; then
-            echo "::error::Tag 1.3.1 already exists; refusing unexpected retag."
+          if git ls-remote --exit-code --tags origin refs/tags/1.4.0 >/dev/null 2>&1; then
+            echo "::error::Tag 1.4.0 already exists; refusing unexpected retag."
             exit 1
           fi
-          gh release create 1.3.1 \
+          gh release create 1.4.0 \
             PS1_POPSLOADER.zip PS1_POPSLOADER.psu POPSLOADER.ELF \
             BUILD-MANIFEST.txt SHA256SUMS.txt \
             --target "$VERIFIED_SHA" \
-            --title "POPSLoader 1.3.1" \
-            --notes-file RELEASE_1.3.1.md \
+            --title "POPSLoader 1.4.0" \
+            --notes-file RELEASE_1.4.0.md \
             --latest
-          gh release view 1.3.1 --json url,tagName,isPrerelease,assets \
+          gh release view 1.4.0 --json url,tagName,isPrerelease,assets \
             --jq '{url:.url,tag:.tagName,prerelease:.isPrerelease,assets:[.assets[].name]}'
