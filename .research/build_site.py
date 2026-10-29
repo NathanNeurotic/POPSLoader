@@ -1107,7 +1107,7 @@ all verified to contain <b>no Sony emulator binaries</b>.</p>
 keeps the existing installer layout, with no Ember.
 <b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
 now publishes
-<a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip">PS1_POPSLOADER.zip</a>
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release"><code>PS1_POPSLOADER-&lt;version&gt;.zip</code></a>
 and
 <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a>
 as standalone release assets, following the merged PR #600.

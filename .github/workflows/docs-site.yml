@@ -94,7 +94,7 @@ jobs:
           grep -Fq 'PS1_POPSLOADER.psu' .research/site/popsloader/release-formats.html
           grep -Fq 'i.Link' .research/site/popsloader/ember-core.html
           grep -Fq 'Project wiki' .research/site/popsloader.html
-          grep -Fq 'PS1_POPSLOADER.zip' .research/site/downloads.html
+          grep -Fq 'PS1_POPSLOADER-&lt;version&gt;.zip' .research/site/downloads.html
           echo 'Maintained wiki, Ember guide, release links and PSU format all rendered.'
 
       - name: Gate historical patch and download descriptions
