@@ -309,6 +309,9 @@ vm.execute(r"""
   PLDR.GAMES = {}
   local got = PLDR.GetPS1GameLists("udpfs:/POPS/", true)
   assert(table.concat(got, ",") == "A.VCD,B.VCD,C.VCD,F.VCD", table.concat(got, ","))
+  got = PLDR.GetPS1GameLists("udpfs:/POPS/", false)
+  assert(table.concat(got, ",") == "A.VCD,B.VCD,C.VCD,F.VCD", table.concat(got, ","))
+  assert(PLDR.GAMES == got)
   PLDR.GAMES = {}
   got = PLDR.GetPS1GameLists("mass:/POPS/", true)
   assert(table.concat(got, ",") == "A.VCD,F.VCD", table.concat(got, ","))
