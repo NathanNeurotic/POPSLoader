@@ -2,6 +2,8 @@
 
 POPSLoader 1.4.0 replaces USB-first BDM-UDPFS Assault Alpha with
 [Okeanos UDPFS Assault 1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0).
+After 1.4.0 the driver moves to Okeanos's [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST) pre-release
+(2026-10-28): the same network read/write driver, plus BIN/CUE games (below).
 USB is no longer required. The `UDPFS` settings key and `.udpfs` asset names are
 retained for upgrades; they now select the full network read/write driver.
 The old USB-first mode is removed. Physical-console status is
@@ -27,6 +29,15 @@ The old USB-first mode is removed. Physical-console status is
    pair into `mc?:/POPSTARTER/usbd.irx` and `usbhdfsd.irx` before handoff,
    independently of Adaptive BDMA. **BDMA Mode > UDPFS (network R/W)** also
    installs this pair. No USB-first option remains.
+
+**BIN/CUE games.** A game can also be `POPS/<game>.cue` (or `.CUE`) plus the `.bin`
+file(s) it names, in the same server folder. POPSLoader lists it as `<game>.VCD`, once,
+and the driver presents it to POPStarter as that VCD, built on the fly; a real `.VCD`
+with the same name always wins. One `.bin` per disc or one per track (Redump) both work.
+Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track needs
+INDEX 01, `.bin` sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks,
+images under 4 GiB. The driver uses about 46 KB more IOP RAM than 1.0.0 and opens each
+`.bin` once at start. The Retro GEM ID is not read from a cue game.
 
 Every runtime `mass:` operation goes to the server, including dependency reads
 and VMC writes. The `XX.<game>.ELF` mass selector remains correct: `mass:` is the
@@ -68,7 +79,7 @@ by this integration. Move a custom server address to MC `SYS-CONF` or the server
 silently overwritten, including MC1 files when MC0 is also present.
 
 A saved `BDMA=UDPFS` remains valid. The equipped check compares both installed
-files with the embedded release bytes, so an old Alpha pair, damaged driver,
+files with the embedded release bytes, so a 1.0.0 or old Alpha pair, damaged driver,
 or stale marker triggers restaging before launch. Settings apply uses the embedded pair as well, so an old external Alpha override
 cannot reinstall the removed backend. Release kits replace the
 historical reference bundle's UDPFS files and notices with this same pair.

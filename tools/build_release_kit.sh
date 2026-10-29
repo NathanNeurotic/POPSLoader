@@ -41,7 +41,7 @@ for part in ('POPS', 'EMBER'):
     print(f"{part}: verified {len(files)} pinned RiptOPL files")
 PY
 # Replace the historical reference bundle's Alpha UDPFS payload and notices.
-# The existing .udpfs suffix now always means the full-network 1.0.0 release.
+# The existing .udpfs suffix now always means the full-network UDPFS Assault (TEST 2026-10-28) release.
 cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
 rm -rf dist_root/POPS/UDPFS-NOTICES
 mkdir -p dist_root/POPS/UDPFS-NOTICES

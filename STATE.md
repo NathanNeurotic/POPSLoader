@@ -15,6 +15,10 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## UDPFS Assault 1.0.0 (included in 1.4.0)
 
+- Unreleased (after 1.4.0): the embedded pair moves to [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST)
+  (2026-10-28 pre-release; new `usbd.irx.udpfs`, same companion). UDPFS lists
+  `POPS/*.cue` / `*.CUE` once as virtual `.VCD` rows. Host-tested only.
+
 - USB-first fallback is removed. The `UDPFS` mode now embeds Okeanos's
   UDPFS Assault 1.0.0 and companion, serving POPS dependencies and VMC writes
   entirely over the network. No USB volume is required.

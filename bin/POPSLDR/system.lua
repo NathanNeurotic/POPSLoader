@@ -4379,7 +4379,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
-  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.0 full network read/write
+  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault TEST (2026-10-28) full network read/write, BIN/CUE
 }
 
 -- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
@@ -8276,18 +8276,35 @@ function PLDR.GetPS1GameLists(path, updating, on_progress)
   local DIR = System.listDirectory(PLDR.GAMEPATH)
   if DIR ~= nil then
     local hide_set = CollectHideBasenames(DIR)
+    -- Okeanos UDPFS Assault (TEST 2026-10-28) serves POPS/<game>.cue or .CUE plus
+    -- its .bin files to POPSTARTER as POPS/<game>.VCD when no real .VCD exists. On
+    -- UDPFS such a cue is listed under that virtual .VCD name, once, so the
+    -- selector, uppercase check, art and hide sidecar all work unchanged.
+    local udpfs_cues = string.sub(tostring(PLDR.GAMEPATH), 1, 6) == "udpfs:"
+    local listed = {}
+    if udpfs_cues then
+      for i = 1, #DIR do
+        if not DIR[i].directory and string.sub(DIR[i].name, -4) == ".VCD" then listed[DIR[i].name] = true end
+      end
+    end
     for i = 1, #DIR do
       if not DIR[i].directory then -- not a folder
-        if string.lower(string.sub(DIR[i].name,-4)) == ".vcd"
-           and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(DIR[i].name)) then
-          local is_hidden = hide_set[HideBasenameOf(DIR[i].name)] == true
+        local name = DIR[i].name
+        local ext = string.sub(name, -4)
+        if udpfs_cues and (ext == ".cue" or ext == ".CUE") then
+          name = string.sub(name, 1, -5)..".VCD"
+          if listed[name] then name = nil else listed[name] = true end
+        end
+        if name ~= nil and string.lower(string.sub(name,-4)) == ".vcd"
+           and not (PLDR.COLLAPSE_MULTIDISC and IsSecondaryDisc(name)) then
+          local is_hidden = hide_set[HideBasenameOf(name)] == true
           if not (PLDR.GLOBAL_HIDE and is_hidden) then
             found_smth = true
-            if is_hidden then PLDR.HIDDEN[DIR[i].name] = true end
+            if is_hidden then PLDR.HIDDEN[name] = true end
             if updating then
-              table.insert(PLDR.GAMES, DIR[i].name)
+              table.insert(PLDR.GAMES, name)
             else
-              table.insert(RET, DIR[i].name)
+              table.insert(RET, name)
             end
           end
         end
