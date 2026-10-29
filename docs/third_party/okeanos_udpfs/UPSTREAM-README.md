@@ -13,7 +13,7 @@ UDPFS in the Neutrino repository.
 
 Tested on hardware with:
 
-- **POPStarter** (`.VCD` + `SLOT0.VMC` / `SLOT1.VMC`)
+- **POPStarter** (`.VCD` or `.cue` + `.bin`, plus `SLOT0.VMC` / `SLOT1.VMC`)
 - **Ember** (`.cue` / `.bin` + `MC1.vmc` / `MC2.vmc`)
 - servers: `udpfsd` (Go) and `udpfs_server.py` (Python)
 
@@ -23,6 +23,13 @@ Tested on hardware with:
   to the UDPFS server: `open`, `read`, `write`, `lseek`, `close`, `getstat`,
   `mkdir`, `remove`, `rmdir`, `dopen` / `dread` / `dclose`.
 - Reads use BREAD; unaligned reads go through a one-sector cache.
+- **BIN/CUE for POPStarter:** if `<game>.VCD` does not exist on the server,
+  the module looks for `<game>.cue` in the same folder and builds the VCD on
+  the fly: a 1 MiB header generated in RAM followed by the `.bin` file(s) named
+  in the cue. A cue may name one `.bin` for the whole disc or one per track
+  (Redump style). Limits (same as CUE2POPS): track 1 must be MODE2/2352, no
+  PREGAP/POSTGAP commands, every track needs INDEX 01, file sizes must be
+  multiples of 2352. Also: cue sheet up to 16 KiB, up to 99 tracks/files, times up to 95 minutes, image smaller than 4 GiB. A real `.VCD` on the server always takes precedence.
 - Errors are translated into the negated FatFs codes the USB driver returned
   (`-4` file not found, `-5` path not found, ...), because the programs rely on them.
 - Exports an empty `bdm` library, so a USB block-device driver loaded after
@@ -48,8 +55,9 @@ kept by the driver is 32 bit).
 - A UDPFS server that **allows writing** (`udpfsd` without `-ro`, or
   `udpfs_server.py` without `--read-only`), and the files exactly as the program
   asks for them, including the case of file and folder names:
-  - POPStarter: `POPS/POPS_IOX.PAK`, `POPS/<game>.VCD`, optional files such as
-    `POPS/IGR_*.TM2`; the VMC files are created by POPStarter.
+  - POPStarter: `POPS/POPS_IOX.PAK`, `POPS/<game>.VCD` (or `POPS/<game>.cue` and
+    the `.bin` file(s) it names), optional files such as `POPS/IGR_*.TM2`; the
+    VMC files are created by POPStarter.
   - Ember: `EMBER/ember.elf`, `EMBER/bios.bin`, `EMBER/games/<folder>/...`.
 - Everything the program used to find on the USB drive has to be on the server.
 - Same network segment as the PS2 (no routing).

@@ -1,12 +1,17 @@
 {
-  "1.0.0": {
-    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
-    "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e",
+  "UDPFS_TEST": {
+    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
+    "prerelease": true,
+    "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
+    "supersedes": {
+      "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
+      "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e"
+    },
     "files": {
       "usbd.irx.udpfs": {
         "source": "udp_fs_assault.irx",
-        "sha256": "f6bda124c58f1eb770f4278d6366bb99c8c568fea94a06968c50c265d6f6cba7",
-        "size": 44597
+        "sha256": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e",
+        "size": 51029
       },
       "usbhdfsd.irx.udpfs": {
         "source": "usbd_bd_assault.irx",

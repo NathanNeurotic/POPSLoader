@@ -294,3 +294,23 @@ vm.execute(r"""
   assert(FAKEFS.files["mc0:/SYS-CONF/UDPFSCONFIG.DAT"] == "192.168.1.77\n")
 """)
 print("PASS UDPFS: malformed journal blocks without deleting config")
+
+# Okeanos UDPFS Assault TEST serves POPS/<game>.cue/.CUE as POPS/<game>.VCD: the UDPFS
+# scan lists such a cue once under that virtual name; other roots still list only VCDs.
+vm = boot()
+vm.execute(r"""
+  local listing = {
+    { name = "A.cue" }, { name = "A.VCD" }, { name = "B.CUE" }, { name = "C.cue" }, { name = "C.CUE" },
+    { name = "D.Cue" }, { name = "E.bin" }, { name = "F.VCD" }, { name = "G.cue" }, { name = "G.hide" },
+  }
+  System.listDirectory = function() return listing end
+  PLDR.COLLAPSE_MULTIDISC = false
+  PLDR.GLOBAL_HIDE = true
+  PLDR.GAMES = {}
+  local got = PLDR.GetPS1GameLists("udpfs:/POPS/", true)
+  assert(table.concat(got, ",") == "A.VCD,B.VCD,C.VCD,F.VCD", table.concat(got, ","))
+  PLDR.GAMES = {}
+  got = PLDR.GetPS1GameLists("mass:/POPS/", true)
+  assert(table.concat(got, ",") == "A.VCD,F.VCD", table.concat(got, ","))
+""")
+print("PASS UDPFS: cue sheets list once as virtual VCDs on UDPFS only")

@@ -1,4 +1,5 @@
 [Unreleased]
+- UDPFS: move to Okeanos UDPFS Assault TEST (2026-10-28 pre-release) and list server POPS/<game>.cue or .CUE once as <game>.VCD, which the driver builds on the fly. Hardware: NOT TESTED.
 
 [1.4.0] - October 28th, 2026
 - UDPFS: bound installed-driver/config reads, journal new configuration writes for restart-safe cleanup, and clarify mirrored installation/license documentation.

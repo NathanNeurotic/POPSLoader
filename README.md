@@ -65,7 +65,7 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | UDPFS | Full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
 | i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
 
-HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
+HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; later builds use its TEST pre-release, which also plays `POPS/*.cue` games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
 ### Ember options and safety
 
