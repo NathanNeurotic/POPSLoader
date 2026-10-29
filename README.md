@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.4.0 PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.0/PS1_POPSLOADER.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
+Download the full [POPSLoader 1.4.0 PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.0/PS1_POPSLOADER.zip) or `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). From 1.4.0 on, every rolling and experimental ZIP name ends with its build version (for example `PS1_POPSLOADER-v1.4.0-928.zip`), and the release notes name that version at the top. Its device-root layout is:
 
 ~~~text
 APPS/
@@ -309,7 +309,11 @@ make clean elfloader all
 ```
 This cleans, force-regenerates the embedded child ELF loader (`elfloader`), then compiles every EE/IOP object, embeds all assets, links, strips, and runs `ps2-packer` to produce the packed `bin/POPSLOADER.ELF`. It requires a configured PS2DEV SDK environment (`ps2dev/ps2dev:v2.0.0` toolchain) with `ps2-packer` and the `bin2c` tool on `PATH`.
 
-To grab the latest test build, download from the rolling release URL:
-[https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip)
+To grab the latest test build, download `POPSLOADER-rolling-release-<version>.zip` from the rolling release page:
+[https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release)
+
+The ZIP name ends with the build version, so the link above points at the release page rather than a fixed file
+name. `POPSLOADER.ELF` and `PS1_POPSLOADER.psu` keep fixed names, so
+`https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER.ELF` always fetches the newest build.
 
 > 🗄️ **Permanent archive (MEGA):** the GitHub `rolling-release` pre-release only ever holds the *latest* build; every push overwrites it. So **every** branch rolling build is also archived permanently to MEGA as one self-contained zip, each in its own immutable `run_<number>` folder (nothing is ever overwritten there). Click the **MEGA Rolling Archive** badge at the top of this README, or [browse the archive here](https://mega.nz/folder/W9wXyLjD#8hk7Wv-EEPfKPTDN-guKdQ), to grab any past build.

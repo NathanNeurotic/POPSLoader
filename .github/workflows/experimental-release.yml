@@ -297,14 +297,36 @@ jobs:
           unzip -tq PS1_POPSLOADER.zip
           test -s PS1_POPSLOADER.psu
 
+      - name: End every ZIP name with the version
+        shell: sh
+        run: |
+          set -eu
+          # The version is the app's own POPSLDR_VER plus the commit count, so every
+          # build of the experimental channel has a distinct number at the end of each ZIP
+          # name (POPSLOADER-experimental-v1.4.0-928.zip, PS1_POPSLOADER-v1.4.0-928.zip).
+          BASE="$(sed -n 's/^POPSLDR_VER = "\(v[0-9][0-9A-Za-z.+-]*\)"$/\1/p' etc/boot.lua)"
+          test -n "$BASE" || { echo "POPSLDR_VER not found in etc/boot.lua" >&2; exit 1; }
+          COUNT="$(git rev-list --count HEAD)"
+          RELEASE_VERSION="$BASE-$COUNT"
+          BUNDLE_ZIP="POPSLOADER-experimental-$RELEASE_VERSION.zip"
+          KIT_ZIP="PS1_POPSLOADER-$RELEASE_VERSION.zip"
+          mv POPSLOADER-experimental.zip "$BUNDLE_ZIP"
+          mv PS1_POPSLOADER.zip "$KIT_ZIP"
+          {
+            echo "RELEASE_VERSION=$RELEASE_VERSION"
+            echo "BUNDLE_ZIP=$BUNDLE_ZIP"
+            echo "KIT_ZIP=$KIT_ZIP"
+          } >> "$GITHUB_ENV"
+          ls -la "$BUNDLE_ZIP" "$KIT_ZIP"
+
       - name: Upload workflow artifact
         if: success()
         uses: actions/upload-artifact@v6
         with:
           name: POPSLOADER-experimental
           path: |
-            POPSLOADER-experimental.zip
-            PS1_POPSLOADER.zip
+            ${{ env.BUNDLE_ZIP }}
+            ${{ env.KIT_ZIP }}
             PS1_POPSLOADER.psu
           if-no-files-found: error
           compression-level: 0
@@ -321,8 +343,8 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
           TAG_NAME: experimental
-          ASSET_PATH: POPSLOADER-experimental.zip
-          ASSET_NAME: POPSLOADER-experimental.zip
+          ASSET_PATH: ${{ env.BUNDLE_ZIP }}
+          ASSET_NAME: ${{ env.BUNDLE_ZIP }}
         run: |
           set -eu
           python3 - <<'PY'
@@ -343,7 +365,7 @@ jobs:
           asset_specs = [
               (pathlib.Path(os.environ["ASSET_PATH"]), os.environ["ASSET_NAME"]),
               (pathlib.Path("bin/POPSLOADER.ELF"), "POPSLOADER.ELF"),
-              (pathlib.Path("PS1_POPSLOADER.zip"), "PS1_POPSLOADER.zip"),
+              (pathlib.Path(os.environ["KIT_ZIP"]), os.environ["KIT_ZIP"]),
               (pathlib.Path("PS1_POPSLOADER.psu"), "PS1_POPSLOADER.psu"),
           ]
           run_url = f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}/attempts/{os.environ['RUN_ATTEMPT']}"
@@ -397,13 +419,17 @@ jobs:
               notes = notes_path.read_text(encoding="utf-8").rstrip()
           except OSError:
               notes = "Experimental test build."
+          version = os.environ["RELEASE_VERSION"]
           body = "\n".join([
+              f"**POPSLoader `{version}`** - Experimental build. Every ZIP name ends with this version.",
+              "",
               notes,
               "",
               "---",
               "_Automatic experimental build:_",
               f"- Event: {os.environ['EVENT_NAME']}",
               f"- Ref: {os.environ['REF_NAME']}",
+              f"- Version: {version}",
               f"- Commit: {sha}",
               f"- Run: {run_url}",
           ])
@@ -456,4 +482,20 @@ jobs:
           print(f"Updated {tag}: {release['html_url']}")
           for path, name in asset_specs:
               upload_asset(path, name)
+
+          # Versioned ZIP names change with every build, so the previous build's ZIPs (and the
+          # old fixed-name ones) would otherwise pile up beside the new ones. Only ZIPs of this
+          # channel are removed, only after every upload succeeded, and a failed delete only warns.
+          published = {name for _, name in asset_specs}
+          for asset in assets:
+              name = asset.get("name") or ""
+              if name in published or not name.endswith(".zip"):
+                  continue
+              if not (name.startswith("POPSLOADER-experimental") or name.startswith("PS1_POPSLOADER")):
+                  continue
+              try:
+                  request("DELETE", f"{api_root}/repos/{repo}/releases/assets/{asset['id']}")
+                  print(f"Removed stale asset: {name}")
+              except RuntimeError as exc:
+                  print(f"::warning::could not remove stale asset {name}: {exc}")
           PY
