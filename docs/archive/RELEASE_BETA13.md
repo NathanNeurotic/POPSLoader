@@ -35,7 +35,7 @@ push, and let CI + Rolling go green **before** the cut.
   - `Title=POPSLoader Beta-12` → `Title=POPSLoader Beta-13`
   - `Version=1.0.0 Rev5` → `Version=1.0.0 Rev6` *(optional bump; keep in sync with `etc/boot.lua` below)*
   - `Release=June 18th, 2026` → the actual cut date
-  - `Developer=…` → consider adding **saildot4k** (credited this cycle for BDMA-ATA) to the line
+  - `Developer=…` → consider adding **[saildot4k](https://github.com/saildot4k)** (credited this cycle for BDMA-ATA) to the line
 - [ ] **`etc/boot.lua`** — `POPSLDR_VER = "v1.0.0 - rev5"` → `"v1.0.0 - rev6"` *(optional; match `title.cfg` Version)*
 - [ ] **`bin/changelog`** — add a `[Beta-13]` section: fold the current `[Unreleased]` items in and add this cycle's headline work — **HDD (exFAT)/BDMA-ATA backend**, **SMB (v1) network game browsing** (settings → install pack → connect → browse → launch → disconnect → blank-Share picker; IP-only, validating on hardware), the µs-as-ms timer sweep, Layer-C lazy-IRX decision (mmceman shipped / ds34-usbd declined), PAL-512 + Auto video, HDD-RW settings-save + `.hide`/R3, MC-folder toggle + BDMA interlock, overscan, layered cover art, nav rework + boot sound, game-list cache, multi-disc collapse, Boot Page, carousel visibility.
 - [ ] **Doc version banners** — bump `Released line:` in **`STATE.md`** + **`QA_REGRESSION_MATRIX.md`**, and any version banner in **`README.md`** / **`AGENTS.md`**, from BETA-12 → BETA-13. *(The active dev branch + rolling source stay `BETA-13-PLAY`.)*
@@ -82,7 +82,7 @@ git push origin master --follow-tags
 gh release create BETA-13 --title "POPSLoader BETA-13" --notes-file <notes.md>
 ```
 
-- **Release notes source:** `ROLLING_NOTES.md` is already the user-facing "what's new" list — distill it into the release body (lead with the two new backends — HDD-exFAT/BDMA-ATA and SMB (v1) network browsing; both validating on hardware; credit kHn/POPStarter, ShaolinAssassin, R3Z3N, saildot4k, the testers).
+- **Release notes source:** `ROLLING_NOTES.md` is already the user-facing "what's new" list — distill it into the release body (lead with the two new backends — HDD-exFAT/BDMA-ATA and SMB (v1) network browsing; both validating on hardware; credit kHn/POPStarter, [ShaolinAssassin](https://github.com/ShaolinAssassin), R3Z3N, [saildot4k](https://github.com/saildot4k), the testers).
 - **Install zip:** there is **no automated install-zip attached to the release** (BETA-12 mechanics). The formal `PS1_POPSLOADER/*` zip + bare `POPSLOADER.ELF` are built by `compilation.yml` on the tagged commit — download from that CI run and attach to the GitHub release manually. (`POPS` engine binaries are **not** redistributable and are never bundled.)
 - **`POPSTARTER.ELF`** (redistributable homebrew) ships in the zips per CI; POPS engine binaries do not.
 

@@ -33,7 +33,7 @@ Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SM
 
 ## Licensing and upstream monitoring
 
-The binary must remain **unmodified** and accompanied by `LICENSE-BETA.txt` and attribution to Gageformer with a link to their [official release page](https://github.com/Gageformer/Ember/releases). The licence does not permit commercial redistribution without permission. No BIOS or game image is included.
+The binary must remain **unmodified** and accompanied by `LICENSE-BETA.txt` and attribution to [Gageformer](https://github.com/Gageformer) with a link to their [official release page](https://github.com/Gageformer/Ember/releases). The licence does not permit commercial redistribution without permission. No BIOS or game image is included.
 
 The weekly [Ember Watch workflow](../../.github/workflows/ember-watch.yml) compares the published Ember asset's SHA-256 against RiptOPL's verified bundled version, supports same-tag asset changes, and updates only POPSLoader's Ember revision pin on `dev`; the original POPS support-file revision remains fixed. The workflow is present on the default `master` branch and scheduled weekly; the first scheduled update has not yet been verified. This does not certify hardware compatibility.
 

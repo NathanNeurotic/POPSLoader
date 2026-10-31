@@ -1,7 +1,7 @@
 # U-10 Investigation: BOOT.ELF exit from HDD-booted POPSLoader
 
 Date: 2026-05-26 (original), updated 2026-05-28 with PR #463/#464 outcomes, and again 2026-05-28 PM with the surprising resolution.
-Author: Claude (with NathanNeurotic direction)
+Author: Claude (with [NathanNeurotic](https://github.com/NathanNeurotic) direction)
 
 ## Status (as of 2026-05-28 PM late)
 
