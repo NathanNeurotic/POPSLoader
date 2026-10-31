@@ -261,7 +261,7 @@ copies are not read at runtime. Editing them requires a rebuild.
   machinery that preserves the D-10/D-15 partition-context
   + embedded-loader handoff); 3. cwd /
   boot-sidecar; 4. mc net. **The 16-preset profile system was removed
-  2026-07-13** (R3Z3N review): `PLDR.POPSTARTER_PATH` is the single value,
+  2026-07-13** ([R3Z3N](https://github.com/saildot4k) review): `PLDR.POPSTARTER_PATH` is the single value,
   `""` = Automatic (the ladder), a set path = step-1 custom with silent
   fallback; the ladder itself is unchanged. Validating on hardware.
 - Startup ordering at module end: `LoadSettingsNonFatal` ->

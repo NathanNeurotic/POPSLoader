@@ -241,7 +241,7 @@ Reminder on naming, since it caught us out this week: the cover must end in **_C
 
 ## New in EXP74: hiding games works when the list is set to hide them
 
-Reported by sAGA on the 0727 rolling build. With *Settings, Game List, Hidden games* set to **Hidden**, pressing **L3** on a game did nothing at all. With it set to **Visible** it worked fine.
+Reported by [sAGA](https://github.com/oldman63) on the 0727 rolling build. With *Settings, Game List, Hidden games* set to **Hidden**, pressing **L3** on a game did nothing at all. With it set to **Visible** it worked fine.
 
 The reason: when the setting is **Hidden**, the launcher already leaves hidden games out of the list, so every game you can see is one that is NOT hidden. The only thing L3 can do there is hide something. The check that was supposed to stop you from unhiding a game you cannot see was stopping that instead, and then telling you to press R3, which is advice for a completely different situation.
 
@@ -282,14 +282,14 @@ ata_bd still loads only when you open the HDD page. Boot stays instant like
 EXP66/67, and the page load mirrors SMS exactly -- the one arrangement none
 of the fast launchers ever had trouble with.
 
-**sAGA:** instant boot, then open the HDD page. If your games list, this is
+**[sAGA](https://github.com/oldman63):** instant boot, then open the HDD page. If your games list, this is
 finally it.
 
 ---
 
 ## New in EXP68: the driver loads at boot again -- this time we know why
 
-sAGA's EXP67 photos were the breakthrough, not another failure. The boot is
+[sAGA](https://github.com/oldman63)'s EXP67 photos were the breakthrough, not another failure. The boot is
 now instant (2 seconds!), and the HDD page narrates its steps -- but the
 driver load hung *there*, on a fully serial main thread. That finally proves
 the load was never about threads or races: **his console only completes this
@@ -303,7 +303,7 @@ bdm, bdmfs, ata_bd) so if anything ever sticks, one photo says which one.
 The page keeps its EXP67 narration and retries; the APA and dual-USB fixes
 from EXP67 are untouched.
 
-**sAGA:** boot will take a few seconds longer than EXP67 (the driver load is
+**[sAGA](https://github.com/oldman63):** boot will take a few seconds longer than EXP67 (the driver load is
 back -- that is the point). Then the HDD page should just open. This is the
 configuration your console has always said yes to.
 
@@ -339,7 +339,7 @@ foreground, telling you what it's doing ("loading the driver", then up to 10
 there, the next page entry tries fresh.
 
 **Everyone:** boot should be instant and boring again, on every device.
-**sAGA:** the HDD page does the waiting now, out loud. If the page opens and
+**[sAGA](https://github.com/oldman63):** the HDD page does the waiting now, out loud. If the page opens and
 lists your games after the retries, the saga is over.
 
 ---
@@ -360,7 +360,7 @@ slow drive spins up. Fast rigs see nothing new; slow-drive rigs get a narrated
 wait on a page instead of a long black boot.
 
 **Everyone:** boot should be instant and normal again (MC, USB, MX4SIO,
-MMCE). **sAGA:** open the HDD page -- the retry lines should walk up to your
+MMCE). **[sAGA](https://github.com/oldman63):** open the HDD page -- the retry lines should walk up to your
 drive appearing.
 
 ---
@@ -372,15 +372,15 @@ startup in two: only the short driver load (~3-4 seconds) still happens before
 the intro; the long "is the drive awake yet?" watch now runs *behind* the
 splash animation, so a slow drive costs you nothing you can see.
 
-**sAGA + everyone with an internal drive:** boot should feel normal again --
+**[sAGA](https://github.com/oldman63) + everyone with an internal drive:** boot should feel normal again --
 intro plays right away, and by the time you open the HDD page the drive is
 either listed or says "still starting" (then just re-enter).
 
 ---
 
-## New in EXP63: wait for the drive, not just the driver (sAGA's clue)
+## New in EXP63: wait for the drive, not just the driver ([sAGA](https://github.com/oldman63)'s clue)
 
-**sAGA spotted it himself:** the build that works (07.18) boots *slowly* --
+**[sAGA](https://github.com/oldman63) spotted it himself:** the build that works (07.18) boots *slowly* --
 about 15 seconds. That is not a flaw in that build, it is the point: his 4TB
 drive needs that time to spin up before anyone asks it questions. Fast boots
 asked too early, got no answer, and gave up. SMS (Simple Media System) does
@@ -393,7 +393,7 @@ instant when the drive is quick) instead of waiting a fixed 1 second and
 hoping. If the drive never appears, the HDD page can retry later instead of
 inheriting a wrong "all good". The boot wait cap was raised to match.
 
-**sAGA, the usual test:** boot (give it up to ~25 seconds of black on the
+**[sAGA](https://github.com/oldman63), the usual test:** boot (give it up to ~25 seconds of black on the
 first one -- the drive is spinning up), open the HDD page. If your games
 list, this is the one.
 
@@ -404,7 +404,7 @@ list, this is the one.
 **EXP61 fixed the wrong half of the problem.** It moved the HDD driver load back
 to boot (the right window), but let it run *at the same time* as the controller
 and sound drivers loading on the main thread. Two parts of the console talking
-to the co-processor at once is not allowed -- on sAGA's console the boot itself
+to the co-processor at once is not allowed -- on [sAGA](https://github.com/oldman63)'s console the boot itself
 jammed: drive spins up, one flash, then a permanent black screen.
 
 **What EXP62 changes:** startup now *finishes* the HDD driver load (with an
@@ -413,7 +413,7 @@ working 07.18 build always used, just with a timeout so a stuck load can never
 black the console again. If the cap ever trips, the HDD page simply says "The
 internal drive is still starting" instead of freezing.
 
-**sAGA, the usual test, one boot:** it should reach the menu. If the HDD page
+**[sAGA](https://github.com/oldman63), the usual test, one boot:** it should reach the menu. If the HDD page
 opens and lists your games, the two-month saga is really over. If anything
 still sticks, photograph the screen -- the boot now narrates each step.
 
@@ -421,7 +421,7 @@ still sticks, photograph the screen -- the boot now narrates each step.
 
 ## New in EXP61: load the HDD driver at boot, like the build that worked
 
-**We finally diffed the right thing.** sAGA sent the one build his console has
+**We finally diffed the right thing.** [sAGA](https://github.com/oldman63) sent the one build his console has
 always liked -- the rolling release from 07.18, still running without problems.
 We compared its source against the current one file by file. The HDD driver
 itself is **byte-for-byte identical** in both. So the driver was never the
@@ -445,7 +445,7 @@ One safety net is included too: if the drive is still starting when you open
 the HDD (PFS) page, the page now says so and lets you back out, instead of
 freezing the whole menu.
 
-**sAGA, one boot, the usual test.** Internal exFAT HDD, open the HDD page.
+**[sAGA](https://github.com/oldman63), one boot, the usual test.** Internal exFAT HDD, open the HDD page.
 It should just open -- no 44%, no "still starting". And please check the USB
 SSD and a memory-card boot too, so we know nothing else moved.
 
@@ -454,9 +454,9 @@ under the boot splash) is ready, but we only reach for it if this fails.
 
 ---
 
-## New in EXP59: put the memory readout where sAGA can actually see it
+## New in EXP59: put the memory readout where [sAGA](https://github.com/oldman63) can actually see it
 
-**sAGA's EXP57 photo did its job.** The screen read:
+**[sAGA](https://github.com/oldman63)'s EXP57 photo did its job.** The screen read:
 
 ```
 exFAT 1c: waiting, status 1, 10.0s
@@ -472,7 +472,7 @@ printed on the first and last messages, and his screen ends on the middle one --
 the single most useful number scrolled past unseen. It is now on the waiting line
 too, which is the line that stays on screen.
 
-**sAGA, same test as before, one boot.** Open the internal exFAT page and photograph
+**[sAGA](https://github.com/oldman63), same test as before, one boot.** Open the internal exFAT page and photograph
 the screen. It will now read something like:
 
 ```
@@ -500,7 +500,7 @@ Nothing else changed in this build.
 
 Since EXP49 the loader started a brand-new background helper for **every game you moved**
 to, and threw it away afterwards. That is wasteful, and if the console ever refused to
-start one, every later cover request was refused too -- which is what left sAGA's
+start one, every later cover request was refused too -- which is what left [sAGA](https://github.com/oldman63)'s
 "Loading ART..." stuck on screen. EXP57 stopped that turning into a permanent jam; this
 removes the cause. There is now **one** helper, started the first time a cover is needed
 (never during boot) and reused from then on. It is what OPL has always done.
@@ -525,14 +525,14 @@ out cleanly and points elsewhere, which is worth knowing either way.
 - **DKWDRV**: launch it and see whether it can actually do things now.
 - **Browsing with covers on** should be unchanged -- same speed, covers still appear.
 - **Launching a game** from any device should be unchanged.
-- **sAGA**: the internal-drive step-1 readout from EXP57 is unchanged here, so a photo
+- **[sAGA](https://github.com/oldman63)**: the internal-drive step-1 readout from EXP57 is unchanged here, so a photo
   from either build is equally useful.
 
 ---
 
-## New in EXP57: three fixes from testing (sAGA + maintainer)
+## New in EXP57: three fixes from testing ([sAGA](https://github.com/oldman63) + maintainer)
 
-**1. The internal drive now explains itself properly (sAGA).**
+**1. The internal drive now explains itself properly ([sAGA](https://github.com/oldman63)).**
 
 EXP55 got us as far as *"exFAT step 1: starting the drive"* and then a timeout. That told us
 WHERE it stops -- the driver start-up, not the game scan -- but not why. Step 1 was still one
@@ -546,25 +546,25 @@ It now reports, on screen, as it goes:
 - **1d** -- the final code it gave up on, and how long it took
 
 So instead of "it timed out", the screen will say something like *"gave up at status 1 after
-10s, iop128k=NO"*. **sAGA: one boot, photograph whatever it ends on.** That should be enough
+10s, iop128k=NO"*. **[sAGA](https://github.com/oldman63): one boot, photograph whatever it ends on.** That should be enough
 to name the cause.
 
 Two theories are already dead and worth not chasing: the "phantom slave" fix from EXP40 did
 not help his drive, and the 4TB-capacity idea is refuted -- our driver handles capacity
 identically to the official SDK, so a large drive is not inherently the problem.
 
-**2. Cover loading could get stuck forever (sAGA).**
+**2. Cover loading could get stuck forever ([sAGA](https://github.com/oldman63)).**
 
-sAGA saw *"Loading ART..."* freeze permanently when covers were on and his `_COV.png` files
+[sAGA](https://github.com/oldman63) saw *"Loading ART..."* freeze permanently when covers were on and his `_COV.png` files
 were not under `/ART`. A cover that cannot be found should give up in a moment. Instead, if a
 request failed to start it retried **forever**, so the loader stayed stuck -- and once that
 happened, no further covers would load for the rest of the session. EXP56 removed the message
 but not the cause, so it simply became invisible. It now gives up after about a second and
 moves on.
 
-**3. Games could be marked hidden on the wrong device (sAGA).**
+**3. Games could be marked hidden on the wrong device ([sAGA](https://github.com/oldman63)).**
 
-sAGA opened his `.gamecache` and found a game recorded as hidden with **no `.hide` file next
+[sAGA](https://github.com/oldman63) opened his `.gamecache` and found a game recorded as hidden with **no `.hide` file next
 to it**. He was right that this made no sense. Clearing the game list did not clear the
 hidden-games list, so hidden marks carried over from one scan to the next -- and from one
 device to another -- and were then written into that device's cache. Fixed; a genuinely
@@ -574,7 +574,7 @@ hidden game is still found from its own `.hide` file during the scan.
 already-written wrong entries go away.
 
 **What to test on EXP57:**
-- **sAGA:** internal exFAT page, one boot, photograph the final step-1 message.
+- **[sAGA](https://github.com/oldman63):** internal exFAT page, one boot, photograph the final step-1 message.
 - Covers: with art present they load; with art missing the box just stays empty and browsing
   stays smooth. Nothing should stick.
 - Hide a game with L3, then visit another device and come back: only the game you hid should
@@ -884,7 +884,7 @@ Turning art off skipped all of it, which is why it looked fine, and that was the
 
 ## New in EXP43: if the internal drive freezes, the screen now tells us where
 
-**sAGA, this one is for you, and it is the important part of this build.**
+**[sAGA](https://github.com/oldman63), this one is for you, and it is the important part of this build.**
 
 **Nothing about the drive fix changed.** EXP40's "phantom slave" fix is in this build exactly as it was. What changed is what happens **if it does not work**.
 
@@ -901,7 +901,7 @@ We had solved this once. Back in EXP11 that step was split into numbered sub-ste
 
 A frozen console cannot redraw the screen, so whatever message is showing when it stops **is** the answer. It tells us which call hung and, for the numbered ones, which drive slot.
 
-**What to do (sAGA, one boot):** open the **HDD (exFAT)** page and give it up to two minutes, since some failure paths are slow rather than truly stuck.
+**What to do ([sAGA](https://github.com/oldman63), one boot):** open the **HDD (exFAT)** page and give it up to two minutes, since some failure paths are slow rather than truly stuck.
 
 - **If it lists your games:** the phantom-slave fix worked. That is the win we have been chasing, please say so.
 - **If it freezes: photograph the screen.** The message on it, word for word including the number, is the whole diagnosis. That single photo is worth more than every report on the last three builds combined.
@@ -950,7 +950,7 @@ The same mistake had a second symptom worth mentioning: on a drive using the old
 - **The reported bug:** boot from your memory card, open the internal exFAT page, then plug in your MX4SIO card and open the MX4SIO page. It should now list the **SD card's** games. This is the one that matters.
 - **Every device is on its own page:** check USB, MX4SIO, MMCE and the internal drive each list their own games and nothing borrowed from another device.
 - **Nothing vanished:** if you have a drive that previously showed up, confirm it still does. This change moves how drives are matched to pages, so a device going missing is the failure mode to watch for.
-- **sAGA / internal exFAT:** unchanged from EXP40. If you get a chance, the EXP40 question still stands (does the exFAT page list games, or still freeze), but nothing in EXP41 was aimed at it.
+- **[sAGA](https://github.com/oldman63) / internal exFAT:** unchanged from EXP40. If you get a chance, the EXP40 question still stands (does the exFAT page list games, or still freeze), but nothing in EXP41 was aimed at it.
 
 ---
 
@@ -964,17 +964,17 @@ Two things: undo a wrong turn, and finally test a real fix we wrote months ago b
 
 **We already wrote the fix — and never tested it.** Back in EXP21 we made the driver tell itself *"there is no slave"* on a retail PS2 before it probes, which removes both the phantom buffer and the command collision (genuine dual-drive DVR consoles are left alone). It was buried under EXP22 ~40 minutes later, before anyone ran it on hardware. EXP40 revives it — the driver is now **built from source** with that one change — and puts it on the drive, on the correct lazy path.
 
-**Honest status:** this is a **real fix attached to a testable hypothesis**, not a guaranteed win. If sAGA's exFAT page finally lists games → the phantom slave was the culprit and we've cracked it. If it still freezes → the device-1 theory is cleanly refuted, and the next build adds on-screen instrumentation to catch the exact line. Either way, it's decisive.
+**Honest status:** this is a **real fix attached to a testable hypothesis**, not a guaranteed win. If [sAGA](https://github.com/oldman63)'s exFAT page finally lists games → the phantom slave was the culprit and we've cracked it. If it still freezes → the device-1 theory is cleanly refuted, and the next build adds on-screen instrumentation to catch the exact line. Either way, it's decisive.
 
 **What to test on EXP40:**
-- **sAGA / internal exFAT:** boot normally from MC/USB (no more boot-time drive load), then open the **exFAT HDD** page — does it list your games instead of hanging at ~42%?
+- **[sAGA](https://github.com/oldman63) / internal exFAT:** boot normally from MC/USB (no more boot-time drive load), then open the **exFAT HDD** page — does it list your games instead of hanging at ~42%?
 - **MX4SIO / MMCE / USB:** all unchanged — please confirm they're still healthy (this build recompiles the ATA driver from source, so a quick sanity pass matters).
 
 ---
 
 ## New in EXP39: the exFAT freeze — one clean variable (the boot chime)
 
-EXP38 froze on the splash. A deep source-level comparison (byte-hashing every driver against the loaders that read sAGA's drive) settled two things for good, then found the real lead:
+EXP38 froze on the splash. A deep source-level comparison (byte-hashing every driver against the loaders that read [sAGA](https://github.com/oldman63)'s drive) settled two things for good, then found the real lead:
 
 **It is NOT the drivers.** Our `ata_bd` is byte-identical to the one wLaunchELF R3Z and official OPL ship. We already shipped the *complete* byte-exact reference driver set (an earlier experiment) and it still froze — and RiptOPL ships an *older* ATA driver than ours and reads the drive fine. So the module bytes are fully exonerated. GPT parsing and 48-bit addressing are both present and working. Chasing the drivers is over.
 
@@ -985,18 +985,18 @@ EXP38 froze on the splash. A deep source-level comparison (byte-hashing every dr
 This is a deliberate **one-variable test.** If it works, the audio-during-storage collision was the freeze and we finally have the mechanism. If it still freezes, we've cleanly ruled audio out and the next suspect (the controller-adapter drivers initializing at the same time) is already lined up.
 
 **What to test on EXP39:**
-- **sAGA / internal exFAT drive:** boot to the menu. The splash may still sit a few seconds while the drive loads (that's expected — don't power off). Does it reach the menu now, and does the exFAT HDD page list your games instead of hanging on the splash? You'll notice the boot chime starts a touch later than before — that's the fix, not a bug.
+- **[sAGA](https://github.com/oldman63) / internal exFAT drive:** boot to the menu. The splash may still sit a few seconds while the drive loads (that's expected — don't power off). Does it reach the menu now, and does the exFAT HDD page list your games instead of hanging on the splash? You'll notice the boot chime starts a touch later than before — that's the fix, not a bug.
 - **MX4SIO / MMCE / USB:** confirm all still behave exactly as they did on EXP37/38.
 
 ---
 
 ## New in EXP38: the internal exFAT drive freeze — stop diverging from OPL
 
-This is the fix for the internal **exFAT HDD freeze** — sAGA's 4TB GPT drive that stalls at *"Locating exFAT HDD POPS folder… 42%"* (and, on the boot-warm-up path, black-screened before the menu). It is **not** a module problem, a memory problem, or a "can't read GPT" problem — the drivers that read his drive are already in the build, byte-for-byte the same ones that read it on EXP22.
+This is the fix for the internal **exFAT HDD freeze** — [sAGA](https://github.com/oldman63)'s 4TB GPT drive that stalls at *"Locating exFAT HDD POPS folder… 42%"* (and, on the boot-warm-up path, black-screened before the menu). It is **not** a module problem, a memory problem, or a "can't read GPT" problem — the drivers that read his drive are already in the build, byte-for-byte the same ones that read it on EXP22.
 
 **What was actually wrong.** Every working loader — OPL, wLaunchELF R3Z, NHDDL — brings its whole storage stack up **the same way: together, in one go, under a loading screen, before anything else touches the drive bus.** POPSLoader had drifted into doing the opposite — loading the internal-drive driver (`ata_bd`) **late and by itself**, either mid-session when you open the page or on a background worker racing other startup work. On a big drive that late/split bring-up **wedges the drive bus** — which is the 42% hang (and, when it raced boot, the black screen). Same driver, wrong moment.
 
-**The fix — do what the reference loaders do.** When the internal drive is enabled (Internal HDD = **exFAT** or **Both**, the default), POPSLoader now brings the `ata_bd` stack up **at boot, in one shot, while the welcome splash is on screen** — before the menu, before anything else uses the bus. This is the *exact* arrangement sAGA confirmed reads his drive ("works just fine" on EXP22), with the two reasons it was pulled last time both removed:
+**The fix — do what the reference loaders do.** When the internal drive is enabled (Internal HDD = **exFAT** or **Both**, the default), POPSLoader now brings the `ata_bd` stack up **at boot, in one shot, while the welcome splash is on screen** — before the menu, before anything else uses the bus. This is the *exact* arrangement [sAGA](https://github.com/oldman63) confirmed reads his drive ("works just fine" on EXP22), with the two reasons it was pulled last time both removed:
 - **No black screen** — it runs under the splash (the picture is already up), so the few seconds the drive needs show the splash, not a black panel.
 - **No race** — it finishes completely before the menu appears, instead of a background worker still churning as the menu loads (that race was the earlier black-screen).
 
@@ -1005,7 +1005,7 @@ This is the fix for the internal **exFAT HDD freeze** — sAGA's 4TB GPT drive t
 **Honest status.** This restores the one configuration your drive is *known* to read, moved to a spot where it can't black-screen and can't race. I can't prove it on your hardware from here — so this build is the test. The one thing worth a second look is **MX4SIO** (it shares the block-device core with `ata_bd`): it was collateral damage the *last* time this was tried, but that was bundled with a driver swap we've since settled on, and the SDK drivers we now ship are the same ones OPL runs with `ata_bd` and MX4SIO resident together. If MX4SIO regresses, that's the next thread — but I expect it to be clean.
 
 **What to test on EXP38:**
-- **sAGA / internal exFAT drive:** boot to the menu (no black screen), then open the **exFAT HDD** page — does the game list finally come up instead of hanging at 42%? (The splash may sit a few seconds longer at boot while the drive comes up — that's the drive loading, and it's expected.)
+- **[sAGA](https://github.com/oldman63) / internal exFAT drive:** boot to the menu (no black screen), then open the **exFAT HDD** page — does the game list finally come up instead of hanging at 42%? (The splash may sit a few seconds longer at boot while the drive comes up — that's the drive loading, and it's expected.)
 - **MX4SIO:** browse the MX4SIO list as usual and confirm it's still healthy — no new hang or crash.
 - **MMCE and USB:** confirm they behave exactly as they did on EXP37 (they shouldn't change at all).
 - **PFS-only users:** boot should be as fast as before (this doesn't run for you).
@@ -1055,7 +1055,7 @@ EXP34's testing turned up two regressions the new defaults introduced. EXP35 fix
 **Honest status:** the boot-probe removal directly addresses the black-screen mechanism, and the cover crash's most likely cause (the new listing step) is gone. Both are the kind of fault only your consoles can fully confirm — so this build is the test. If MX4SIO still misbehaves *with cover art turned off* (Square), that points past the art code at the device layer, and that's the next thread to pull.
 
 **What to test on EXP35:**
-- **sAGA / anyone with an internal exFAT drive:** does it boot to the menu now (no black screen)? Then open the exFAT page and see if the drive lists.
+- **[sAGA](https://github.com/oldman63) / anyone with an internal exFAT drive:** does it boot to the menu now (no black screen)? Then open the exFAT page and see if the drive lists.
 - **MX4SIO:** browse the game list — does it stay responsive without the memory crash? If it still stalls, try it again with **Cover Art OFF (Square)** and say whether that changes anything.
 - **Covers:** put your art at `<device>:/ART/<name>_COV.png` and confirm it shows.
 
@@ -1104,7 +1104,7 @@ EXP33's testing surfaced two things at once: the APA "no games" report turned ou
 - **Cover-art probe firing during the screen transition.** Reading a cover is a synchronous file read, and a *missing* cover is a full directory walk (seconds on SD-over-SIO2 or USB 1.1). EXP32 could kick that off while the fade-in was still running, so the render loop blocked on the opaque overlay — exactly the "only the background shows" symptom. EXP33 holds the cover probe until the list has painted and the transition has finished.
 - **The "this cover is missing" memory was thrown away on exit.** The first visit walks the disk for every missing cover and remembers the misses; EXP32 discarded that memory when you left the page, so re-entering walked the whole disk *again*. EXP33 keeps the negative-cover memory across a page exit (while still freeing the decoded images, so memory doesn't grow) — a re-entry no longer re-walks the disk for covers it already knows are absent. A manual refresh (R1) or switching to a different device still does a full, clean rescan.
 
-**Honest status:** the re-entry stall fixes address the reported mechanism directly and are testable off-console (the regression net now has 27 host-side tests). The APA fixes are a mix: the race serialization and retry-once are real defensive fixes, but whether they *are* sAGA's / the reporter's exact cause is not something we can prove without the hardware — which is why the self-diagnosing readout is in this build. If APA still shows no games on EXP33, the message it prints tells us precisely where to look next.
+**Honest status:** the re-entry stall fixes address the reported mechanism directly and are testable off-console (the regression net now has 27 host-side tests). The APA fixes are a mix: the race serialization and retry-once are real defensive fixes, but whether they *are* [sAGA](https://github.com/oldman63)'s / the reporter's exact cause is not something we can prove without the hardware — which is why the self-diagnosing readout is in this build. If APA still shows no games on EXP33, the message it prints tells us precisely where to look next.
 
 **What to test on EXP33:**
 - **APA no-games (whoever hit it):** boot straight to APA (MC boot is fine), open the internal PFS page. If games appear — good. If it still says "no games found," **read the second line of that message and send it verbatim** — that line is the whole point of this build.
@@ -1115,9 +1115,9 @@ EXP33's testing surfaced two things at once: the APA "no games" report turned ou
 
 ## New in EXP32: the device layer rebuilt the way the working launchers do it
 
-**This is the rebuild.** After sAGA's report (SCPH-30004, internal exFAT frozen at 42% on EXP30 *and* EXP31 — builds that carry every previous "fix"), we stopped patching and rebuilt the storage layer to match the launchers that actually work on your consoles: OPL/RiptOPL, wLaunchELF-R3Z and NHDDL. Their sources were read line-by-line for this; POPSLoader now follows their rules instead of its own inventions.
+**This is the rebuild.** After [sAGA](https://github.com/oldman63)'s report (SCPH-30004, internal exFAT frozen at 42% on EXP30 *and* EXP31 — builds that carry every previous "fix"), we stopped patching and rebuilt the storage layer to match the launchers that actually work on your consoles: OPL/RiptOPL, wLaunchELF-R3Z and [NHDDL](https://github.com/pcm720/nhddl). Their sources were read line-by-line for this; POPSLoader now follows their rules instead of its own inventions.
 
-**What the comparison found.** The working launchers don't have *more* code for these problems — they have *less*. None of them has a "who owns the bus" latch, a restart dialog, a crash marker file, or per-device retry ladders. What they have instead: drivers load in one coordinated window into a near-empty system, every wait is short and bounded, a missing device is reported plainly, and a failed driver load is retried on the next visit instead of poisoning the session. On sAGA's exact case the evidence was decisive: the drive driver bytes are **identical** between the old build that worked on his console and the current one that freezes — what changed is *when* the driver loads (boot window vs mid-session) and how much traffic is in flight around it. The EXP22-era build that worked for him loaded it at boot; every reference does the equivalent.
+**What the comparison found.** The working launchers don't have *more* code for these problems — they have *less*. None of them has a "who owns the bus" latch, a restart dialog, a crash marker file, or per-device retry ladders. What they have instead: drivers load in one coordinated window into a near-empty system, every wait is short and bounded, a missing device is reported plainly, and a failed driver load is retried on the next visit instead of poisoning the session. On [sAGA](https://github.com/oldman63)'s exact case the evidence was decisive: the drive driver bytes are **identical** between the old build that worked on his console and the current one that freezes — what changed is *when* the driver loads (boot window vs mid-session) and how much traffic is in flight around it. The EXP22-era build that worked for him loaded it at boot; every reference does the equivalent.
 
 **What EXP32 changes:**
 - **Storage drivers load lazily, when you engage their device** — exactly wLaunchELF-R3Z's model (read from its source, now that it's available to us). The MX4SIO driver loads on your first visit to the MX4SIO page (or an MX4SIO boot), never for users who don't use it. Opening the page after that is a short, bounded check that cannot freeze the console.
@@ -1127,10 +1127,10 @@ EXP33's testing surfaced two things at once: the APA "no games" report turned ou
 - **Deleted, wholesale:** the "device conflict / restart" *dialog*, the MX4SIO crash-marker files and the boot-skip logic that read them, the per-device 6/4-try retry ladders, the cross-page "cascade guard", and the custom bdm_query polling on the MX4SIO/exFAT paths. The one thing that returned in better form is the MMCE/MX4SIO gate above — as a simple decline-with-message, not the old marker/dialog machinery.
 - **A regression net, finally:** the device layer now has host-side tests (26/26 passing — including the coexistence contract and the bounded-wait rules) so this layer can't silently regress again in a future build.
 
-**Honest status:** the *architecture* now matches the launchers that work on your hardware, and everything testable off-console passes. What only your consoles can prove: sAGA's SCPH-30004 exFAT drive and FifthFox's MMCE+MX4SIO slim. No victory claims — this build is the test.
+**Honest status:** the *architecture* now matches the launchers that work on your hardware, and everything testable off-console passes. What only your consoles can prove: [sAGA](https://github.com/oldman63)'s SCPH-30004 exFAT drive and FifthFox's MMCE+MX4SIO slim. No victory claims — this build is the test.
 
 **What to test:**
-- **sAGA (SCPH-30004, internal exFAT):** update to EXP32, make sure Settings → Device List → Internal HDD is set to **exFAT** (or Both), then open the exFAT page. Expected: your games list, or at worst the "drive is still starting" message once, then the list on re-entry. Please also confirm MC, MMCE and USB still behave.
+- **[sAGA](https://github.com/oldman63) (SCPH-30004, internal exFAT):** update to EXP32, make sure Settings → Device List → Internal HDD is set to **exFAT** (or Both), then open the exFAT page. Expected: your games list, or at worst the "drive is still starting" message once, then the list on re-entry. Please also confirm MC, MMCE and USB still behave.
 - **FifthFox (SCPH-70012, MMCE + MX4SIO both installed, back on the 25th):** update to EXP32, open the MX4SIO page with both adapters in. Expected: your games list within a few seconds. Then MMCE in the same session (both are allowed together now, like OPL), plus controllers and memory-card saves. If anything acts strange only when *both* adapters are in, say so explicitly — that specific detail decides a recorded fallback plan.
 - **Anyone:** boot time should feel unchanged (the drive spin-up hides behind the splash; PFS-only installs skip it completely).
 
