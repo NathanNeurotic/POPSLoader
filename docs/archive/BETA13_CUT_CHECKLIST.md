@@ -42,7 +42,7 @@ The 2026-07-09 wave inserted code into the launch path and the HDD scan. Adaptiv
 ## Not blockers (documented pending; accept or delegate)
 
 - **PAL** (native 640x512, Auto video, cover-art registration on PAL): the team has no PAL hardware. Recruit a PAL tester or ship PAL-pending (BETA-12 shipped items this way).
-- **#508 "No USB backend detected":** oldman63's specific console; awaiting his retest. Not a broad blocker unless it reproduces.
+- **#508 "No USB backend detected":** [oldman63](https://github.com/oldman63)'s specific console; awaiting his retest. Not a broad blocker unless it reproduces.
 - **CRT overscan eyeball / DKWDRV exit-to-MC hang:** documented known-issues.
 
 ---
