@@ -501,7 +501,7 @@ converted to a per-frame step count).
 **What breaks it:** reintroducing any wall-clock `Timer.getTime()` comparison
 against an `_ms`-named constant for nav/scroll cadence — it will fly at ~60x
 because the source is µs (the exact `adaa8ee → d128779` bug: "one click = 5 lines",
-nuno6573 / LVD14 #504). Frame-count instead, or use `os.clock()` (stock Lua,
+[nuno6573](https://github.com/nuno6573) / LVD14 #504). Frame-count instead, or use `os.clock()` (stock Lua,
 returns SECONDS — the only pre-converted Lua time source, currently unused).
 **Sweep COMPLETE (`9c3f64f` + `a8e61f3`):** the `MIN_ACTION_MS` action debounce was
 REMOVED (it compared a µs delta to a 220 "ms" constant); `emit_action` (`ui.lua:4577`)

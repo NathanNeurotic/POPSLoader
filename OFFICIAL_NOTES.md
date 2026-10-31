@@ -1,6 +1,6 @@
 # POPSLoader 1.4.0
 
-This release replaces the old USB-first UDPFS fallback with Okeanos's UDPFS Assault 1.0.0 full network read/write driver. USB is no longer required for POPStarter UDPFS games. It also includes the localization fixes and updated translator handoffs merged since 1.3.1.
+This release replaces the old USB-first UDPFS fallback with [Okeanos](https://github.com/Okeanos86)'s [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) 1.0.0 full network read/write driver. USB is no longer required for [POPStarter](https://www.psx-place.com/resources/popstarter.683/) UDPFS games. It also includes the localization fixes and updated translator handoffs merged since 1.3.1.
 
 ## Changes
 
@@ -25,4 +25,4 @@ The official assets are taken from the exact passing master CI run. Automated ch
 
 **Physical-console UDPFS launch and VMC save/reload acceptance remain unverified.** Ember launch, controller behavior after handoff and VMC persistence also require recorded PS2 testing. These remain experimental options within this official launcher release. Issues #603 and #568 stay open for reporter confirmation; this release does not claim new hardware results. Ember i.Link remains deferred.
 
-Ember is Gageformer's unmodified **Beta-2**, not a new emulator version. Supply your own BIOS, games and proprietary Sony POPS components; none are included. The packaged ExampleGame.bin is an empty placement example.
+[Ember](https://github.com/Gageformer/Ember) is [Gageformer](https://github.com/Gageformer)'s unmodified **Beta-2**, not a new emulator version. Supply your own BIOS, games and proprietary Sony POPS components; none are included. The packaged ExampleGame.bin is an empty placement example.

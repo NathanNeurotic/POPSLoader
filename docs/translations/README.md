@@ -6,7 +6,7 @@ Unlisted strings fall back to English.
 
 ## Slovak contribution (#605)
 
-SVKghost offered to translate POPSLoader into Slovak. Download
+[SVKghost](https://github.com/SVKghost) offered to translate POPSLoader into Slovak. Download
 [the Excel workbook](slovak.xlsx?raw=true), open its **Slovak** sheet, and enter
 translations in the yellow cells in column B. The **Instructions** sheet explains
 the format. A [UTF-8 TSV alternative](slovak.tsv) has the same English keys and a
