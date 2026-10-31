@@ -34,16 +34,16 @@ compatibility.
 ## Experimental UDPFS integration (October 12, 2026)
 
 - The Ethernet tile offers **SMBv1** and **USB + UDPFS** choices.
-- Browse PS1 `.VCD` files on a UDPFS server and launch through POPSTARTER's
-  **USB-first, UDPFS-fallback** driver by **Okeanos86**, derived from **israpps**
+- Browse PS1 `.VCD` files on a UDPFS server and launch through [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/)'s
+  **USB-first, UDPFS-fallback** driver by **[Okeanos86](https://github.com/Okeanos86)**, derived from **[israpps](https://github.com/israpps)**
   BDM Assault.
 - Set a static console IP and contiguous netmask in **Settings → SMB / Network**;
   UDPFS and SMB network drivers are mutually exclusive until a restart.
 - Keep a USB `POPS/` directory available. Existing conflicting
   `POPS/IPCONFIG.DAT` files are never overwritten; missing ones are staged
   on detected USB POPS volumes.
-- During UDPFS launch POPSLoader stages its embedded Okeanos driver pair under
-  `mc?:/POPSTARTER/`, not FreeMcBoot's `SYS-CONF/` folder.
+- During UDPFS launch POPSLoader stages its embedded [Okeanos](https://github.com/Okeanos86) driver pair under
+  `mc?:/POPSTARTER/`, not [FreeMcBoot](https://github.com/TnA-Plastic/FreeMcBoot)'s `SYS-CONF/` folder.
 - Both real-Lua host configuration tests and pinned IRX integration tests gate
   builds. Source and PS2SDK compilation checks are not real-console evidence.
 - **Hardware status: Unknown (verify on hardware).** PS2 USB/network VCD boot,
@@ -1034,7 +1034,7 @@ This is a device-layer cleanup that should make the MX4SIO and exFAT pages both 
 
 **The change.** When POPSLoader opens the MX4SIO page (or the exFAT page), it already knows which driver it just loaded — so it now asks the driver **directly** which storage slot it owns, using the enumeration the PS2 SDK already provides. Previously it did the opposite: it opened *every* `mass0:`…`mass9:` slot in turn and asked each one "who are you?" That per-slot interrogation is slow, and on a drive that's still spinning up it could **stall the console** — a plausible contributor to the "carousel appears then freezes" report. The per-slot interrogation is gone from these pages; the slower query now survives in exactly one place where it's genuinely needed (working out what an *old launcher* handed us when it boots us from a generic `mass:` path).
 
-**Why it's safe.** Same drives, same files, same folders — only *how the page finds the right slot* changed, from "scan and ask everyone" to "ask the one driver we loaded." CosmicScale's exFAT drive is reached the same way, just directly. If the direct enumeration is ever unavailable, it falls back to the old scan, so nothing hard-breaks. The device layer now has 30 host-side tests (up from 29), including one that proves the page resolves its slot from the enumeration with **zero** per-slot probing.
+**Why it's safe.** Same drives, same files, same folders — only *how the page finds the right slot* changed, from "scan and ask everyone" to "ask the one driver we loaded." [CosmicScale](https://github.com/CosmicScale)'s exFAT drive is reached the same way, just directly. If the direct enumeration is ever unavailable, it falls back to the old scan, so nothing hard-breaks. The device layer now has 30 host-side tests (up from 29), including one that proves the page resolves its slot from the enumeration with **zero** per-slot probing.
 
 **What to test on EXP36:**
 - **MX4SIO and exFAT pages:** do they open at least as quickly as before, and steadily? (This change is aimed squarely at the freeze/stall path.)

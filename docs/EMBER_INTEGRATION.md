@@ -11,7 +11,7 @@ The new installable `PS1_POPSLOADER.zip` has `APPS/PS1_POPSLOADER/` with **exact
 
 The standalone `PS1_POPSLOADER.psu` is a PS2 memory-card save with save-directory **header** `PS1_POPSLOADER` and only the eight files immediately below that header. There is no nested folder in the PSU; its contents are verified byte-for-byte against `APPS/PS1_POPSLOADER/`. Import the PSU to a memory card, or copy the application directory manually; deploy `POPS/` and `EMBER/` to the storage-device root independently.
 
-`EMBER/games/ExampleGame/ExampleGame.cue` and `ExampleGame.bin` illustrate the expected filenames. **ExampleGame.bin is intentionally empty and not playable.** Remove the example or replace it with your own legal disc image; do not mistake it for test media. Add your own BIOS and games separately. The Ember core is redistributed **unmodified** with `EMBER/LICENSE-BETA.txt` and its official-project link, under Gageformer's beta distribution conditions; no console BIOS is supplied.
+`EMBER/games/ExampleGame/ExampleGame.cue` and `ExampleGame.bin` illustrate the expected filenames. **ExampleGame.bin is intentionally empty and not playable.** Remove the example or replace it with your own legal disc image; do not mistake it for test media. Add your own BIOS and games separately. The [Ember](https://github.com/Gageformer/Ember) core is redistributed **unmodified** with `EMBER/LICENSE-BETA.txt` and its official-project link, under [Gageformer](https://github.com/Gageformer)'s beta distribution conditions; no console BIOS is supplied.
 
 The [Ember Watch](../.github/workflows/ember-watch.yml) compares the official `ember.elf` SHA-256 with RiptOPL's current verified copy (including same-tag hotfixes). After merging into the repository's default branch, its weekly schedule can advance **only the Ember source pin on `dev`**, leaving the tested POPS pin fixed and dispatching a rolling build when needed. A missing digest, unverified RiptOPL copy, invalid MIPS ELF or missing licence stops the update.
 
@@ -107,6 +107,6 @@ operation and there is a reference integration worth adapting. Until then,
 keep the existing unsupported/hidden behavior; do not claim i.Link parity.
 APA/PFS is implemented but still requires physical-console verification.
 
-Credits: Gageformer for Ember, RiptOPL/Open-PS2-Loader and
-contributors for the device scanning/settings model; RiptOPL's
+Credits: [Gageformer](https://github.com/Gageformer) for [Ember](https://github.com/Gageformer/Ember), RiptOPL/Open-PS2-Loader and
+contributors for the device scanning/settings model; [RiptOPL](https://github.com/NathanNeurotic/RiptOPL)'s
 source and third-party Ember licensing apply independently.

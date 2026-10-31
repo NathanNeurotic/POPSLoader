@@ -46,7 +46,7 @@ Installation, limitations and licensing are recorded in the maintained [project 
 
 - Ethernet tile: choose **SMBv1** or **USB + UDPFS**.
 - List uppercase `.VCD` files under a UDPFS server's `POPS/` folder.
-- Stage Okeanos BDM-UDPFS Assault Alpha's memory-card drivers at launch,
+- Stage [Okeanos](https://github.com/Okeanos86) [BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) Alpha's memory-card drivers at launch,
   without changing the console adapter's firmware.
 - Read USB `POPS/IPCONFIG.DAT` without overwriting incompatible settings.
 - Network stacks are exclusive; restart POPSLoader before switching SMBv1

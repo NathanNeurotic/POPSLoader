@@ -22,6 +22,6 @@ Automated gates cover the real controller source, embedded Lua runtime, NTSC/PAL
 
 **Physical-console verification of #603 and #568 is pending.** Ember game launch, controller behavior after handoff, writable VMC saves and UDPFS/storage compatibility still require recorded PS2 tests. Ember and USB + UDPFS remain experimental options within this official launcher release. i.Link for Ember remains deferred.
 
-Ember is Gageformer's existing, unmodified **Beta-2**, not a new emulator release. Its upstream license ships with the kit. Supply your own BIOS, games and proprietary Sony POPS components as needed; none are provided. `ExampleGame.bin` is an empty placement example.
+[Ember](https://github.com/Gageformer/Ember) is [Gageformer](https://github.com/Gageformer)'s existing, unmodified **Beta-2**, not a new emulator release. Its upstream license ships with the kit. Supply your own BIOS, games and proprietary Sony POPS components as needed; none are provided. `ExampleGame.bin` is an empty placement example.
 
 [Installation guide](https://github.com/NathanNeurotic/POPSLoader/wiki/Installation-Guide) ? [Hardware QA matrix](https://github.com/NathanNeurotic/POPSLoader/blob/master/QA_REGRESSION_MATRIX.md) ? [Ember Beta-2](https://github.com/Gageformer/Ember/releases/tag/Beta-2)

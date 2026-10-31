@@ -1,9 +1,9 @@
 # POPSLoader Launch Hygiene
 
 Date: 2026-05-25 (original), updated 2026-05-28 with post-release verdict
-Author: Claude (with NathanNeurotic direction)
+Author: Claude (with [NathanNeurotic](https://github.com/NathanNeurotic) direction)
 
-> **Status update 2026-05-28**: Layer A (`_ps2sdk_memory_init` fileXio teardown) **does** resolve the wLaunchELF-launched-POPSLoader symptom for the common cases (CosmicScale confirmed). Layers B (child-loader reset branches) and the V2-mimicry DKWDRV-HDD work in PR #460 **did not** fix DKWDRV-from-HDD-custom-path or U-10 BOOT.ELF-from-HDD-boot on hardware. Both of those are accepted as known-broken in BETA-10-5 (see `STATE.md` Known Broken section, and `docs/U10_INVESTIGATION.md` for U-10 specifically). The "single root cause" framing of the original TL;DR was too broad — `fileXio` lifecycle is _one_ cause; the remaining HDD-boot exec-path issues have additional state that the EE-side teardown alone doesn't resolve. Sections 1-3 below remain accurate for what they describe; the broader unification claim is partially walked back.
+> **Status update 2026-05-28**: Layer A (`_ps2sdk_memory_init` fileXio teardown) **does** resolve the wLaunchELF-launched-POPSLoader symptom for the common cases ([CosmicScale](https://github.com/CosmicScale) confirmed). Layers B (child-loader reset branches) and the V2-mimicry DKWDRV-HDD work in PR #460 **did not** fix DKWDRV-from-HDD-custom-path or U-10 BOOT.ELF-from-HDD-boot on hardware. Both of those are accepted as known-broken in BETA-10-5 (see `STATE.md` Known Broken section, and `docs/U10_INVESTIGATION.md` for U-10 specifically). The "single root cause" framing of the original TL;DR was too broad — `fileXio` lifecycle is _one_ cause; the remaining HDD-boot exec-path issues have additional state that the EE-side teardown alone doesn't resolve. Sections 1-3 below remain accurate for what they describe; the broader unification claim is partially walked back.
 >
 > **Also updated post-release**: PR #472 redefined the MX4SIO/USB classification rule (evidence-based; `mx4sio_bd` only loads on explicit MX4SIO evidence). See Section "Unified boot-context resolver" below — the resolver behavior is unchanged, but the downstream `classify_mass_boot` and `AutoInitStartupBackends` logic is more conservative than this doc originally described.
 
@@ -15,10 +15,10 @@ Four launch-related symptoms reported across mid-May 2026 hardware testing parti
 
 | Symptom | Reporter | Root cause |
 |---|---|---|
-| Launching POPSLoader from wLaunchELF black-screens (only for non-HDD targets) | CosmicScale 2026-05-25 | `_ps2sdk_memory_init` hangs on `SifIopReset` because wLaunchELF left `fileXio` loaded |
+| Launching POPSLoader from wLaunchELF black-screens (only for non-HDD targets) | [CosmicScale](https://github.com/CosmicScale) 2026-05-25 | `_ps2sdk_memory_init` hangs on `SifIopReset` because wLaunchELF left `fileXio` loaded |
 | DKWDRV from a custom HDD path black-screens | Nuno 2026-05-25 | Child loader's `SifIopReset` hangs because POPSLoader's `fileXio` (used to mount the partition) is still alive on the IOP |
 | BOOT.ELF from HDD-booted POPSLoader black-screens | Nuno 2026-05-25 | Same hang shape as DKWDRV; the reset never completes |
-| Atrocious boot times | NathanNeurotic | Sequential pre-Lua load of 11+ IRX modules in `main()`; unrelated to fileXio bug, but tracked as Layer C below |
+| Atrocious boot times | [NathanNeurotic](https://github.com/NathanNeurotic) | Sequential pre-Lua load of 11+ IRX modules in `main()`; unrelated to fileXio bug, but tracked as Layer C below |
 
 ## Why each "clean" parent works
 
@@ -159,7 +159,7 @@ Robust to bad/missing argv:
 
 ### Layer D -- NHDDL-style launch arguments (landed 2026-05-25)
 
-CosmicScale requested `-mode=ata` style boot arguments to skip directly to
+[CosmicScale](https://github.com/CosmicScale) requested `-mode=ata` style boot arguments to skip directly to
 a device page. Shipped infrastructure:
 
 **`src/main.cpp` `parseLaunchArgs()`** runs immediately after `argv[0]`

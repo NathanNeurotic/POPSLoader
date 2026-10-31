@@ -1,8 +1,8 @@
 # POPS UDPFS / UDPFS Assault
 
-POPSLoader 1.4.0 replaces USB-first BDM-UDPFS Assault Alpha with
+POPSLoader 1.4.0 replaces USB-first [BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) Alpha with
 [Okeanos UDPFS Assault 1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0).
-After 1.4.0 the driver moves to Okeanos's [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST) pre-release
+After 1.4.0 the driver moves to [Okeanos](https://github.com/Okeanos86)'s [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST) pre-release
 (2026-10-28): the same network read/write driver, plus BIN/CUE games (below).
 USB is no longer required. The `UDPFS` settings key and `.udpfs` asset names are
 retained for upgrades; they now select the full network read/write driver.
