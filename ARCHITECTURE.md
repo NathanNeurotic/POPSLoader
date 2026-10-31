@@ -576,7 +576,7 @@ On success `ExecPS2` never returns, short-circuiting the normal UI boot.
 ## Data and config layer
 
 ### POPSTARTER path (one value; the profile presets are gone)
-**2026-07-13 (R3Z3N review round 2): the profile-preset system was removed** —
+**2026-07-13 ([R3Z3N](https://github.com/saildot4k) review round 2): the profile-preset system was removed** —
 `pops_profiles.lua` (16 preset `POPSTARTER.ELF` locations), `PLDR.PROFILES`,
 `SELECTED_PROFILE`, and the `PROFILE_DEFAULT`/`CUSTOM` selection mode are gone.
 One value remains: `PLDR.POPSTARTER_PATH`. **Empty = Automatic** (the launch
