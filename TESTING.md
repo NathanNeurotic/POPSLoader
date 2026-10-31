@@ -56,7 +56,7 @@ Mostly a "does anything feel missing?" pass. Nothing was removed from what the l
 
 ### ⭐⭐ HDD (exFAT) via BDMA ATA — worked on one console, stalled on another; needs a wide pass
 
-The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + saildot4k's backend work): play from an **exFAT-formatted internal SATA/IDE drive**, exactly like a big USB stick. **If you have an exFAT internal drive, this is still one of the most valuable things you can test.** It listed and launched from a 4TB GPT drive on one console, but on another console it stalled while starting the drive for weeks afterwards, and the current build changed *when* the drive driver loads without that change being confirmed on hardware yet. If the page stalls, photograph the screen before rebooting: the step number and the bracketed text on it are the whole diagnosis.
+The flagship new feature this cycle (R3Z3N's ATA BDM Assault drivers + [saildot4k](https://github.com/saildot4k)'s backend work): play from an **exFAT-formatted internal SATA/IDE drive**, exactly like a big USB stick. **If you have an exFAT internal drive, this is still one of the most valuable things you can test.** It listed and launched from a 4TB GPT drive on one console, but on another console it stalled while starting the drive for weeks afterwards, and the current build changed *when* the drive driver loads without that change being confirmed on hardware yet. If the page stalls, photograph the screen before rebooting: the step number and the bracketed text on it are the whole diagnosis.
 
 **Setup:**
 1. Format the internal drive **exFAT** (NOT the classic APA/PFS HDL layout — that's the separate "HDD (PFS)" entry).

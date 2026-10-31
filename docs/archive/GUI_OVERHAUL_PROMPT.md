@@ -1,4 +1,4 @@
-# POPSLoader GUI overhaul — Berion mockups
+# POPSLoader GUI overhaul — [Berion](https://www.psx-place.com/members/berion.1431) mockups
 
 **Status:** queued work, not yet started. Recorded 2026-05-24.
 **Scope:** four screens (Context menu, Settings, Joypad config, OSK).
@@ -6,9 +6,9 @@
 
 ## Repository state of referenced files (as of 2026-05-24)
 
-The original prompt below referenced `app/screens.jsx`, `app/styles.css`, and an `index.html` mockup wrapper from Designer's package as the "visual oracle." **Those files are NOT the source of truth.** They are Designer's interpretation of Berion's design, and at least one spec they encode is wrong: Designer described Settings as "main page + per-category sub-pages," but Berion's actual mockup PNG shows Settings as a **single scrollable page** with section headers inline.
+The original prompt below referenced `app/screens.jsx`, `app/styles.css`, and an `index.html` mockup wrapper from Designer's package as the "visual oracle." **Those files are NOT the source of truth.** They are Designer's interpretation of [Berion](https://www.psx-place.com/members/berion.1431)'s design, and at least one spec they encode is wrong: Designer described Settings as "main page + per-category sub-pages," but Berion's actual mockup PNG shows Settings as a **single scrollable page** with section headers inline.
 
-The **actual source of truth** is Berion's mockup PNG screenshots (Context menu, Settings, Joypad configuration, OSK) shared by the project owner on 2026-05-24. They should live in `docs/mockups/` once dropped on disk:
+The **actual source of truth** is [Berion](https://www.psx-place.com/members/berion.1431)'s mockup PNG screenshots (Context menu, Settings, Joypad configuration, OSK) shared by the project owner on 2026-05-24. They should live in `docs/mockups/` once dropped on disk:
 
 - `docs/mockups/context_menu.png`
 - `docs/mockups/settings.png`
@@ -27,20 +27,20 @@ The PNG asset list the spec cites is fully present under `bin/POPSLDR/IMG/` afte
 - **DKWDRV from MC and BOOT.ELF from USB-booted POPSLoader** are also hardware-confirmed PASS. Preserve.
 - **DKWDRV from custom HDD path** and **U-10 BOOT.ELF from HDD-booted POPSLoader** are accepted known-broken in BETA-10-5 with documented workarounds. They are NOT blockers for the GUI overhaul.
 - Do not regress any of the `S-*` / `U-*` rows in `QA_REGRESSION_MATRIX.md` while doing the visual overhaul.
-- **Active blocker for starting this work**: Berion's mockup PNGs (`context_menu.png`, `settings.png`, `joypad_config.png`, `osk.png`) still need to land at `C:\Users\natha\Documents\assets\` and be committed to `docs/mockups/`. Without the visual oracle, the implementer can't match pixel-for-pixel.
+- **Active blocker for starting this work**: [Berion](https://www.psx-place.com/members/berion.1431)'s mockup PNGs (`context_menu.png`, `settings.png`, `joypad_config.png`, `osk.png`) still need to land at `C:\Users\natha\Documents\assets\` and be committed to `docs/mockups/`. Without the visual oracle, the implementer can't match pixel-for-pixel.
 - The current Settings page in `bin/POPSLDR/ui.lua` is the OPL-style focused-list. This overhaul replaces that with the category-page model below.
 
 ---
 
 ## Claude Code prompt — POPSLoader GUI overhaul
 
-> Paste the block below into Claude Code with this repo (`NathanNeurotic/POPSLoader`) checked out. It has full context, the assets list, and per-screen specs derived from Berion's mockups.
+> Paste the block below into Claude Code with this repo (`NathanNeurotic/POPSLoader`) checked out. It has full context, the assets list, and per-screen specs derived from [Berion](https://www.psx-place.com/members/berion.1431)'s mockups.
 
 ---
 
 ### Role
 
-You are working on **NathanNeurotic/POPSLoader**, a PS2 homebrew launcher whose GUI is rendered by `ui.lua` (~3,500 lines) on the LuaPlayer/PS2 engine via `Graphics.*` / `Image.new` / `Font.print` primitives. The mockups for this overhaul were produced by the graphics team (Berion) and the corresponding asset PNGs already exist in `bin/POPSLDR/IMG/`. Bonus asset: `icon_sub_mcmanager.png`. Binary size is expected to grow by ~150 KiB.
+You are working on **NathanNeurotic/POPSLoader**, a PS2 homebrew launcher whose GUI is rendered by `ui.lua` (~3,500 lines) on the LuaPlayer/PS2 engine via `Graphics.*` / `Image.new` / `Font.print` primitives. The mockups for this overhaul were produced by the graphics team ([Berion](https://www.psx-place.com/members/berion.1431)) and the corresponding asset PNGs already exist in `bin/POPSLDR/IMG/`. Bonus asset: `icon_sub_mcmanager.png`. Binary size is expected to grow by ~150 KiB.
 
 **Do not** alter:
 - the boot/splash screen
@@ -97,7 +97,7 @@ Load each via `Image.new("IMG/<file>.png")` (or whatever path convention `ui.lua
 A vertically centered list, left-padded ~52 px. Rows are ~38 px tall with ~6 px gaps. Font weight 700 / ~22 px. The ~32×32 icon sits left of each label with ~16 px gap.
 
 - **Selected row**: full white (icon + text both at full opacity).
-- **Unselected rows**: dim grey -- match the opacity in Berion's mockup PNG (`docs/mockups/context_menu.png` once dropped). Treat the mockup as authoritative; the precise alpha is roughly in the 35-55% range but the eye-check against the PNG is the deciding factor.
+- **Unselected rows**: dim grey -- match the opacity in [Berion](https://www.psx-place.com/members/berion.1431)'s mockup PNG (`docs/mockups/context_menu.png` once dropped). Treat the mockup as authoritative; the precise alpha is roughly in the 35-55% range but the eye-check against the PNG is the deciding factor.
 - No bar highlight, no ▸ pointer, no value chevrons -- just the opacity contrast tells the user which row is focused.
 
 Order, top to bottom:
@@ -112,7 +112,7 @@ Order, top to bottom:
 
 #### 2. Settings — single scrollable page
 
-> ⚠️ **2026-05-24 correction:** Designer originally specified Settings as "main page listing categories + per-category sub-pages." Berion's actual mockup PNG (`docs/mockups/settings.png` once dropped) shows a **single scrollable page** with all sections visible at once. The "Storage", "Display", and "Keyboard" labels are inline section headers within the same list, not separate pages. Discard the sub-page navigation model.
+> ⚠️ **2026-05-24 correction:** Designer originally specified Settings as "main page listing categories + per-category sub-pages." [Berion](https://www.psx-place.com/members/berion.1431)'s actual mockup PNG (`docs/mockups/settings.png` once dropped) shows a **single scrollable page** with all sections visible at once. The "Storage", "Display", and "Keyboard" labels are inline section headers within the same list, not separate pages. Discard the sub-page navigation model.
 
 **One page**:
 - Header strip (~44 px): `icon_sub_settings.png` (~24×24) at x≈18, "Settings" title (20 px / 700) at x≈52, 1 px bottom divider at rgba(170,190,240,0.25).
@@ -193,8 +193,8 @@ Layout container is 560 × 290 px, centered horizontally with 36 px top padding 
 
 ### Reference
 
-**Visual oracle:** Berion's PNG mockup screenshots at `docs/mockups/{context_menu,settings,joypad_config,osk}.png`. If your Lua output and the mockup PNG disagree, the mockup PNG is correct.
+**Visual oracle:** [Berion](https://www.psx-place.com/members/berion.1431)'s PNG mockup screenshots at `docs/mockups/{context_menu,settings,joypad_config,osk}.png`. If your Lua output and the mockup PNG disagree, the mockup PNG is correct.
 
-Do NOT use Designer's `app/screens.jsx` / `app/styles.css` / `index.html` (from their assets.zip) as the visual oracle. Designer's interpretation of Berion's design got at least one major spec wrong (Settings sub-pages vs single page) and the project owner has explicitly flagged it as unreliable. The PNGs are the only authoritative reference for this overhaul.
+Do NOT use Designer's `app/screens.jsx` / `app/styles.css` / `index.html` (from their assets.zip) as the visual oracle. Designer's interpretation of [Berion](https://www.psx-place.com/members/berion.1431)'s design got at least one major spec wrong (Settings sub-pages vs single page) and the project owner has explicitly flagged it as unreliable. The PNGs are the only authoritative reference for this overhaul.
 
 If the mockup PNGs are missing under `docs/mockups/`, stop and ask the project owner to commit them before starting the Lua port.

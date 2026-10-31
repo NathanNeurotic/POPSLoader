@@ -56,7 +56,7 @@ Open:
 - GitHub Actions is the canonical build path. The pinned CI image is `ps2dev/ps2dev:v2.0.0`.
 - Rolling-release artifact is published to a single canonical URL: https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/POPSLOADER-rolling-release.zip
 - Both push-to-`BETA-12-PLAY` and PR events (including drafts) trigger the workflow and overwrite the same asset (last-write-wins).
-- Hardware testing happens on real PS2 hardware via the maintainer and tester Nuno. CosmicScale is a secondary tester for specific use cases. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
+- Hardware testing happens on real PS2 hardware via the maintainer and tester Nuno. [CosmicScale](https://github.com/CosmicScale) is a secondary tester for specific use cases. Agents cannot run hardware tests — claims of hardware verification must cite a recorded result in `QA_REGRESSION_MATRIX.md`.
 
 ## High-Risk Surfaces
 

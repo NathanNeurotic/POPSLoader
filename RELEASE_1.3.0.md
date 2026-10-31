@@ -1,6 +1,6 @@
 # POPSLoader 1.3.0 — Ember Beta-2 integration
 
-POPSLoader 1.3.0 adds **Gageformer's already released Ember Beta-2 PS1 emulator** alongside the existing POPStarter/VCD launcher. Ember is bundled **unmodified**, with its upstream licence and attribution.
+POPSLoader 1.3.0 adds **[Gageformer](https://github.com/Gageformer)'s already released [Ember](https://github.com/Gageformer/Ember) Beta-2 PS1 emulator** alongside the existing POPStarter/VCD launcher. Ember is bundled **unmodified**, with its upstream licence and attribution.
 
 ## Downloads
 
