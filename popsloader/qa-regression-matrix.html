@@ -149,7 +149,7 @@ validation. No physical-console result is added by this release.</p>
 <tr>
 <td>#605 Slovak handoff</td>
 <td>408 source-reviewed English keys in Excel and TSV; workbook rendered and checked; six importer/catalog regression tests pass. Blank target cells remain English on import.</td>
-<td>Awaiting SVKghost's Slovak contribution; SK is not yet a selectable language.</td>
+<td>Awaiting <a href="https://github.com/SVKghost">SVKghost</a>'s Slovak contribution; SK is not yet a selectable language.</td>
 </tr>
 <tr>
 <td>Existing localization corrections</td>
@@ -228,7 +228,7 @@ controller re-init, network persistence and storage regression.</p>
   Physical VMC/controller validation is still required.</li>
 <li><strong>Ember i.Link:</strong> intentionally deferred until RiptOPL demonstrates reliable i.Link integration on physical hardware. Out of scope for Ember PR #600; do not gate the other devices' readiness on it or claim full device parity. The existing generic i.Link menu remains unsupported/hidden.</li>
 </ul>
-<h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / Okeanos BDMA (2026-10-12)</h2>
+<h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / <a href="https://github.com/Okeanos86">Okeanos</a> BDMA (2026-10-12)</h2>
 <table>
 <thead>
 <tr>
@@ -261,7 +261,7 @@ controller re-init, network persistence and storage regression.</p>
 <tr>
 <td>Driver pair staging / USB <code>IPCONFIG.DAT</code></td>
 <td>Unknown (verify on hardware)</td>
-<td>Confirm the exact Okeanos pair and no overwrites; missing/mismatched config must cancel safely</td>
+<td>Confirm the exact <a href="https://github.com/Okeanos86">Okeanos</a> pair and no overwrites; missing/mismatched config must cancel safely</td>
 </tr>
 <tr>
 <td>SMBv1, USB/exFAT, MX4SIO, MMCE, HDD regressions</td>
@@ -560,7 +560,7 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 </tr>
 <tr>
 <td>L-09</td>
-<td>USB drive-resident-only POPSTARTER (sAGA repro)</td>
+<td>USB drive-resident-only <a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a> (<a href="https://github.com/oldman63">sAGA</a> repro)</td>
 <td>POPSTARTER Path on Automatic; <code>POPSTARTER.ELF</code> present <strong>only</strong> at the USB drive's <code>POPS/</code> folder (none beside POPSLOADER.ELF, none on <code>mc0:</code>/<code>mc1:</code>)</td>
 <td>Open the USB page and launch a game</td>
 <td>Launch proceeds using <code>&lt;drive&gt;:/POPS/POPSTARTER.ELF</code>; <strong>no</strong> <code>No POPSTARTER.ELF found</code> toast. (Pre-2026-07-16 this failed: the <code>ui.lua</code> preflight resolved with the USB page's empty <code>PLDR.GAMEPATH</code> instead of the game entry's own device root, so the device rung never ran — the gate blocked before <code>RunPOPStarterGame</code> could resolve correctly.)</td>
@@ -1310,7 +1310,7 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 <tr>
 <td>2026-05-25</td>
 <td>wLaunchELF Report</td>
-<td>POPSLoader launched from wLaunchELF on some wLE builds (CosmicScale). PSBBN / Browser / HOSDMenu / OSDMenu launches all work.</td>
+<td>POPSLoader launched from wLaunchELF on some wLE builds (<a href="https://github.com/CosmicScale">CosmicScale</a>). PSBBN / Browser / HOSDMenu / <a href="https://github.com/pcm720/OSDMenu">OSDMenu</a> launches all work.</td>
 <td>(new)</td>
 <td>FAIL on certain wLE builds, regardless of POPSLoader source device. PR #458 Layer A (<code>SifExitRpc + SifInitRpc + fileXioExit</code> in <code>_ps2sdk_memory_init</code> per ps2sdk #425) targets this. Hardware pending.</td>
 </tr>
@@ -1471,7 +1471,7 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 <tr>
 <td>2026-06-17</td>
 <td>HDD-RW take-over + load-order boot fix</td>
-<td><strong>Load-order boot brick found + fixed <code>d4b04be</code>:</strong> <code>PLDR.HDD</code> methods were attached BEFORE the <code>PLDR.HDD</code> table existed, which bricked every boot on the recent HDD-feature rolling builds (PCSX2 tester hit <code>system.lua:953</code>); fix moves the method definitions after the table merge/init. Invisible to <code>luac -p</code>/CI — fatal only at runtime. <strong>HDD in-app <code>.hide</code> (L3 toggle) + HDD-resident settings save</strong> now land on the HDD itself via <code>PLDR.HDD.EnsureBootPartitionWritable</code> (unmount → remount the boot pfs slot RW at the same slot, the OPL "own your mount" pattern) — no <code>mc0:</code> fallback for HDD-cwd installs; single-device parity. <strong>PAL native 640×512 full-screen render</strong> (no letterbox) + auto-reverting display-change confirm; Video Standard gains an <strong>Auto</strong> default. <strong>POPSTARTER Memory Card Folder toggle</strong> (deletes <code>mc:/POPSTARTER</code> with confirm) + <strong>BDMA ⟺ folder interlock</strong>. BDMA marker renamed <code>.pldr_bdma_mode</code> → <strong><code>bdma_mode.txt</code></strong> (legacy names still read). <strong>CI <code>luac5.4 -p</code> syntax gate now LIVE</strong> (workflows <code>apk add lua5.4</code>; was a silent no-op — ps2dev image shipped no <code>luac</code>; SYNTAX-only, runtime/load-order errors still invisible). Testers <strong>provato</strong> + <strong>nuno6573</strong> credited.</td>
+<td><strong>Load-order boot brick found + fixed <code>d4b04be</code>:</strong> <code>PLDR.HDD</code> methods were attached BEFORE the <code>PLDR.HDD</code> table existed, which bricked every boot on the recent HDD-feature rolling builds (PCSX2 tester hit <code>system.lua:953</code>); fix moves the method definitions after the table merge/init. Invisible to <code>luac -p</code>/CI — fatal only at runtime. <strong>HDD in-app <code>.hide</code> (L3 toggle) + HDD-resident settings save</strong> now land on the HDD itself via <code>PLDR.HDD.EnsureBootPartitionWritable</code> (unmount → remount the boot pfs slot RW at the same slot, the OPL "own your mount" pattern) — no <code>mc0:</code> fallback for HDD-cwd installs; single-device parity. <strong>PAL native 640×512 full-screen render</strong> (no letterbox) + auto-reverting display-change confirm; Video Standard gains an <strong>Auto</strong> default. <strong><a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a> Memory Card Folder toggle</strong> (deletes <code>mc:/POPSTARTER</code> with confirm) + <strong>BDMA ⟺ folder interlock</strong>. BDMA marker renamed <code>.pldr_bdma_mode</code> → <strong><code>bdma_mode.txt</code></strong> (legacy names still read). <strong>CI <code>luac5.4 -p</code> syntax gate now LIVE</strong> (workflows <code>apk add lua5.4</code>; was a silent no-op — ps2dev image shipped no <code>luac</code>; SYNTAX-only, runtime/load-order errors still invisible). Testers <strong>provato</strong> + <strong><a href="https://github.com/nuno6573">nuno6573</a></strong> credited.</td>
 <td>Load-order boot / HDD <code>.hide</code> / HDD settings save / PAL-512 / MC-folder toggle / BDMA interlock / <code>bdma_mode.txt</code> / CI luac gate</td>
 <td>Boot brick <strong>FIXED</strong> (<code>d4b04be</code>). HDD <code>.hide</code> + HDD-resident settings + PAL-512 + MC-folder toggle: <strong>implemented, boots on PCSX2, provato confirmed HDD is RW-writable on real hardware</strong>, full flows <strong>still validating on hardware</strong> (not yet broadly hardware-confirmed). CI luac gate <strong>LIVE</strong>. See STATE.md &gt; Settings / Known Issues / Behavioral Invariants.</td>
 </tr>
@@ -1487,7 +1487,7 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 <td>BETA-13 input/UX</td>
 <td>Analog-stick→d-pad fold gated on real analog mode + per-axis hysteresis (<code>d233069</code>; new <code>Pads.getMode()</code> = <code>padInfoMode(PAD_MODECURID)</code>, <code>src/luacontrols.cpp</code>). Nav auto-repeat frame-counted (<code>d128779</code>; <code>resolve_nav</code> <code>NAV_DELAY_FRAMES</code>/<code>NAV_RATE_FRAMES</code>/<code>NavHoldFrames</code>). Description right-stick scroll frame-counted, honors Fast/Med/Slow (<code>c8fce10</code>; <code>DescScrollFrames</code>). Boot-sound On/Off setting + save fix (<code>6eba9e7</code>/<code>9b8a38e</code>; <code>CommitSettingsChanges</code> <code>boot_sound</code>, default On). ROOT-CAUSE: <code>Timer.getTime()</code> returns microseconds on PS2 (raw <code>clock()</code> tick) — canonical Enceladus idiom is frame-counting.</td>
 <td>U-13 / U-14 / U-15 / S-13</td>
-<td>Repo / CI verified. <strong>HW-CONFIRMED PASS (oldman63):</strong> boot-sound saves + survives reboot; up/down + analog-stick nav land on individual items, continuous scroll fine. Desc-scroll feel still pending an eyeball.</td>
+<td>Repo / CI verified. <strong>HW-CONFIRMED PASS (<a href="https://github.com/oldman63">oldman63</a>):</strong> boot-sound saves + survives reboot; up/down + analog-stick nav land on individual items, continuous scroll fine. Desc-scroll feel still pending an eyeball.</td>
 </tr>
 <tr>
 <td>2026-06-20</td>
@@ -1548,8 +1548,8 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 - <strong>D-15</strong> non-HDD POPSTARTER + HDD game — <strong>PASS</strong> (keep-mask, hardware 2026-05-22). Preservation contract — <strong>do not regress.</strong><br />
 - <strong>U-10</strong> BOOT.ELF from HDD-booted POPSLoader — <strong>RESOLVED</strong> (PR #479, <code>reboot_iop=0</code>; Nuno 2026-05-31). Was known-broken through the chronology below.</p>
 <p>BETA-13 features:<br />
-- <strong>Boot sound save + survives reboot (S-13)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
-- <strong>Up/down + analog-stick nav lands on individual items; continuous scroll fine (U-13/U-14)</strong> — <strong>PASS</strong> (oldman63, 2026-06-20).<br />
+- <strong>Boot sound save + survives reboot (S-13)</strong> — <strong>PASS</strong> (<a href="https://github.com/oldman63">oldman63</a>, 2026-06-20).<br />
+- <strong>Up/down + analog-stick nav lands on individual items; continuous scroll fine (U-13/U-14)</strong> — <strong>PASS</strong> (<a href="https://github.com/oldman63">oldman63</a>, 2026-06-20).<br />
 - <strong>Broad rolling-release pass</strong> — <strong>PASS</strong>, "everything working fantastically" (Nuno6573, 2026-06-21).<br />
 - <strong>Cover/details folder (<code>ART_LOCATION</code>) art lookup (S-11)</strong> — <strong>PASS</strong> (FifthFox, 2026-06-30). Covers show on hardware via the <em>Cover/details folder</em> setting; the earlier "POPS/ART fails" report was tester name/placement (user error), matching the SDK finding (<code>open</code>==<code>fopen</code>, nested reads work; wf w0ucpisvc). The <code>6641860</code> pre-probe drop was inert; the "No cover. Looked for:" caption ships as a self-diagnosis aid.<br />
 - <strong>HDD (exFAT) via BDMA ATA (D-06 / D-06A)</strong> — NEW backend (<code>df2eb9d</code>), CI/Rolling green, <strong>never run on hardware</strong>. Needs a tester with an exFAT-formatted internal drive: confirm the <code>HDD (exFAT)</code> page lists <code>mass:/POPS</code> and games <strong>launch</strong>, and that the drive does NOT mis-classify as USB/MX4SIO. Tester steps in <strong><code>TESTING.md</code></strong> P1.<br />

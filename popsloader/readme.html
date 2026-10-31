@@ -78,9 +78,9 @@
 <td>Preserved POPStarter-only baseline without Ember.</td>
 </tr>
 <tr>
-<td><strong>POPSLoader 1.3.0 (Ember Beta-2)</strong></td>
+<td><strong>POPSLoader 1.3.0 (<a href="https://github.com/Gageformer/Ember">Ember</a> Beta-2)</strong></td>
 <td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0">Release 1.3.0</a></td>
-<td>Versioned Ember-enabled release with Gageformer's <strong>existing Beta-2 core</strong>. Emulator hardware compatibility is still experimental.</td>
+<td>Versioned Ember-enabled release with <a href="https://github.com/Gageformer">Gageformer</a>'s <strong>existing Beta-2 core</strong>. Emulator hardware compatibility is still experimental.</td>
 </tr>
 <tr>
 <td><strong>Rolling</strong></td>
@@ -347,7 +347,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <tr>
 <td style="text-align: left;"><strong>Retro GEM Game ID</strong></td>
 <td style="text-align: left;"><strong>On</strong></td>
-<td style="text-align: left;">Reads the PS1 title ID out of the <code>.VCD</code> — from <code>SYSTEM.CNF</code> <strong>inside the disc image</strong>, not from the filename — and emits it optically at launch so a <strong>Retro GEM</strong> applies that game's per-game profile. There is no data channel for this: the ID is drawn as a small pattern of coloured sprites that the mod decodes off the video output, so it appears briefly at the bottom of the launch overlay. Harmless without the mod, and a disc with no readable title ID simply emits nothing rather than a guess. Format credit: CosmicScale's Retro-GEM tools and saildot4k's wLaunchELF_R3Z.</td>
+<td style="text-align: left;">Reads the PS1 title ID out of the <code>.VCD</code> — from <code>SYSTEM.CNF</code> <strong>inside the disc image</strong>, not from the filename — and emits it optically at launch so a <strong>Retro GEM</strong> applies that game's per-game profile. There is no data channel for this: the ID is drawn as a small pattern of coloured sprites that the mod decodes off the video output, so it appears briefly at the bottom of the launch overlay. Harmless without the mod, and a disc with no readable title ID simply emits nothing rather than a guess. Format credit: <a href="https://github.com/CosmicScale">CosmicScale</a>'s Retro-GEM tools and <a href="https://github.com/saildot4k">saildot4k</a>'s <a href="https://github.com/saildot4k/wLaunchELF_R3Z">wLaunchELF_R3Z</a>.</td>
 </tr>
 <tr>
 <td style="text-align: left;"><strong>Cover art</strong></td>
@@ -481,7 +481,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <p>Confirmed broken: see the single canonical <strong><a href="state.html#known-issues-canonical-the-single-list-readme-agents-rolling_notes-point-here">STATE.md &gt; Known Issues</a></strong> list (currently: the "Failed to load HDD" from a non-HDD boot case, and the SMB connect failure whose root cause is fixed in code and awaiting its first hardware run — the full 2026-07-07 audit and fixes are in <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/REPO_AUDIT_2026-07-07.md">docs/REPO_AUDIT_2026-07-07.md</a>).</p>
 <p>Planned for subsequent updates:<br />
 *   <strong>Layer C Lazy IRX Loading</strong>: Defer device-specific IRX modules so they only load when the boot device family needs them, reducing boot time. The <code>mmceman</code> portion has <strong>landed</strong> (PR #471): it is now loaded eagerly only when POPSLoader is booted from an MMCE device, and deferred everywhere else. Further deferral of <code>ds34bt</code> / <code>usbd</code> was <strong>declined</strong> (2026-06-22): both hard-import <code>usbd</code> and the only available defer trigger is the boot device family — not the same as pad transport — so deferring them would strand USB / Bluetooth controller input (unrecoverable without a reboot) for a small boot-time gain. They are kept loaded eagerly; the Layer C effort is closed at the <code>mmceman</code> win.<br />
-*   <strong>Settings UI Redesign (Berion)</strong>: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.<br />
+*   <strong>Settings UI Redesign (<a href="https://www.psx-place.com/members/berion.1431">Berion</a>)</strong>: Visual overhaul replacing the current OPL-style focused-list with per-category Settings pages. Awaiting Berion's mockup PNGs.<br />
 *   <strong>GUI Themes</strong>: Customizable colors / skins / fonts and a setting to skip the boot splash.<br />
 *   <strong>In-Game Features</strong>: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.<br />
 *   <strong><code>HDD (exFAT)</code></strong> menu flow: now <strong>implemented</strong> as a <code>mass:</code> backend via BDMA Mode <code>ATA</code> (built, CI/Rolling green) — <strong>validating on hardware</strong>.<br />
@@ -495,17 +495,16 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <li><strong><a href="https://github.com/Gageformer/Ember">Gageformer</a></strong>: Ember PS1 emulator, bundled unmodified with its beta licence.</li>
 <li><strong><a href="https://github.com/Okeanos86/BDMAssault">Okeanos</a></strong>: UDPFS Assault PS1 network read/write driver.</li>
 <li><strong>Daniel Santos</strong>: Creator of the Enceladus runtime foundation.</li>
-<li><strong>krHACKen</strong>: Author of POPStarter.</li>
-<li><strong><a href="https://github.com/AstroSnail">AstroSnail</a></strong>: Recovered and contributed an original Bitbucket Git clone of ShaolinAssassin's POPStarter documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/research/research/original-git-provenance.md">provenance</a>.</li>
-<li><strong>Berion</strong>: User interface design and theme assets.</li>
+<li><strong><a href="https://www.psx-place.com/members/krhacken.98/">krHACKen</a></strong>: Author of <a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a>.</li>
+<li><strong><a href="https://github.com/AstroSnail">AstroSnail</a></strong>: Recovered and contributed an original Bitbucket Git clone of <a href="https://github.com/ShaolinAssassin">ShaolinAssassin</a>'s <a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a> documentation wiki (2,140 historical commits, 2016–2024). Its complete edit history complements our Wayback-recovered pages; original authors retain credit. See <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/research/research/original-git-provenance.md">provenance</a>.</li>
+<li><strong><a href="https://www.psx-place.com/members/berion.1431">Berion</a></strong>: User interface design and theme assets.</li>
 <li><strong><a href="https://github.com/nuno6573">nuno6573</a></strong>: Cover-art engine integrations, scripting, and hardware testing.</li>
-<li><strong>Hugopocked</strong>: POPStarter fixes.</li>
-<li><strong><a href="https://github.com/saildot4k">saildot4k</a> (R3Z3N)</strong>: BDMA-ATA (exFAT internal-HDD / ATA backend), the wLaunchELF_R3Z reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.</li>
-<li><strong><a href="https://github.com/oldman63">oldman63</a> (Sári Gábor)</strong>: The complete Hungarian localization, plus the localization bug reports that hardened it for every language.</li>
-<li><strong>sAGA</strong>: Relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.</li>
-<li><strong>CosmicScale</strong>: exFAT internal-HDD hardware verification and the per-device POPSTARTER idea.</li>
+<li><strong><a href="https://www.psx-place.com/members/hugopocked.47440/">Hugopocked</a></strong>: <a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a> fixes.</li>
+<li><strong><a href="https://github.com/saildot4k">saildot4k</a> (R3Z3N)</strong>: BDMA-ATA (exFAT internal-HDD / ATA backend), the <a href="https://github.com/saildot4k/wLaunchELF_R3Z">wLaunchELF_R3Z</a> reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.</li>
+<li><strong><a href="https://github.com/oldman63">oldman63</a> (sAGA, Sári Gábor)</strong>: The complete Hungarian localization and the localization bug reports that hardened it for every language, plus relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.</li>
+<li><strong><a href="https://github.com/CosmicScale">CosmicScale</a></strong>: exFAT internal-HDD hardware verification and the per-device <a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a> idea.</li>
 <li><strong>FifthFox</strong>: The per-device USB-delay POPSTARTER report that shaped the launch resolver.</li>
-<li><strong>Ripto / NathanNeurotic</strong>: Maintenance, UI polishing, and release engineering.</li>
+<li><strong><a href="https://github.com/NathanNeurotic">Ripto / NathanNeurotic</a></strong>: Maintenance, UI polishing, and release engineering.</li>
 <li><strong>P4NCHOL1NO, VizoR, provato, TnA-Plastic, and the community</strong>: Hardware testing.</li>
 </ul>
 <p><em>(GitHub's sidebar can't be trusted to show this repo's contributors — it omits the contributors box on forked repositories — so this list is the canonical one. If you contributed and aren't here, that's a bug: open an issue.)</em></p>
