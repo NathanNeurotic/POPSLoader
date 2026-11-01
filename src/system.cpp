@@ -22,10 +22,12 @@ char* __ps2_normalize_path(char *path_name)
 	static char out[255];
 	
 	bool skip_leading_slash = (!strncmp(path_name, "pfs", 3));
-	/* First copy the path into our temp buffer */
-	strcpy(out, path_name);
-        /* Then append "/" to make the rest easier */
-	strcat(out,"/");
+	/* First copy the path into our temp buffer, then append "/" to make
+	   the rest easier. Bounded: a path that does not fit in out[] (with
+	   the extra "/") is refused with NULL instead of being cut, so the
+	   caller never acts on an altered path. */
+	if (snprintf(out, sizeof(out), "%s/", path_name) >= (int)sizeof(out))
+		return NULL;
 
 	/* Convert "//" to "/" */
 	for(i=0; out[i+1]; i++) {
