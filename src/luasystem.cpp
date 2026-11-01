@@ -621,7 +621,7 @@ static int lua_setCurrentDirectory(lua_State *L)
 	   if(!strncmp(path, "..", 2))
 	   {
 	        if (!getcwd(temp_path, sizeof(temp_path)))
-	             temp_path[0] = '\0';
+	             return luaL_error(L, "System.currentDirectory: getcwd failed");
 	        if (temp_path[0] && (temp_path[strlen(temp_path)-1] != ':'))
 	        {
 	           int idx = strlen(temp_path)-1;
@@ -638,14 +638,20 @@ static int lua_setCurrentDirectory(lua_State *L)
         {
 	      char cwd[256];
 	      if (!getcwd(cwd, sizeof(cwd)))
-	           cwd[0] = '\0';
+	           return luaL_error(L, "System.currentDirectory: getcwd failed");
 	      if (snprintf(temp_path, sizeof(temp_path), "%s/%s", cwd, path) >= (int)sizeof(temp_path))
 	           return luaL_error(L, "System.currentDirectory: path too long");
 	    }
     }
         
-        DPRINTF("changing directory to %s\n",__ps2_normalize_path(temp_path));
-        chdir(__ps2_normalize_path(temp_path));
+        {
+            // NULL means the path plus the normalizer's "/" does not fit
+            const char *normalized = __ps2_normalize_path(temp_path);
+            if (!normalized)
+                 return luaL_error(L, "System.currentDirectory: path too long");
+            DPRINTF("changing directory to %s\n",normalized);
+            chdir(normalized);
+        }
        
 	return 1;
 }
@@ -684,9 +690,15 @@ static int lua_dir(lua_State *L)
 	           return luaL_error(L, "System.listDirectory: path too long");
 	}
 
-	// __ps2_normalize_path() returns its own static buffer, so this copy
-	// does not overlap, and that buffer is smaller than path[].
-	strcpy(path,__ps2_normalize_path(path));
+	// __ps2_normalize_path() returns its own static buffer (smaller than
+	// path[], so the copy fits and does not overlap), or NULL when the
+	// path plus its "/" does not fit in that buffer.
+	{
+	    const char *normalized = __ps2_normalize_path(path);
+	    if (!normalized)
+	        return luaL_error(L, "System.listDirectory: path too long");
+	    strcpy(path,normalized);
+	}
 	DPRINTF("\nchecking path : %s\n",path);
 		
 
