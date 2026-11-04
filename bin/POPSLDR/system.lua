@@ -7056,8 +7056,9 @@ end
 -- probing, so no EnsureBackendForAppDir device init -- with the ATA drive
 -- resident those mass-slot probes can wait on a disk spin-up), and direct
 -- single-pass writes (the atomic tmp/.bak dance costs ~3x the payload on a
--- memory card). The manual Settings apply keeps the original behavior:
--- external overrides honored, atomic writes, no launch on the line.
+-- memory card). The manual Settings apply keeps atomic writes and the
+-- backend init, and -- since #616 -- the same embedded-first source order,
+-- so both paths stage byte-identical pairs for every shipped variant.
 function PLDR.ApplyBdmaMode(mode_key, launch_fast)
   local selected = mode_key or "FAT32"
   if not PLDR.EnsurePopstarterDir() then
@@ -7136,34 +7137,41 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return false
   end
 
+  -- Source order: the released embedded pair is authoritative for every shipped
+  -- variant -- the same bytes the adaptive launch path stages. Issue #616: an
+  -- APP_DIR override that no longer matches the release (or a bad read while
+  -- probing the APP_DIR device, e.g. an hdd0: install) silently staged bytes
+  -- POPStarter rejects, and only Adaptive launches (embeds-only) worked.
+  -- External candidates remain the fallback for assets with no embedded copy
+  -- (custom driver drops for variants the embed does not ship).
   for i = 1, #BDMA_COPY_FILES do
     local name = BDMA_COPY_FILES[i]
     local rel = name..suffix
-    local paths = PLDR.BdmaSourceCandidates(rel)
-    local fd, source = PLDR.TryOpenFirst(paths)
-    if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
-      System.closeFile(fd)
+    local bytes = nil
+    if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
+      local ok_embedded, embedded = pcall(System.getEmbeddedAsset, rel)
+      if ok_embedded and embedded ~= nil then
+        bytes = embedded
+      end
     end
-    if source == nil then
-      local bytes = nil
-      if type(System) == "table" and type(System.getEmbeddedAsset) == "function" then
-        local ok_embedded, embedded = pcall(System.getEmbeddedAsset, rel)
-        if ok_embedded and embedded ~= nil then
-          bytes = embedded
-        end
-      end
-      if bytes == nil then
-        if UI ~= nil and UI.Notif_queue ~= nil then
-          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..table.concat(paths, "\n"))
-        end
-        return false
-      end
+    if bytes ~= nil then
       local dest = POPSTARTER_PACK_ROOT.."/"..name
       local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
       if not ok_write or not wrote then
         return false
       end
     else
+      local paths = PLDR.BdmaSourceCandidates(rel)
+      local fd, source = PLDR.TryOpenFirst(paths)
+      if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
+        System.closeFile(fd)
+      end
+      if source == nil then
+        if UI ~= nil and UI.Notif_queue ~= nil then
+          UI.Notif_queue.add(PLDR.L("Missing BDMA source (tried):").."\n"..table.concat(paths, "\n"))
+        end
+        return false
+      end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
       local src_size = GetFileSizeSafe(source)
       local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
