@@ -363,7 +363,7 @@ t11 = E('''function()
 end''')()
 check("T11 staging failure returns false (launch-cancel) + queues the warn", t11)
 
-# T12 manual settings apply stages the EMBEDDED pair even when stale APP_DIR
+# T61 manual settings apply stages the EMBEDDED pair even when stale APP_DIR
 # overrides exist (issue #616: manual staged != adaptive staged); external
 # candidates remain the fallback only for assets with no embedded copy.
 t61 = E('''function()
