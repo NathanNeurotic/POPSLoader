@@ -363,6 +363,46 @@ t11 = E('''function()
 end''')()
 check("T11 staging failure returns false (launch-cancel) + queues the warn", t11)
 
+# T12 manual settings apply stages the EMBEDDED pair even when stale APP_DIR
+# overrides exist (issue #616: manual staged != adaptive staged); external
+# candidates remain the fallback only for assets with no embedded copy.
+t61 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local appdir = PLDR.BdmaSourceCandidates("usbd.irx.ata")[1]:gsub("usbd%.irx%.ata$", "")
+  -- shipped variant with embeds AND stale overrides in APP_DIR
+  EMBEDDED["usbd.irx.ata"] = "REAL-USBD-ATA"
+  EMBEDDED["usbhdfsd.irx.ata"] = "REAL-HDFSD-ATA"
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+  FAKEFS.files[appdir.."usbd.irx.ata"] = "STALE-USBD"
+  FAKEFS.files[appdir.."usbhdfsd.irx.ata"] = "STALE-HDFSD"
+  FAKEFS.files[root.."/usbd.irx"] = nil
+  FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+  FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  PLDR.POPSTARTER_MC_FOLDER = true
+  local ok = PLDR.ApplyBdmaMode("ATA")            -- manual settings path (no launch_fast)
+  local staged_embeds = FAKEFS.files[root.."/usbd.irx"] == "REAL-USBD-ATA"
+                    and FAKEFS.files[root.."/usbhdfsd.irx"] == "REAL-HDFSD-ATA"
+                    and FAKEFS.files[root.."/bdma_mode.txt"] == "ATA"
+  -- unshipped asset (no embed): the APP_DIR override is still honored
+  EMBEDDED["usbd.irx.mx4sio"] = nil
+  EMBEDDED["usbhdfsd.irx.mx4sio"] = nil
+  FAKEFS.files[appdir.."usbd.irx.mx4sio"] = "CUSTOM-USBD-MX4"
+  FAKEFS.files[appdir.."usbhdfsd.irx.mx4sio"] = "CUSTOM-HDFSD-MX4"
+  FAKEFS.files[root.."/usbd.irx"] = nil
+  FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+  FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  local ok2 = PLDR.ApplyBdmaMode("MX4SIO")
+  local staged_custom = FAKEFS.files[root.."/usbd.irx"] == "CUSTOM-USBD-MX4"
+                    and FAKEFS.files[root.."/usbhdfsd.irx"] == "CUSTOM-HDFSD-MX4"
+                    and FAKEFS.files[root.."/bdma_mode.txt"] == "MX4SIO"
+  FAKEFS.files[appdir.."usbd.irx.ata"] = nil
+  FAKEFS.files[appdir.."usbhdfsd.irx.ata"] = nil
+  FAKEFS.files[appdir.."usbd.irx.mx4sio"] = nil
+  FAKEFS.files[appdir.."usbhdfsd.irx.mx4sio"] = nil
+  return ok == true and staged_embeds and ok2 == true and staged_custom
+end''')()
+check("T61 manual apply embeds-first (stale APP_DIR override cannot win; no-embed fallback stays)", t61)
+
 # T7 settings round-trip for BDMA_ADAPTIVE
 t7 = E('''function()
   PLDR.BDMA_ADAPTIVE = true
