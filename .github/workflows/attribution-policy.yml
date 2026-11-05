@@ -1,0 +1,65 @@
+name: Attribution Policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+  push:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  attribution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Test attribution validator
+        run: python .github/scripts/check_ai_attribution.py --self-test
+
+      - name: Check pull request attribution
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            printf '%s\n' "$PR_TITLE"
+            printf '%s\n' "$PR_BODY"
+          } > /tmp/attribution-pr-text.txt
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${{ github.repository }}/pulls/${PR_NUMBER}/commits?per_page=100" \
+            > /tmp/attribution-pr-commits.json
+          python .github/scripts/check_ai_attribution.py \
+            --text-file /tmp/attribution-pr-text.txt \
+            --commits-json /tmp/attribution-pr-commits.json
+
+      - name: Check pushed commit attribution
+        if: github.event_name == 'push' && github.event.deleted != true
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          if [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            git fetch origin "$DEFAULT_BRANCH":refs/remotes/origin/"$DEFAULT_BRANCH"
+            BEFORE=$(git merge-base "origin/${DEFAULT_BRANCH}" "$AFTER")
+          elif ! git merge-base --is-ancestor "$BEFORE" "$AFTER"; then
+            BEFORE=$(git merge-base "$BEFORE" "$AFTER")
+          fi
+          git log --format='%H%x00%B%x00' "$BEFORE..$AFTER" > /tmp/attribution-pushed-commits.log
+          python .github/scripts/check_ai_attribution.py \
+            --commits-log /tmp/attribution-pushed-commits.log

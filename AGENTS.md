@@ -112,3 +112,17 @@ Use this report structure in task responses:
 
 ## Summary For The Next Agent
 POPSLoader's stable backbone (HDD POPSTARTER paths, DKWDRV-MC, BOOT.ELF for USB- and HDD-booted, settings sidecar) is hardware-confirmed in the BETA line. The 2026-06 work — HDD-resident settings save + in-app `.hide` via the boot-partition RW take-over, PAL native 640×512, the BDMA `bdma_mode.txt` marker + POPSTARTER-MC-folder toggle/interlock — is implemented and boots on PCSX2, with HDD RW confirmed on hardware (provato) and the full flows still validating on hardware. Your job is most likely: drive doc/feature work, hardware-verify the in-flight HDD/PAL features, complete a queued PR, react to a tester report, or (once D-10/D-14/U-10 and the new features settle) the queued Settings UI redesign. Whatever it is: preserve the contracts in `STATE.md`, hardware-verify before claiming any new fix, and keep the docs pointed at `STATE.md` rather than re-duplicating the shared facts.
+
+
+## GitHub Attribution Policy
+
+All GitHub contributions must remain free of AI-generated signatures and vendor branding.
+
+- Do not add `Co-Authored-By` trailers for Claude, ChatGPT, Codex, OpenAI, or other AI models or tools to commits.
+- Do not include AI generation notices in pull requests, issues, review responses, discussions, release notes, code comments, or documentation.
+- Do not include AI session URLs, model or version signatures, or promotional links.
+- Do not manually reintroduce attribution disabled by repository settings.
+- Preserve accurate human authorship and attribution, including legitimate third-party contributor and upstream-project credits.
+- Do not remove existing attribution or rewrite existing history unless explicitly requested.
+
+This policy applies to all commits, pull requests, reviews, issue comments, and other content produced during this session.
