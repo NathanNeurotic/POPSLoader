@@ -1,4 +1,4 @@
-Last updated: 2026-10-28. **Official release: 1.4.0**. This release includes network-only UDPFS Assault 1.0.0, persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master, dev and experimental are aligned at the release cut. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. Ember i.Link remains deferred.
+Last updated: 2026-11-04. **Official release: 1.4.1**. This release includes network-only UDPFS Assault 1.0.0, persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master, dev and experimental are aligned at the release cut. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. Ember i.Link remains deferred.
 
 # STATE
 
@@ -15,7 +15,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 
 ## UDPFS Assault 1.0.0 (included in 1.4.0)
 
-- Unreleased (after 1.4.0): the embedded pair moves to [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST)
+- Included in 1.4.1 (after 1.4.0): the embedded pair moves to [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST)
   (2026-10-28 pre-release; new `usbd.irx.udpfs`, same companion). UDPFS lists
   `POPS/*.cue` / `*.CUE` once as virtual `.VCD` rows. Host-tested only.
 
@@ -285,7 +285,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.4.0** is the public release (2026-10-28; previously 1.3.1 2026-10-19, 1.3.0, 1.2.3 2026-10-13, 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.4.1** is the public release (2026-11-04; previously 1.4.0 2026-10-28, 1.3.1 2026-10-19; earlier: 1.3.1 2026-10-19, 1.3.0, 1.2.3 2026-10-13, 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.

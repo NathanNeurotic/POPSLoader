@@ -1,10 +1,10 @@
 # POPSLoader ? Rolling channel
 
-## 1.4.0 channel cut (October 28, 2026)
+## 1.4.1 channel cut (November 4, 2026)
 
 **Rolling is a prerelease channel.** At this cut, master, dev and experimental
-share the same source and **v1.4.0** stamp. The official versioned release is
-[POPSLoader 1.4.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.0).
+share the same source and **v1.4.1** stamp. The official versioned release is
+[POPSLoader 1.4.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1).
 
 - Network-only UDPFS Assault 1.0.0; no USB requirement and no USB-first mode.
 - MC SYS-CONF precedence, persistent config recovery and discovery by default.
