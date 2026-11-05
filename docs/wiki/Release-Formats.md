@@ -2,7 +2,7 @@
 
 ## Development all-in-one ZIP
 
-`PS1_POPSLOADER.zip` contains these three device-root trees: `APPS/`, `POPS/`, and `EMBER/`, plus a standalone `PS1_POPSLOADER.psu` inside the ZIP. `POPS/` copies the complete pinned RiptOPL support-file set, and `EMBER/` copies the independently pinned **unmodified** Ember release plus licence and a non-playable example game-folder layout. All other scripts, drivers and legacy assets must retain their upstream attribution. A missing source component is a packaging failure, not a reason to silently omit it.
+`PS1_POPSLOADER-<version>.zip` (named `PS1_POPSLOADER.zip` up to the 1.4.0 release) contains these three device-root trees: `APPS/`, `POPS/`, and `EMBER/`, plus a standalone `PS1_POPSLOADER.psu` inside the ZIP. `POPS/` copies the complete pinned RiptOPL support-file set, and `EMBER/` copies the independently pinned **unmodified** Ember release plus licence and a non-playable example game-folder layout. All other scripts, drivers and legacy assets must retain their upstream attribution. A missing source component is a packaging failure, not a reason to silently omit it.
 
 `APPS/PS1_POPSLOADER/` contains **exactly**:
 
@@ -28,7 +28,7 @@ CI verifies the PSU files against `APPS/PS1_POPSLOADER/` **byte-for-byte**, usin
 ## Channels and compatibility
 
 - **Stable 1.2.3:** existing official package remains unchanged. New eight-file directory / PSU expectations must **not** be retroactively applied to that release.
-- **Rolling development:** PR #600 is merged into `dev`; [PS1_POPSLOADER.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip) and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets, alongside the traditional combined bundle.
+- **Rolling development:** PR #600 is merged into `dev`; `PS1_POPSLOADER-<version>.zip` and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets on the [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release), alongside the traditional combined bundle `POPSLOADER-rolling-release-<version>.zip`. Every ZIP name ends with the build version (`POPSLDR_VER` plus the commit count, for example `v1.4.0-928`), which the release notes also state at the top; the ELF and PSU keep fixed names.
 - **Experimental:** isolated prerelease channel, built independently from `experimental`. The PR alone does not add these features to that branch; they must be explicitly integrated before advertising the experimental packages.
 - **Official future release:** publish only from a separately reviewed, version-stamped source after compatibility disclosures and release gates are satisfied.
 

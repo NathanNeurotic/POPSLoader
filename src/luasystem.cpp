@@ -605,20 +605,24 @@ static int lua_setCurrentDirectory(lua_State *L)
 	DPRINTF("Setting CWD to %s\n", path);
 	lua_getCurrentDirectory(L);
 	
-	// let's do what the ps2sdk should do, 
+	// let's do what the ps2sdk should do,
 	// some normalization... :)
+	// Every copy below is bounded: a Lua path that does not fit in
+	// temp_path raises a Lua error instead of running past the buffer.
 	// if absolute path (contains [drive]:path/)
 	if (strchr(path, ':'))
 	{
-	      strcpy(temp_path,path);
+	      if (snprintf(temp_path, sizeof(temp_path), "%s", path) >= (int)sizeof(temp_path))
+	           return luaL_error(L, "System.currentDirectory: path too long");
 	}
 	else // relative path
 	{
 	   // remove last directory ?
 	   if(!strncmp(path, "..", 2))
 	   {
-	        getcwd(temp_path, 256);
-	        if ((temp_path[strlen(temp_path)-1] != ':'))
+	        if (!getcwd(temp_path, sizeof(temp_path)))
+	             return luaL_error(L, "System.currentDirectory: getcwd failed");
+	        if (temp_path[0] && (temp_path[strlen(temp_path)-1] != ':'))
 	        {
 	           int idx = strlen(temp_path)-1;
 	           do
@@ -627,19 +631,27 @@ static int lua_setCurrentDirectory(lua_State *L)
 	           } while (idx > 0 && temp_path[idx] != '/');
 	           temp_path[idx] = '\0';
 	        }
-	        
+
         }
            // add given directory to the existing path
            else
         {
-	      getcwd(temp_path, 256);
-	      strcat(temp_path,"/");
-	      strcat(temp_path,path);
+	      char cwd[256];
+	      if (!getcwd(cwd, sizeof(cwd)))
+	           return luaL_error(L, "System.currentDirectory: getcwd failed");
+	      if (snprintf(temp_path, sizeof(temp_path), "%s/%s", cwd, path) >= (int)sizeof(temp_path))
+	           return luaL_error(L, "System.currentDirectory: path too long");
 	    }
     }
         
-        DPRINTF("changing directory to %s\n",__ps2_normalize_path(temp_path));
-        chdir(__ps2_normalize_path(temp_path));
+        {
+            // NULL means the path plus the normalizer's "/" does not fit
+            const char *normalized = __ps2_normalize_path(temp_path);
+            if (!normalized)
+                 return luaL_error(L, "System.currentDirectory: path too long");
+            DPRINTF("changing directory to %s\n",normalized);
+            chdir(normalized);
+        }
        
 	return 1;
 }
@@ -665,20 +677,28 @@ static int lua_dir(lua_State *L)
 	
 	if (argc != 0) 
 	{
+		int len;
 		temp_path = luaL_checkstring(L, 1);
-		// append the given path to the boot_path
-	        
-	        strcpy ((char *)path, boot_path);
-	        
+		// append the given path to the boot_path, unless it already names
+		// a device; either way the result must fit in path[]
+
 	        if (strchr(temp_path, ':'))
-	           // workaround in case of temp_path is containing 
-	           // a device name again
-	           strcpy ((char *)path, temp_path);
+	           len = snprintf(path, sizeof(path), "%s", temp_path);
 	        else
-	           strcat ((char *)path, temp_path);
+	           len = snprintf(path, sizeof(path), "%s%s", boot_path, temp_path);
+	        if (len < 0 || len >= (int)sizeof(path))
+	           return luaL_error(L, "System.listDirectory: path too long");
 	}
-	
-	strcpy(path,__ps2_normalize_path(path));
+
+	// __ps2_normalize_path() returns its own static buffer (smaller than
+	// path[], so the copy fits and does not overlap), or NULL when the
+	// path plus its "/" does not fit in that buffer.
+	{
+	    const char *normalized = __ps2_normalize_path(path);
+	    if (!normalized)
+	        return luaL_error(L, "System.listDirectory: path too long");
+	    strcpy(path,normalized);
+	}
 	DPRINTF("\nchecking path : %s\n",path);
 		
 
@@ -700,18 +720,11 @@ static int lua_dir(lua_State *L)
 			nPort = 1;
 		
 		
-		// copy only the path without the device (ie : mc0:/xxx/xxx -> /xxx/xxx)
-		strcpy(mcPath,(char *)&path[4]);
-				
-		// it temp_path is empty put a "/" inside
-                if (strlen(mcPath)==0)
-                   strcpy((char *)mcPath,(char *)"/");
-		
-
-		if (mcPath[strlen(mcPath)-1] != '/')
-		  strcat( mcPath, "/-*" );
-		else
-		  strcat( mcPath, "*" );
+		// copy only the path without the device (ie : mc0:/xxx/xxx -> /xxx/xxx),
+		// then add the wildcard; the pattern must fit in mcPath[]
+		if (snprintf(mcPath, sizeof(mcPath), "%s%s", path[4] ? &path[4] : "/",
+		             path[4] && path[strlen(path)-1] != '/' ? "/-*" : "*") >= (int)sizeof(mcPath))
+		   return luaL_error(L, "System.listDirectory: path too long");
 	
 		mcGetDir( nPort, 0, mcPath, 0, MAX_DIR_FILES, mcEntries);
    		while (!mcSync( MC_WAIT, NULL, &numRead ));

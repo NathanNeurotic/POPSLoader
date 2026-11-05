@@ -24,7 +24,7 @@ it is not an official hardware-verified compatibility release.
 ### Ember integration and installable development package (PR #600)
 
 - Separate PS1 Ember library and Beta 2 global/per-game settings, alongside existing POPStarter VCD support. Host-tested; **real PS2 game launch, controller survival and VMC saves are unverified**.
-- A RiptOPL-matched, installable `PS1_POPSLOADER.zip` contains `APPS/PS1_POPSLOADER/` with eight direct app files, complete pinned `POPS/` and `EMBER/` trees, and an empty/example `EMBER/games/ExampleGame/` placeholder. **No Sony BIOS, POPS emulator binaries or game images are supplied**.
+- A RiptOPL-matched, installable `PS1_POPSLOADER-<version>.zip` (the name ends with the build version) contains `APPS/PS1_POPSLOADER/` with eight direct app files, complete pinned `POPS/` and `EMBER/` trees, and an empty/example `EMBER/games/ExampleGame/` placeholder. **No Sony BIOS, POPS emulator binaries or game images are supplied**.
 - A standalone `PS1_POPSLOADER.psu` holds **only those same eight app files**, directly beneath the `PS1_POPSLOADER` PS2 save header — no nested directory. Verified byte-for-byte by both Python and RiptOPL's PSUManager C++ parser.
 - Rolling release and experimental release workflows have standalone ZIP/PSU asset rules, but each channel publishes **only from its own configured branch**. The PR targets `dev`, not the stable `master` or isolated `experimental`.
 - Ember Watch checks the upstream official asset digest against RiptOPL's verified binary and updates a separately pinned Ember source revision on `dev` after the workflow becomes active on the default branch. The POPS support-file pin stays fixed.

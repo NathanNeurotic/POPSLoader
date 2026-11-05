@@ -10,7 +10,7 @@ A maintenance release on top of 1.4.0: one launch fix for Adaptive BDMA and an u
 
 ## Installation
 
-Use `PS1_POPSLOADER.zip` for the complete kit, `PS1_POPSLOADER.psu` for the application only, or `POPSLOADER.ELF` alone. Setup notes: [UDPFS setup and limitations](https://github.com/NathanNeurotic/POPSLoader/blob/1.4.1/docs/UDPFS_BDMA.md).
+Use `PS1_POPSLOADER-1.4.1.zip` for the complete kit, `PS1_POPSLOADER.psu` for the application only, or `POPSLOADER.ELF` alone. Setup notes: [UDPFS setup and limitations](https://github.com/NathanNeurotic/POPSLoader/blob/1.4.1/docs/UDPFS_BDMA.md).
 
 ## Validation and limits
 
