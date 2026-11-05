@@ -403,6 +403,89 @@ t61 = E('''function()
 end''')()
 check("T61 manual apply embeds-first (stale APP_DIR override cannot win; no-embed fallback stays)", t61)
 
+# T62 Adaptive OFF (issue #616): the chosen BDMA Mode reached the card only on a
+# Settings save that changed it, and nothing at launch checked the card. A card
+# that lost the pair (files deleted, card swapped/absent at save time) launched
+# exFAT-HDD games with POPStarter's stock USB drivers -> "mass:/POPS/POPS.ELF not
+# found", while the UI kept showing the chosen mode. A launch on the device the
+# chosen mode serves must restage it; other launches and FAT32 (None) must not
+# write anything.
+t62 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local saved_adaptive, saved_mode, saved_folder = PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER
+  local saved_usbd, saved_hdfsd = EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"]
+  local function clear_card()
+    FAKEFS.files[root.."/usbd.irx"] = nil
+    FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+    FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  end
+  local function finish(ok, why)
+    PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER = saved_adaptive, saved_mode, saved_folder
+    EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"] = saved_usbd, saved_hdfsd
+    clear_card()
+    return ok, why
+  end
+  EMBEDDED["usbd.irx.ata"] = "REAL-USBD-ATA"
+  EMBEDDED["usbhdfsd.irx.ata"] = "REAL-HDFSD-ATA"
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+  PLDR.POPSTARTER_MC_FOLDER = true
+  PLDR.BDMA_ADAPTIVE = false
+  PLDR.BDMA_MODE_KEY = "ATA"
+  clear_card()
+  -- (a) card lost the chosen pair: an exFAT-HDD launch restages it
+  local ok = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  if ok ~= true or FAKEFS.files[root.."/usbd.irx"] ~= "REAL-USBD-ATA"
+     or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "REAL-HDFSD-ATA"
+     or FAKEFS.files[root.."/bdma_mode.txt"] ~= "ATA" then
+    return finish(false, "Adaptive OFF exFAT-HDD launch did not restage the chosen ATA pair")
+  end
+  -- (b) already equipped: zero writes (embed removed, so any restage would fail)
+  EMBEDDED["usbd.irx.ata"] = nil
+  if PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB") ~= true then
+    return finish(false, "an equipped card was restaged")
+  end
+  EMBEDDED["usbd.irx.ata"] = "REAL-USBD-ATA"
+  -- (c) launches the chosen mode doesn't serve keep the manual behaviour: no writes
+  clear_card()
+  for _, page in ipairs({"USB", "MMCE", "MX4SIO", "HDD"}) do
+    if PLDR.MaybeApplyAdaptiveBdma(nil, page) ~= true or FAKEFS.files[root.."/usbd.irx"] ~= nil
+       or FAKEFS.files[root.."/bdma_mode.txt"] ~= nil then
+      return finish(false, "manual ATA staged drivers for a "..page.." launch")
+    end
+  end
+  -- (d) FAT32 (None): hand-placed drivers are never touched at launch
+  PLDR.BDMA_MODE_KEY = "FAT32"
+  FAKEFS.files[root.."/usbd.irx"] = "HAND-USBD"
+  FAKEFS.files[root.."/usbhdfsd.irx"] = "HAND-HDFSD"
+  for _, page in ipairs({"USB", "MMCE", "MX4SIO"}) do
+    PLDR.MaybeApplyAdaptiveBdma(nil, page)
+  end
+  PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  local saved_args = PLDR.LAUNCH_ARGS
+  PLDR.LAUNCH_ARGS = { bdma_raw = "fat32" }   -- a -bdma=fat32 pin must not strip them either
+  PLDR.MaybeApplyAdaptiveBdma(nil, "USB")
+  PLDR.LAUNCH_ARGS = saved_args
+  if FAKEFS.files[root.."/usbd.irx"] ~= "HAND-USBD" or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "HAND-HDFSD"
+     or FAKEFS.files[root.."/bdma_mode.txt"] ~= nil then
+    return finish(false, "FAT32 (None) touched hand-placed drivers")
+  end
+  -- (e) restage failure cancels the launch with a visible warn
+  PLDR.BDMA_MODE_KEY = "ATA"
+  clear_card()
+  EMBEDDED["usbd.irx.ata"] = nil
+  EMBEDDED["usbhdfsd.irx.ata"] = nil
+  local saved_msgs = UI.Notif_queue.msg
+  UI.Notif_queue.msg = {}   -- the queue holds at most MAX toasts; start empty
+  local ok_fail = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  local warned = #UI.Notif_queue.msg > 0
+  UI.Notif_queue.msg = saved_msgs
+  if ok_fail ~= false or not warned then
+    return finish(false, "a failed restage did not cancel with a warn")
+  end
+  return finish(true)
+end''')()
+check("T62 Adaptive OFF restages the chosen BDMA Mode when the card lost it (#616)", t62)
+
 # T7 settings round-trip for BDMA_ADAPTIVE
 t7 = E('''function()
   PLDR.BDMA_ADAPTIVE = true
