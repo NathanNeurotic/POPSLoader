@@ -7190,7 +7190,8 @@ end
 -- staged variant serves one device and breaks the other). When BDMA_ADAPTIVE is
 -- on, the variant for the LAUNCHED game's device is staged at launch time --
 -- and, per the design ask, only after an equipped check so an already-correct
--- card takes ZERO memory-card writes.
+-- card takes ZERO memory-card writes. With Adaptive OFF the same launch hook
+-- restages the chosen BDMA Mode for its own device when the card lost it (#616).
 
 -- The -bdma=<mode> launch argument, normalised, or nil when absent/unrecognised.
 -- Deliberately tolerant: an unknown value is ignored rather than pinning
@@ -7264,12 +7265,21 @@ function PLDR.IsBdmaModeEquipped(mode_key)
 end
 
 function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
-  if PLDR.BDMA_ADAPTIVE ~= true then return true end
   -- POPSTARTER folder off: modules can't live on the card, and the load-time
   -- invariant keeps effective BDMA at FAT32 in that state. Nothing to stage.
   if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   local target = PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if target == nil then return true end
+  local manual = PLDR.BDMA_ADAPTIVE ~= true
+  -- Adaptive OFF (#616): the chosen BDMA Mode reaches the card only on a
+  -- Settings save that changes it, so a card that lost the pair (files deleted,
+  -- card swapped or absent at save time) launched with POPStarter's stock USB
+  -- drivers ("mass:/POPS/POPS.ELF not found") while Settings still showed the
+  -- mode. Restage it for launches on the device it serves; every other launch
+  -- keeps the manual behaviour, and FAT32 (None) never touches hand-placed drivers.
+  if manual and (target == "FAT32" or target ~= NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY)) then
+    return true
+  end
   if PLDR.IsBdmaModeEquipped(target) then return true end
   -- Staging writes several driver files to the memory card -- the slowest
   -- unpainted step in a launch (maintainer: an ATA launch sat "a very long time
@@ -7291,7 +7301,11 @@ function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
   if not ok and UI ~= nil and UI.Notif_queue ~= nil then
     -- The caller CANCELS the launch on false, returning to the menu loop --
     -- which is the only place this warn can actually be seen.
-    UI.Notif_queue.add(PLDR.L("Adaptive BDMA couldn't stage").." "..tostring(target).." "..PLDR.L("-- launch cancelled").."\n("..tostring(why or "apply failed")..") "..PLDR.L("check the memory card, or turn Adaptive BDMA off"), "warn")
+    if manual then
+      UI.Notif_queue.add(PLDR.L("BDMA Mode").." "..tostring(target).." "..PLDR.L("-- launch cancelled").."\n("..tostring(why or "apply failed")..") "..PLDR.L("Check the memory card"), "warn")
+    else
+      UI.Notif_queue.add(PLDR.L("Adaptive BDMA couldn't stage").." "..tostring(target).." "..PLDR.L("-- launch cancelled").."\n("..tostring(why or "apply failed")..") "..PLDR.L("check the memory card, or turn Adaptive BDMA off"), "warn")
+    end
   end
   return ok
 end
@@ -10211,7 +10225,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     )
     return
   end
-  -- Adaptive BDMA (issue #509): stage the launched device's module variant.
+  -- Adaptive BDMA (issue #509): stage the launched device's module variant;
+  -- with Adaptive OFF, restage the chosen BDMA Mode when the card lost it (#616).
   -- Runs AFTER the cheap launch validations above (a blocked launch must not
   -- cost memory-card writes) and before the exec; nothing in between reads the
   -- staged modules. Zero card writes when the right variant is already

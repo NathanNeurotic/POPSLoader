@@ -1,4 +1,5 @@
 [Unreleased]
+- Fix: with Adaptive BDMA off, a launch on the device the chosen BDMA Mode serves restages that mode when the memory card lost it, instead of failing with "mass:/POPS/POPS.ELF not found" (#616). FAT32 (None) and other non-UDPFS launches write nothing; UDPFS launches still stage their own pair when it is missing. Hardware: NOT TESTED.
 - UDPFS: move to Okeanos UDPFS Assault TEST (2026-10-28 pre-release) and list server POPS/<game>.cue or .CUE once as <game>.VCD, which the driver builds on the fly. Hardware: NOT TESTED.
 
 [1.4.0] - October 28th, 2026
