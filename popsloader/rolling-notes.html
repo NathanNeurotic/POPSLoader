@@ -54,10 +54,10 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><h2 id="140-channel-cut-october-28-2026">1.4.0 channel cut (October 28, 2026)</h2>
+  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><h2 id="141-channel-cut-november-4-2026">1.4.1 channel cut (November 4, 2026)</h2>
 <p><strong>Rolling is a prerelease channel.</strong> At this cut, master, dev and experimental<br />
-share the same source and <strong>v1.4.0</strong> stamp. The official versioned release is<br />
-<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.0">POPSLoader 1.4.0</a>.</p>
+share the same source and <strong>v1.4.1</strong> stamp. The official versioned release is<br />
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1">POPSLoader 1.4.1</a>.</p>
 <ul>
 <li>Network-only UDPFS Assault 1.0.0; no USB requirement and no USB-first mode.</li>
 <li>MC SYS-CONF precedence, persistent config recovery and discovery by default.</li>
@@ -73,7 +73,7 @@ it is not an official hardware-verified compatibility release.</p>
 <h3 id="ember-integration-and-installable-development-package-pr-600">Ember integration and installable development package (PR #600)</h3>
 <ul>
 <li>Separate PS1 Ember library and Beta 2 global/per-game settings, alongside existing POPStarter VCD support. Host-tested; <strong>real PS2 game launch, controller survival and VMC saves are unverified</strong>.</li>
-<li>A RiptOPL-matched, installable <code>PS1_POPSLOADER.zip</code> contains <code>APPS/PS1_POPSLOADER/</code> with eight direct app files, complete pinned <code>POPS/</code> and <code>EMBER/</code> trees, and an empty/example <code>EMBER/games/ExampleGame/</code> placeholder. <strong>No Sony BIOS, POPS emulator binaries or game images are supplied</strong>.</li>
+<li>A RiptOPL-matched, installable <code>PS1_POPSLOADER-&lt;version&gt;.zip</code> (the name ends with the build version) contains <code>APPS/PS1_POPSLOADER/</code> with eight direct app files, complete pinned <code>POPS/</code> and <code>EMBER/</code> trees, and an empty/example <code>EMBER/games/ExampleGame/</code> placeholder. <strong>No Sony BIOS, POPS emulator binaries or game images are supplied</strong>.</li>
 <li>A standalone <code>PS1_POPSLOADER.psu</code> holds <strong>only those same eight app files</strong>, directly beneath the <code>PS1_POPSLOADER</code> PS2 save header — no nested directory. Verified byte-for-byte by both Python and RiptOPL's PSUManager C++ parser.</li>
 <li>Rolling release and experimental release workflows have standalone ZIP/PSU asset rules, but each channel publishes <strong>only from its own configured branch</strong>. The PR targets <code>dev</code>, not the stable <code>master</code> or isolated <code>experimental</code>.</li>
 <li>Ember Watch checks the upstream official asset digest against RiptOPL's verified binary and updates a separately pinned Ember source revision on <code>dev</code> after the workflow becomes active on the default branch. The POPS support-file pin stays fixed.</li>
