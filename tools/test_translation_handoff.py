@@ -4,8 +4,8 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from translation_handoff import (check_catalogs, decode_literal, escape_handoff,
-                                 read_tsv, read_xlsx, unescape_handoff, validate_rows)
+from translation_handoff import (FORMAT, check_catalogs, decode_literal, escape_handoff,
+                                 read_tsv, read_xlsx, source_data, unescape_handoff, validate_rows)
 
 
 class TranslationHandoffTests(unittest.TestCase):
@@ -67,6 +67,17 @@ class TranslationHandoffTests(unittest.TestCase):
                         read_xlsx(path)
                 else:
                     self.assertEqual(read_xlsx(path), [('Settings', expected)])
+
+    def test_shipped_catalogs_cover_current_runtime_keys(self):
+        _, required, dictionaries = source_data()
+        for language, rows in dictionaries.items():
+            with self.subTest(language=language):
+                catalog = dict(rows)
+                self.assertEqual([], sorted(required - set(catalog)))
+                for english, translated in rows:
+                    self.assertEqual(FORMAT.findall(english), FORMAT.findall(translated))
+                    self.assertEqual(english.count('\n'), translated.count('\n'))
+                    self.assertEqual(english.startswith(' '), translated.startswith(' '))
 
 
 if __name__ == '__main__':
