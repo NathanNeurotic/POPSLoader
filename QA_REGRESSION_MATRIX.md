@@ -51,7 +51,7 @@ This file is the authoritative detailed run ledger for CI and hardware outcomes.
 
 | Case | Evidence / result | Remaining verification |
 |---|---|---|
-| #605 Slovak handoff | 408 source-reviewed English keys in Excel and TSV; workbook rendered and checked; six importer/catalog regression tests pass. Blank target cells remain English on import. | Awaiting [SVKghost](https://github.com/SVKghost)'s Slovak contribution; SK is not yet a selectable language. |
+| #605 Slovak handoff | 409 source-reviewed English keys in Excel and TSV; workbook rendered and checked; six importer/catalog regression tests pass. Blank target cells remain English on import. | Awaiting [SVKghost](https://github.com/SVKghost)'s Slovak contribution; SK is not yet a selectable language. |
 | Existing localization corrections | Embedded Lua harness 60/60; Ember returned/missing-ELF messages exercise translated templates with paths intact. UDPFS IPv4 runtime suite 26/26. Placeholder/duplicate/source checks pass for existing dictionaries and all handoffs. | Unknown (verify on hardware): Ember per-game labels, error messages, native language-name accents, resolved-path labels and Hungarian collapsed-disc count. |
 | Slovak font repertoire | The embedded TrueType font's Unicode cmap has glyphs for all 34 checked uppercase/lowercase Slovak accented letters. | Unknown (verify on hardware): actual Slovak text rendering and menu/dialog fit after translation integration. Font coverage is not console acceptance. |
 
