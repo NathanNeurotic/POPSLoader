@@ -27,7 +27,8 @@ CI verifies the PSU files against `APPS/PS1_POPSLOADER/` **byte-for-byte**, usin
 
 ## Channels and compatibility
 
-- **Stable 1.2.3:** existing official package remains unchanged. New eight-file directory / PSU expectations must **not** be retroactively applied to that release.
+- **Stable 1.4.1:** the current official release includes network-only UDPFS and localization fixes. Console UDPFS/Ember acceptance remains pending.
+- **Stable 1.2.3 (historical):** that official package remains unchanged. New eight-file directory / PSU expectations must **not** be retroactively applied to it.
 - **Rolling development:** PR #600 is merged into `dev`; `PS1_POPSLOADER-<version>.zip` and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets on the [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release), alongside the traditional combined bundle `POPSLOADER-rolling-release-<version>.zip`. Every ZIP name ends with the build version (`POPSLDR_VER` plus the commit count, for example `v1.4.0-928`), which the release notes also state at the top; the ELF and PSU keep fixed names.
 - **Experimental:** isolated prerelease channel, built independently from `experimental`. The PR alone does not add these features to that branch; they must be explicitly integrated before advertising the experimental packages.
 - **Official future release:** publish only from a separately reviewed, version-stamped source after compatibility disclosures and release gates are satisfied.

@@ -18,7 +18,7 @@ share the same source and **v1.4.1** stamp. The official versioned release is
 
 # POPSLoader — Rolling Development Release
 
-**Stable baseline:** 1.2.3. The rolling `dev` channel is a **prerelease**;
+**Current stable:** 1.4.1. The rolling `dev` channel is a **prerelease**;
 it is not an official hardware-verified compatibility release.
 
 ### Ember integration and installable development package (PR #600)
