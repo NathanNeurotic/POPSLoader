@@ -3,7 +3,9 @@ set -eu
 # Pin the reference install assets so POPS and EMBER cannot change
 # unexpectedly when upstream updates. POPS is pinned separately from Ember.
 # Ember Watch verifies Gageformer's release digest and updates the Ember pin.
-RIPTOPL_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
+# dfa28822 = Open-PS2-Loader #1241: ships the current i.LINK driver (usbhdfsd.irx.ilink,
+# 27,769 B); the previous pin (ebb62e1d) shipped the older 21,609 B build.
+RIPTOPL_SHA=dfa28822d324ae23b653a2a7585815eaac0cb671
 RIPTOPL_EMBER_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
 git clone --quiet --filter=blob:none --no-checkout \
   https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
@@ -40,6 +42,9 @@ for part in ('POPS', 'EMBER'):
             raise SystemExit(f"Missing or modified reference payload: {path}")
     print(f"{part}: verified {len(files)} pinned RiptOPL files")
 PY
+# Fail closed if the i.LINK driver pair is not the pinned build (a stale pin ships the old driver).
+echo "9cd849ea7f06d72f3ee6015032dfd91d6fcb1332e87d5acde306cb42b5d4313d  dist_root/POPS/usbhdfsd.irx.ilink" | sha256sum -c -
+echo "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369  dist_root/POPS/usbd.irx.ilink" | sha256sum -c -
 # Replace the historical reference bundle's Alpha UDPFS payload and notices.
 # The existing .udpfs suffix now always means the full-network UDPFS Assault (TEST 2026-10-28) release.
 cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
