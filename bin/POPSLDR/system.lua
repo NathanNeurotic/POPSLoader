@@ -4746,6 +4746,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
+  ILINK = ".ilink",  -- EXPERIMENTAL: RiptOPL i.LINK pair (pinned OPL dfa28822), hardware-untested
   UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.1 (2026-11-08) full network read/write, BIN/CUE
 }
 
@@ -5535,6 +5536,8 @@ local function NormalizeBdmaModeKey(mode)
     return "MMCE"
   elseif value == "ATA" or value == "HDDEXFAT" then
     return "ATA"
+  elseif value == "ILINK" then
+    return "ILINK"
   elseif value == "UDPFS" then
     return "UDPFS"
   end
@@ -7579,6 +7582,9 @@ function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   -- is the only reliable discriminator, so check it first.
   if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GBDMHDD then
     return "ATA"
+  end
+  if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GILINK then
+    return "ILINK"
   end
   if device_page == "MX4SIO" then return "MX4SIO" end
   if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
@@ -9835,7 +9841,9 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if device_page == "HDD" then
     return BuildLiteralElfName(game_name)
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "ILINK" then
+    -- ILINK: the staged .ilink BDMA pair serves the i.LINK disk as mass:, so the
+    -- selector is the same VCD-selecting form USB uses (path translated by the policy).
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "MX4SIO" then
@@ -9897,6 +9905,13 @@ local function TranslateMMCEPathForPopStarter(path)
     return path
   end
   return string.gsub(path, "^mmce%d:/", "mass:/")
+end
+
+local function TranslateIlinkPathForPopStarter(path)
+  if path == nil then
+    return path
+  end
+  return string.gsub(path, "^ilink%d*:/", "mass:/")
 end
 
 local function BuildLaunchPolicy(name, mode, isra_prefix, handoff_transform)
@@ -10268,6 +10283,11 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   end
   if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+  end
+  if current_scene == UI.SCENES.GILINK then
+    -- i.LINK (EXPERIMENTAL): POPSTARTER resets the IOP and reloads only the staged
+    -- .ilink pair, where the drive is the single mass: unit. Hand it mass:/ paths.
+    return BuildLaunchPolicy("ILINK", "mass", "ilink0", TranslateIlinkPathForPopStarter), "ILINK"
   end
   if current_scene == UI.SCENES.GBDMHDD then
     -- HDD (exFAT) is a BDM mass device (ata_bd). POPStarter reads it as mass:

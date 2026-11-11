@@ -1,5 +1,6 @@
 [Unreleased]
-- New (experimental): i.Link page for Ember games (hidden by default; Settings > Device List). Loads the ps2sdk i.LINK drivers on first entry. Hardware: NOT TESTED; POPSTARTER titles over i.Link are not available.
+- New (experimental): BDMA Mode "i.Link (experimental)" and POPSTARTER titles on the i.Link page, using RiptOPL's i.LINK driver pair (OPL dfa28822), embedded and staged like the other modes. Hardware: NOT TESTED; unproven.
+- New (experimental): i.Link page for Ember games (hidden by default; Settings > Device List). Loads the ps2sdk i.LINK drivers on first entry. Hardware: NOT TESTED. POPSTARTER titles on this page use the experimental BDMA Mode above (unproven).
 - UDPFS: move to Okeanos UDPFS Assault 1.0.1 (2026-11-08). New optional PATHMAP.INI (GAMEID_DIR, DISCS_DIR, CHEATS_WS) for per-game folders and widescreen cheats; the companion driver is unchanged. Hardware: NOT TESTED.
 
 [1.4.1] - November 4th, 2026

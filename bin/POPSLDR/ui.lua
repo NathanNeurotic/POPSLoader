@@ -1182,6 +1182,7 @@ UI = {
 	      { key = "MX4SIO", label = "MX4SIO" },
 	      { key = "MMCE", label = "MMCE" },
 	      { key = "ATA", label = "exFAT-HDD (ata)" },
+	      { key = "ILINK", label = "i.Link (experimental)" },
 	      { key = "UDPFS", label = "UDPFS (network R/W)" }
 	    };
 	    VideoStandardModes = {
@@ -6303,8 +6304,8 @@ UI = {
             end, "Failed to load USB")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 6 then
-            -- i.LINK: EXPERIMENTAL and hardware-UNTESTED. Lists and launches EMBER
-            -- (PS1 .cue/.bin) games only; POPSTARTER titles are not offered here.
+            -- i.LINK: EXPERIMENTAL and hardware-UNTESTED. Ember games (proven in
+            -- RiptOPL) plus POPSTARTER VCDs via the staged .ilink BDMA pair (unproven).
             local ok = UI.RunBusyTask("Loading i.Link...", function (report)
               PLDR.CleanupGameList()
               PLDR.GAMEPATH = ""
@@ -6320,6 +6321,11 @@ UI = {
                 return
               end
               PLDR.GAMEPATH = ilink_root.."POPS/"
+              -- POPSTARTER titles: list the VCDs (no .gamecache: nothing is
+              -- written to this untested device). Launch stages the .ilink pair.
+              report("Scanning i.Link games...", 0.48)
+              PLDR.GetPS1GameLists(ilink_root.."POPS/", true,
+                UI.MakeBusyProgressReporter(report, "Scanning i.Link games...", 0.48, 0.9))
               report("Opening i.Link list...", 1.0)
               UI.SceneChange(UI.SCENES.GILINK)
             end, "Failed to load i.Link")
