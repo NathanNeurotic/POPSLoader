@@ -66,10 +66,14 @@ dated translation section in <code>QA_REGRESSION_MATRIX.md</code> for evidence a
 <p>POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, with behavior primarily orchestrated by embedded Lua modules (<code>system.lua</code>, <code>ui.lua</code>, <code>images.lua</code>). The Lua is bin2c'd into the EE ELF at build time — so a <em>runtime</em> Lua error (nil global, type error, <strong>load-order</strong> error) is invisible to <code>luac -p</code> and to CI, and only surfaces on real PS2 / PCSX2. (<code>pops_profiles.lua</code> was removed 2026-07-13 with the profile-preset system.)</p>
 <h2 id="udpfs-assault-100-included-in-140">UDPFS Assault 1.0.0 (included in 1.4.0)</h2>
 <ul>
-<li>
-<p>Included in 1.4.1 (after 1.4.0): the embedded pair moves to <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">UDPFS Assault TEST</a><br />
+<li>Included in 1.4.1 (after 1.4.0): the embedded pair moves to <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">UDPFS Assault TEST</a><br />
   (2026-10-28 pre-release; new <code>usbd.irx.udpfs</code>, same companion). UDPFS lists<br />
-<code>POPS/*.cue</code> / <code>*.CUE</code> once as virtual <code>.VCD</code> rows. Host-tested only.</p>
+<code>POPS/*.cue</code> / <code>*.CUE</code> once as virtual <code>.VCD</code> rows. Host-tested only.</li>
+<li>
+<p>Unreleased (after 1.4.1): <code>usbd.irx.udpfs</code> moves to <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1">UDPFS Assault 1.0.1</a><br />
+  (2026-11-08; 61,949 B, companion byte-identical). Adds the driver's optional <code>PATHMAP.INI</code><br />
+  options (<code>GAMEID_DIR</code>, <code>DISCS_DIR</code>, <code>CHEATS_WS</code>; see <a href="udpfs-bdma.html">UDPFS guide</a>).<br />
+  Host-tested only; hardware and IOP fit NOT verified.</p>
 </li>
 <li>
 <p>USB-first fallback is removed. The <code>UDPFS</code> mode now embeds <a href="https://github.com/Okeanos86">Okeanos</a>'s<br />

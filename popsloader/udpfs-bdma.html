@@ -56,8 +56,9 @@
   </nav>
   <main class="content"><h1>Experimental POPS UDPFS / BDM-UDPFS Assault</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/docs/UDPFS_BDMA.md">view on GitHub ↗</a></p><p>POPSLoader 1.4.0 replaces USB-first <a href="https://github.com/Okeanos86/BDMAssault/releases">BDM-UDPFS Assault</a> Alpha with<br />
 <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0">Okeanos UDPFS Assault 1.0.0</a>.<br />
-After 1.4.0 the driver moves to <a href="https://github.com/Okeanos86">Okeanos</a>'s <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST">UDPFS Assault TEST</a> pre-release<br />
-(2026-10-28): the same network read/write driver, plus BIN/CUE games (below).<br />
+After 1.4.0 the driver moves to <a href="https://github.com/Okeanos86">Okeanos</a>'s <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1">UDPFS Assault 1.0.1</a><br />
+(2026-11-08, replacing the 2026-10-28 TEST pre-release): the same network read/write driver, plus BIN/CUE games and the<br />
+optional <code>PATHMAP.INI</code> per-game folder options (below).<br />
 USB is no longer required. The <code>UDPFS</code> settings key and <code>.udpfs</code> asset names are<br />
 retained for upgrades; they now select the full network read/write driver.<br />
 The old USB-first mode is removed. Physical-console status is<br />
@@ -91,6 +92,20 @@ Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track need
 INDEX 01, <code>.bin</code> sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks,<br />
 images under 4 GiB. The driver uses about 46 KB more IOP RAM than 1.0.0 and opens each<br />
 <code>.bin</code> once at start. The Retro GEM ID is not read from a cue game.</p>
+<p><strong>Per-game folders and widescreen cheats (<code>PATHMAP.INI</code>).</strong> Optional file<br />
+<code>mc0:/POPSTARTER/PATHMAP.INI</code> (the kit ships an inert, all-off <code>POPS/PATHMAP.INI.example</code>; copy it there to use it), then <code>mc1:</code>, at most 512 bytes, <code>KEY=VALUE</code> lines, only the<br />
+value <code>1</code> turns an option on. POPSLoader neither creates nor edits it; the driver reads it:<br />
+<code>GAMEID_DIR=1</code> names a game's folder (VMC, cheats, patches) after its game ID, e.g.<br />
+<code>POPS/SLUS_011.56/</code>; <code>DISCS_DIR=1</code> takes the folder from the ID's line in the server's<br />
+<code>POPS/DISCS_DIR.TXT</code> (<code>ID=Folder</code>) so all discs of a game share one folder (it wins over<br />
+<code>GAMEID_DIR</code>); <code>CHEATS_WS=1</code> reads <code>CHEATS_WS.TXT</code> in place of <code>CHEATS.TXT</code>. The <code>.VCD</code> itself<br />
+never moves, so POPSLoader's game list is unchanged. Details:<br />
+<a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/third_party/okeanos_udpfs/README_CONFIG.txt">the mirrored upstream configuration notes</a>.<br />
+It is not available in the Ember build; Ember keeps its own <code>.cue</code>/<code>.bin</code> handling. The upstream release page lists <code>PATHMAP.INI</code> as not supported in the Ember build, so its options have no effect there (the mirrored notes' Ember paragraph describes the card read only).</p>
+<p><strong>Saves and <code>PATHMAP.INI</code>.</strong> Enabling <code>GAMEID_DIR</code> or <code>DISCS_DIR</code>, or changing a mapping, makes the driver look for a game's VMC and other files in the mapped folder; existing files stay in the old folder, so the game starts without those saves until you move them. Move the game's files first. If the server does not answer the <code>DISCS_DIR</code> list lookup, the driver falls back to another folder for that launch, so a game can start with empty memory cards: retry before saving, and check both folders before moving VMCs. Back up each disc folder and the destination folder first. If VMC filenames conflict, choose which files to copy into the shared folder and keep the other copies in the backup.<br />
+POPSLoader's "delete the POPSTARTER folder" action removes <code>mc?:/POPSTARTER</code> recursively,<br />
+which includes a <code>PATHMAP.INI</code> you placed there. The 1.0.1 module is about 11 KB larger than<br />
+the TEST build (51,029 B to 61,949 B); IOP fit on hardware is NOT verified.</p>
 <p>Every runtime <code>mass:</code> operation goes to the server, including dependency reads<br />
 and VMC writes. The <code>XX.&lt;game&gt;.ELF</code> mass selector remains correct: <code>mass:</code> is the<br />
 namespace supplied by the network driver after POPStarter's IOP reset.<br />
