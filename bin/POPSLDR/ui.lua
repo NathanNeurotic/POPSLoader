@@ -971,6 +971,7 @@ UI = {
       GAPAHDD = 5,
       GBDMHDD = 6,
       GSMBNET = 7,
+      GILINK = 11,   -- i.LINK (EXPERIMENTAL, Ember only, hardware-untested)
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -1006,6 +1007,7 @@ UI = {
         or scene == UI.SCENES.GHDD
         or scene == UI.SCENES.GBDMHDD
         or scene == UI.SCENES.GSMBNET
+        or scene == UI.SCENES.GILINK
     end;
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
@@ -1180,6 +1182,7 @@ UI = {
 	      { key = "MX4SIO", label = "MX4SIO" },
 	      { key = "MMCE", label = "MMCE" },
 	      { key = "ATA", label = "exFAT-HDD (ata)" },
+	      { key = "ILINK", label = "i.Link (experimental)" },
 	      { key = "UDPFS", label = "UDPFS (network R/W)" }
 	    };
 	    VideoStandardModes = {
@@ -6301,7 +6304,32 @@ UI = {
             end, "Failed to load USB")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 6 then
-	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            -- i.LINK: EXPERIMENTAL and hardware-UNTESTED. Ember games (proven in
+            -- RiptOPL) plus POPSTARTER VCDs via the staged .ilink BDMA pair (unproven).
+            local ok = UI.RunBusyTask("Loading i.Link...", function (report)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              report("Starting i.Link drivers...", 0.30)
+              local ilink_root, ilink_status = PLDR.InitILINKRoot()
+              if ilink_root == nil then
+                PLDR.LAST_DEVICE_STATUS = "ilink:"..tostring(ilink_status or "<none>")
+                if ilink_status == "driver" then
+                  UI.Notif_queue.add("i.Link driver failed to load\ntry the page again, or reboot", "warn")
+                else
+                  UI.Notif_queue.add("No i.Link device detected", "warn")
+                end
+                return
+              end
+              PLDR.GAMEPATH = ilink_root.."POPS/"
+              -- POPSTARTER titles: list the VCDs (no .gamecache: nothing is
+              -- written to this untested device). Launch stages the .ilink pair.
+              report("Scanning i.Link games...", 0.48)
+              PLDR.GetPS1GameLists(ilink_root.."POPS/", true,
+                UI.MakeBusyProgressReporter(report, "Scanning i.Link games...", 0.48, 0.9))
+              report("Opening i.Link list...", 1.0)
+              UI.SceneChange(UI.SCENES.GILINK)
+            end, "Failed to load i.Link")
+            if not ok then return end
 	          elseif UI.MainMenu.OPT == 7 then
             -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
             -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
@@ -6708,7 +6736,8 @@ UI.GAME_SCENES = {
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
   [UI.SCENES.GBDMHDD] = true,
-  [UI.SCENES.GSMBNET] = true
+  [UI.SCENES.GSMBNET] = true,
+  [UI.SCENES.GILINK] = true
 }
 function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true
@@ -6847,8 +6876,27 @@ function UI.RunConfirm(lines)
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & yes_mask) ~= 0 then return true end
-      if (gp & no_mask) ~= 0 then return false end
+      if (gp & yes_mask) ~= 0 or (gp & no_mask) ~= 0 then
+        local answer = (gp & yes_mask) ~= 0
+        -- Wait for the button to be released before returning: otherwise the
+        -- caller's next pad read still sees the held press, so Circle on "No"
+        -- also acted as Back on the Settings screen. Bounded (3 s, like the settle loop) so a stuck pad cannot hang the prompt.
+        -- Pads.get reports 0 for a failed or unstable read too, so require three
+        -- consecutive clear reads before treating the buttons as released.
+        local rel, clear = 0, 0
+        while rel < 180 do
+          local okr, gr = pcall(Pads.get)
+          if okr and type(gr) == "number" and (gr & (yes_mask | no_mask)) == 0 then
+            clear = clear + 1
+            if clear >= 3 then break end
+          else
+            clear = 0
+          end
+          Screen.flip()
+          rel = rel + 1
+        end
+        return answer
+      end
     end
   end
   return false

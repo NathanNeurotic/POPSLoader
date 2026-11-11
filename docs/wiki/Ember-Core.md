@@ -1,6 +1,6 @@
 # Ember PS1 Core in POPSLoader
 
-**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Not included in stable 1.2.3 and **not yet console-certified**.
+**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Included in the official 1.4.2 release (unmodified Ember Beta-2) and **not yet console-certified**.
 
 Ember by [Gageformer](https://github.com/Gageformer/Ember) is a separate PS1 emulator; it is **not** POPStarter and it does not run POPStarter VCD images through the POPStarter launch path. POPSLoader discovers compatible Ember game folders on the selected storage device, labels their list rows `[Ember]`, and provides Ember's Beta 2 global and per-game settings.
 
@@ -29,7 +29,7 @@ Global settings are in **Settings → Ember PS1 Core**, and a game's four per-ga
 
 Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SMB and UDPFS, plus APA/PFS partition support. **This is not a statement of working console launches or safe save persistence.** Before making hardware claims, verify controller input through keep-IOP handoff, game launch and VMC writes, device identification and other regression paths on physical PS2 consoles.
 
-**i.Link is deliberately deferred until RiptOPL demonstrates stable, tested i.Link support**. It is out of scope for Ember PR #600 and does not hold back the other supported-device work. The UI continues to show i.Link as unsupported/hidden.
+**i.Link is experimental and hidden by default (Settings > Device List); not tested on hardware.** It does not hold back the other supported-device work.
 
 ## Licensing and upstream monitoring
 

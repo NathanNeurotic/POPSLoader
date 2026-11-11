@@ -1,12 +1,12 @@
 # POPSLoader ? Rolling channel
 
-## 1.4.1 channel cut (November 4, 2026)
+## 1.4.2 channel cut (November 11, 2026)
 
-**Rolling is a prerelease channel.** At this cut, master, dev and experimental
-share the same source and **v1.4.1** stamp. The official versioned release is
-[POPSLoader 1.4.1](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1).
+**Rolling is a prerelease channel.** At this cut, master carries the **v1.4.2** stamp;
+dev and experimental are brought up to it after the release. The official versioned release is
+[POPSLoader 1.4.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2).
 
-- Network-only UDPFS Assault 1.0.0; no USB requirement and no USB-first mode.
+- Network-only UDPFS (Okeanos' UDPFS Assault 1.0.1 since 1.4.2; not yet confirmed on a real PS2); no USB requirement and no USB-first mode.
 - MC SYS-CONF precedence, persistent config recovery and discovery by default.
 - Localization fixes and refreshed translator handoffs; unchanged Ember Beta-2.
 - Complete installation ZIP and flat PSU. Console UDPFS and Ember acceptance
@@ -18,7 +18,7 @@ share the same source and **v1.4.1** stamp. The official versioned release is
 
 # POPSLoader — Rolling Development Release
 
-**Current stable:** 1.4.1. The rolling `dev` channel is a **prerelease**;
+**Current stable:** 1.4.2. The rolling `dev` channel is a **prerelease**;
 it is not an official hardware-verified compatibility release.
 
 ### Ember integration and installable development package (PR #600)
@@ -28,7 +28,7 @@ it is not an official hardware-verified compatibility release.
 - A standalone `PS1_POPSLOADER.psu` holds **only those same eight app files**, directly beneath the `PS1_POPSLOADER` PS2 save header — no nested directory. Verified byte-for-byte by both Python and RiptOPL's PSUManager C++ parser.
 - Rolling release and experimental release workflows have standalone ZIP/PSU asset rules, but each channel publishes **only from its own configured branch**. The PR targets `dev`, not the stable `master` or isolated `experimental`.
 - Ember Watch checks the upstream official asset digest against RiptOPL's verified binary and updates a separately pinned Ember source revision on `dev` after the workflow becomes active on the default branch. The POPS support-file pin stays fixed.
-- **Ember i.Link is intentionally deferred** until RiptOPL proves reliable i.Link support on physical hardware. It is not a release gate for the other Ember devices.
+- **i.Link (Ember and POPSTARTER) is experimental and hidden by default (Settings > Device List); not tested on hardware.** It is not a release gate for the other Ember devices.
 
 Installation, limitations and licensing are recorded in the maintained [project wiki](docs/wiki/Project-Wiki.md), [Ember guide](docs/EMBER_INTEGRATION.md) and [ZIP/PSU specification](docs/wiki/Release-Formats.md). Do **not** promote this feature to hardware-certified stable support based only on CI.
 

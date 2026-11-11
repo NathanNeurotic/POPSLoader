@@ -2840,6 +2840,7 @@ PLDR.I18N = {
     ["HDD not usable"] = "Disque dur inutilisable",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Les jeux masqués sont déjà affichés ici (grisés)\nActivez « Masquer les jeux cachés » dans les Réglages pour les filtrer",
     ["Locating exFAT HDD POPS folder..."] = "Localisation du dossier POPS du disque exFAT...",
+    ["Locating MX4SIO POPS folder..."] = "Localisation du dossier POPS MX4SIO...",
     ["Looking for USB drive..."] = "Recherche d'un lecteur USB...",
     ["Missing BDMA UI source (tried):"] = "Source d'interface BDMA manquante (essayé) :",
     ["Missing BDMA source (tried):"] = "Source BDMA manquante (essayé) :",
@@ -3147,6 +3148,7 @@ PLDR.I18N = {
     ["HDD not usable"] = "HDD nicht verwendbar",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Verborgene Spiele werden hier bereits angezeigt (abgedunkelt)\nAktiviere \"Verborgene Spiele ausblenden\" in den Einstellungen, um sie zu filtern",
     ["Locating exFAT HDD POPS folder..."] = "exFAT-HDD-POPS-Ordner wird gesucht...",
+    ["Locating MX4SIO POPS folder..."] = "MX4SIO-POPS-Ordner wird gesucht...",
     ["Looking for USB drive..."] = "USB-Laufwerk wird gesucht...",
     ["Missing BDMA UI source (tried):"] = "BDMA-UI-Quelle fehlt (versucht):",
     ["Missing BDMA source (tried):"] = "BDMA-Quelle fehlt (versucht):",
@@ -3180,8 +3182,8 @@ PLDR.I18N = {
     ["status:"] = "Status:",
   },
   PT = {
-    [" (%d hidden -- Global Hide is on)"] = " (%d hidden -- Global Hide is on)",
-    [" (%d multi-disc collapsed)"] = " (%d multi-disc collapsed)",
+    [" (%d hidden -- Global Hide is on)"] = " (%d ocultos -- Ocultação global ativada)",
+    [" (%d multi-disc collapsed)"] = " (%d multidisco agrupados)",
     ["(not set)"] = "(não definido)",
     ["(share root)"] = "(raiz do share)",
     ["(unknown)"] = "(desconhecido)",
@@ -3194,14 +3196,14 @@ PLDR.I18N = {
     ["About"] = "Sobre",
     ["Actual output"] = "Saída real",
     ["Adaptive BDMA"] = "BDMA Adaptativo",
-    ["Address type"] = "Address type",
+    ["Address type"] = "Tipo de endereço",
     ["Applying BDMA mode"] = "Aplicando modo BDMA",
     ["At least one device must stay on the carousel"] = "Ao menos um dispositivo deve ficar no carrossel",
     ["Auto (console region)"] = "Auto (região do console)",
     ["Auto-launch failed: %s"] = "Falha na inicialização automática: %s",
     ["Auto-launch page not supported: %s"] = "Página de inicialização automática não suportada: %s",
     ["Automatic"] = "Automático",
-    ["BACK"] = "BACK",
+    ["BACK"] = "VOLTAR",
     ["BDMA Mode"] = "Modo BDMA",
     ["BDMA mode change didn't apply\nBDMA reverted; other settings were saved"] = "Mudança de modo BDMA não aplicada\nBDMA revertido; outras configurações foram salvas",
     ["BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT"] = "BOOT.ELF não encontrado\nverificado mc0:/BOOT e mc1:/BOOT",
@@ -3209,11 +3211,11 @@ PLDR.I18N = {
     ["Backspace"] = "Backspace",
     ["Boot Page"] = "Página de inicialização",
     ["Boot sound"] = "Som de inicialização",
-    ["Both"] = "Both",
+    ["Both"] = "Ambos",
     ["Bringing up network..."] = "Ativando a rede...",
     ["Building HDD game list..."] = "Montando lista de jogos do HDD...",
     ["Building USB game list..."] = "Montando lista de jogos do USB...",
-    ["CLR"] = "CLR",
+    ["CLR"] = "LIMPAR",
     ["Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first"] = "Não é possível desativar com BDMA Adaptativo ligado\nDesligue o BDMA Adaptativo primeiro",
     ["Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first"] = "Não é possível desativar com BDMA ativado\nDefina o Modo BDMA como FAT32 (None) primeiro",
     ["Can't disable while SMB modules are installed\nSet SMB modules to Not installed first"] = "Não é possível desativar com os módulos SMB instalados\nDefina os módulos SMB como Não instalados primeiro",
@@ -3227,10 +3229,10 @@ PLDR.I18N = {
     ["Code by El_isra"] = "Código por El_isra",
     ["Confirm"] = "Confirmar",
     ["Connecting to SMB..."] = "Conectando ao SMB...",
-    ["Could not open the SMB share"] = "Could not open the SMB share",
+    ["Could not open the SMB share"] = "Não foi possível abrir o compartilhamento SMB",
     ["Could not read UDPFS configuration:\n%s"] = "Não foi possível ler a configuração UDPFS:\n%s",
-    ["Could not start MX4SIO"] = "Could not start MX4SIO",
-    ["Could not start the internal drive"] = "Could not start the internal drive",
+    ["Could not start MX4SIO"] = "Não foi possível iniciar o MX4SIO",
+    ["Could not start the internal drive"] = "Não foi possível iniciar a unidade interna",
     ["Could not write UDPFS configuration:\n%s"] = "Não foi possível gravar a configuração UDPFS:\n%s",
     ["Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter"] = "Não foi possível aplicar as configurações de IP do PS2\ntente novamente ou reinicie o adaptador de rede",
     ["Couldn't read that game selection"] = "Não foi possível ler essa seleção de jogo",
@@ -3246,7 +3248,7 @@ PLDR.I18N = {
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP falhou\ndefina um IP estático nas configurações SMB",
     ["DKWDRV Path"] = "Caminho do DKWDRV",
     ["DNS"] = "DNS",
-    ["DONE"] = "DONE",
+    ["DONE"] = "OK",
     ["Defaults restored"] = "Padrões restaurados",
     ["Delete the POPSTARTER folder from the memory card?"] = "Excluir a pasta POPSTARTER do cartão de memória?",
     ["Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695"] = "Design por Berion\nScripts por nuno6573 e Ripto\nBaseado em Enceladus por Daniel Santos\nTestes por P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k e Comunidade\n\nAgradecimentos especiais a:\nkrHACKen por criar o POPStarter\nuyjulian, fjtrujy, HWC e outros por sempre ajudarem\n\nEste programa é livre e de código aberto\nSe você pagou por ele, foi enganado\n\nProblemas de compatibilidade? Visite:\nyoutube.com/@hugopocked6695",
@@ -3256,7 +3258,7 @@ PLDR.I18N = {
     ["Discard & Exit"] = "Descartar e Sair",
     ["Display"] = "Tela",
     ["Display reverted -- new mode wasn't confirmed"] = "Tela revertida -- novo modo não confirmado",
-    ["Done"] = "Done",
+    ["Done"] = "Concluído",
     ["Edit DKWDRV Path"] = "Editar caminho do DKWDRV",
     ["Edit POPStarter Path"] = "Editar caminho do POPStarter",
     ["Ember ELF returned: %s"] = "O ELF do Ember retornou: %s",
@@ -3267,7 +3269,7 @@ PLDR.I18N = {
     ["Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)"] = "Ative a pasta POPSTARTER primeiro\n(módulos SMB devem ficar no cartão de memória)",
     ["Enter"] = "Enter",
     ["Exit"] = "Sair",
-    ["FAT32-USB (None)"] = "FAT32-USB (None)",
+    ["FAT32-USB (None)"] = "FAT32-USB (nenhum)",
     ["Failed to connect to SMB"] = "Falha ao conectar ao SMB",
     ["Failed to load HDD"] = "Falha ao carregar HDD",
     ["Failed to load HDD (exFAT)"] = "Falha ao carregar HDD (exFAT)",
@@ -3282,11 +3284,11 @@ PLDR.I18N = {
     ["Game hidden"] = "Jogo ocultado",
     ["Game list cache"] = "Cache da lista de jogos",
     ["Game shown"] = "Jogo exibido",
-    ["Games path (folder holding POPS)"] = "Games path (folder holding POPS)",
+    ["Games path (folder holding POPS)"] = "Caminho dos jogos (pasta com o POPS)",
     ["Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS"] = "O caminho de jogos afeta só a navegação:\nPOPStarter só inicia jogos de <share>/POPS",
     ["Gateway"] = "Gateway",
     ["HDD Alt mode needs POPSTARTER on HDD"] = "Modo HDD Alt precisa do POPSTARTER no HDD",
-    ["HDD game-partition write test FAILED (%s)"] = "HDD game-partition write test FAILED (%s)",
+    ["HDD game-partition write test FAILED (%s)"] = "FALHA no teste de gravação da partição de jogos do HDD (%s)",
     ["HDD list loaded from cache (R1 rescans)"] = "Lista do HDD carregada do cache (R1 rescaneia)",
     ["HDD list refreshed"] = "Lista do HDD atualizada",
     ["HDD list refreshed (no games found)"] = "Lista do HDD atualizada (nenhum jogo encontrado)",
@@ -3296,21 +3298,21 @@ PLDR.I18N = {
     ["Hidden games filtered out again"] = "Jogos ocultos filtrados novamente",
     ["Hide UI Text"] = "Ocultar texto da interface",
     ["How to hide a game"] = "Como ocultar um jogo",
-    ["IP address"] = "IP address",
-    ["IP assignment"] = "IP assignment",
-    ["Install them now?"] = "Install them now?",
+    ["IP address"] = "Endereço IP",
+    ["IP assignment"] = "Atribuição de IP",
+    ["Install them now?"] = "Instalá-los agora?",
     ["Installed"] = "Instalado",
     ["Internal HDD"] = "HDD interno",
     ["Keep"] = "Manter",
     ["Keep this display mode?"] = "Manter este modo de tela?",
     ["Keyboard Layout"] = "Layout do teclado",
     ["L3 on the game list"] = "L3 na lista de jogos",
-    ["LAUNCH FAILED"] = "LAUNCH FAILED",
-    ["Language"] = "Language",
+    ["LAUNCH FAILED"] = "FALHA AO INICIAR",
+    ["Language"] = "Idioma",
     ["Launch"] = "Iniciar",
     ["Launch DKWDRV?"] = "Iniciar DKWDRV?",
     ["Left aligned"] = "Alinhado à esquerda",
-    ["Link mode"] = "Link mode",
+    ["Link mode"] = "Modo de link",
     ["List refreshed"] = "Lista atualizada",
     ["List refreshed (no games found)"] = "Lista atualizada (nenhum jogo encontrado)",
     ["Loaded SMB list from cache..."] = "Lista SMB carregada do cache...",
@@ -3326,8 +3328,8 @@ PLDR.I18N = {
     ["Missing %s"] = "%s está ausente",
     ["Multi-disc games"] = "Jogos multi-disco",
     ["NetBIOS isn't supported\nset Address type = IP + a Server IP"] = "NetBIOS não é suportado\ndefina Tipo de endereço = IP + um IP do servidor",
-    ["NetBIOS name"] = "NetBIOS name",
-    ["Netmask"] = "Netmask",
+    ["NetBIOS name"] = "Nome NetBIOS",
+    ["Netmask"] = "Máscara de rede",
     ["Network initialization failed"] = "Falha ao inicializar a rede",
     ["No"] = "Não",
     ["No .cue/.exe/.bin directly in %s"] = "Nenhum .cue/.exe/.bin diretamente em %s",
@@ -3357,18 +3359,18 @@ PLDR.I18N = {
     ["POPSTARTER Path"] = "Caminho do POPSTARTER",
     ["POPSTARTER folder deleted from the memory card"] = "Pasta POPSTARTER excluída do cartão de memória",
     ["POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)"] = "Pasta POPSTARTER restaurada no cartão de memória\n(defina um modo BDMA para readicionar os módulos exFAT/SMB)",
-    ["POPSTARTER needs these filled in first:"] = "POPSTARTER needs these filled in first:",
-    ["PS2 IP"] = "PS2 IP",
-    ["Password"] = "Password",
-    ["Port"] = "Port",
-    ["Press %s/%s to continue."] = "Press %s/%s to continue.",
+    ["POPSTARTER needs these filled in first:"] = "O POPSTARTER precisa destes dados primeiro:",
+    ["PS2 IP"] = "IP do PS2",
+    ["Password"] = "Senha",
+    ["Port"] = "Porta",
+    ["Press %s/%s to continue."] = "Pressione %s/%s para continuar.",
     ["Press CIRCLE again to discard what you typed"] = "Pressione CIRCLE novamente para descartar o que digitou",
     ["Press CROSS again to discard what you typed"] = "Pressione CROSS novamente para descartar o que digitou",
     ["Rebuilding HDD game list..."] = "Reconstruindo lista de jogos do HDD...",
     ["Refreshing HDD list..."] = "Atualizando lista do HDD...",
     ["Refreshing list..."] = "Atualizando lista...",
-    ["Report this code -- the card may be fine"] = "Report this code -- the card may be fine",
-    ["Report this code -- the drive may be fine"] = "Report this code -- the drive may be fine",
+    ["Report this code -- the card may be fine"] = "Informe este código -- o cartão pode estar bom",
+    ["Report this code -- the drive may be fine"] = "Informe este código -- a unidade pode estar boa",
     ["Rescanning HDD partitions..."] = "Rescaneando partições do HDD...",
     ["Reset"] = "Redefinir",
     ["Reset Defaults"] = "Restaurar padrões",
@@ -3385,7 +3387,7 @@ PLDR.I18N = {
     ["SMB modules are not installed\nGames will list but won't boot -- install them\nvia Settings > SMB modules first"] = "Módulos SMB não instalados\nJogos aparecem mas não iniciam -- instale-os\nprimeiro em Configurações > Módulos SMB",
     ["SMB modules didn't install/remove\nmodule setting reverted; other settings were saved"] = "Módulos SMB não instalados/removidos\nconfiguração de módulos revertida; outras foram salvas",
     ["SMB modules failed to load"] = "Falha ao carregar módulos SMB",
-    ["SPACE"] = "SPACE",
+    ["SPACE"] = "ESPAÇO",
     ["Save"] = "Salvar",
     ["Save Changes"] = "Salvar alterações",
     ["Saving settings"] = "Salvando configurações",
@@ -3399,11 +3401,11 @@ PLDR.I18N = {
     ["Scanning games..."] = "Escaneando jogos...",
     ["Select"] = "Selecionar",
     ["Select a share"] = "Selecione um share",
-    ["Server IP"] = "Server IP",
+    ["Server IP"] = "IP do servidor",
     ["Server refused SMBv1\nenable SMBv1 support on the host"] = "Servidor recusou SMBv1\native o suporte a SMBv1 no host",
     ["Settings"] = "Configurações",
-    ["Settings > SMB / Network"] = "Settings > SMB / Network",
-    ["Share"] = "Share",
+    ["Settings > SMB / Network"] = "Configurações > SMB / Rede",
+    ["Share"] = "Compartilhamento",
     ["Share not found\ncheck the Share name (host must allow SMB1)"] = "Share não encontrado\nverifique o nome do Share (host deve permitir SMB1)",
     ["Show all discs"] = "Mostrar todos os discos",
     ["Showing hidden games (dimmed) -- press L3 to unhide"] = "Mostrando jogos ocultos (esmaecidos) -- pressione L3 para reexibir",
@@ -3422,8 +3424,8 @@ PLDR.I18N = {
     ["UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server"] = "UDPFS: %s\nVerifique o IP estático do PS2, o cabo e o servidor UDPFS",
     ["UI text hidden"] = "Texto da interface ocultado",
     ["UI text shown"] = "Texto da interface exibido",
-    ["User"] = "User",
-    ["Version"] = "Version",
+    ["User"] = "Usuário",
+    ["Version"] = "Versão",
     ["Video Standard"] = "Padrão de vídeo",
     ["Visible"] = "Visível",
     ["Visible (manage)"] = "Visível (gerenciar)",
@@ -3454,6 +3456,7 @@ PLDR.I18N = {
     ["HDD not usable"] = "HDD não utilizável",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Os jogos ocultos já são exibidos aqui (esmaecidos)\nAtive \"Ocultar jogos ocultos\" nas Configurações para filtrá-los",
     ["Locating exFAT HDD POPS folder..."] = "Localizando a pasta POPS do HDD exFAT...",
+    ["Locating MX4SIO POPS folder..."] = "Localizando a pasta POPS do MX4SIO...",
     ["Looking for USB drive..."] = "Procurando unidade USB...",
     ["Missing BDMA UI source (tried):"] = "Origem da interface BDMA ausente (tentado):",
     ["Missing BDMA source (tried):"] = "Origem BDMA ausente (tentado):",
@@ -3478,7 +3481,7 @@ PLDR.I18N = {
     ["Triangle"] = "Triângulo",
     ["Unknown BDMA mode:"] = "Modo BDMA desconhecido:",
     ["You can still add a \"<game>.hide\" next to the .VCD from a PC."] = "Você ainda pode adicionar um \"<jogo>.hide\" ao lado do .VCD a partir de um PC.",
-    ["__.POPS partition %s accepts writes (game-partition RW test)"] = "__.POPS partition %s accepts writes (game-partition RW test)",
+    ["__.POPS partition %s accepts writes (game-partition RW test)"] = "A partição __.POPS %s aceita gravação (teste RW da partição de jogos)",
     ["adjusted -- using"] = "ajustado -- usando",
     ["check the memory card, or turn Adaptive BDMA off"] = "verifique o cartão de memória ou desative o BDMA adaptativo",
     ["if not confirmed"] = "se não confirmado",
@@ -3760,6 +3763,7 @@ PLDR.I18N = {
     ["HDD not usable"] = "HDD no utilizable",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "Los juegos ocultos ya se muestran aquí (atenuados)\nActiva \"Ocultar juegos ocultos\" en Ajustes para filtrarlos",
     ["Locating exFAT HDD POPS folder..."] = "Localizando la carpeta POPS del HDD exFAT...",
+    ["Locating MX4SIO POPS folder..."] = "Localizando la carpeta POPS de MX4SIO...",
     ["Looking for USB drive..."] = "Buscando unidad USB...",
     ["Missing BDMA UI source (tried):"] = "Falta la fuente de interfaz BDMA (probado):",
     ["Missing BDMA source (tried):"] = "Falta la fuente BDMA (probado):",
@@ -4067,6 +4071,7 @@ PLDR.I18N = {
     ["HDD not usable"] = "HDD non utilizzabile",
     ["Hidden games are already shown here (dimmed)\nEnable \"Hide hidden games\" in Settings to filter them out"] = "I giochi nascosti sono già mostrati qui (in grigio)\nAttiva \"Nascondi giochi nascosti\" nelle Impostazioni per filtrarli",
     ["Locating exFAT HDD POPS folder..."] = "Ricerca della cartella POPS dell'HDD exFAT...",
+    ["Locating MX4SIO POPS folder..."] = "Ricerca della cartella POPS di MX4SIO...",
     ["Looking for USB drive..."] = "Ricerca dell'unità USB...",
     ["Missing BDMA UI source (tried):"] = "Origine UI BDMA mancante (tentato):",
     ["Missing BDMA source (tried):"] = "Origine BDMA mancante (tentato):",
@@ -4260,6 +4265,7 @@ PLDR.I18N = {
     ["Loading HDD..."] = "HDD betöltése...",
     ["Loading MMCE..."] = "MMCE betöltése...",
     ["Detecting MMCE device..."] = "MMCE eszköz keresése...",
+    ["Locating MX4SIO POPS folder..."] = "MX4SIO POPS mappa keresése...",
     ["Loading MX4SIO..."] = "MX4SIO betöltése...",
     ["Loading USB..."] = "USB betöltése...",
     ["Locating exFAT HDD POPS folder..."] = "Az exFAT HDD-n lévő POPS mappa megkeresése...",
@@ -4740,6 +4746,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
+  ILINK = ".ilink",  -- EXPERIMENTAL: RiptOPL i.LINK pair (pinned OPL dfa28822), hardware-untested
   UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.1 (2026-11-08) full network read/write, BIN/CUE
 }
 
@@ -5529,6 +5536,8 @@ local function NormalizeBdmaModeKey(mode)
     return "MMCE"
   elseif value == "ATA" or value == "HDDEXFAT" then
     return "ATA"
+  elseif value == "ILINK" then
+    return "ILINK"
   elseif value == "UDPFS" then
     return "UDPFS"
   end
@@ -7574,6 +7583,9 @@ function PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GBDMHDD then
     return "ATA"
   end
+  if type(UI) == "table" and type(UI.SCENES) == "table" and ui_scene == UI.SCENES.GILINK then
+    return "ILINK"
+  end
   if device_page == "MX4SIO" then return "MX4SIO" end
   if device_page == "MMCE" or device_page == "SMB/MMCE" then return "MMCE" end
   if device_page == "UDPFS" then return "UDPFS" end
@@ -8435,6 +8447,8 @@ function PLDR.EmberRootsForScene(scene)
     from_type("ata")
   elseif scene == UI.SCENES.GSMB then
     EmberAddRoot(roots, seen, type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX or nil)
+  elseif scene == UI.SCENES.GILINK then
+    EmberAddRoot(roots, seen, PLDR.ILINK_ROOT)
   elseif scene == UI.SCENES.GSMBNET then
     -- SMB share subfolder and UDPFS mount retain their own root, not mass:.
     local base = string.gsub(tostring(PLDR.GAMEPATH or ""), "[Pp][Oo][Pp][Ss]/?$", "")
@@ -8730,6 +8744,28 @@ function PLDR.InitMX4SIOPopsRoot()
     return root.."POPS/"
   end
   return nil, status
+end
+
+-- i.LINK (EXPERIMENTAL, hardware-UNTESTED; Ember only). The IEEE1394 block driver
+-- registers with path "ilink", so its volume is the typed ilink0:/ (same mechanism
+-- as mx4sio0:/ above). Loaded lazily on page entry; the wait for the drive to mount
+-- is bounded (8 x 1 s), never open-ended. Returns root|nil, status
+-- ("ready" | "driver" | "unavailable" | "nodevice").
+function PLDR.InitILINKRoot()
+  PLDR.ILINK_ROOT = nil
+  if type(System) ~= "table" or type(System.initILINK) ~= "function" then
+    return nil, "unavailable"
+  end
+  local ok, loaded = pcall(System.initILINK)
+  if not ok or loaded ~= true then return nil, "driver" end
+  for _ = 1, 8 do
+    if doesFolderExist("ilink0:/") then
+      PLDR.ILINK_ROOT = "ilink0:/"
+      return PLDR.ILINK_ROOT, "ready"
+    end
+    if type(System.sleep) == "function" then pcall(System.sleep, 1) end
+  end
+  return nil, "nodevice"
 end
 
 function PLDR.InitATAPopsRoot(report)
@@ -9805,7 +9841,9 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if device_page == "HDD" then
     return BuildLiteralElfName(game_name)
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "ILINK" then
+    -- ILINK: the staged .ilink BDMA pair serves the i.LINK disk as mass:, so the
+    -- selector is the same VCD-selecting form USB uses (path translated by the policy).
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "MX4SIO" then
@@ -9867,6 +9905,13 @@ local function TranslateMMCEPathForPopStarter(path)
     return path
   end
   return string.gsub(path, "^mmce%d:/", "mass:/")
+end
+
+local function TranslateIlinkPathForPopStarter(path)
+  if path == nil then
+    return path
+  end
+  return string.gsub(path, "^ilink%d*:/", "mass:/")
 end
 
 local function BuildLaunchPolicy(name, mode, isra_prefix, handoff_transform)
@@ -10238,6 +10283,11 @@ local function ResolveLaunchPolicy(gamelocation, ui_scene)
   end
   if current_scene == UI.SCENES.GMX4SIO then
     return BuildLaunchPolicy("MX4SIO", "mx4sio", "mx4sio", nil), "MX4SIO"
+  end
+  if current_scene == UI.SCENES.GILINK then
+    -- i.LINK (EXPERIMENTAL): POPSTARTER resets the IOP and reloads only the staged
+    -- .ilink pair, where the drive is the single mass: unit. Hand it mass:/ paths.
+    return BuildLaunchPolicy("ILINK", "mass", "ilink0", TranslateIlinkPathForPopStarter), "ILINK"
   end
   if current_scene == UI.SCENES.GBDMHDD then
     -- HDD (exFAT) is a BDM mass device (ata_bd). POPStarter reads it as mass:
