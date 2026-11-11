@@ -1,4 +1,4 @@
-Last updated: 2026-11-11. **Official release: 1.4.2**. This release includes network-only UDPFS Assault 1.0.0, persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master, dev and experimental are aligned at the release cut. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. 1.4.2 adds an experimental i.Link page (Ember + POPSTARTER; hidden by default, untested on hardware) and Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2).
+Last updated: 2026-11-11. **Official release: 1.4.2**. This release includes network-only UDPFS (Okeanos' UDPFS Assault 1.0.1), persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master carries the 1.4.2 stamp; dev and experimental are brought up to it after the release. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. 1.4.2 adds an experimental i.Link page (Ember + POPSTARTER; hidden by default, untested on hardware) and Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2).
 
 # STATE
 
@@ -24,7 +24,7 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
   Host-tested only; hardware and IOP fit NOT verified.
 
 - USB-first fallback is removed. The `UDPFS` mode now embeds [Okeanos](https://github.com/Okeanos86)'s
-  [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) 1.0.0 and companion, serving POPS dependencies and VMC writes
+  [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) (1.0.0 at 1.4.0; 1.0.1 since 1.4.2) and companion, serving POPS dependencies and VMC writes
   entirely over the network. No USB volume is required.
 - Runtime configuration uses per-file MC0 then MC1 `SYS-CONF` precedence.
   Missing console IP configuration is created from the menu's static settings;

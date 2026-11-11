@@ -2,11 +2,11 @@
 
 ## 1.4.2 channel cut (November 11, 2026)
 
-**Experimental is a prerelease channel.** At this cut, master, dev and experimental
-share the same source and **v1.4.2** stamp. The official versioned release is
+**Experimental is a prerelease channel.** At this cut, master carries the **v1.4.2** stamp;
+dev and experimental are brought up to it after the release. The official versioned release is
 [POPSLoader 1.4.2](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2).
 
-- Network-only UDPFS Assault 1.0.0; no USB requirement and no USB-first mode.
+- Network-only UDPFS (Okeanos' UDPFS Assault 1.0.1 since 1.4.2; not yet confirmed on a real PS2); no USB requirement and no USB-first mode.
 - MC SYS-CONF precedence, persistent config recovery and discovery by default.
 - Localization fixes and refreshed translator handoffs; unchanged Ember Beta-2.
 - Complete installation ZIP and flat PSU. Console UDPFS and Ember acceptance

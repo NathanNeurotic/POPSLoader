@@ -1568,7 +1568,7 @@ is synchronized from the same maintained guide.
 <a href="popsloader/installation-guide.html">Install guide</a> ·
 <a href="popsloader/ember-core.html">Ember guide</a> ·
 <a href="popsloader/release-formats.html">ZIP/PSU specification</a>.
-Hardware validation remains outstanding. i.Link is deferred.</div>'''
+Hardware validation remains outstanding. i.Link is an experimental page (hidden by default) and has not been tested on hardware.</div>'''
 
 def build_popsloader():
     os.makedirs(os.path.join(SITE, 'popsloader'), exist_ok=True)
@@ -2095,7 +2095,7 @@ after <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a
 <a href="popsloader/project-wiki.html">Current POPSLoader wiki</a> ·
 <a href="popsloader/ember-core.html">Ember setup</a> ·
 <a href="popsloader/release-formats.html">Release formats</a>.
-i.Link remains deferred.</div>
+i.Link is an experimental page (hidden by default) and has not been tested on hardware.</div>
 
 <h2 id="reference">Full reference</h2>
 <p class="lead">Already know your way around? Jump straight in — or use the search box up top to find any
