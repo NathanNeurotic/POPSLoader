@@ -6847,8 +6847,20 @@ function UI.RunConfirm(lines)
     f = f + 1
     local okp, gp = pcall(Pads.get)
     if okp and type(gp) == "number" then
-      if (gp & yes_mask) ~= 0 then return true end
-      if (gp & no_mask) ~= 0 then return false end
+      if (gp & yes_mask) ~= 0 or (gp & no_mask) ~= 0 then
+        local answer = (gp & yes_mask) ~= 0
+        -- Wait for the button to be released before returning: otherwise the
+        -- caller's next pad read still sees the held press, so Circle on "No"
+        -- also acted as Back on the Settings screen. Bounded, like the settle loop.
+        local rel = 0
+        while rel < 60 do
+          local okr, gr = pcall(Pads.get)
+          if okr and type(gr) == "number" and (gr & (yes_mask | no_mask)) == 0 then break end
+          Screen.flip()
+          rel = rel + 1
+        end
+        return answer
+      end
     end
   end
   return false
