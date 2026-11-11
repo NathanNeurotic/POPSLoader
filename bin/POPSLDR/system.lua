@@ -9474,7 +9474,9 @@ local function BuildPopstarterSelectorPath(device_page, game_name)
   if device_page == "HDD" then
     return BuildLiteralElfName(game_name)
   end
-  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" then
+  if device_page == "USB" or device_page == "MMCE" or device_page == "SMB/MMCE" or device_page == "ILINK" then
+    -- ILINK: the staged .ilink BDMA pair serves the i.LINK disk as mass:, so the
+    -- selector is the same VCD-selecting form USB uses (path translated by the policy).
     return "mass:/POPS/XX."..game_name..".ELF"
   end
   if device_page == "MX4SIO" then

@@ -103,7 +103,7 @@ MMCE, ATA exFAT, SMB, UDPFS Files, controller input after handoff,
 CUE/BIN launching, virtual-card writes, per-game/global setting
 persistence, and preserving prior POPSTARTER/UDPFS behavior.
 APA/PFS code is implemented but requires physical console verification.
-**i.Link is experimental and untested** (Ember only; see above). POPSTARTER
+**i.Link is experimental and untested** (Ember games and POPSTARTER titles; see above). POPSTARTER
 over i.Link is experimental and unproven. Do not claim i.Link parity until it is
 confirmed on a console.
 APA/PFS is implemented but still requires physical-console verification.
