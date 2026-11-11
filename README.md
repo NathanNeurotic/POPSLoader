@@ -10,7 +10,7 @@
 
 | Channel | Package | Who should use it |
 | --- | --- | --- |
-| **Official 1.4.1** | [Official 1.4.1 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1) | Network-only UDPFS with restart-safe configuration, localization fixes, and the existing Ember Beta-2 option. Console UDPFS/Ember acceptance remains pending. |
+| **Official 1.4.2** | [Official 1.4.2 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2) | Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), completed translations and a Circle-on-No fix. Console acceptance remains pending. |
 | Prior stable 1.2.3 | [Release 1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Preserved POPStarter-only baseline without Ember. |
 | **POPSLoader 1.3.0 ([Ember](https://github.com/Gageformer/Ember) Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with [Gageformer](https://github.com/Gageformer)'s **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.4.1 PS1_POPSLOADER-1.4.1.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.1/PS1_POPSLOADER-1.4.1.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
+Download the full [POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
 
 ~~~text
 APPS/
