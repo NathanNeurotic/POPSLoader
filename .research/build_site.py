@@ -1104,7 +1104,7 @@ def build_downloads():
 all verified to contain <b>no Sony emulator binaries</b>.</p>
 <div class="callout info"><div class="h">Current POPSLoader release packages (GitHub)</div>
 <b>Official:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2">POPSLoader 1.4.2</a>
-keeps the existing installer layout, with no Ember.
+keeps the installer layout and includes the unmodified upstream Ember Beta-2 option.
 <b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
 now publishes
 <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release"><code>PS1_POPSLOADER-&lt;version&gt;.zip</code></a>

@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
+Download the full [POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
 
 ~~~text
 APPS/
