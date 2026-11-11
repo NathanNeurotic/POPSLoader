@@ -96,7 +96,8 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o ata_bd.o bdm_query.o
+			  mx4sio_bd.o ata_bd.o bdm_query.o \
+			  iLinkman.o IEEE1394_bd_mini.o
 
 # Menu-side SMB network stack (Increment 1). LAZY -- loaded by EnsureNet in
 # luasystem.cpp only on SMB-page entry, NEVER at boot (main.cpp boot-loads only its
@@ -114,6 +115,7 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usbd_irx_usbexfat.o asset_usbhdfsd_irx_usbexfat.o asset_usbhdfsd_irx_mx4sio.o \
 	asset_usbd_irx_mmce.o asset_usbhdfsd_irx_mmce.o \
 	asset_usbd_irx_ata.o asset_usbhdfsd_irx_ata.o \
+	asset_usbd_irx_ilink.o asset_usbhdfsd_irx_ilink.o \
 	asset_usbd_irx_udpfs.o asset_usbhdfsd_irx_udpfs.o \
 	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o \
 	asset_smb_poweroff_irx.o asset_smb_ps2dev9_irx.o asset_smb_ps2ip_irx.o \
@@ -229,6 +231,10 @@ $(EE_ASM_DIR)asset_usbd_irx_ata.c: bin/POPSLDR/usbd.irx.ata | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_ata
 $(EE_ASM_DIR)asset_usbhdfsd_irx_ata.c: bin/POPSLDR/usbhdfsd.irx.ata | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbhdfsd_irx_ata
+$(EE_ASM_DIR)asset_usbd_irx_ilink.c: bin/POPSLDR/usbd.irx.ilink | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbd_irx_ilink
+$(EE_ASM_DIR)asset_usbhdfsd_irx_ilink.c: bin/POPSLDR/usbhdfsd.irx.ilink | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ asset_usbhdfsd_irx_ilink
 $(EE_ASM_DIR)asset_usbd_irx_udpfs.c: bin/POPSLDR/usbd.irx.udpfs | $(EE_ASM_DIR)
 	$(BIN2S) $< $@ asset_usbd_irx_udpfs
 $(EE_ASM_DIR)asset_usbhdfsd_irx_udpfs.c: bin/POPSLDR/usbhdfsd.irx.udpfs | $(EE_ASM_DIR)

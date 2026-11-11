@@ -25,11 +25,13 @@ a UDPFS source as USB. APA/PFS HDD `__.EMBER` and `__.EMBER0` through
 `__.EMBER9` partitions now have a separate scanner and a writable PFS
 mount preserved across the keep-IOP handoff. This path is **host-tested
 only**; real console write-through, controller recovery and VMC behavior
-remain unverified. i.Link remains unavailable in POPSLoader's device
-carousel. **i.Link Ember integration is deliberately deferred** until RiptOPL
-has demonstrated reliable i.Link operation on physical hardware; it is
-out of scope for PR #600 and must not block shipping otherwise validated
-Ember support. Do not claim full device parity in the meantime.
+remain unverified. An **experimental i.Link page** now lists and launches Ember
+games from `ilink0:/EMBER/` (hidden by default; show it under Settings > Device
+List). It loads `iLinkman.irx` and `IEEE1394_bd_mini.irx` from ps2sdk on first
+entry, the same recipe RiptOPL uses, and relies on Ember never resetting the IOP.
+It is **hardware-untested and cannot be run in PCSX2**. The same page also lists
+POPSTARTER titles, launched through the experimental BDMA Mode "i.Link" (RiptOPL's
+i.LINK driver pair), which is unproven. Do not claim full device parity.
 
 ```text
 <mounted-device-root>/
@@ -101,10 +103,9 @@ MMCE, ATA exFAT, SMB, UDPFS Files, controller input after handoff,
 CUE/BIN launching, virtual-card writes, per-game/global setting
 persistence, and preserving prior POPSTARTER/UDPFS behavior.
 APA/PFS code is implemented but requires physical console verification.
-**i.Link is explicitly deferred**, not an open implementation task for
-this PR. Revisit it only after RiptOPL demonstrates reliable hardware
-operation and there is a reference integration worth adapting. Until then,
-keep the existing unsupported/hidden behavior; do not claim i.Link parity.
+**i.Link is experimental and untested** (Ember games and POPSTARTER titles; see above). POPSTARTER
+over i.Link is experimental and unproven. Do not claim i.Link parity until it is
+confirmed on a console.
 APA/PFS is implemented but still requires physical-console verification.
 
 Credits: [Gageformer](https://github.com/Gageformer) for [Ember](https://github.com/Gageformer/Ember), RiptOPL/Open-PS2-Loader and

@@ -1,0 +1,4 @@
+# POPStarter options, all off by default (only the value 1 turns one on)
+GAMEID_DIR=0
+DISCS_DIR=0
+CHEATS_WS=0

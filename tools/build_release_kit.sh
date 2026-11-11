@@ -3,7 +3,9 @@ set -eu
 # Pin the reference install assets so POPS and EMBER cannot change
 # unexpectedly when upstream updates. POPS is pinned separately from Ember.
 # Ember Watch verifies Gageformer's release digest and updates the Ember pin.
-RIPTOPL_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
+# dfa28822 = Open-PS2-Loader #1241: ships the current i.LINK driver (usbhdfsd.irx.ilink,
+# 27,769 B); the previous pin (ebb62e1d) shipped the older 21,609 B build.
+RIPTOPL_SHA=dfa28822d324ae23b653a2a7585815eaac0cb671
 RIPTOPL_EMBER_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
 git clone --quiet --filter=blob:none --no-checkout \
   https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
@@ -40,13 +42,22 @@ for part in ('POPS', 'EMBER'):
             raise SystemExit(f"Missing or modified reference payload: {path}")
     print(f"{part}: verified {len(files)} pinned RiptOPL files")
 PY
+# Fail closed if the i.LINK driver pair is not the pinned build (a stale pin ships the old driver).
+echo "9cd849ea7f06d72f3ee6015032dfd91d6fcb1332e87d5acde306cb42b5d4313d  dist_root/POPS/usbhdfsd.irx.ilink" | sha256sum -c -
+echo "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369  dist_root/POPS/usbd.irx.ilink" | sha256sum -c -
+# The launcher embeds the same pair for its experimental i.Link BDMA mode: they must not drift.
+cmp bin/POPSLDR/usbd.irx.ilink dist_root/POPS/usbd.irx.ilink
+cmp bin/POPSLDR/usbhdfsd.irx.ilink dist_root/POPS/usbhdfsd.irx.ilink
 # Replace the historical reference bundle's Alpha UDPFS payload and notices.
-# The existing .udpfs suffix now always means the full-network UDPFS Assault (TEST 2026-10-28) release.
+# The existing .udpfs suffix now always means the full-network UDPFS Assault (1.0.1, 2026-11-08) release.
 cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
 rm -rf dist_root/POPS/UDPFS-NOTICES
 mkdir -p dist_root/POPS/UDPFS-NOTICES
 cp docs/third_party/okeanos_udpfs/* dist_root/POPS/UDPFS-NOTICES/
 cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
+# Okeanos 1.0.1 option file, shipped inert (the driver reads only a file named PATHMAP.INI
+# in mc?:/POPSTARTER/); every option is off in it, matching the driver defaults.
+cp docs/third_party/okeanos_udpfs/PATHMAP.INI.example dist_root/POPS/PATHMAP.INI.example
 # The reference bundle's example server IP must never become active MC config.
 # Preserve it as an explicit opt-in example; unedited kits use discovery.
 mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example

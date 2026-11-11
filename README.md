@@ -10,7 +10,7 @@
 
 | Channel | Package | Who should use it |
 | --- | --- | --- |
-| **Official 1.4.1** | [Official 1.4.1 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1) | Network-only UDPFS with restart-safe configuration, localization fixes, and the existing Ember Beta-2 option. Console UDPFS/Ember acceptance remains pending. |
+| **Official 1.4.2** | [Official 1.4.2 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2) | Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), completed translations and a Circle-on-No fix. Console acceptance remains pending. |
 | Prior stable 1.2.3 | [Release 1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Preserved POPStarter-only baseline without Ember. |
 | **POPSLoader 1.3.0 ([Ember](https://github.com/Gageformer/Ember) Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with [Gageformer](https://github.com/Gageformer)'s **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.4.1 PS1_POPSLOADER-1.4.1.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.1/PS1_POPSLOADER-1.4.1.zip) or the [latest rolling package](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.zip). Its device-root layout is:
+Download the full [POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
 
 ~~~text
 APPS/
@@ -47,7 +47,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 ~~~
 
-1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.0/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
 2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
 3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
 4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.
@@ -63,9 +63,9 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
 | SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
 | UDPFS | Full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
-| i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
+| i.Link | Experimental, hidden by default; Ember games and POPSTARTER titles | **Untested on hardware** (cannot be run in PCSX2); the POPSTARTER path uses RiptOPL's i.LINK BDMA pair and is unproven |
 
-HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; later builds use its TEST pre-release, which also plays `POPS/*.cue` games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
+HDD/PFS artwork belongs under `__common/POPS/ART/`. The UDPFS mode uses Okeanos' UDPFS Assault 1.0.1 (since 1.4.2) with no USB requirement; it also plays `POPS/*.cue` games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
 ### Ember options and safety
 
@@ -81,7 +81,7 @@ Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/E
 - SMBv1 and opt-in UDPFS VCD browsing with explicit network configuration.
 - Adjustable video, boot page, display and menu navigation; Triangle Exit menu and BOOT.ELF chainloading.
 
-**Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link remains unsupported; UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
+**Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link is experimental (Ember only, untested on hardware); UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
 
 For complete menus, controls, recovery, troubleshooting and developer details, continue below or use the [maintained GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki).
 
@@ -136,7 +136,7 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | Shown · Hidden (**i.Link ships Hidden**) | Hide or show each entry on the main device carousel. **i.Link is Hidden by default** (its flow isn't implemented yet); every other device defaults to Shown. Set unused backends to **Hidden** to remove them from the wheel, or show i.Link if you want it. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | Shown · Hidden (**i.Link ships Hidden**) | Hide or show each entry on the main device carousel. **i.Link is Hidden by default** (experimental: Ember games only, untested on hardware); every other device defaults to Shown. Set unused backends to **Hidden** to remove them from the wheel, or show i.Link if you want it. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
 | **Internal HDD** | PFS · exFAT (APA-Jail) · **Both (default)** | Picks which internal-HDD page(s) show on the carousel — the classic Sony APA/PFS page, the APA-Jail **exFAT** page (BDMA ATA backend), or **both** (the default). PFS (APA) and exFAT **coexist** — showing both does not gate either one (saved as `HDD_FS`). A `-page=ata` (or `exfat`) launch argument still opens the exFAT page regardless of this setting. |
 
 ### Game List
@@ -260,7 +260,7 @@ Planned for subsequent updates:
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
 *   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **browse + launch hardware-confirmed on a static IP config**; the DHCP path was fixed in `bb62f2be` and is not yet confirmed.
-*   **`i.Link`** remains intentionally hidden/unsupported. Ember i.Link development is deferred until RiptOPL proves reliable support on physical PS2 hardware.
+*   **`i.Link`** is experimental and hidden by default: show it under Settings > Device List. It lists and launches **Ember** games only, using ps2sdk's i.LINK drivers as RiptOPL does. Untested on hardware; POPSTARTER titles over i.Link are not implemented.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 
