@@ -130,6 +130,7 @@ static int g_usbmass_id = -999, g_usbmass_ret = -999;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
 static bool ilink_irx_loaded = false;
+static bool ilinkman_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
@@ -1636,8 +1637,13 @@ bool EnsureILinkBd(void)
 	if (!EnsureBDMFatFs()) {
 		return false;
 	}
-	if (!LoadIrxCheckedBuffer("iLinkman.irx", iLinkman_irx, size_iLinkman_irx, NULL, NULL)) {
-		return false;
+	// iLinkman is tracked on its own: if only the block driver fails, a retry must
+	// not load iLinkman a second time.
+	if (!ilinkman_irx_loaded) {
+		if (!LoadIrxCheckedBuffer("iLinkman.irx", iLinkman_irx, size_iLinkman_irx, NULL, NULL)) {
+			return false;
+		}
+		ilinkman_irx_loaded = true;
 	}
 	if (!LoadIrxCheckedBuffer("IEEE1394_bd_mini.irx", IEEE1394_bd_mini_irx, size_IEEE1394_bd_mini_irx, NULL, NULL)) {
 		return false;
