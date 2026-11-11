@@ -11,7 +11,7 @@ import struct
 
 ROOT = Path(__file__).resolve().parents[1]
 BLOBS = {
-    "bin/POPSLDR/usbd.irx.udpfs": ("a004de7a35a8433c22e63a33286b576e624e36e3", 51029),
+    "bin/POPSLDR/usbd.irx.udpfs": ("1bd5186685b75b4a077560fdc5b3a460bc160726", 61949),
     "bin/POPSLDR/usbhdfsd.irx.udpfs": ("e7a9baa6fd2fd35ac92b4f6d6545b033e195f51f", 34508),
     "iop/embed/udpfs_net_smap.irx": ("a8ad1bf35a0ab57c4119dce82ee5ca39402cd3aa", 8081),
     "iop/embed/udpfs_ministack.irx": ("7696096abf3df9fe56ec7ef0f28d27b3d533985e", 5025),
@@ -81,23 +81,29 @@ assert (ROOT / "docs/third_party/okeanos_udpfs/LICENSE").is_file()
 print("POPS UDPFS: pinned IRX blobs and UDPFS wiring, preflight, and network lifecycle guards verified")
 
 provenance = json.loads((ROOT / "docs/third_party/okeanos_udpfs/PROVENANCE.json").read_text())
-assert set(provenance) == {"UDPFS_TEST"}  # no USB-first or 1.0.0 release remains
-assert provenance["UDPFS_TEST"]["prerelease"] is True
-for name, record in provenance["UDPFS_TEST"]["files"].items():
+assert set(provenance) == {"UDPFS_1_0_1"}  # no USB-first, 1.0.0 or TEST entry remains
+assert provenance["UDPFS_1_0_1"]["prerelease"] is False
+for name, record in provenance["UDPFS_1_0_1"]["files"].items():
     body = (ROOT / "bin/POPSLDR" / name).read_bytes()
     assert len(body) == record["size"]
     assert sha256(body).hexdigest() == record["sha256"]
-assert provenance["UDPFS_TEST"]["files"]["usbd.irx.udpfs"]["sha256"] == "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e"
+assert provenance["UDPFS_1_0_1"]["files"]["usbd.irx.udpfs"]["sha256"] == "d1d5502454fbc9ca7c1fd039b65bbc143f8b87ffdfc0e275ce13dca4b191a738"
+example = provenance["UDPFS_1_0_1"]["config_examples"]["PATHMAP.INI.example"]
+shipped_example = (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
+assert sha256(shipped_example).hexdigest() == example["sha256"]  # the shipped copy
+assert sha256(shipped_example.replace(b"\n", b"\r\n")).hexdigest() == example["sha256_upstream"]  # upstream is CRLF
 if len(sys.argv) > 1:
     with zipfile.ZipFile(sys.argv[1]) as kit:
         assert "POPS/UDPFSCONFIG.DAT" not in kit.namelist(), "sample server IP must not be active"
         sample = kit.read("POPS/UDPFSCONFIG.DAT.example")
         assert sample.strip() == b"192.168.1.11"
-        for name in provenance["UDPFS_TEST"]["files"]:
+        for name in provenance["UDPFS_1_0_1"]["files"]:
             assert kit.read("POPS/" + name) == (ROOT / "bin/POPSLDR" / name).read_bytes()
         for path in (ROOT / "docs/third_party/okeanos_udpfs").iterdir():
             if path.is_file():
                 assert kit.read("POPS/UDPFS-NOTICES/" + path.name) == path.read_bytes()
+        assert "POPS/PATHMAP.INI" not in kit.namelist(), "option file must ship inert"
+        assert kit.read("POPS/PATHMAP.INI.example") == (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
         assert kit.read("POPS/UDPFS_BDMA.md") == (ROOT / "docs/UDPFS_BDMA.md").read_bytes()
     print("Release ZIP: current network-only UDPFS pair, setup and notices verified")
 

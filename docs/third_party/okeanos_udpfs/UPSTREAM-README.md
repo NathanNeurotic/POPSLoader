@@ -42,7 +42,8 @@ Tested on hardware with:
 - POPStarter also needs `mc?:/POPSTARTER/usbhdfsd.irx` at start-up and does not
   run without it. Use `usbd_bd_assault.irx` from the BDM Assault project, renamed
   to `usbhdfsd.irx`.
-- Optional: `IPCONFIG.DAT` and `UDPFSCONFIG.DAT` in `mc?:/SYS-CONF/` (see below).
+- Optional: `IPCONFIG.DAT` and `UDPFSCONFIG.DAT` in `mc?:/SYS-CONF/`, and
+  `PATHMAP.INI` in `mc?:/POPSTARTER/` (see below).
 - Ember: use a launcher to load this module, load the memory card modules
   before it (see README_CONFIG.txt).
 
@@ -68,6 +69,21 @@ Two optional files on the memory card: `IPCONFIG.DAT` (PS2 IP) and
 `UDPFSCONFIG.DAT` (server IP), in `mc0:/SYS-CONF/` then `mc1:/SYS-CONF/`.
 See [README_CONFIG.txt](README_CONFIG.txt). Without them the PS2 uses
 192.168.1.10 and the server is found by broadcast.
+
+Options, in `mc0:/POPSTARTER/PATHMAP.INI` then `mc1:/POPSTARTER/PATHMAP.INI`
+(`KEY=VALUE` lines):
+
+- `GAMEID_DIR=1`: POPStarter's per-game folder (VMC files, cheats, patches) is named
+  after the game ID read from the VCD, e.g. `POPS/SLUS_123.45/`, instead of
+  after the VCD (`POPS/<game>/`). If the ID cannot be found the normal folder
+  name is used.
+- `DISCS_DIR=1`: `POPS/DISCS_DIR.TXT` on the server (`ID=Folder` or `ID1,ID2,...=Folder` lines) gives the
+  discs of a game one shared folder, whichever disc is started. A game that is
+  not listed keeps POPStarter's folder, or the ID folder with `GAMEID_DIR=1`.
+- `CHEATS_WS=1`: `CHEATS_WS.TXT` is read in place of the game folder's
+  `CHEATS.TXT` when it exists (cheats for widescreen).
+
+All three are off by default.
 
 ## Building
 
@@ -110,3 +126,7 @@ network. Read this before trusting it with data you care about.
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The project is
 under the Academic Free License 2.0 (`licenses/`).
+
+The BIN/CUE support follows the VCD layout of CUE2POPS: thanks to krACKen, its
+author, and to bucanero for reconstructing its lost source code
+([POPS2CUE](https://github.com/bucanero/pops2cue/releases), GPL-3.0).

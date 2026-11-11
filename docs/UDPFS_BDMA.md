@@ -2,8 +2,9 @@
 
 POPSLoader 1.4.0 replaces USB-first [BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) Alpha with
 [Okeanos UDPFS Assault 1.0.0](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0).
-After 1.4.0 the driver moves to [Okeanos](https://github.com/Okeanos86)'s [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST) pre-release
-(2026-10-28): the same network read/write driver, plus BIN/CUE games (below).
+After 1.4.0 the driver moves to [Okeanos](https://github.com/Okeanos86)'s [UDPFS Assault 1.0.1](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1)
+(2026-11-08, replacing the 2026-10-28 TEST pre-release): the same network read/write driver, plus BIN/CUE games and the
+optional `PATHMAP.INI` per-game folder options (below).
 USB is no longer required. The `UDPFS` settings key and `.udpfs` asset names are
 retained for upgrades; they now select the full network read/write driver.
 The old USB-first mode is removed. Physical-console status is
@@ -38,6 +39,22 @@ Upstream limits: track 1 must be MODE2/2352, no PREGAP/POSTGAP, every track need
 INDEX 01, `.bin` sizes must be multiples of 2352, cue sheets up to 16 KiB and 99 tracks,
 images under 4 GiB. The driver uses about 46 KB more IOP RAM than 1.0.0 and opens each
 `.bin` once at start. The Retro GEM ID is not read from a cue game.
+
+**Per-game folders and widescreen cheats (`PATHMAP.INI`).** Optional file
+`mc0:/POPSTARTER/PATHMAP.INI` (the kit ships an inert, all-off `POPS/PATHMAP.INI.example`; copy it there to use it), then `mc1:`, at most 512 bytes, `KEY=VALUE` lines, only the
+value `1` turns an option on. POPSLoader neither creates nor edits it; the driver reads it:
+`GAMEID_DIR=1` names a game's folder (VMC, cheats, patches) after its game ID, e.g.
+`POPS/SLUS_011.56/`; `DISCS_DIR=1` takes the folder from the ID's line in the server's
+`POPS/DISCS_DIR.TXT` (`ID=Folder`) so all discs of a game share one folder (it wins over
+`GAMEID_DIR`); `CHEATS_WS=1` reads `CHEATS_WS.TXT` in place of `CHEATS.TXT`. The `.VCD` itself
+never moves, so POPSLoader's game list is unchanged. Details:
+[the mirrored upstream configuration notes](third_party/okeanos_udpfs/README_CONFIG.txt).
+It is not available in the Ember build; Ember keeps its own `.cue`/`.bin` handling. The upstream release page lists `PATHMAP.INI` as not supported in the Ember build, so its options have no effect there (the mirrored notes' Ember paragraph describes the card read only).
+
+**Saves and `PATHMAP.INI`.** Enabling `GAMEID_DIR` or `DISCS_DIR`, or changing a mapping, makes the driver look for a game's VMC and other files in the mapped folder; existing files stay in the old folder, so the game starts without those saves until you move them. Move the game's files first. If the server does not answer the `DISCS_DIR` list lookup, the driver falls back to another folder for that launch, so a game can start with empty memory cards: retry before saving, and check both folders before moving VMCs. Back up each disc folder and the destination folder first. If VMC filenames conflict, choose which files to copy into the shared folder and keep the other copies in the backup.
+POPSLoader's "delete the POPSTARTER folder" action removes `mc?:/POPSTARTER` recursively,
+which includes a `PATHMAP.INI` you placed there. The 1.0.1 module is about 11 KB larger than
+the TEST build (51,029 B to 61,949 B); IOP fit on hardware is NOT verified.
 
 Every runtime `mass:` operation goes to the server, including dependency reads
 and VMC writes. The `XX.<game>.ELF` mass selector remains correct: `mass:` is the
