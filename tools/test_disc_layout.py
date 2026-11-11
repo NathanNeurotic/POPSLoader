@@ -40,7 +40,7 @@ for height in (448, 480, 512):
     for y in (32, 96):  # details lift the artwork; icon must follow it
         for iw, ih in ((128, 128), (256, 128), (128, 256)):
             rect, frame_h = render(height, iw, ih, y, True, True)
-            assert 108 <= max(rect.w, rect.h) <= 120, "disc art is out of the expected size range"
+            assert max(rect.w, rect.h) == min(120, int(frame_h * 0.5 + 0.5)), "incorrect disc icon size"
             assert rect.x >= 344 and rect.x + rect.w <= 600, "icon overlaps game list or safe edge"
             assert rect.y >= y and rect.y + rect.h <= y + frame_h, "icon exceeds artwork height"
             expected = iw / ih * 480 / height
