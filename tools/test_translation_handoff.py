@@ -70,10 +70,11 @@ class TranslationHandoffTests(unittest.TestCase):
 
     def test_shipped_catalogs_cover_current_runtime_keys(self):
         _, required, dictionaries = source_data()
+        self.assertEqual({'FR', 'DE', 'PT', 'ES', 'IT', 'HU'}, set(dictionaries))
         for language, rows in dictionaries.items():
             with self.subTest(language=language):
                 catalog = dict(rows)
-                self.assertEqual([], sorted(required - set(catalog)))
+                self.assertEqual([], sorted((required | {'Detecting MMCE device...'}) - set(catalog)))
                 for english, translated in rows:
                     self.assertEqual(FORMAT.findall(english), FORMAT.findall(translated))
                     self.assertEqual(english.count('\n'), translated.count('\n'))
