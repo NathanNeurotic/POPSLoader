@@ -1,4 +1,5 @@
 [Unreleased]
+- New (experimental): BDMA Mode "i.Link (experimental)" and POPSTARTER titles on the i.Link page, using RiptOPL's i.LINK driver pair (OPL dfa28822), embedded and staged like the other modes. Hardware: NOT TESTED; unproven.
 - New (experimental): i.Link page for Ember games (hidden by default; Settings > Device List). Loads the ps2sdk i.LINK drivers on first entry. Hardware: NOT TESTED; POPSTARTER titles over i.Link are not available.
 
 [1.4.1] - November 4th, 2026

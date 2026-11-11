@@ -81,6 +81,10 @@ extern unsigned char asset_usbd_irx_udpfs[];
 extern unsigned int size_asset_usbd_irx_udpfs;
 extern unsigned char asset_usbhdfsd_irx_udpfs[];
 extern unsigned int size_asset_usbhdfsd_irx_udpfs;
+extern unsigned char asset_usbd_irx_ilink[];
+extern unsigned int size_asset_usbd_irx_ilink;
+extern unsigned char asset_usbhdfsd_irx_ilink[];
+extern unsigned int size_asset_usbhdfsd_irx_ilink;
 extern unsigned char asset_usbd_irx_ata[];
 extern unsigned int size_asset_usbd_irx_ata;
 extern unsigned char asset_usbhdfsd_irx_ata[];
@@ -157,6 +161,8 @@ static const embedded_asset_t g_embedded_assets[] = {
 ASSET_ENTRY("usbhdfsd.irx.udpfs", asset_usbhdfsd_irx_udpfs),
 ASSET_ENTRY("usbd.irx.ata", asset_usbd_irx_ata),
 	ASSET_ENTRY("usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
+	ASSET_ENTRY("usbd.irx.ilink", asset_usbd_irx_ilink),
+	ASSET_ENTRY("usbhdfsd.irx.ilink", asset_usbhdfsd_irx_ilink),
 	ASSET_ENTRY("icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("del.icn.bdma", asset_del_icn_bdma),
@@ -209,6 +215,8 @@ ASSET_ENTRY("usbd.irx.ata", asset_usbd_irx_ata),
 ASSET_ENTRY("POPSLDR/usbhdfsd.irx.udpfs", asset_usbhdfsd_irx_udpfs),
 ASSET_ENTRY("POPSLDR/usbd.irx.ata", asset_usbd_irx_ata),
 	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.ata", asset_usbhdfsd_irx_ata),
+	ASSET_ENTRY("POPSLDR/usbd.irx.ilink", asset_usbd_irx_ilink),
+	ASSET_ENTRY("POPSLDR/usbhdfsd.irx.ilink", asset_usbhdfsd_irx_ilink),
 	ASSET_ENTRY("POPSLDR/icon.sys.bdma", asset_icon_sys_bdma),
 	ASSET_ENTRY("POPSLDR/list.icn.bdma", asset_list_icn_bdma),
 	ASSET_ENTRY("POPSLDR/del.icn.bdma", asset_del_icn_bdma),

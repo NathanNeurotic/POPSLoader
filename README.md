@@ -63,7 +63,7 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
 | SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
 | UDPFS | Full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
-| i.Link | Experimental, hidden by default; **Ember games only** | **Untested on hardware** (cannot be run in PCSX2); POPSTARTER titles over i.Link are not implemented |
+| i.Link | Experimental, hidden by default; Ember games and POPSTARTER titles | **Untested on hardware** (cannot be run in PCSX2); the POPSTARTER path uses RiptOPL's i.LINK BDMA pair and is unproven |
 
 HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; later builds use its TEST pre-release, which also plays `POPS/*.cue` games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 

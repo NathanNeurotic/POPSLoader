@@ -29,8 +29,9 @@ remain unverified. An **experimental i.Link page** now lists and launches Ember
 games from `ilink0:/EMBER/` (hidden by default; show it under Settings > Device
 List). It loads `iLinkman.irx` and `IEEE1394_bd_mini.irx` from ps2sdk on first
 entry, the same recipe RiptOPL uses, and relies on Ember never resetting the IOP.
-It is **hardware-untested and cannot be run in PCSX2**; POPSTARTER titles are not
-offered on that page. Do not claim full device parity.
+It is **hardware-untested and cannot be run in PCSX2**. The same page also lists
+POPSTARTER titles, launched through the experimental BDMA Mode "i.Link" (RiptOPL's
+i.LINK driver pair), which is unproven. Do not claim full device parity.
 
 ```text
 <mounted-device-root>/
@@ -103,7 +104,7 @@ CUE/BIN launching, virtual-card writes, per-game/global setting
 persistence, and preserving prior POPSTARTER/UDPFS behavior.
 APA/PFS code is implemented but requires physical console verification.
 **i.Link is experimental and untested** (Ember only; see above). POPSTARTER
-over i.Link is not implemented. Do not claim i.Link parity until it is
+over i.Link is experimental and unproven. Do not claim i.Link parity until it is
 confirmed on a console.
 APA/PFS is implemented but still requires physical-console verification.
 

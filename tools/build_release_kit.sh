@@ -45,6 +45,9 @@ PY
 # Fail closed if the i.LINK driver pair is not the pinned build (a stale pin ships the old driver).
 echo "9cd849ea7f06d72f3ee6015032dfd91d6fcb1332e87d5acde306cb42b5d4313d  dist_root/POPS/usbhdfsd.irx.ilink" | sha256sum -c -
 echo "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369  dist_root/POPS/usbd.irx.ilink" | sha256sum -c -
+# The launcher embeds the same pair for its experimental i.Link BDMA mode: they must not drift.
+cmp bin/POPSLDR/usbd.irx.ilink dist_root/POPS/usbd.irx.ilink
+cmp bin/POPSLDR/usbhdfsd.irx.ilink dist_root/POPS/usbhdfsd.irx.ilink
 # Replace the historical reference bundle's Alpha UDPFS payload and notices.
 # The existing .udpfs suffix now always means the full-network UDPFS Assault (TEST 2026-10-28) release.
 cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
