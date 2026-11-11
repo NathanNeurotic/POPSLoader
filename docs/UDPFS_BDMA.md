@@ -49,7 +49,9 @@ value `1` turns an option on. POPSLoader neither creates nor edits it; the drive
 `GAMEID_DIR`); `CHEATS_WS=1` reads `CHEATS_WS.TXT` in place of `CHEATS.TXT`. The `.VCD` itself
 never moves, so POPSLoader's game list is unchanged. Details:
 [the mirrored upstream configuration notes](third_party/okeanos_udpfs/README_CONFIG.txt).
-It is not available in the Ember build; Ember keeps its own `.cue`/`.bin` handling.
+It is not available in the Ember build; Ember keeps its own `.cue`/`.bin` handling. The upstream release page lists `PATHMAP.INI` as not supported in the Ember build, so its options have no effect there (the mirrored notes' Ember paragraph describes the card read only).
+
+**Saves and `PATHMAP.INI`.** Enabling `GAMEID_DIR` or `DISCS_DIR`, or changing a mapping, makes the driver look for a game's VMC and other files in the mapped folder; existing files stay in the old folder, so the game starts without those saves until you move them. Move the game's files first. If the server does not answer the `DISCS_DIR` list lookup, the driver falls back to another folder for that launch, so a game can start with empty memory cards: retry before saving, and check both folders before moving VMCs.
 POPSLoader's "delete the POPSTARTER folder" action removes `mc?:/POPSTARTER` recursively,
 which includes a `PATHMAP.INI` you placed there. The 1.0.1 module is about 11 KB larger than
 the TEST build (51,029 B to 61,949 B); IOP fit on hardware is NOT verified.
