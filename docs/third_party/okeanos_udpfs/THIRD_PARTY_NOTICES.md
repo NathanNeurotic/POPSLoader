@@ -9,6 +9,7 @@ The license of this project itself is in the `LICENSE` file.
 | PS2SDK / PS2DEV headers and libraries | PS2DEV / PS2SDK contributors | Academic Free License 2.0 | build system, IOP headers, imports |
 | Neutrino, UDPFS, UDPBD, UDPRDMA, `udpfs_server.py` (all in the Neutrino repository) | ps2max32 | Academic Free License 3.0 | protocol implemented by the client; `src/net/` derives from UDPBD |
 | udpfsd | Copyright 2026 Ivan V (pcm720) | BSD-3-Clause (below) | reference for the protocol (no code copied); the server the module is tested with |
+| CUE2POPS (krACKen), reconstructed source in POPS2CUE (bucanero) | krACKen; bucanero (reconstruction) | GPL-3.0 | reference for the POPStarter VCD header layout and limits used by the BIN/CUE support (`vcd_cue.c`); no code copied |
 
 Full license texts (AFL 2.0, AFL 3.0) are provided alongside this notice
 in POPSLoader source and the packaged `POPS/UDPFS-NOTICES/` folder:

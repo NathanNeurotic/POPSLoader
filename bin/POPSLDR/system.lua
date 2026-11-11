@@ -4379,7 +4379,7 @@ local BDMA_SUFFIX = {
   MX4SIO = ".mx4sio",
   MMCE = ".mmce",
   ATA = ".ata",
-  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault TEST (2026-10-28) full network read/write, BIN/CUE
+  UDPFS = ".udpfs"  -- Okeanos UDPFS Assault 1.0.1 (2026-11-08) full network read/write, BIN/CUE
 }
 
 -- SMB-modules pack (mirrors the BDMA install pattern; SAME mc:/POPSTARTER folder,
@@ -8298,7 +8298,7 @@ function PLDR.GetPS1GameLists(path, updating, on_progress)
   local DIR = System.listDirectory(PLDR.GAMEPATH)
   if DIR ~= nil then
     local hide_set = CollectHideBasenames(DIR)
-    -- Okeanos UDPFS Assault (TEST 2026-10-28) serves POPS/<game>.cue or .CUE plus
+    -- Okeanos UDPFS Assault (1.0.1) serves POPS/<game>.cue or .CUE plus
     -- its .bin files to POPSTARTER as POPS/<game>.VCD when no real .VCD exists. On
     -- UDPFS such a cue is listed under that virtual .VCD name, once, so the
     -- selector, uppercase check, art and hide sidecar all work unchanged.
