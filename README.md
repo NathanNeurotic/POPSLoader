@@ -63,7 +63,7 @@ For **stable 1.2.3**, use that release's existing installation layout, which doe
 | Internal APA/PFS HDD | `__.POPS*` / `__common/POPS/` | `__.EMBER*` partition scan host-tested; writes unverified |
 | SMBv1 | SMB share `POPS/` | Enumeration host-tested; mount and handoff unverified |
 | UDPFS | Full network POPS reads / VMC writes; no USB required | Enumeration host-tested; console handoff unverified |
-| i.Link | Hidden/unsupported in POPSLoader | **Deferred** until RiptOPL demonstrates reliable i.Link on PS2 hardware |
+| i.Link | Experimental, hidden by default; **Ember games only** | **Untested on hardware** (cannot be run in PCSX2); POPSTARTER titles over i.Link are not implemented |
 
 HDD/PFS artwork belongs under `__common/POPS/ART/`. The 1.4.0 UDPFS mode uses UDPFS Assault 1.0.0 with no USB requirement; later builds use its TEST pre-release, which also plays `POPS/*.cue` games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See [device details](docs/wiki/Device-Support.md) and [UDPFS setup](docs/UDPFS_BDMA.md).
 
@@ -81,7 +81,7 @@ Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/E
 - SMBv1 and opt-in UDPFS VCD browsing with explicit network configuration.
 - Adjustable video, boot page, display and menu navigation; Triangle Exit menu and BOOT.ELF chainloading.
 
-**Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link remains unsupported; UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
+**Current limitations:** Ember console game launch, controller and VMC support still require evidence; i.Link is experimental (Ember only, untested on hardware); UDPFS and reported device issues require physical testing. Track verified regressions and dates in [STATE.md](STATE.md) and the [QA matrix](QA_REGRESSION_MATRIX.md).
 
 For complete menus, controls, recovery, troubleshooting and developer details, continue below or use the [maintained GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki).
 
@@ -136,7 +136,7 @@ Press **Start** on the menu to open Settings. Inside Settings, **Start** opens t
 
 | Setting | Options | What it does |
 | :--- | :--- | :--- |
-| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | Shown · Hidden (**i.Link ships Hidden**) | Hide or show each entry on the main device carousel. **i.Link is Hidden by default** (its flow isn't implemented yet); every other device defaults to Shown. Set unused backends to **Hidden** to remove them from the wheel, or show i.Link if you want it. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
+| **(one row per device: MMCE, MX4SIO, USB, i.Link, SMB, Disc)** | Shown · Hidden (**i.Link ships Hidden**) | Hide or show each entry on the main device carousel. **i.Link is Hidden by default** (experimental: Ember games only, untested on hardware); every other device defaults to Shown. Set unused backends to **Hidden** to remove them from the wheel, or show i.Link if you want it. At least one device must stay **Shown**. Saved with your settings (`HIDDEN_DEVICES`); hidden entries are skipped during carousel navigation with no gaps, and launch behavior is unchanged. |
 | **Internal HDD** | PFS · exFAT (APA-Jail) · **Both (default)** | Picks which internal-HDD page(s) show on the carousel — the classic Sony APA/PFS page, the APA-Jail **exFAT** page (BDMA ATA backend), or **both** (the default). PFS (APA) and exFAT **coexist** — showing both does not gate either one (saved as `HDD_FS`). A `-page=ata` (or `exfat`) launch argument still opens the exFAT page regardless of this setting. |
 
 ### Game List
@@ -260,7 +260,7 @@ Planned for subsequent updates:
 *   **In-Game Features**: Support for per-game fixes, cheat codes, Virtual Memory Card (VMC) setups, and multi-disc swap prompts.
 *   **`HDD (exFAT)`** menu flow: now **implemented** as a `mass:` backend via BDMA Mode `ATA` (built, CI/Rolling green) — **validating on hardware**.
 *   **`SMB (v1)`** network game browsing: now **implemented** (settings, an "SMB modules" install toggle, lazy connect, share browse, launch, and disconnect-on-exit; built, CI/Rolling green) — **browse + launch hardware-confirmed on a static IP config**; the DHCP path was fixed in `bb62f2be` and is not yet confirmed.
-*   **`i.Link`** remains intentionally hidden/unsupported. Ember i.Link development is deferred until RiptOPL proves reliable support on physical PS2 hardware.
+*   **`i.Link`** is experimental and hidden by default: show it under Settings > Device List. It lists and launches **Ember** games only, using ps2sdk's i.LINK drivers as RiptOPL does. Untested on hardware; POPSTARTER titles over i.Link are not implemented.
 
 See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the prioritized backlog.
 

@@ -1,4 +1,5 @@
 [Unreleased]
+- New (experimental): i.Link page for Ember games (hidden by default; Settings > Device List). Loads the ps2sdk i.LINK drivers on first entry. Hardware: NOT TESTED; POPSTARTER titles over i.Link are not available.
 - UDPFS: move to Okeanos UDPFS Assault 1.0.1 (2026-11-08). New optional PATHMAP.INI (GAMEID_DIR, DISCS_DIR, CHEATS_WS) for per-game folders and widescreen cheats; the companion driver is unchanged. Hardware: NOT TESTED.
 
 [1.4.1] - November 4th, 2026
