@@ -15,4 +15,4 @@ This is an overview of **code coverage**, not a blanket compatibility certificat
 
 The Ethernet menu supports choosing SMBv1 or experimental **UDPFS** for POPStarter, with appropriate server, driver and setup requirements. Neither POPStarter's UDPFS path nor Ember's network handoff should be advertised as certified solely because host tests pass. Consult [UDPFS details](../UDPFS_BDMA.md).
 
-POPSLoader's [Ember development guide](Ember-Core.md) documents separate Ember settings and its keep-IOP launch path. **i.Link is intentionally excluded from the PR #600 completion gate.** Retain existing unsupported UI, revisit when RiptOPL demonstrates the device on real hardware, and do not call the resulting Ember release full-device parity.
+POPSLoader's [Ember development guide](Ember-Core.md) documents separate Ember settings and its keep-IOP launch path. **i.Link is intentionally excluded from the PR #600 completion gate.** Keep the page experimental and hidden by default until it is tested on real hardware, and do not call the resulting Ember release full-device parity.
