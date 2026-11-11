@@ -70,6 +70,7 @@ class TranslationHandoffTests(unittest.TestCase):
 
     def test_shipped_catalogs_cover_current_runtime_keys(self):
         _, required, dictionaries = source_data()
+        self.assertEqual({'FR', 'DE', 'PT', 'ES', 'IT', 'HU'}, set(dictionaries))
         for language, rows in dictionaries.items():
             with self.subTest(language=language):
                 catalog = dict(rows)
