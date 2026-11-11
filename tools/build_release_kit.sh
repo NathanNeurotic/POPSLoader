@@ -49,12 +49,15 @@ echo "5ea4818ba1cf5207f6d7cadb4c13b5afa88c37c260750c21155b079a8c18f369  dist_roo
 cmp bin/POPSLDR/usbd.irx.ilink dist_root/POPS/usbd.irx.ilink
 cmp bin/POPSLDR/usbhdfsd.irx.ilink dist_root/POPS/usbhdfsd.irx.ilink
 # Replace the historical reference bundle's Alpha UDPFS payload and notices.
-# The existing .udpfs suffix now always means the full-network UDPFS Assault (TEST 2026-10-28) release.
+# The existing .udpfs suffix now always means the full-network UDPFS Assault (1.0.1, 2026-11-08) release.
 cp bin/POPSLDR/usbd.irx.udpfs bin/POPSLDR/usbhdfsd.irx.udpfs dist_root/POPS/
 rm -rf dist_root/POPS/UDPFS-NOTICES
 mkdir -p dist_root/POPS/UDPFS-NOTICES
 cp docs/third_party/okeanos_udpfs/* dist_root/POPS/UDPFS-NOTICES/
 cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
+# Okeanos 1.0.1 option file, shipped inert (the driver reads only a file named PATHMAP.INI
+# in mc?:/POPSTARTER/); every option is off in it, matching the driver defaults.
+cp docs/third_party/okeanos_udpfs/PATHMAP.INI.example dist_root/POPS/PATHMAP.INI.example
 # The reference bundle's example server IP must never become active MC config.
 # Preserve it as an explicit opt-in example; unedited kits use discovery.
 mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example

@@ -295,7 +295,7 @@ vm.execute(r"""
 """)
 print("PASS UDPFS: malformed journal blocks without deleting config")
 
-# Okeanos UDPFS Assault TEST serves POPS/<game>.cue/.CUE as POPS/<game>.VCD: the UDPFS
+# Okeanos UDPFS Assault (TEST, 1.0.1) serves POPS/<game>.cue/.CUE as POPS/<game>.VCD: the UDPFS
 # scan lists such a cue once under that virtual name; other roots still list only VCDs.
 vm = boot()
 vm.execute(r"""

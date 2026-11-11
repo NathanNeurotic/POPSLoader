@@ -1,17 +1,18 @@
 {
-  "UDPFS_TEST": {
-    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
-    "prerelease": true,
-    "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
+  "UDPFS_1_0_1": {
+    "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1",
+    "prerelease": false,
+    "archive_sha256": "cd87f94b6981ff7435193ced699d30a0ba4345dfb9acfa25f996b95b93df52fd",
     "supersedes": {
-      "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.0",
-      "archive_sha256": "a22311192bbf4d5252d62aec130e57a900505bc71f8603407fc45b7c453da27e"
+      "release": "https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST",
+      "archive_sha256": "225ea524f1eed59bffcc193e2fdf92868e6a2061a526a8c1d21675ac71c24d2f",
+      "note": "UDPFS Assault TEST (2026-10-28) pre-release; 1.0.0 before it"
     },
     "files": {
       "usbd.irx.udpfs": {
         "source": "udp_fs_assault.irx",
-        "sha256": "24e272996a6ea4af5ef20cb5d89a29aa615d8b828087032e75bc2b05aaac583e",
-        "size": 51029
+        "sha256": "d1d5502454fbc9ca7c1fd039b65bbc143f8b87ffdfc0e275ce13dca4b191a738",
+        "size": 61949
       },
       "usbhdfsd.irx.udpfs": {
         "source": "usbd_bd_assault.irx",
@@ -23,6 +24,14 @@
       "README_CONFIG.txt: clarify driver and companion destinations",
       "UPSTREAM-README.md: repair relative links for the mirrored layout",
       "THIRD_PARTY_NOTICES.md: point to packaged AFL license texts"
-    ]
+    ],
+    "config_examples": {
+      "PATHMAP.INI.example": {
+        "source": "config_examples/PATHMAP.INI",
+        "sha256_upstream": "e0cc55bf70f7db94e4351145852f6f1f0aebadbca59717a2cb49770ba64ec237",
+        "sha256": "bce937398fce550af4aa8bb39cffe8ff6a52680e8cb9d5bfe40e5a1bea3cf369",
+        "note": "sha256_upstream is the upstream file (CRLF line endings); sha256 is the shipped copy, identical except the repo's text=auto normalises it to LF; shipped inert in the kit as POPS/PATHMAP.INI.example, copy to mc?:/POPSTARTER/PATHMAP.INI to use"
+      }
+    }
   }
 }
