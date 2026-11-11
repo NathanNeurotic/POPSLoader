@@ -88,6 +88,10 @@ for name, record in provenance["UDPFS_1_0_1"]["files"].items():
     assert len(body) == record["size"]
     assert sha256(body).hexdigest() == record["sha256"]
 assert provenance["UDPFS_1_0_1"]["files"]["usbd.irx.udpfs"]["sha256"] == "d1d5502454fbc9ca7c1fd039b65bbc143f8b87ffdfc0e275ce13dca4b191a738"
+example = provenance["UDPFS_1_0_1"]["config_examples"]["PATHMAP.INI.example"]
+shipped_example = (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
+assert sha256(shipped_example).hexdigest() == example["sha256"]  # the shipped copy
+assert sha256(shipped_example.replace(b"\n", b"\r\n")).hexdigest() == example["sha256_upstream"]  # upstream is CRLF
 if len(sys.argv) > 1:
     with zipfile.ZipFile(sys.argv[1]) as kit:
         assert "POPS/UDPFSCONFIG.DAT" not in kit.namelist(), "sample server IP must not be active"

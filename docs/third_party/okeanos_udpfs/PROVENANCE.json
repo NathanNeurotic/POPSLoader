@@ -28,8 +28,9 @@
     "config_examples": {
       "PATHMAP.INI.example": {
         "source": "config_examples/PATHMAP.INI",
-        "sha256": "e0cc55bf70f7db94e4351145852f6f1f0aebadbca59717a2cb49770ba64ec237",
-        "note": "verbatim; shipped inert in the kit as POPS/PATHMAP.INI.example, copy to mc?:/POPSTARTER/PATHMAP.INI to use"
+        "sha256_upstream": "e0cc55bf70f7db94e4351145852f6f1f0aebadbca59717a2cb49770ba64ec237",
+        "sha256": "bce937398fce550af4aa8bb39cffe8ff6a52680e8cb9d5bfe40e5a1bea3cf369",
+        "note": "sha256_upstream is the upstream file (CRLF line endings); sha256 is the shipped copy, identical except the repo's text=auto normalises it to LF; shipped inert in the kit as POPS/PATHMAP.INI.example, copy to mc?:/POPSTARTER/PATHMAP.INI to use"
       }
     }
   }
