@@ -1,7 +1,7 @@
 # POPSLoader Regression Matrix
 
 Last updated: 2026-10-27 (Slovak translation handoff; host checks)
-Released line: **1.4.1** (2026-11-04). `master`, `dev`, and `experimental` share the release source and `v1.4.1` stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
+Released line: **1.4.2** (2026-11-11). `master` carries the `v1.4.2` stamp; `dev` and `experimental` are brought up to it after the release. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
@@ -104,7 +104,7 @@ controller re-init, network persistence and storage regression.
   T60 host regression for transient scanning, RW launch remount,
   write-through and preservation of its PFS mount across keep-IOP.
   Physical VMC/controller validation is still required.
-- **Ember i.Link:** intentionally deferred until RiptOPL demonstrates reliable i.Link integration on physical hardware. Out of scope for Ember PR #600; do not gate the other devices' readiness on it or claim full device parity. The existing generic i.Link menu remains unsupported/hidden.
+- **i.Link (Ember and POPSTARTER):** experimental page, hidden by default (Settings > Device List); not tested on hardware (PCSX2 cannot run i.LINK). Do not gate the other devices' readiness on it or claim full device parity.
 
 ## Experimental UDPFS / [Okeanos](https://github.com/Okeanos86) BDMA (2026-10-12)
 
@@ -194,7 +194,8 @@ These gates are defined by `.github/workflows/compilation.yml`. The separate `.g
 | D-07B | SMB (v1) launch | SMB connected and a VCD listed (D-07) | Launch an SMB title | POPStarter receives argv0 selector `smb:/POPS/SB.<name>.ELF` and streams the VCD from its own `smb:/POPS` mount via `mc:/POPSTARTER/SMBCONFIG.DAT`. **HARDWARE-CONFIRMED on a static IP config** (maintainer, in use for some time), which also settles the previously-flagged argv0 prefix — `smb:/POPS/SB.<name>.ELF` is accepted; the `mass:/…` fallbacks were never needed. **Still unconfirmed: the DHCP path.** POPStarter has no DHCP of its own and needs a literal address in `mc?:/POPSTARTER/IPCONFIG.DAT`; builds before `bb62f2be` *deleted* that file whenever IP assignment was DHCP (the shipped default), so a DHCP setup browsed fine and then died shortly into the launch (#560). Retest specifically with **IP assignment = DHCP**: after connecting, `IPCONFIG.DAT` must exist on the card and hold the leased address, and the game must boot. |
 | D-07C | SMB (v1) disconnect | SMB connected (D-07) | Leave the SMB page; also force a failed connect | Leaving the SMB page tears the session down (`CLOSESHARE`+`LOGOFF`); a failed connect also tears down so no half-open session lingers. NEW — validating on hardware. |
 | D-07D | SMB option absent | SMB modules pack NOT installed / no reachable server | Select `SMB (v1)` | Connect is lazy and fails cleanly with the session torn down (no half-open session); no hang. NEW — validating on hardware. |
-| D-07A | i.Link option status | any setup | Select `i.Link` | UI shows `Not Implemented Yet` |
+| D-07A | i.Link option status (no drive) | any setup with no i.Link drive; i.Link unhidden in Settings > Device List | Select `i.Link` | Experimental i.Link page opens, or a driver/no-device message appears; no crash |
+| D-07E | i.Link connected drive | compatible i.Link drive holding known Ember games and POPSTARTER VCDs; i.Link unhidden | Select `i.Link` | Drive is detected and its games/VCDs are listed. **Hardware-untested** |
 | D-08 | HDD POPS partition scan | `__.POPS`, `__.POPS0`, and one higher `__.POPSN` present | Open HDD (PFS) | titles from all present POPS partitions list in stable partition order |
 | D-09 | HDD duplicate title names | Same VCD filename exists in two POPS partitions | Launch each entry from HDD (PFS) | each entry launches from its own source partition |
 | D-10 | HDD POPSTARTER on HDD | POPSLoader and/or configured `POPSTARTER_PATH` points to HDD, including HDD `hdd0:__common/POPS/POPSTARTER.ELF` resolution | Launch HDD title | POPSTARTER resolves without blocking launch or hanging on a black screen. For an internal-PFS HDD (APA) title the resolver (`PLDR.ResolveLaunchPopstarterPath`, `bin/POPSLDR/system.lua`) tries, in order: an explicit custom path when it resolves; then `hdd0:__common/POPS/POPSTARTER.ELF` (resolved through the `__common` partition machinery, so the D-10/D-15 partition-context + embedded-loader handoff is preserved); then cwd / boot-sidecar; then the `mc` net |

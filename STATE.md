@@ -1,4 +1,4 @@
-Last updated: 2026-11-04. **Official release: 1.4.1**. This release includes network-only UDPFS Assault 1.0.0, persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master, dev and experimental are aligned at the release cut. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. Experimental i.Link page (Ember + POPSTARTER) added after this release (untested).
+Last updated: 2026-11-11. **Official release: 1.4.2**. This release includes network-only UDPFS (Okeanos' UDPFS Assault 1.0.1), persistent configuration recovery, localization fixes and updated translator handoffs, alongside the existing Ember Beta-2 option and full ZIP/PSU kit. master carries the 1.4.2 stamp; dev and experimental are brought up to it after the release. **Physical-console verification remains pending** for UDPFS and Ember launch/controller/VMC behavior; see `QA_REGRESSION_MATRIX.md`. Issues #603 and #568 remain open for reporter confirmation. 1.4.2 adds an experimental i.Link page (Ember + POPSTARTER; hidden by default, untested on hardware) and Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2).
 
 # STATE
 
@@ -18,13 +18,13 @@ POPSLoader is a PS2 launcher for POPStarter built on Enceladus runtime pieces, w
 - Included in 1.4.1 (after 1.4.0): the embedded pair moves to [UDPFS Assault TEST](https://github.com/Okeanos86/BDMAssault/releases/tag/UDPFS_TEST)
   (2026-10-28 pre-release; new `usbd.irx.udpfs`, same companion). UDPFS lists
   `POPS/*.cue` / `*.CUE` once as virtual `.VCD` rows. Host-tested only.
-- Unreleased (after 1.4.1): `usbd.irx.udpfs` moves to [UDPFS Assault 1.0.1](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1)
+- Included in 1.4.2 (after 1.4.1): `usbd.irx.udpfs` moves to [UDPFS Assault 1.0.1](https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1)
   (2026-11-08; 61,949 B, companion byte-identical). Adds the driver's optional `PATHMAP.INI`
   options (`GAMEID_DIR`, `DISCS_DIR`, `CHEATS_WS`; see [UDPFS guide](docs/UDPFS_BDMA.md)).
   Host-tested only; hardware and IOP fit NOT verified.
 
 - USB-first fallback is removed. The `UDPFS` mode now embeds [Okeanos](https://github.com/Okeanos86)'s
-  [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) 1.0.0 and companion, serving POPS dependencies and VMC writes
+  [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) (1.0.0 at 1.4.0; 1.0.1 since 1.4.2) and companion, serving POPS dependencies and VMC writes
   entirely over the network. No USB volume is required.
 - Runtime configuration uses per-file MC0 then MC1 `SYS-CONF` precedence.
   Missing console IP configuration is created from the menu's static settings;
@@ -289,7 +289,7 @@ Investigation artifacts archived under `docs/archive/`: `U10_INVESTIGATION.md`, 
 *(The old "`ps2hdd-osd.irx` → `ps2hdd.irx` driver swap probe" item is removed: HDD read-write was achieved instead via the `EnsureBootPartitionWritable` boot-partition remount take-over, and provato confirmed the HDD is RW-writable on hardware — the IRX swap is no longer the gating path.)*
 
 ## Verification Status
-- **1.4.1** is the public release (2026-11-04; previously 1.4.0 2026-10-28, 1.3.1 2026-10-19; earlier: 1.3.1 2026-10-19, 1.3.0, 1.2.3 2026-10-13, 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
+- **1.4.2** is the public release (2026-11-11; previously 1.4.1 2026-11-04, 1.4.0 2026-10-28; earlier: 1.3.1 2026-10-19, 1.3.0, 1.2.3 2026-10-13, 1.2.2 2026-09-30, 1.2.1 2026-09-11, 1.2.0 2026-08-03, 1.1.0 2026-07-21, 1.0.1, 1.0.0 2026-07-10, BETA-12 2026-06-18, BETA-11 2026-06-15). The line was cut from **`BETA-13-PLAY`**, which was renamed to **`dev`** after the 1.0.0 cut and remains the rolling-publish source. The branch tip moves per push (see `git log`) — code/build statements above are repository-verified around the current tip.
 - The 2026-06 HDD/PAL/BDMA features are repository-verified and **boot on PCSX2**; provato confirmed the **HDD is RW-writable on real hardware**; the full feature flows are **still validating on hardware** and are **not** broadly hardware-confirmed.
 - Hardware behavior is `Unknown (verify on hardware)` unless explicitly recorded above (or in `QA_REGRESSION_MATRIX.md`) with a date.
 - See `QA_REGRESSION_MATRIX.md` for the full experiment chronology and `DECISIONS.md` for the decision log.
