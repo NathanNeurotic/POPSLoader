@@ -1188,7 +1188,7 @@ but not yet hardware-verified. Click a header to sort.</p>
 <tr><td>Disc (DKWDRV)</td><td>physical PS1 disc handoff</td><td>fork</td><td> Working</td></tr>
 <tr><td>SMB&nbsp;(v1)</td><td>network share</td><td>POPStarter core + fork browser</td><td> Implemented — validating on hardware</td></tr>
 <tr><td>UDPFS Files PS1 VCDs <em>(experimental)</em></td><td>opt-in USB + UDPFS for VCDs</td><td><a href="https://github.com/Okeanos86/BDMAssault/releases/tag/Alpha">Okeanos&#39;s BDM-UDPFS Assault</a></td><td> Included since 1.2.3; console behavior unverified</td></tr>
-<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Unsupported/hidden; Ember i.Link deferred pending RiptOPL hardware validation</td></tr>
+<tr><td>iLink (IEEE&nbsp;1394)</td><td>exFAT over FireWire</td><td>BDM (fork)</td><td> Experimental page, hidden by default; not tested on hardware</td></tr>
 </tbody></table>
 <div class="callout amber"><div class="h">BDMA Mode is the device selector — and exFAT isn't native POPS</div>
 In the POPSLoader fork, <b>BDMA&nbsp;Mode</b> picks the mass-storage backend: <code>FAT32</code> (plain USB, no
@@ -1197,7 +1197,7 @@ special driver), <code>USBEXFAT</code> (exFAT USB), <code>MX4SIO</code>, <code>M
 validating on hardware). Everything except an APA/PFS internal HDD goes through BDMA — it loads the
 <b>BDM&nbsp;Assault</b> driver set, which is how the launcher reaches exFAT USB, the exFAT internal HDD, and the
 MX4SIO / MMCE devices. POPS itself still never reads an exFAT filesystem — BDMA presents the files to it. The
-iLink is unsupported in POPSLoader; Ember i.Link is deferred until RiptOPL proves a stable hardware path. For large
+iLink in POPSLoader is an experimental page, hidden by default and not tested on hardware. For large
 FAT32/exFAT USB or HDD volumes, <b>32 KB or 64 KB allocation (cluster) size</b> is the confirmed-working format.</div>'''
 
 POPS_UDPFS_CALLOUT = '''<div class="callout info" id="pops-udpfs"><div class="h">POPS UDPFS / BDM-UDPFS Assault — experimental</div>
@@ -1609,7 +1609,7 @@ def build_popsloader():
              '<b>Experimental since 1.2.3:</b> USB + UDPFS; console support unverified. '
              '<b>Ember development:</b> PR #600 adds a separate emulator and device-aware game lists; '
              'actual launching, controllers and VMC writes still need PS2 verification. '
-             '<b>i.Link:</b> unsupported; deferred until RiptOPL proves it on hardware. '
+             '<b>i.Link:</b> experimental page, hidden by default; not tested on hardware. '
              'See <a href="popsloader/device-support.html">device status</a> and '
              '<a href="popsloader/state.html">canonical STATE</a>.</div>'
              '<div class="callout"><div class="h">Exit menu &amp; BOOT.ELF chaining (POPSLoader fork)</div>'

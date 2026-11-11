@@ -28,7 +28,7 @@ it is not an official hardware-verified compatibility release.
 - A standalone `PS1_POPSLOADER.psu` holds **only those same eight app files**, directly beneath the `PS1_POPSLOADER` PS2 save header — no nested directory. Verified byte-for-byte by both Python and RiptOPL's PSUManager C++ parser.
 - Rolling release and experimental release workflows have standalone ZIP/PSU asset rules, but each channel publishes **only from its own configured branch**. The PR targets `dev`, not the stable `master` or isolated `experimental`.
 - Ember Watch checks the upstream official asset digest against RiptOPL's verified binary and updates a separately pinned Ember source revision on `dev` after the workflow becomes active on the default branch. The POPS support-file pin stays fixed.
-- **Ember i.Link is intentionally deferred** until RiptOPL proves reliable i.Link support on physical hardware. It is not a release gate for the other Ember devices.
+- **i.Link (Ember and POPSTARTER) is experimental and hidden by default (Settings > Device List); not tested on hardware.** It is not a release gate for the other Ember devices.
 
 Installation, limitations and licensing are recorded in the maintained [project wiki](docs/wiki/Project-Wiki.md), [Ember guide](docs/EMBER_INTEGRATION.md) and [ZIP/PSU specification](docs/wiki/Release-Formats.md). Do **not** promote this feature to hardware-certified stable support based only on CI.
 

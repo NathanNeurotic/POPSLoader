@@ -11,7 +11,7 @@ This is an overview of **code coverage**, not a blanket compatibility certificat
 | APA/PFS HDD | Existing backend | `__.EMBER` mount/scan host-tested; write-through unverified |
 | SMBv1 | Existing network VCD route | Library host-tested; Ember handoff/mount lifetime unverified |
 | UDPFS | Experimental UDPFS network read/write | Library host-tested; end-to-end console path unverified |
-| i.Link | Existing device-menu placeholder | **Deferred** until RiptOPL has proven hardware support |
+| i.Link | Experimental page (Ember games and POPSTARTER VCDs); hidden by default | **Experimental**, not tested on hardware |
 
 The Ethernet menu supports choosing SMBv1 or experimental **UDPFS** for POPStarter, with appropriate server, driver and setup requirements. Neither POPStarter's UDPFS path nor Ember's network handoff should be advertised as certified solely because host tests pass. Consult [UDPFS details](../UDPFS_BDMA.md).
 

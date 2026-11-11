@@ -104,7 +104,7 @@ controller re-init, network persistence and storage regression.
   T60 host regression for transient scanning, RW launch remount,
   write-through and preservation of its PFS mount across keep-IOP.
   Physical VMC/controller validation is still required.
-- **Ember i.Link:** intentionally deferred until RiptOPL demonstrates reliable i.Link integration on physical hardware. Out of scope for Ember PR #600; do not gate the other devices' readiness on it or claim full device parity. The existing generic i.Link menu remains unsupported/hidden.
+- **i.Link (Ember and POPSTARTER):** experimental page, hidden by default (Settings > Device List); not tested on hardware (PCSX2 cannot run i.LINK). Do not gate the other devices' readiness on it or claim full device parity.
 
 ## Experimental UDPFS / [Okeanos](https://github.com/Okeanos86) BDMA (2026-10-12)
 

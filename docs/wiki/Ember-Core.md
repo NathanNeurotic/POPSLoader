@@ -29,7 +29,7 @@ Global settings are in **Settings → Ember PS1 Core**, and a game's four per-ga
 
 Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SMB and UDPFS, plus APA/PFS partition support. **This is not a statement of working console launches or safe save persistence.** Before making hardware claims, verify controller input through keep-IOP handoff, game launch and VMC writes, device identification and other regression paths on physical PS2 consoles.
 
-**i.Link is deliberately deferred until RiptOPL demonstrates stable, tested i.Link support**. It is out of scope for Ember PR #600 and does not hold back the other supported-device work. The UI continues to show i.Link as unsupported/hidden.
+**i.Link is experimental and hidden by default (Settings > Device List); not tested on hardware.** It does not hold back the other supported-device work.
 
 ## Licensing and upstream monitoring
 

@@ -20,4 +20,4 @@ The maintained project guide for **POPSLoader**, alongside the preserved histori
 
 **POPS** is Sony's PS1 emulation software and is not supplied. **POPStarter** is the original PS1 game launcher. **POPSLoader** is the modern front-end, which can browse VCD games for POPStarter and now includes a separate **Ember** PS1 emulator pathway on the rolling/development channel. The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.
 
-**Hardware testing is separate from CI.** Ember game launch, controller availability after handoff and VMC saves still require actual PS2 confirmation. i.Link is intentionally deferred until RiptOPL demonstrates working hardware support; it does not block other Ember work.
+**Hardware testing is separate from CI.** Ember game launch, controller availability after handoff and VMC saves still require actual PS2 confirmation. The experimental i.Link page is hidden by default and has not been tested on hardware; it does not block other Ember work.
