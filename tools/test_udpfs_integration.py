@@ -98,6 +98,8 @@ if len(sys.argv) > 1:
         for path in (ROOT / "docs/third_party/okeanos_udpfs").iterdir():
             if path.is_file():
                 assert kit.read("POPS/UDPFS-NOTICES/" + path.name) == path.read_bytes()
+        assert "POPS/PATHMAP.INI" not in kit.namelist(), "option file must ship inert"
+        assert kit.read("POPS/PATHMAP.INI.example") == (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
         assert kit.read("POPS/UDPFS_BDMA.md") == (ROOT / "docs/UDPFS_BDMA.md").read_bytes()
     print("Release ZIP: current network-only UDPFS pair, setup and notices verified")
 

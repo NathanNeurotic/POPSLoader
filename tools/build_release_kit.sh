@@ -47,6 +47,9 @@ rm -rf dist_root/POPS/UDPFS-NOTICES
 mkdir -p dist_root/POPS/UDPFS-NOTICES
 cp docs/third_party/okeanos_udpfs/* dist_root/POPS/UDPFS-NOTICES/
 cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
+# Okeanos 1.0.1 option file, shipped inert (the driver reads only a file named PATHMAP.INI
+# in mc?:/POPSTARTER/); every option is off in it, matching the driver defaults.
+cp docs/third_party/okeanos_udpfs/PATHMAP.INI.example dist_root/POPS/PATHMAP.INI.example
 # The reference bundle's example server IP must never become active MC config.
 # Preserve it as an explicit opt-in example; unedited kits use discovery.
 mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example

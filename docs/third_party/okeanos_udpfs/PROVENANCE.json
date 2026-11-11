@@ -24,6 +24,13 @@
       "README_CONFIG.txt: clarify driver and companion destinations",
       "UPSTREAM-README.md: repair relative links for the mirrored layout",
       "THIRD_PARTY_NOTICES.md: point to packaged AFL license texts"
-    ]
+    ],
+    "config_examples": {
+      "PATHMAP.INI.example": {
+        "source": "config_examples/PATHMAP.INI",
+        "sha256": "e0cc55bf70f7db94e4351145852f6f1f0aebadbca59717a2cb49770ba64ec237",
+        "note": "verbatim; shipped inert in the kit as POPS/PATHMAP.INI.example, copy to mc?:/POPSTARTER/PATHMAP.INI to use"
+      }
+    }
   }
 }

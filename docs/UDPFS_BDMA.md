@@ -41,7 +41,7 @@ images under 4 GiB. The driver uses about 46 KB more IOP RAM than 1.0.0 and open
 `.bin` once at start. The Retro GEM ID is not read from a cue game.
 
 **Per-game folders and widescreen cheats (`PATHMAP.INI`).** Optional file
-`mc0:/POPSTARTER/PATHMAP.INI`, then `mc1:`, at most 512 bytes, `KEY=VALUE` lines, only the
+`mc0:/POPSTARTER/PATHMAP.INI` (the kit ships an inert, all-off `POPS/PATHMAP.INI.example`; copy it there to use it), then `mc1:`, at most 512 bytes, `KEY=VALUE` lines, only the
 value `1` turns an option on. POPSLoader neither creates nor edits it; the driver reads it:
 `GAMEID_DIR=1` names a game's folder (VMC, cheats, patches) after its game ID, e.g.
 `POPS/SLUS_011.56/`; `DISCS_DIR=1` takes the folder from the ID's line in the server's
