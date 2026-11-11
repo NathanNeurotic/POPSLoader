@@ -6852,10 +6852,17 @@ function UI.RunConfirm(lines)
         -- Wait for the button to be released before returning: otherwise the
         -- caller's next pad read still sees the held press, so Circle on "No"
         -- also acted as Back on the Settings screen. Bounded (3 s, like the settle loop) so a stuck pad cannot hang the prompt.
-        local rel = 0
+        -- Pads.get reports 0 for a failed or unstable read too, so require three
+        -- consecutive clear reads before treating the buttons as released.
+        local rel, clear = 0, 0
         while rel < 180 do
           local okr, gr = pcall(Pads.get)
-          if okr and type(gr) == "number" and (gr & (yes_mask | no_mask)) == 0 then break end
+          if okr and type(gr) == "number" and (gr & (yes_mask | no_mask)) == 0 then
+            clear = clear + 1
+            if clear >= 3 then break end
+          else
+            clear = 0
+          end
           Screen.flip()
           rel = rel + 1
         end
