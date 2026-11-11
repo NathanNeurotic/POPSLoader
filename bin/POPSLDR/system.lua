@@ -8074,6 +8074,8 @@ function PLDR.EmberRootsForScene(scene)
     from_type("ata")
   elseif scene == UI.SCENES.GSMB then
     EmberAddRoot(roots, seen, type(PLDR.MMCE) == "table" and PLDR.MMCE.PREFIX or nil)
+  elseif scene == UI.SCENES.GILINK then
+    EmberAddRoot(roots, seen, PLDR.ILINK_ROOT)
   elseif scene == UI.SCENES.GSMBNET then
     -- SMB share subfolder and UDPFS mount retain their own root, not mass:.
     local base = string.gsub(tostring(PLDR.GAMEPATH or ""), "[Pp][Oo][Pp][Ss]/?$", "")
@@ -8369,6 +8371,28 @@ function PLDR.InitMX4SIOPopsRoot()
     return root.."POPS/"
   end
   return nil, status
+end
+
+-- i.LINK (EXPERIMENTAL, hardware-UNTESTED; Ember only). The IEEE1394 block driver
+-- registers with path "ilink", so its volume is the typed ilink0:/ (same mechanism
+-- as mx4sio0:/ above). Loaded lazily on page entry; the wait for the drive to mount
+-- is bounded (8 x 1 s), never open-ended. Returns root|nil, status
+-- ("ready" | "driver" | "unavailable" | "nodevice").
+function PLDR.InitILINKRoot()
+  PLDR.ILINK_ROOT = nil
+  if type(System) ~= "table" or type(System.initILINK) ~= "function" then
+    return nil, "unavailable"
+  end
+  local ok, loaded = pcall(System.initILINK)
+  if not ok or loaded ~= true then return nil, "driver" end
+  for _ = 1, 8 do
+    if doesFolderExist("ilink0:/") then
+      PLDR.ILINK_ROOT = "ilink0:/"
+      return PLDR.ILINK_ROOT, "ready"
+    end
+    if type(System.sleep) == "function" then pcall(System.sleep, 1) end
+  end
+  return nil, "nodevice"
 end
 
 function PLDR.InitATAPopsRoot(report)

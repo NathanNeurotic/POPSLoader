@@ -96,7 +96,8 @@ IOP_MODULES = iomanX.o fileXio.o \
 			  usbd.o audsrv.o bdm.o bdmfs_fatfs.o \
 			  usbmass_bd.o cdfs.o ds34bt.o ds34usb.o \
 			  ps2dev9.o ps2atad.o ps2hdd-osd.o ps2fs.o mmceman.o \
-			  mx4sio_bd.o ata_bd.o bdm_query.o
+			  mx4sio_bd.o ata_bd.o bdm_query.o \
+			  iLinkman.o IEEE1394_bd_mini.o
 
 # Menu-side SMB network stack (Increment 1). LAZY -- loaded by EnsureNet in
 # luasystem.cpp only on SMB-page entry, NEVER at boot (main.cpp boot-loads only its

@@ -971,6 +971,7 @@ UI = {
       GAPAHDD = 5,
       GBDMHDD = 6,
       GSMBNET = 7,
+      GILINK = 11,   -- i.LINK (EXPERIMENTAL, Ember only, hardware-untested)
       MMAIN = 8,
       MPROFILE = 9,
       CREDITS = 10
@@ -1006,6 +1007,7 @@ UI = {
         or scene == UI.SCENES.GHDD
         or scene == UI.SCENES.GBDMHDD
         or scene == UI.SCENES.GSMBNET
+        or scene == UI.SCENES.GILINK
     end;
     ShouldHideAuxText = function (scene)
       return UI.HideTextMode and UI.IsHideToggleScene(scene or UI.CURSCENE)
@@ -6301,7 +6303,27 @@ UI = {
             end, "Failed to load USB")
             if not ok then return end
 	          elseif UI.MainMenu.OPT == 6 then
-	            UI.Notif_queue.add("This backend isn't implemented yet", "warn")
+            -- i.LINK: EXPERIMENTAL and hardware-UNTESTED. Lists and launches EMBER
+            -- (PS1 .cue/.bin) games only; POPSTARTER titles are not offered here.
+            local ok = UI.RunBusyTask("Loading i.Link...", function (report)
+              PLDR.CleanupGameList()
+              PLDR.GAMEPATH = ""
+              report("Starting i.Link drivers...", 0.30)
+              local ilink_root, ilink_status = PLDR.InitILINKRoot()
+              if ilink_root == nil then
+                PLDR.LAST_DEVICE_STATUS = "ilink:"..tostring(ilink_status or "<none>")
+                if ilink_status == "driver" then
+                  UI.Notif_queue.add("i.Link driver failed to load\ntry the page again, or reboot", "warn")
+                else
+                  UI.Notif_queue.add("No i.Link device detected", "warn")
+                end
+                return
+              end
+              PLDR.GAMEPATH = ilink_root.."POPS/"
+              report("Opening i.Link list...", 1.0)
+              UI.SceneChange(UI.SCENES.GILINK)
+            end, "Failed to load i.Link")
+            if not ok then return end
 	          elseif UI.MainMenu.OPT == 7 then
             -- SMB (v1): connect + browse (LAZY -- never at boot). The whole connect +
             -- blank-Share picker + reconnect flow lives in UI.RunSmbConnectFlow to keep
@@ -6708,7 +6730,8 @@ UI.GAME_SCENES = {
   [UI.SCENES.GMX4SIO] = true,
   [UI.SCENES.GHDD] = true,
   [UI.SCENES.GBDMHDD] = true,
-  [UI.SCENES.GSMBNET] = true
+  [UI.SCENES.GSMBNET] = true,
+  [UI.SCENES.GILINK] = true
 }
 function UI.IsGameScene(scene)
   return UI.GAME_SCENES[scene] == true

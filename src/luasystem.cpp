@@ -36,6 +36,10 @@ extern "C" {
 
 extern unsigned char mx4sio_bd_irx[];
 extern unsigned int size_mx4sio_bd_irx;
+extern unsigned char iLinkman_irx[];
+extern unsigned int size_iLinkman_irx;
+extern unsigned char IEEE1394_bd_mini_irx[];
+extern unsigned int size_IEEE1394_bd_mini_irx;
 extern unsigned char ata_bd_irx[];
 extern unsigned int size_ata_bd_irx;
 extern unsigned char bdm_query_irx[];
@@ -125,6 +129,7 @@ static int g_bdmfs_id = -999, g_bdmfs_ret = -999;
 static int g_usbmass_id = -999, g_usbmass_ret = -999;
 static bool cdfs_irx_loaded = false;
 static bool mx4sio_irx_loaded = false;
+static bool ilink_irx_loaded = false;
 static bool mmceman_irx_loaded = false;
 
 static bool EnsureBDM()
@@ -1616,6 +1621,43 @@ bool EnsureMx4sioBd(void)
 	return true;
 }
 
+// i.LINK (IEEE 1394 / SBP-2 storage), EXPERIMENTAL, hardware-only, UNTESTED here.
+// Lazy, on first i.LINK page entry (System.initILINK). Same recipe as RiptOPL's menu
+// (bdmsupport.c): bdm + bdmfs_fatfs, then iLinkman, then the IEEE1394 block driver
+// (the printf-free _mini build, as RiptOPL ships). The block device registers with
+// path "ilink", so the typed volume name is ilink0:/. Success-only latch, so a failed
+// load retries on the next page entry. This path is used only to launch EMBER (which
+// never resets the IOP); POPSTARTER resets the IOP and is NOT supported from here.
+bool EnsureILinkBd(void)
+{
+	if (ilink_irx_loaded) {
+		return true;
+	}
+	if (!EnsureBDMFatFs()) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("iLinkman.irx", iLinkman_irx, size_iLinkman_irx, NULL, NULL)) {
+		return false;
+	}
+	if (!LoadIrxCheckedBuffer("IEEE1394_bd_mini.irx", IEEE1394_bd_mini_irx, size_IEEE1394_bd_mini_irx, NULL, NULL)) {
+		return false;
+	}
+	ilink_irx_loaded = true;
+	return true;
+}
+
+static int lua_ilink_init(lua_State *L)
+{
+	(void)L;
+	bool ok = EnsureILinkBd();
+	lua_pushboolean(L, ok);
+	if (ok) {
+		return 1;
+	}
+	lua_pushstring(L, "IRX_LOAD_FAIL");
+	return 2;
+}
+
 static int lua_mx4sio_init(lua_State *L)
 {
 	int argc = lua_gettop(L);
@@ -2509,6 +2551,7 @@ static const luaL_Reg System_functions[] = {
 	{"ensureMmceman",          lua_ensure_mmceman},
 	{"reinitPad",              lua_reinit_pad},
 	{"initMX4SIO",             lua_mx4sio_init},
+	{"initILINK",              lua_ilink_init},
 	{"initATA",                lua_ata_init},
 	{"ataReady",               lua_ata_ready},
 	{"initATAStatus",          lua_ata_init_status},
