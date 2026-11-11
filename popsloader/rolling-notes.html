@@ -54,12 +54,12 @@
     <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
-  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><h2 id="141-channel-cut-november-4-2026">1.4.1 channel cut (November 4, 2026)</h2>
-<p><strong>Rolling is a prerelease channel.</strong> At this cut, master, dev and experimental<br />
-share the same source and <strong>v1.4.1</strong> stamp. The official versioned release is<br />
-<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.1">POPSLoader 1.4.1</a>.</p>
+  <main class="content"><h1>Rolling notes</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/ROLLING_NOTES.md">view on GitHub ↗</a></p><h2 id="142-channel-cut-november-11-2026">1.4.2 channel cut (November 11, 2026)</h2>
+<p><strong>Rolling is a prerelease channel.</strong> At this cut, master carries the <strong>v1.4.2</strong> stamp;<br />
+dev and experimental are brought up to it after the release. The official versioned release is<br />
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2">POPSLoader 1.4.2</a>.</p>
 <ul>
-<li>Network-only UDPFS Assault 1.0.0; no USB requirement and no USB-first mode.</li>
+<li>Network-only UDPFS (Okeanos' UDPFS Assault 1.0.1 since 1.4.2; not yet confirmed on a real PS2); no USB requirement and no USB-first mode.</li>
 <li>MC SYS-CONF precedence, persistent config recovery and discovery by default.</li>
 <li>Localization fixes and refreshed translator handoffs; unchanged Ember Beta-2.</li>
 <li>Complete installation ZIP and flat PSU. Console UDPFS and Ember acceptance<br />
@@ -68,7 +68,7 @@ share the same source and <strong>v1.4.1</strong> stamp. The official versioned 
 <hr />
 <h2 id="historical-channel-notes">Historical channel notes</h2>
 <h1 id="popsloader-rolling-development-release">POPSLoader — Rolling Development Release</h1>
-<p><strong>Current stable:</strong> 1.4.1. The rolling <code>dev</code> channel is a <strong>prerelease</strong>;<br />
+<p><strong>Current stable:</strong> 1.4.2. The rolling <code>dev</code> channel is a <strong>prerelease</strong>;<br />
 it is not an official hardware-verified compatibility release.</p>
 <h3 id="ember-integration-and-installable-development-package-pr-600">Ember integration and installable development package (PR #600)</h3>
 <ul>
@@ -77,7 +77,7 @@ it is not an official hardware-verified compatibility release.</p>
 <li>A standalone <code>PS1_POPSLOADER.psu</code> holds <strong>only those same eight app files</strong>, directly beneath the <code>PS1_POPSLOADER</code> PS2 save header — no nested directory. Verified byte-for-byte by both Python and RiptOPL's PSUManager C++ parser.</li>
 <li>Rolling release and experimental release workflows have standalone ZIP/PSU asset rules, but each channel publishes <strong>only from its own configured branch</strong>. The PR targets <code>dev</code>, not the stable <code>master</code> or isolated <code>experimental</code>.</li>
 <li>Ember Watch checks the upstream official asset digest against RiptOPL's verified binary and updates a separately pinned Ember source revision on <code>dev</code> after the workflow becomes active on the default branch. The POPS support-file pin stays fixed.</li>
-<li><strong>Ember i.Link is intentionally deferred</strong> until RiptOPL proves reliable i.Link support on physical hardware. It is not a release gate for the other Ember devices.</li>
+<li><strong>i.Link (Ember and POPSTARTER) is experimental and hidden by default (Settings &gt; Device List); not tested on hardware.</strong> It is not a release gate for the other Ember devices.</li>
 </ul>
 <p>Installation, limitations and licensing are recorded in the maintained <a href="project-wiki.html">project wiki</a>, <a href="ember-integration.html">Ember guide</a> and <a href="release-formats.html">ZIP/PSU specification</a>. Do <strong>not</strong> promote this feature to hardware-certified stable support based only on CI.</p>
 <h3 id="maintenance-update-october-13-2026">Maintenance update (October 13, 2026)</h3>

@@ -55,7 +55,7 @@
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>QA regression matrix</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/QA_REGRESSION_MATRIX.md">view on GitHub ↗</a></p><p>Last updated: 2026-10-27 (Slovak translation handoff; host checks)<br />
-Released line: <strong>1.4.1</strong> (2026-11-04). <code>master</code>, <code>dev</code>, and <code>experimental</code> share the release source and <code>v1.4.1</code> stamp at this cut. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.<br />
+Released line: <strong>1.4.2</strong> (2026-11-11). <code>master</code> carries the <code>v1.4.2</code> stamp; <code>dev</code> and <code>experimental</code> are brought up to it after the release. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.<br />
 Active dev branch is now <strong><code>dev</code></strong> (created off <code>BETA-12-PLAY</code> @<code>8d1e67a</code>; <strong><code>BETA-12-PLAY</code> is now ARCHIVAL/frozen</strong>). <code>.github/workflows/rolling-release.yml</code> publishes from <code>dev</code> (repiped @<code>8c78296</code>). The development tip moves every push — see <code>git log</code> for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but <code>Unknown (verify on hardware)</code> unless explicitly recorded below.</p>
 <blockquote>
 <p>This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see <strong><code>STATE.md</code></strong>; those shared blocks are not restated here.</p>
@@ -226,7 +226,7 @@ controller re-init, network persistence and storage regression.</p>
   T60 host regression for transient scanning, RW launch remount,<br />
   write-through and preservation of its PFS mount across keep-IOP.<br />
   Physical VMC/controller validation is still required.</li>
-<li><strong>Ember i.Link:</strong> intentionally deferred until RiptOPL demonstrates reliable i.Link integration on physical hardware. Out of scope for Ember PR #600; do not gate the other devices' readiness on it or claim full device parity. The existing generic i.Link menu remains unsupported/hidden.</li>
+<li><strong>i.Link (Ember and POPSTARTER):</strong> experimental page, hidden by default (Settings &gt; Device List); not tested on hardware (PCSX2 cannot run i.LINK). Do not gate the other devices' readiness on it or claim full device parity.</li>
 </ul>
 <h2 id="experimental-udpfs-okeanos-bdma-2026-10-12">Experimental UDPFS / <a href="https://github.com/Okeanos86">Okeanos</a> BDMA (2026-10-12)</h2>
 <table>
@@ -658,10 +658,17 @@ be described as <strong>Unknown (verify on hardware)</strong>.</p>
 </tr>
 <tr>
 <td>D-07A</td>
-<td>i.Link option status</td>
-<td>any setup</td>
+<td>i.Link option status (no drive)</td>
+<td>any setup with no i.Link drive; i.Link unhidden in Settings &gt; Device List</td>
 <td>Select <code>i.Link</code></td>
-<td>UI shows <code>Not Implemented Yet</code></td>
+<td>Experimental i.Link page opens, or a driver/no-device message appears; no crash</td>
+</tr>
+<tr>
+<td>D-07E</td>
+<td>i.Link connected drive</td>
+<td>compatible i.Link drive holding known Ember games and POPSTARTER VCDs; i.Link unhidden</td>
+<td>Select <code>i.Link</code></td>
+<td>Drive is detected and its games/VCDs are listed. <strong>Hardware-untested</strong></td>
 </tr>
 <tr>
 <td>D-08</td>
