@@ -74,7 +74,7 @@ class TranslationHandoffTests(unittest.TestCase):
         for language, rows in dictionaries.items():
             with self.subTest(language=language):
                 catalog = dict(rows)
-                self.assertEqual([], sorted(required - set(catalog)))
+                self.assertEqual([], sorted((required | {'Detecting MMCE device...'}) - set(catalog)))
                 for english, translated in rows:
                     self.assertEqual(FORMAT.findall(english), FORMAT.findall(translated))
                     self.assertEqual(english.count('\n'), translated.count('\n'))
