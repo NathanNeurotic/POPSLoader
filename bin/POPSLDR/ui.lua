@@ -960,6 +960,86 @@ local function WrapText(text, limit)
   return wrapped
 end
 
+-- Pixel-measured text fitting, shared by every language. Character-count limits
+-- (WrapText's 38/60) cannot know how wide a line really is: the same 38 chars can
+-- be 250px or 380px in this proportional font. These helpers measure with
+-- Font.ftWidth (fntCalcDimensions) and cache per string, so a static screen costs
+-- one table lookup per line per frame. Without ftWidth they fall back to the
+-- character-count behaviour.
+local TEXT_FIT_CACHE, TEXT_FIT_CACHE_N = {}, 0
+local function FitCacheGet(key)
+  return TEXT_FIT_CACHE[key]
+end
+local function FitCachePut(key, value)
+  if TEXT_FIT_CACHE_N >= 512 then TEXT_FIT_CACHE, TEXT_FIT_CACHE_N = {}, 0 end
+  TEXT_FIT_CACHE[key] = value
+  TEXT_FIT_CACHE_N = TEXT_FIT_CACHE_N + 1
+  return value
+end
+local function TextWidth(font, s)
+  if type(Font) ~= "table" or type(Font.ftWidth) ~= "function" then return nil end
+  local key = "w\0"..tostring(font).."\0"..s
+  local w = FitCacheGet(key)
+  if w == nil then w = FitCachePut(key, Font.ftWidth(font, s)) end
+  return w
+end
+-- Drop one whole UTF-8 character from the end (never leave a split sequence).
+local function Utf8DropLast(s)
+  local n = #s
+  while n > 0 do
+    local b = string.byte(s, n)
+    n = n - 1
+    if b < 0x80 or b >= 0xC0 then break end
+  end
+  return string.sub(s, 1, n)
+end
+-- One line that fits max_w: unchanged if it fits, else trimmed with "...".
+local function FitEllipsis(font, text, max_w)
+  text = tostring(text or "")
+  local w = TextWidth(font, text)
+  if w == nil or w <= max_w then return text end
+  local key = "e\0"..tostring(font).."\0"..max_w.."\0"..text
+  local hit = FitCacheGet(key)
+  if hit ~= nil then return hit end
+  local room = max_w - (TextWidth(font, "...") or 0)
+  local s = text
+  while #s > 0 and (TextWidth(font, s) or 0) > room do s = Utf8DropLast(s) end
+  s = string.gsub(s, "%s+$", "")
+  return FitCachePut(key, s.."...")
+end
+-- WrapText by measured width. Keeps the source's own line breaks; a single word
+-- wider than max_w is split at whole UTF-8 characters.
+local function WrapTextPx(font, text, max_w, fallback_chars)
+  text = tostring(text or "")
+  if TextWidth(font, "") == nil then return WrapText(text, fallback_chars) end
+  local key = "p\0"..tostring(font).."\0"..max_w.."\0"..text
+  local hit = FitCacheGet(key)
+  if hit ~= nil then return hit end
+  local out = {}
+  local function fits(s) return (TextWidth(font, s) or 0) <= max_w end
+  for para in (text.."\n"):gmatch("([^\n]*)\n") do
+    local line = ""
+    for word in para:gmatch("%S+") do
+      local try = (line == "") and word or (line.." "..word)
+      if fits(try) then
+        line = try
+      else
+        if line ~= "" then out[#out + 1] = line end
+        line = word
+        while not fits(line) do
+          local head = line
+          while #head > 0 and not fits(head) do head = Utf8DropLast(head) end
+          if head == "" then break end
+          out[#out + 1] = head
+          line = string.sub(line, #head + 1)
+        end
+      end
+    end
+    out[#out + 1] = line
+  end
+  return FitCachePut(key, out)
+end
+
 local INITIAL_VIDEO_SPEC = ResolveVideoSpecForKey((type(PLDR) == "table" and PLDR.VIDEO_STANDARD) or VIDEO_STANDARD_AUTO)
 UI = {
     LASTSCENE = 5;
@@ -1602,7 +1682,7 @@ UI = {
           end
           local label = labels and labels[key] or nil
           if label ~= nil then
-            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, PLDR.L(label), UI.CCOL.GREY)
+            Font.ftPrint(SFONT, x, labelY, 8, UI.LAYOUT.FOOTER_LABEL_W, 16, FitEllipsis(SFONT, PLDR.L(label), UI.LAYOUT.FOOTER_LABEL_W), UI.CCOL.GREY)
           end
         end
       end;
@@ -1663,7 +1743,15 @@ UI = {
           end
           Graphics.drawRect(bar_x + 2 + offset, bar_y + 2, marquee_w, bar_h - 4, Color.new(110, 190, 255, 96))
         end
-        Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, PLDR.L(tostring(UI.SavingMessage or "Saving/Applying...")), UI.CCOL.YELLOW)
+        -- Wrap to the bar's width (two lines fit above the bar) rather than
+        -- spilling past the box; the box stays a fixed size between messages.
+        local saving_lines = WrapTextPx(BFONT, PLDR.L(tostring(UI.SavingMessage or "Saving/Applying...")), bar_w, 34)
+        if #saving_lines == 1 then
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 20, 8, UI.SCR.X, 16, saving_lines[1], UI.CCOL.YELLOW)
+        else
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 12, 8, UI.SCR.X, 16, saving_lines[1], UI.CCOL.YELLOW)
+          Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + 30, 8, UI.SCR.X, 16, FitEllipsis(BFONT, table.concat(saving_lines, " ", 2), bar_w), UI.CCOL.YELLOW)
+        end
         if type(UI.SavingProgress) == "number" then
           Font.ftPrint(SFONT, UI.SCR.X_MID, box_y + 84, 8, UI.SCR.X, 16, tostring(math.floor(UI.SavingProgress * 100 + 0.5)).."%", UI.CCOL.GREY)
         else
@@ -2350,7 +2438,16 @@ UI = {
         if UI.Modal.menu_items ~= nil then
           local n = #UI.Modal.menu_items
           local row_h = 22
-          local box_w = 320
+          -- Grow to the widest row/title/hint (measured), up to the screen's safe
+          -- width; anything still wider ends in "..." inside the box.
+          local hint = UI.Modal.ButtonHint(PLDR.L("Confirm"), PLDR.L("Cancel"))
+          local box_max = UI.SCR.X - 48
+          local widest = math.max(TextWidth(BFONT, PLDR.L(UI.Modal.title or "")) or 0, TextWidth(BFONT, hint) or 0)
+          for i = 1, n do
+            widest = math.max(widest, TextWidth(BFONT, PLDR.L(UI.Modal.menu_items[i].label)) or 0)
+          end
+          local box_w = math.min(box_max, math.max(320, widest + 48))
+          local row_max = box_w - 40
           local box_h = 96 + n * row_h
           local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
           local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
@@ -2366,19 +2463,22 @@ UI = {
             if selected then
               Graphics.drawRect(box_x + 16, row_y - 2, box_w - 32, row_h - 2, Color.new(50, 80, 160, 110))
             end
-            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, PLDR.L(UI.Modal.menu_items[i].label), selected and accent or UI.CCOL.GREY)
+            Font.ftPrint(BFONT, UI.SCR.X_MID, row_y, 8, UI.SCR.X, 16, FitEllipsis(BFONT, PLDR.L(UI.Modal.menu_items[i].label), row_max), selected and accent or UI.CCOL.GREY)
           end
-          local hint = UI.Modal.ButtonHint(PLDR.L("Confirm"), PLDR.L("Cancel"))
           Font.ftPrint(BFONT, UI.SCR.X_MID, box_y + box_h - 26, 8, UI.SCR.X, 16, hint, UI.CCOL.GREY)
           return
         end
-        local body_lines = WrapText(PLDR.L(UI.Modal.body or ""), 38)
         local line_spacing = 16
         local confirm_label = PLDR.L(UI.Modal.options[1] or "Confirm")
         local cancel_label = PLDR.L(UI.Modal.options[2] or "Cancel")
         local triangle_label = UI.Modal.options[3] and PLDR.L(UI.Modal.options[3]) or nil
         local extra_footer_h = (triangle_label ~= nil) and 16 or 0
-        local box_w = 320
+        -- Body wraps by measured width inside the box; the box grows only for a
+        -- title or button hint that would not fit the default 320px.
+        local box_w = math.min(UI.SCR.X - 48, math.max(320,
+          (TextWidth(BFONT, PLDR.L(UI.Modal.title or "")) or 0) + 48,
+          (TextWidth(BFONT, UI.Modal.ButtonHint(confirm_label, cancel_label)) or 0) + 48))
+        local body_lines = WrapTextPx(BFONT, PLDR.L(UI.Modal.body or ""), box_w - 32, 38)
         local box_h = 140 + (math.max(1, #body_lines) - 1) * line_spacing + extra_footer_h
         local box_x = math.floor(UI.SCR.X_MID - (box_w / 2))
         local box_y = math.floor(UI.SCR.Y_MID - (box_h / 2))
@@ -5533,7 +5633,9 @@ UI = {
           -- localized (L() falls back to English for anything untranslated).
           local base_label = PLDR.L(it.label)
           local label_disp = base_label
-          if focused then label_disp = MarqueeLabel(BFONT, tostring(base_label or ""), LABEL_W, marquee_tick) end
+          -- Unfocused: end an overflowing label in "..." instead of chopping a letter.
+          if focused then label_disp = MarqueeLabel(BFONT, tostring(base_label or ""), LABEL_W, marquee_tick)
+          else label_disp = FitEllipsis(BFONT, base_label, LABEL_W) end
           Font.ftPrint(BFONT, LABEL_X, row_y, 0, LABEL_W, 16, label_disp, label_text_color)
           local value_text = PLDR.L(it.value and tostring(it.value() or "") or "")
           local dirty = (it.dirty and it.dirty()) == true
@@ -5555,6 +5657,8 @@ UI = {
             value_disp = MarqueeLabel(BFONT, value_text, VALUE_W, marquee_tick)
           elseif it.kind == "path" then
             value_disp = TruncateMiddle(value_text, 40)
+          else
+            value_disp = FitEllipsis(BFONT, value_text, VALUE_W)
           end
           Font.ftPrint(BFONT, VALUE_X, row_y, 0, VALUE_W, 16, value_disp, value_text_color)
           if focused and it.kind == "cycle" then
