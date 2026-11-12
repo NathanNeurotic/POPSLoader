@@ -465,8 +465,9 @@ end
 -- dir-chain walk on SD-over-SIO2 / USB 1.1 -- that stall protection stands).
 function CoverCache:MemoizeMiss(path)
   local ok, exists = pcall(doesFileExist, path)
-  if ok and exists == true then return end
+  if ok and exists == true then return true end
   self.failed[path] = true
+  return false
 end
 function CoverCache:GetOrLoad(path)
   if path == nil or path == "" then return nil end
@@ -866,7 +867,19 @@ function CoverCache:Pump()
   end
   -- Miss: memoize ONLY when the file is genuinely absent (EXP59, OPL parity --
   -- a decode failure on a present file stays retryable), then try the next candidate.
-  self:MemoizeMiss(ipath)
+  local present = self:MemoizeMiss(ipath)
+  -- #568: a disc icon that EXISTS but would not load (the PNG loader skips
+  -- images over 1024 px a side or over its size budget, ~607x607 in full
+  -- colour) used to vanish silently. Say so once per file. The toast is queued
+  -- only here, on the miss path, so a normal frame does no extra work.
+  if present and p.icon_only and not stale then
+    self.warned = self.warned or {}
+    if not self.warned[ipath] then
+      self.warned[ipath] = true
+      pcall(UI.Notif_queue.add,
+        "Disc icon not shown: PNG too large or unreadable. Use 607x607 or smaller.", "warn")
+    end
+  end
   if stale then self.pending = nil; return end
   local nxt = nil
   for i = p.idx + 1, #p.candidates do
