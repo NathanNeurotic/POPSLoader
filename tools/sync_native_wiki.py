@@ -38,7 +38,7 @@ NAV = """### Current POPSLoader project
 - [Device Support and Testing](POPSLoader-Device-Support)
 
 The [historical POPStarter wiki](https://nathanneurotic.github.io/POPSLoader/wiki/index.html)
-is maintained separately. POPSLoader 1.4.3 is the latest stable release;
+is maintained separately. POPSLoader 1.4.4 is the latest stable release;
 Ember remains hardware-unverified in the rolling development channel.
 """
 # Rewrite all source-tree relative links into either native Wiki page links
