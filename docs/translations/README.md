@@ -6,23 +6,22 @@ Unlisted strings fall back to English.
 
 ## Slovak contribution (#605)
 
-[SVKghost](https://github.com/SVKghost) offered to translate POPSLoader into Slovak. Download
-[the Excel workbook](slovak.xlsx?raw=true), open its **Slovak** sheet, and enter
-translations in the yellow cells in column B. The **Instructions** sheet explains
-the format. A [UTF-8 TSV alternative](slovak.tsv) has the same English keys and a
-blank Slovak column.
+[SVKghost](https://github.com/SVKghost) translated POPSLoader into Slovak. The
+returned workbook (November 12, 2026) covered all 409 strings; it now ships as
+`PLDR.I18N.SK` and appears in the language picker as **Slovenčina**.
+[slovak.tsv](slovak.tsv) keeps the contributed text.
 
-The October 27, 2026 handoff contains **409 distinct current English strings**,
-reviewed against the 1.3.1 development sources: settings, Ember, network/UDPFS,
-progress messages, dialogs, errors, and credits. The workbook includes source
-references and context for ambiguous rows. Debug traces, configuration keys,
-paths and native settings tokens are not separate translation requests.
+Two maintainer edits were made on import, pending SVKghost's confirmation:
 
-Return the completed or partial `.xlsx` as an attachment in a reply to
-[issue #605](https://github.com/NathanNeurotic/POPSLoader/issues/605), or submit the
-two-column TSV in a pull request. Keep the sheet name **Slovak** and the English
-column unchanged. Slovak is awaiting that contribution; the empty template does
-not add an English-only entry to the language picker.
+- The credits block in the returned file stopped after "uyjulian, fjtrujy,". The
+  last five lines were completed in Slovak, and two stray `n` letters after line
+  breaks were removed.
+- One extra line break in the Games-path hint was removed so it keeps the same
+  line count as English.
+
+The empty template for new languages is still [slovak.xlsx](slovak.xlsx?raw=true)
+(the **Slovak** sheet name is what the importer reads). Excel can trim a leading
+space from a cell; the importer restores it for keys that start with one.
 
 ## Translation rules
 

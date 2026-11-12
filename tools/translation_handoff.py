@@ -146,6 +146,12 @@ def read_xlsx(path):
 def validate_rows(rows, allowed):
     seen, translated = set(), {}
     for en, value in rows:
+        # Excel trims a leading space from cells saved without xml:space="preserve"
+        # (#605 lost two keys this way). Restore it on both columns.
+        if en not in allowed and ' ' + en in allowed:
+            en = ' ' + en
+            if value and value.strip() and not value.startswith(' '):
+                value = ' ' + value
         if en not in allowed:
             raise ValueError(f'unknown or edited English key: {en!r}')
         if en in seen:
