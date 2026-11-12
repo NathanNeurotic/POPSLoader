@@ -1596,6 +1596,7 @@ def build_popsloader():
              '<div class="callout info"><div class="h">How it relates to POPStarter</div>POPSLoader wraps the '
              'same POPS emulator and <code>POPSTARTER.ELF</code> documented across the rest of this site — think '
              'of it as the friendly launcher layer on top. Everything in the POPStarter reference applies underneath.</div>'
+             + popsloader_shots() +
              '<h2>What it adds over stock POPStarter</h2><ul class="checklist">'
              '<li><b>Cover-art game browser</b> — a console-style menu of your PS1 library instead of renamed ELFs.</li>'
              '<li><b>Modern storage</b> — pick your device with <b>BDMA Mode</b>: FAT32 or exFAT USB, MX4SIO, MMCE (SD2PSX / MemCard PRO2), plus the APA internal HDD.</li>'
@@ -1625,6 +1626,39 @@ def build_popsloader():
     idx('POPSLoader — the modern launcher', 'popsloader',
         'POPSLoader modern fork GUI launcher cover art game list MMCE MX4SIO USB exFAT APA HDD this project Enceladus Lua Ripto NathanNeurotic exit menu BOOT.ELF OSDSYS Triangle chainload wLaunchELF OPL reboot_iop quit',
         'popsloader.html')
+
+# Interface captures of a released build (see ui/capture-manifest.json): (file, caption, alt).
+POPSLOADER_SHOTS = [
+    ('device-carousel', 'Device carousel, USB selected',
+     'POPSLoader device carousel with USB selected and the Select, Settings and Exit button hints'),
+    ('game-list', 'USB game list',
+     'POPSLoader game list on USB with five sample entries and the MISSING COVER placeholder'),
+    ('ember-entry', 'An Ember game in the list',
+     'POPSLoader game list with the entry [Ember] Sample Ember Disc highlighted'),
+    ('settings-storage', 'Settings: Storage (BDMA Mode)',
+     'POPSLoader Settings with Storage open: BDMA Mode FAT32-USB and Adaptive BDMA on'),
+    ('settings-device-list', 'Settings: Device List',
+     'POPSLoader Settings with Device List open: MMCE, MX4SIO, USB, SMB and Disc shown, i.Link hidden, Internal HDD both'),
+    ('settings-game-list', 'Settings: Game List',
+     'POPSLoader Settings with Game List open: multi-disc games, hidden games, game details, cover art, game list cache and boot sound'),
+    ('settings-network', 'Settings: SMB / Network',
+     'POPSLoader Settings with SMB / Network open: SMB modules, IP assignment, PS2 IP, netmask, gateway and server IP'),
+    ('exit-menu', 'Exit menu: OSDSYS, Cancel, BOOT.ELF',
+     'POPSLoader Exit dialog: Return to OSDSYS? with X OSDSYS, O Cancel and Triangle BOOT.ELF'),
+]
+UI_DIR = os.path.join(ROOT, 'ui')
+
+def popsloader_shots():
+    figs = ''.join(
+        f'<figure><a href="img/ui/{f}.png" target="_blank"><img src="img/ui/{f}.png" '
+        f'alt="{html.escape(alt)}" loading="lazy" decoding="async"></a>'
+        f'<figcaption title="{html.escape(cap)}">{html.escape(cap)}</figcaption></figure>'
+        for f, cap, alt in POPSLOADER_SHOTS)
+    return ('<h2 id="screenshots">Screenshots</h2><div class="gallery">' + figs + '</div>'
+            '<p class="prov-inline">POPSLoader 1.4.2 captured in the RIPPCSX2 emulator at the native 640&times;480, '
+            'with placeholder game files we made (no game data or cover art). They show the interface only: no game '
+            'was launched and this is not a real-PS2 test. &ldquo;Booted from: HOST&rdquo; is the emulator\'s name '
+            'for where it loaded the ELF. <a href="img/ui/capture-manifest.json">Capture details</a>.</p>')
 
 # ---------- GLOSSARY ----------
 GLOSSARY = [
@@ -2121,6 +2155,9 @@ def copy_assets():
         shutil.copy2(os.path.join(DL, f), os.path.join(SITE, 'downloads', f))
     for low, real in img_map.items():
         shutil.copy2(os.path.join(ASSET, real), os.path.join(SITE, 'img', real))
+    os.makedirs(os.path.join(SITE, 'img', 'ui'), exist_ok=True)   # POPSLoader interface captures
+    for f in sorted(os.listdir(UI_DIR)):
+        shutil.copy2(os.path.join(UI_DIR, f), os.path.join(SITE, 'img', 'ui', f))
 
 ARCHIVE_README = """POPStarter Documentation Archive  —  offline copy
 =====================================================

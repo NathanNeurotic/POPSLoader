@@ -1,0 +1,25 @@
+{
+  "captured_on": "2026-11-12",
+  "app": "POPSLoader 1.4.2",
+  "release": "1.4.2",
+  "source_commit": "b4ea4142be9c31c200ac13767adc4129857553d8",
+  "elf": "POPSLOADER.ELF",
+  "elf_sha256": "0fc62ad97bb40f97b95a4ca88255ebe751b913a6b50b7eb27ace664de8c50145",
+  "emulator": "RIPPCSX2 2.9.96-rippcsx2.2 (portable lab copy, its own settings and a new throwaway memory card)",
+  "display": "Auto NTSC 4:3; native PNG 640x480; unmodified emulator screenshots (F8)",
+  "media": "128 MiB MBR/FAT32 USB image (PCSX2 USB mass storage) holding four placeholder VCD files and one placeholder Ember folder with made-up names. No game data, no cover art; the cover shown is POPSLoader's own MISSING COVER placeholder.",
+  "scope": "Interface captures only. No game was launched. Not a real-PS2 test.",
+  "notes": [
+    "'Booted from: HOST' is how the emulator reports the ELF it loaded; on a PS2 this line names the real boot device."
+  ],
+  "shots_sha256": {
+    "device-carousel.png": "e67a9f4993869207d1b0b999c904fb4306b4d518cbe77b6e035935eb16deb996",
+    "ember-entry.png": "183f42d44ae08ba3258ed781f3a56c1e786f96bc3fbfc11eaa44d0f379a1699d",
+    "exit-menu.png": "3b478258ad8a1195e2bd59e68f40d1ba1aef963a6cf9999e9260815dfe4e5818",
+    "game-list.png": "99a3aefc444ffb35cb452df532f27979bca2c9eba21851145547603dd7e63956",
+    "settings-device-list.png": "b3794065beeb7c2b55f0984f9c2e6376082914ed65c6932b013cd0a0462fc531",
+    "settings-game-list.png": "93aff19da8f3dd2ba51eb0201194a4a22022052267beaa16feafe598013a1120",
+    "settings-network.png": "1d69c5292fdbdf6f638ef3eb0c5956a0904b5838832f0c9f4737cd6ee3dabdd5",
+    "settings-storage.png": "01db8385a0af0b58c4ec2139cbaa917821a26875a03a88a8b97368a67c3e0918"
+  }
+}

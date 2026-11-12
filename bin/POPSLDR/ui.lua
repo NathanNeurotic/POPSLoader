@@ -3483,9 +3483,11 @@ UI = {
             local iw, ih = Graphics.getImageWidth(icon), Graphics.getImageHeight(icon)
             if iw > 0 and ih > 0 then
               -- About half the case height: the old 48px cap made disc art
-              -- unreadable on a TV. Overlap the lower-left case corner and
-              -- keep it inside the preview panel, clear of the game-name list.
-              local icon_box = math.min(112, Round((frame_h or draw_h) * 0.45))
+              -- unreadable on a TV, and the later 45% / 112px size still read
+              -- small next to the cover (#568). Overlap the lower-left case
+              -- corner and keep it inside the preview panel, clear of the
+              -- game-name list.
+              local icon_box = math.min(120, Round((frame_h or draw_h) * 0.5))
               local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
               local icon_w, icon_h
               if ratio >= 1 then icon_w = icon_box; icon_h = Round(icon_box / ratio)
