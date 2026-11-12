@@ -93,6 +93,9 @@ outdated/
 !.research/downloads/
 !.research/downloads/**
 !.research/_srcassets/
+# POPSLoader interface captures for the landing page (see ui/capture-manifest.json).
+!.research/ui/
+!.research/ui/**
 !.research/_state/
 # _html/ (the 34 MB of raw Wayback snapshots) is deliberately NOT tracked: 186 of its
 # 526 files carry an AWS-key-shaped token, two apiece, i.e. archive.org wrapper
