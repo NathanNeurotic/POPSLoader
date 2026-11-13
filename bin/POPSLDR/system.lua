@@ -9362,6 +9362,119 @@ function PLDR.PrepareUdpfsConfig()
   return true
 end
 
+-- ===== Check for Updates (src/updater.cpp) =====
+-- Official releases only: the latest GitHub release's POPSLOADER.ELF, fetched over verified HTTPS on a worker
+-- thread (System.updateStart / updateStatus), checked against the release's SHA256SUMS.txt, then swapped in
+-- for the running ELF; no backup of the old one is kept. Memory card and USB / MX4SIO / MMCE boots only.
+PLDR._U = {}
+PLDR._U.ERR = {
+  [2] = "Could not reach GitHub\nCheck the network settings and the cable",
+  [3] = "The console clock is not set\nSet the date and time first",
+  [4] = "Could not make a secure connection to GitHub",
+  [5] = "GitHub sent something unexpected",
+  [6] = "Could not write the new POPSLOADER.ELF",
+  [7] = "The download did not verify\nNothing was changed",
+  [8] = "Out of memory",
+  [9] = "An update is already running",
+}
+PLDR._U.state = { remote = nil, target = nil }
+
+function PLDR.UpdateTarget()
+  local p = BOOT_ARGV0_RAW
+  if type(p) ~= "string" or p == "" then return nil end
+  if not (string.find(p, "^mc[01]:") or string.find(p, "^mass%d*:") or string.find(p, "^usb%d*:")
+          or string.find(p, "^mx4sio%d*:") or string.find(p, "^mmce%d*:")) then
+    return nil
+  end
+  return PLDR.ResolveDeviceLabelRoot(p)
+end
+
+function PLDR._U.wait(report, label, lo, hi)
+  while true do
+    local running, result, done, total, remote = System.updateStatus()
+    if not running then return result, remote end
+    local text, frac = label, lo
+    if (tonumber(total) or 0) > 0 then
+      frac = lo + (hi - lo) * (done / total)
+      text = string.format("%s %d / %d KB", label, math.floor(done / 1024), math.floor(total / 1024))
+    end
+    report(text, frac)
+  end
+end
+
+function PLDR._U.net(report)
+  if type(System) ~= "table" or type(System.updateStart) ~= "function" then
+    return false, "Updates are not available in this build"
+  end
+  report("Loading network modules...", 0.05)
+  if type(System.initSMB) == "function" and not System.initSMB() then
+    return false, "Could not start the network"
+  end
+  report((type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true) and "Waiting for link + DHCP lease..." or "Waiting for network link...", 0.1)
+  local ok, err = System.smbNetUp(PLDR.SMB)
+  if not ok then
+    return false, "The network is not up ("..tostring(err or "NO_LINK")..")\nSet it up in Settings > Network"
+  end
+  return true
+end
+
+-- Returns "available", <version> | "newest", <version> | "error", <message>.
+function PLDR.CheckForUpdate(report)
+  local target = PLDR.UpdateTarget()
+  if target == nil then
+    return "error", "Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive"
+  end
+  local ok, msg = PLDR._U.net(report)
+  if not ok then return "error", msg end
+  report("Checking GitHub...", 0.3)
+  local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
+  if not System.updateStart("check", ver) then return "error", PLDR._U.ERR[9] end
+  local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
+  if result == 1 then
+    -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
+    PLDR._U.state.remote = remote
+    PLDR._U.state.target = target
+    return "newest", remote
+  end
+  if result ~= 0 then return "error", PLDR._U.ERR[result] or "The update check failed" end
+  PLDR._U.state.remote = remote
+  PLDR._U.state.target = target
+  return "available", remote
+end
+
+-- Needs a CheckForUpdate that found a newer release. Returns true, <message> | false, <message>.
+function PLDR.InstallUpdate(report)
+  local target = PLDR._U.state.target
+  if target == nil or PLDR._U.state.remote == nil then return false, "Check for updates first" end
+  local fresh = target..".NEW"
+  -- A failed final rename leaves the verified download as <name>.NEW and no ELF: keep it for the user.
+  if not doesFileExist(target) then
+    return false, "POPSLOADER.ELF is missing. The new one is saved as\n"..fresh.."\nRename it before updating again"
+  end
+  -- A leftover .NEW means an earlier install did not finish: it may be the only complete ELF, so never delete it here.
+  if doesFileExist(fresh) then
+    return false, "An earlier update did not finish\n"..fresh.." is left over\nRename it to "..target.." if the app will not start,\nor delete it, then try again"
+  end
+  report("Downloading...", 0.05)
+  if not System.updateStart("install", fresh) then return false, PLDR._U.ERR[9] end
+  local result = PLDR._U.wait(report, "Downloading...", 0.05, 0.9)
+  if result ~= 0 then
+    pcall(System.removeFile, fresh)
+    return false, PLDR._U.ERR[result] or "The download failed"
+  end
+  report("Installing...", 0.95)
+  if not pcall(System.removeFile, target) or doesFileExist(target) then
+    pcall(System.removeFile, fresh)
+    return false, "Could not remove the current POPSLOADER.ELF\nNothing was changed"
+  end
+  if not pcall(System.rename, fresh, target) or not doesFileExist(target) then
+    return false, "The update could not be put in place. The new ELF is saved as\n"..fresh.."\nRename it to "..target
+  end
+  local version = PLDR._U.state.remote
+  PLDR._U.state.remote = nil
+  return true, "Updated to "..tostring(version).."\nRestart POPSLoader to use it"
+end
+
 function PLDR.InitSMBPopsRoot(report)
   if type(System) ~= "table" or type(System.connectSMB) ~= "function" then
     return nil, "IRX_LOAD_FAIL"

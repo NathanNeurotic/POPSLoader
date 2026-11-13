@@ -846,7 +846,7 @@ static int copy_file_contents(const char *src, const char *dst)
 	}
 
 	close(source);
-	close(dest);
+	if (close(dest) != 0) return -1; /* a failed flush must not let rename remove the source */
 	if (size < 0) {
 		return -1; /* read error mid-stream: don't report a partial copy as success */
 	}
@@ -875,6 +875,10 @@ static int lua_rename(lua_State *L)
 
 	return 0;
 }
+
+// Check for Updates (src/updater/updater.cpp): worker-thread HTTPS to GitHub, polled from Lua.
+extern "C" int lua_updateStart(lua_State *L);
+extern "C" int lua_updateStatus(lua_State *L);
 
 static int lua_sleep(lua_State *L)
 {
@@ -2527,6 +2531,8 @@ static const luaL_Reg System_functions[] = {
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
 	{"removeFile",               lua_removeFile},
+	{"updateStart",              lua_updateStart},
+	{"updateStatus",             lua_updateStatus},
 	{"rename",                       lua_rename},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},
