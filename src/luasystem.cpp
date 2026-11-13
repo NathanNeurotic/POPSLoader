@@ -940,6 +940,16 @@ static int lua_openfile(lua_State *L){
 	const char *file_tbo = luaL_checkstring(L, 1);
 	int type = luaL_checkinteger(L, 2);
 	int fileHandle = open(file_tbo, type, 0777);
+	if (fileHandle < 0) {
+		// As Launchstation does: when "dev:/path" fails, try "dev:path" (and the reverse)
+		char alt[512];
+		char *sep = strlen(file_tbo) < sizeof(alt) - 2 ? strchr(strcpy(alt, file_tbo), ':') : NULL;
+		if (sep != NULL && sep[1] != '\0') {
+			if (sep[1] == '/') memmove(sep + 1, sep + 2, strlen(sep + 2) + 1);
+			else { memmove(sep + 2, sep + 1, strlen(sep + 1) + 1); sep[1] = '/'; }
+			fileHandle = open(alt, type, 0777);
+		}
+	}
 	if (fileHandle < 0) return luaL_error(L, "cannot open '%s'\n\tfd:%d.", file_tbo, fileHandle);
 	lua_pushinteger(L,fileHandle);
 	return 1;
@@ -2699,6 +2709,8 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushinteger(L, O_CREAT | O_WRONLY);
 	lua_setglobal(L, "FCREATE");
+	lua_pushinteger(L, O_CREAT | O_WRONLY | O_TRUNC);
+	lua_setglobal(L, "FCREATE_TRUNC"); // overwrite in place: a shorter file must not keep the old tail
 
 	lua_pushinteger(L, O_RDWR);
 	lua_setglobal(L, "FRDWR");
