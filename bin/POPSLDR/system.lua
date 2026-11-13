@@ -9451,7 +9451,10 @@ function PLDR.InstallUpdate(report)
   if not doesFileExist(target) then
     return false, "POPSLOADER.ELF is missing. The new one is saved as\n"..fresh.."\nRename it before updating again"
   end
-  pcall(System.removeFile, fresh)
+  -- A leftover .NEW means an earlier install did not finish: it may be the only complete ELF, so never delete it here.
+  if doesFileExist(fresh) then
+    return false, "An earlier update did not finish\n"..fresh.." is left over\nRename it to "..target.." if the app will not start,\nor delete it, then try again"
+  end
   report("Downloading...", 0.05)
   if not System.updateStart("install", fresh) then return false, PLDR._U.ERR[9] end
   local result = PLDR._U.wait(report, "Downloading...", 0.05, 0.9)
