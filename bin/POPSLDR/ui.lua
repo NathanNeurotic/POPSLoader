@@ -5495,11 +5495,13 @@ UI = {
           UI.RunBusyTask("Checking for updates...", function (report)
             state, info = PLDR.CheckForUpdate(report)
           end, "Update check failed")
-          if state == "available" then
+          if state == "available" or state == "newest" then
+            local newer = state == "available"
             UI.Modal.active = true
             UI.Modal.title = "Update"
-            UI.Modal.body = "POPSLoader "..tostring(info).." is available.\nInstall it now?"
-            UI.Modal.options = {"Install", "Cancel"}
+            UI.Modal.body = newer and ("POPSLoader "..tostring(info).." is available.\nInstall it now?")
+                                   or ("POPSLoader is up to date.\nDownload "..tostring(info).." again anyway?")
+            UI.Modal.options = {newer and "Install" or "Download", "Cancel"}
             UI.Modal.confirm_action = function ()
               UI.Modal.Close()
               local ok, msg
@@ -5511,8 +5513,6 @@ UI = {
             UI.Modal.cancel_action = UI.Modal.Close
             UI.Modal.triangle_action = nil
             UI.Modal.ignore_until_release = true
-          elseif state == "newest" then
-            UI.Notif_queue.add("POPSLoader is up to date", "info")
           elseif state == "error" then
             UI.Notif_queue.add(tostring(info or "The update check failed"), "error")
           end

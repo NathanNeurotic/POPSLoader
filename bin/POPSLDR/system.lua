@@ -9418,7 +9418,7 @@ function PLDR._U.net(report)
   return true
 end
 
--- Returns "available", <version> | "newest" | "error", <message>.
+-- Returns "available", <version> | "newest", <version> | "error", <message>.
 function PLDR.CheckForUpdate(report)
   local target = PLDR.UpdateTarget()
   if target == nil then
@@ -9430,7 +9430,12 @@ function PLDR.CheckForUpdate(report)
   local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
   if not System.updateStart("check", ver) then return "error", PLDR._U.ERR[9] end
   local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
-  if result == 1 then return "newest" end
+  if result == 1 then
+    -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
+    PLDR._U.state.remote = remote
+    PLDR._U.state.target = target
+    return "newest", remote
+  end
   if result ~= 0 then return "error", PLDR._U.ERR[result] or "The update check failed" end
   PLDR._U.state.remote = remote
   PLDR._U.state.target = target
