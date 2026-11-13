@@ -10,7 +10,7 @@
 
 | Channel | Package | Who should use it |
 | --- | --- | --- |
-| **Official 1.4.2** | [Official 1.4.2 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2) | Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), completed translations and a Circle-on-No fix. Console acceptance remains pending. |
+| **Official 1.4.4** | [Official 1.4.4 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.4) | A warning when a disc icon cannot be loaded and SVKghost's Slovak corrections, on top of 1.4.3's Slovak translation, long text that fits in every language, finished Brazilian Portuguese and a larger disc icon, on top of 1.4.2's Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2) and experimental i.Link page (hidden by default, hardware-untested). Console acceptance remains pending. |
 | Prior stable 1.2.3 | [Release 1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Preserved POPStarter-only baseline without Ember. |
 | **POPSLoader 1.3.0 ([Ember](https://github.com/Gageformer/Ember) Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with [Gageformer](https://github.com/Gageformer)'s **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
@@ -20,7 +20,7 @@ Passing CI proves builds and packages passed automated checks; **it does not pro
 
 ## Install POPSLoader with Ember Beta-2
 
-Download the full [POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
+Download the full [POPSLoader 1.4.4 PS1_POPSLOADER-1.4.4.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.4/PS1_POPSLOADER-1.4.4.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
 
 ~~~text
 APPS/
@@ -47,7 +47,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 ~~~
 
-1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.4/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
 2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
 3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
 4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.
@@ -71,7 +71,7 @@ HDD/PFS artwork belongs under `__common/POPS/ART/`. The UDPFS mode uses Okeanos'
 
 Set the bundled **Ember Beta-2** core's global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
 
-Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL / Open-PS2-Loader](https://github.com/NathanNeurotic/Open-PS2-Loader) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
+Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL](https://github.com/NathanNeurotic/RiptOPL) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
 
 ## Main features
 
@@ -279,6 +279,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **[Hugopocked](https://www.psx-place.com/members/hugopocked.47440/)**: [POPStarter](https://www.psx-place.com/resources/popstarter.683/) fixes.
 *   **[saildot4k](https://github.com/saildot4k) (R3Z3N)**: BDMA-ATA (exFAT internal-HDD / ATA backend), the [wLaunchELF_R3Z](https://github.com/saildot4k/wLaunchELF_R3Z) reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.
 *   **[oldman63](https://github.com/oldman63) (sAGA, Sári Gábor)**: The complete Hungarian localization and the localization bug reports that hardened it for every language, plus relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.
+*   **[SVKghost](https://github.com/SVKghost)**: The Slovak (Slovenčina) translation and its corrections ([#605](https://github.com/NathanNeurotic/POPSLoader/issues/605)).
 *   **[CosmicScale](https://github.com/CosmicScale)**: exFAT internal-HDD hardware verification and the per-device [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/) idea.
 *   **FifthFox**: The per-device USB-delay POPSTARTER report that shaped the launch resolver.
 *   **[Ripto / NathanNeurotic](https://github.com/NathanNeurotic)**: Maintenance, UI polishing, and release engineering.

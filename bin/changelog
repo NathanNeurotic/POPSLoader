@@ -1,5 +1,15 @@
 [Unreleased]
 
+[1.4.4] - November 12th, 2026
+- New: a one-time warning toast when a disc icon (_ICO.png) exists but cannot be loaded (over 1024 px a side, or over the loader's size budget, about 607x607 in full colour) instead of skipping it silently (#568). Host-tested only; the toast has not been seen on screen.
+- Translations: SVKghost's Slovak corrections: credits, the START-at-boot notice, and shorter Ember Dithering / Backspace / Game list cache labels (#605). Label widths are estimates; not seen on screen.
+
+[1.4.3] - November 12th, 2026
+- New: Slovak (Slovenčina) translation by SVKghost (#605); the importer keeps leading spaces Excel dropped.
+- Fix: long text fits in every language: unfocused settings labels/values, footer labels and menu rows end in "..." by measured width; the focused settings row still scrolls; busy and message boxes wrap by pixel width. Checked in an emulator only.
+- Translations: 36 runtime strings that were still English in Brazilian Portuguese are translated.
+- UI: the game-list disc icon is slightly larger (50% of the case height, 120px cap) (#568).
+
 [1.4.2] - November 11th, 2026
 - New (experimental): BDMA Mode "i.Link (experimental)" and POPSTARTER titles on the i.Link page, using RiptOPL's i.LINK driver pair (OPL dfa28822), embedded and staged like the other modes. Hardware: NOT TESTED; unproven.
 - New (experimental): i.Link page for Ember games (hidden by default; Settings > Device List). Loads the ps2sdk i.LINK drivers on first entry. Hardware: NOT TESTED. POPSTARTER titles on this page use the experimental BDMA Mode above (unproven).

@@ -1,410 +1,410 @@
-English (do not edit)	Slovak (put your translation here)
- (%d hidden -- Global Hide is on)	
- (%d multi-disc collapsed)	
-(could NOT save -- reverts on reboot)	
-(not set)	
-(share root)	
-(the usual settings location wasn't writable)	
-(unknown)	
--- launch cancelled	
--game not found:\n%s	
-100M Full	
-100M Half	
-10M Full	
-10M Half	
-APA / PFS (default)	
-About	
-Actual output	
-Adaptive BDMA	
-Adaptive BDMA couldn't stage	
-Address type	
-Applying BDMA mode	
-Applying SMB modules	
-At least one device must stay on the carousel	
-Auto	
-Auto (console region)	
-Auto-launch failed: %s	
-Auto-launch page not supported: %s	
-Automatic	
-BACK	
-BDMA Mode	
-BDMA mode change didn't apply\nBDMA reverted; other settings were saved	
-BDMA source backend not ready:	
-BOOT.ELF failed to launch	
-BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	
-Back	
-Backspace	
-Boot Page	
-Boot Page device is hidden -- landed on the carousel.\nCheck Settings > Boot Page / Internal HDD.	
-Boot sound	
-Booted from:	
-Both	
-Bringing up network...	
-Building HDD game list...	
-Building USB game list...	
-CLR	
-Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first	
-Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	
-Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	
-Can't reach the server\ncheck Server IP / Port in SMB settings	
-Cancel	
-Cannot access	
-Cannot mount Ember partition read/write	
-Cannot mount HDD partition required by POPSTARTER	
-Cannot preserve Ember's APA mount across ELF handoff	
-Carousel (default)	
-Case/Symbols: UPPER  (R2)	
-Case/Symbols: lower  (R2)	
-Center aligned	
-Check the memory card	
-Checking Ember...	
-Checking POPSTARTER...	
-Checking USB roots...	
-Checking per-device Ember libraries...	
-Checking the MX4SIO card...	
-Checking the exFAT HDD...	
-Checking the game file...	
-Close	
-Code by El_isra	
-Confirm	
-Connecting to SMB...	
-Controller	
-Could not install the SMB modules\nCheck the memory card is inserted and has free space	
-Could not open UDPFS	
-Could not open the SMB share	
-Could not read UDPFS configuration:\n%s	
-Could not start MX4SIO	
-Could not start the internal drive	
-Could not write UDPFS configuration:\n%s	
-Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	
-Couldn't read that game selection	
-Couldn't restore BDMA mode	
-Couldn't save settings -- POPSTARTER folder NOT deleted	
-Couldn't save settings -- POPSTARTER folder NOT restored	
-Couldn't save settings\n%s may be read-only	
-Couldn't update hidden state	
-Couldn't write %s	
-Couldn't write .hide to the HDD	
-Cover art	
-Credits	
-Cursor: L1 / R1	
-DEL	
-DEV9 module failed to load	
-DHCP (automatic)	
-DHCP failed\nset a static IP in SMB settings	
-DKWDRV Path	
-DKWDRV failed to launch	
-DNS	
-DONE	
-Default	
-Default (global)	
-Defaults restored	
-Delete the POPSTARTER folder from the memory card?	
-Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	
-Detecting MMCE device...	
-Device List	
-Disabled	
-Disc (DKWDRV)	
-Discard & Exit	
-Display	
-Display reverted -- new mode wasn't confirmed	
-Dithering	
-Done	
-ERROR: HDD is not accessible	
-ERROR: Hardware issue detected\nCheck your HDD, network adapter and connection	
-Edit	
-Edit %s	
-Edit DKWDRV Path	
-Edit POPStarter Path	
-Edit Path	
-Ember 480p requires compatible video output	
-Ember Controller	
-Ember Display	
-Ember Dithering	
-Ember ELF returned: %s	
-Ember Game Settings	
-Ember PS1 Core	
-Ember Shading	
-Ember Timing	
-Ember did not launch	
-Ember game scan unavailable	
-Ember global settings could not be saved on %s	
-Ember launch error: %s	
-Ember needs a 512 KB BIOS: %s	
-Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)	
-Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)	
-Enter	
-Ethernet protocol	
-Exit	
-FAT32-USB (None)	
-Failed to apply FAT32 BDMA	
-Failed to connect to SMB	
-Failed to install SMB modules	
-Failed to load HDD	
-Failed to load HDD (exFAT)	
-Failed to load MMCE	
-Failed to load MX4SIO	
-Failed to load USB	
-Failed to refresh HDD list	
-Failed to refresh list	
-Failed to remove some SMB modules	
-Failed to save settings	
-Finalizing settings	
-First disc only	
-Game List	
-Game details	
-Game file missing	
-Game hidden	
-Game list cache	
-Game shown	
-GameName derivation failed	
-Games path (folder holding POPS)	
-Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	
-Games will list but will not boot\nInstall them from Settings > SMB modules when ready	
-Gateway	
-HDD (exFAT)	
-HDD Alt	
-HDD Alt mode needs POPSTARTER on HDD	
-HDD boot mount lost during settings write\nReboot to restore HDD access	
-HDD dir read failed:	
-HDD game-partition write test FAILED (%s)	
-HDD is ready now (status recovered)	
-HDD list loaded from cache (R1 rescans)	
-HDD list refreshed	
-HDD list refreshed (no games found)	
-HDD modules not loaded	
-HDD not usable	
-Hidden	
-Hidden games	
-Hidden games are already shown here (dimmed)\nEnable "Hide hidden games" in Settings to filter them out	
-Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	
-Hidden games filtered out again	
-Hide UI Text	
-How to hide a game	
-IP address	
-IP assignment	
-Initializing UDPFS network filesystem...	
-Initializing USB backend...	
-Install them now?	
-Installed	
-Installing SMB modules...	
-Internal HDD	
-Internal error: game_base derived as POPSTARTER; refusing to launch.	
-Invalid Ember game selection	
-Invalid HDD game entry	
-Invalid game selection	
-Keep	
-Keep this display mode?	
-Keep-IOP ELF loader unavailable	
-Keyboard Layout	
-L3 on the game list	
-LAUNCH FAILED	
-Language	
-Launch	
-Launch DKWDRV?	
-Left aligned	
-Link mode	
-List refreshed	
-List refreshed (no games found)	
-Loaded MMCE list from cache...	
-Loaded MX4SIO list from cache...	
-Loaded SMB list from cache...	
-Loaded USB list from cache...	
-Loaded exFAT HDD list from cache...	
-Loading HDD (exFAT)...	
-Loading HDD modules...	
-Loading HDD...	
-Loading MMCE...	
-Loading MX4SIO...	
-Loading UDPFS network drivers...	
-Loading USB...	
-Loading network modules...	
-Locating MX4SIO POPS folder...	
-Locating exFAT HDD POPS folder...	
-Logging on to the share...	
-Looking for USB drive...	
-MMCE has no POPS folder\nexpected mmce0:/POPS/	
-MX4SIO driver failed to load\ntry the page again, or reboot	
-Memory Card	
-Menu	
-Missing %s	
-Missing BDMA UI source (tried):	
-Missing BDMA source (tried):	
-Missing SMB module (tried):	
-Multi-disc games	
-NTSC (60Hz, 480i/240p)	
-NetBIOS isn't supported\nset Address type = IP + a Server IP	
-NetBIOS name	
-Netmask	
-Network initialization failed	
-No	
-No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	
-No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.	
-No .cue/.exe/.bin directly in %s	
-No DKWDRV found at this path	
-No MMCE device detected\nchecked mmce0: and mmce1:	
-No MX4SIO device detected	
-No POPSTARTER found at this path	
-No POPSTARTER.ELF found\nPOPSTARTER is never read from the share -- put it in mc0:/POPSTARTER/,\nor beside POPSLOADER.ELF, or set Settings > POPSTARTER Path	
-No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	
-No Share selected	
-No Share set in SMB settings\n(server returned no shares)	
-No USB backend detected\nreseat the drive and try again	
-No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	
-No games found	
-No games found on hdd0:	
-No games found on this device	
-No memory card detected\nSMB games will not launch or play without one --\nPOPSTARTER reads its network settings from mc0: or mc1:	
-No network link\ncheck the Ethernet cable / adapter	
-None	
-Not implemented yet	
-Not installed	
-Off	
-Off (deleted)	
-Okeanos UDPFS requires uppercase .VCD filenames. Rename this image on your UDPFS server.	
-On	
-On (default)	
-On (per-device)	
-Opening HDD list...	
-Opening MMCE list...	
-Opening MX4SIO list...	
-Opening SMB list...	
-Opening UDPFS...	
-Opening USB list...	
-Opening exFAT HDD list...	
-Operation failed	
-Overscan (CRT inset)	
-PAL (50Hz, 576i/288p)	
-POPSLoader\nfor POPStarter	
-POPSTARTER Folder	
-POPSTARTER Path	
-POPSTARTER executable path is empty	
-POPSTARTER folder deleted from the memory card	
-POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	
-POPSTARTER needs these filled in first:	
-PS2 IP	
-Password	
-Path saved, file not found:	
-Port	
-Preparing MMCE list...	
-Preparing settings	
-Press %s/%s to continue.	
-Press CIRCLE again to discard what you typed	
-Press CROSS again to discard what you typed	
-Reading network POPS folder...	
-Rebuilding HDD game list...	
-Reconnecting to SMB...	
-Refreshing HDD list...	
-Refreshing UDPFS directory...	
-Refreshing list...	
-Report this code -- the card may be fine	
-Report this code -- the drive may be fine	
-Rescanning HDD partitions...	
-Reset Defaults	
-Resolved:	
-Restoring BDMA mode	
-Retro GEM Game ID	
-Retrying USB scan...	
-Return to OSDSYS?	
-Revert	
-Reverting in	
-Right aligned	
-SMB (v1)	
-SMB / Network	
-SMB already owns the network adapter\nRestart POPSLoader to switch to UDPFS	
-SMB connect failed	
-SMB connection dropped	
-SMB login failed\ncheck User / Password	
-SMB modules	
-SMB modules are missing from the memory card\nThe setting is on but the files are not there --\nre-install via Settings > SMB modules, then Save	
-SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save	
-SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	
-SMB modules failed to load	
-SMB modules installed	
-SPACE	
-Save	
-Save Changes	
-Saved to	
-Saving settings	
-Saving...	
-Saving/Applying...	
-Scanning Ember games...	
-Scanning HDD partitions...	
-Scanning MMCE games...	
-Scanning MX4SIO games...	
-Scanning SMB games...	
-Scanning UDPFS PS1 games...	
-Scanning UDPFS games...	
-Scanning exFAT HDD games...	
-Scanning games...	
-Select	
-Select a share	
-Server IP	
-Server refused SMBv1\nenable SMBv1 support on the host	
-Set a static PS2 address in SMB / Network settings	
-Set a valid static PS2 IP, contiguous netmask and gateway in Settings > SMB / Network	
-Settings	
-Settings > SMB / Network	
-Shading	
-Share	
-Share not found\ncheck the Share name (host must allow SMB1)	
-Show all discs	
-Showing hidden games (dimmed) -- press L3 to unhide	
-Shown	
-Slot:	
-Staging UDPFS POPSTARTER drivers...	
-Staging drivers for this device	
-Start held at boot: display reset to Auto, Boot Page reset to Carousel.\nAdjust them in Settings if needed.	
-Starting Ember...	
-Starting the game...	
-Startup	
-Static (manual)	
-Storage	
-The SMB modules are not on your memory card.\nGames will list, but none of them will boot.	
-The internal drive is still starting\nopen this page again in a moment	
-The network adapter is already initialized in another mode.\nRestart POPSLoader to switch network protocols.	
-This backend isn't implemented yet	
-This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	
-Timing	
-Triangle	
-UDPFS (network R/W)	
-UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP	
-UDPFS IPCONFIG.DAT conflicts with menu settings:\n%s\nEdit it to match %s %s (not overwritten)	
-UDPFS SMAP driver failed to load	
-UDPFS already owns the network adapter.\nRestart POPSLoader to switch to SMBv1.	
-UDPFS config must contain 1-120 bytes:\n%s	
-UDPFS driver staging failed -- launch cancelled	
-UDPFS filesystem module failed to load	
-UDPFS menu modules are not available	
-UDPFS menu support is missing from this build	
-UDPFS module initialization failed	
-UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network.	
-UDPFS network initialization incomplete\nRestart POPSLoader	
-UDPFS network stack failed to load	
-UDPFS requires POPSTARTER modules on a memory card	
-UDPFS server unavailable\nCheck your network and UDPFS server	
-UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server	
-UI text hidden	
-UI text shown	
-Unable to keep Ember PFS mount	
-Unchanged	
-Unknown BDMA mode:	
-User	
-Version	
-Video Standard	
-Visible (manage)	
-WARNING: HDD has no APA format	
-WARNING: No HDD detected	
-Waiting for link + DHCP lease...	
-Waiting for network link...	
-Working...	
-Yes	
-You can still add a "<game>.hide" next to the .VCD from a PC.	
-__.POPS partition %s accepts writes (game-partition RW test)	
-adjusted -- using	
-check the memory card, or turn Adaptive BDMA off	
-exFAT-HDD (ata)	
-if not confirmed	
-re-select it under Settings > Storage to restage	
-return code:	
-status:	
+English (do not edit)	Slovak
+ (%d hidden -- Global Hide is on)	 (%d skrytých -- Globálne skrývanie je zapnuté)
+ (%d multi-disc collapsed)	 (%d viacdiskových hier zbalených)
+(could NOT save -- reverts on reboot)	(NEPODARILO SA uložiť -- po reštarte sa obnovia pôvodné)
+(not set)	(nenastavené)
+(share root)	(zdieľaný koreňový adresár)
+(the usual settings location wasn't writable)	(bežné umiestnenie nastavení nebolo zapisovateľné)
+(unknown)	(neznáme)
+-- launch cancelled	-- spúšťanie zrušené
+-game not found:\n%s	-hra nebola nájdená:\n%s
+100M Full	100M Full
+100M Half	100M Half
+10M Full	10M Full
+10M Half	10M Half
+APA / PFS (default)	APA / PFS (predvolené)
+About	O programe (podrobnosti)
+Actual output	Aktuálny výstup
+Adaptive BDMA	Adaptívne BDMA
+Adaptive BDMA couldn't stage	Adaptívne BDMA nedokázalo vytvoriť dočasnú vyrovnávaciu pamäť (stage)
+Address type	Typ adresy
+Applying BDMA mode	Aplikovanie BDMA módu
+Applying SMB modules	Aplikovanie SMB modulov
+At least one device must stay on the carousel	Aspoň jedno zariadenie musí zostať v karuseli
+Auto	Automaticky
+Auto (console region)	Automaticky (región konzoly)
+Auto-launch failed: %s	Automatické spustenie zlyhalo: %s
+Auto-launch page not supported: %s	Stránka automatického spustenia nie je podporovaná: %s
+Automatic	Automatické
+BACK	SPÄŤ
+BDMA Mode	BDMA mód
+BDMA mode change didn't apply\nBDMA reverted; other settings were saved	Zmena BDMA módu nebola aplikovaná\nBDMA sa obnovil; ostatné nastavenia boli uložené
+BDMA source backend not ready:	BDMA zdrojový backend nie je pripravený:
+BOOT.ELF failed to launch	BOOT.ELF súbor sa nepodarilo spustiť
+BOOT.ELF not found\nchecked mc0:/BOOT and mc1:/BOOT	BOOT.ELF súbor nebol nájdený\nskontrolované mc0:/BOOT a mc1:/BOOT
+Back	Späť
+Backspace	Backspace
+Boot Page	Spúšťacia (boot) stránka
+Boot Page device is hidden -- landed on the carousel.\nCheck Settings > Boot Page / Internal HDD.	Zariadenie spúšťacej stránky je skryté -- prechod na karusel.\nSkontroluj Nastavenia > Spúšťacia (boot) stránka / Interný HDD.
+Boot sound	Zvuk pri spustení
+Booted from:	Spustené z:
+Both	Obe
+Bringing up network...	Spúšťanie siete...
+Building HDD game list...	Vytváranie zoznamu hier z HDD...
+Building USB game list...	Vytváranie zoznamu hier z USB...
+CLR	CLR (Vyčistiť)
+Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first	Nedá sa vypnúť, kým je zapnuté Adaptívne BDMA\nNajskôr vypni Adaptívne BDMA
+Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	Nedá sa vypnúť, kým je BDMA povolené\nNajskôr nastav BDMA mód na FAT32 (None)
+Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Nedá sa vypnúť, kým sú nainštalované SMB moduly\nNajskôr nastav SMB moduly na Nenainštalované
+Can't reach the server\ncheck Server IP / Port in SMB settings	Nedá sa spojiť so serverom\nskontroluj IP servera / Port v nastaveniach SMB
+Cancel	Zrušiť
+Cannot access	Nedá sa získať prístup
+Cannot mount Ember partition read/write	Nedá sa pripojiť partícia Ember čítanie/zápis
+Cannot mount HDD partition required by POPSTARTER	Nedá sa pripojiť HDD partícia vyžadovaná POPSTARTERom
+Cannot preserve Ember's APA mount across ELF handoff	Nie je možné zachovať pripojenie Emberu typu APA pri odovzdávaní ELF
+Carousel (default)	Karusel (predvolené)
+Case/Symbols: UPPER  (R2)	Veľkosť písma/Symboly: VEĽKÉ  (R2)
+Case/Symbols: lower  (R2)	Veľkosť písma/Symboly: malé  (R2)
+Center aligned	Zarovnané na stred
+Check the memory card	Skontroluj pamäťovú kartu
+Checking Ember...	Kontrola Ember...
+Checking POPSTARTER...	Kontrola POPSTARTER...
+Checking USB roots...	Kontrola koreňových adresárov USB...
+Checking per-device Ember libraries...	Kontrola knižníc Ember pre jednotlivé zariadenia...
+Checking the MX4SIO card...	Kontrola MX4SIO karty...
+Checking the exFAT HDD...	Kontrola exFAT HDD...
+Checking the game file...	Kontrola súboru hry...
+Close	Zatvoriť
+Code by El_isra	Nakódoval El_isra
+Confirm	Potvrdiť
+Connecting to SMB...	Pripájanie k SMB...
+Controller	Ovládač
+Could not install the SMB modules\nCheck the memory card is inserted and has free space	Nepodarilo sa nainštalovať SMB moduly\nSkontroluj, či je vložená pamäťová karta a či má voľné miesto
+Could not open UDPFS	Nepodarilo sa otvoriť UDPFS
+Could not open the SMB share	Nepodarilo sa otvoriť SMB zdieľanie
+Could not read UDPFS configuration:\n%s	Nepodarilo sa načítať konfiguráciu UDPFS:\n%s
+Could not start MX4SIO	Nepodarilo sa spustiť MX4SIO
+Could not start the internal drive	Nepodarilo sa spustiť interný disk
+Could not write UDPFS configuration:\n%s	Nepodarilo sa zapísať konfiguráciu UDPFS:\n%s
+Couldn't apply the PS2 IP settings\ntry again or power-cycle the network adapter	Nepodarilo sa aplikovať nastavenia IP pre PS2\nskús to znova alebo reštartuj sieťový adaptér (vypni/zapni)
+Couldn't read that game selection	Nepodarilo sa načítať tento výber hry
+Couldn't restore BDMA mode	Nepodarilo sa obnoviť BDMA mód
+Couldn't save settings -- POPSTARTER folder NOT deleted	Nepodarilo sa uložiť nastavenia -- POPSTARTER priečinok NEBOL vymazaný
+Couldn't save settings -- POPSTARTER folder NOT restored	Nepodarilo sa uložiť nastavenia -- POPSTARTER priečinok NEBOL obnovený
+Couldn't save settings\n%s may be read-only	Nepodarilo sa uložiť nastavenia\n%s môže byť len na čítanie
+Couldn't update hidden state	Nepodarilo sa aktualizovať stav „skrytý“
+Couldn't write %s	Nepodarilo sa zapísať %s
+Couldn't write .hide to the HDD	Nepodarilo sa zapísať súbor .hide na HDD
+Cover art	Obal hry
+Credits	Tvorcovia
+Cursor: L1 / R1	Kurzor: L1 / R1
+DEL	DEL (Vymazať)
+DEV9 module failed to load	Načítanie DEV9 modulu zlyhalo
+DHCP (automatic)	DHCP (automaticky)
+DHCP failed\nset a static IP in SMB settings	DHCP zlyhalo\nnastav statickú IP v nastaveniach SMB
+DKWDRV Path	Cesta k DKWDRV
+DKWDRV failed to launch	DKWDRV sa nepodarilo spustiť
+DNS	DNS
+DONE	HOTOVO
+Default	Predvolené
+Default (global)	Predvolené (globálne)
+Defaults restored	Obnovené predvolené nastavenia
+Delete the POPSTARTER folder from the memory card?	Vymazať priečinok POPSTARTER z pamäťovej karty?
+Design by Berion\nScripts by nuno6573 and Ripto\nBased on Enceladus by Daniel Santos\nTesting by P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k, and Community\n\nSpecial Thanks To:\nkrHACKen for making POPStarter\nuyjulian, fjtrujy, HWC, and others for always helping\n\nThis program is free and open source\nIf you bought it, you have been scammed\n\nCompatibility problems? Visit:\nyoutube.com/@hugopocked6695	Dizajn vytvoril Berion\nSkripty napísali nuno6573 a Ripto\nZaložené na Enceladus od Daniela Santosa\nTestovali P4NCHOL1NO, VizoR, provato,\nnuno6573, oldman63, saildot4k a komunita\n\nŠpeciálne poďakovanie:\nkrHACKen za vytvorenie POPStarteru\nuyjulian, fjtrujy, HWC a ďalší za neustálu pomoc\n\nTento program je bezplatný a s otvoreným zdrojovým kódom\nAk ste zaň zaplatili, boli ste podvedení\n\nMáte problémy s kompatibilitou? Navštívte:\nyoutube.com/@hugopocked6695
+Detecting MMCE device...	Detekcia MMCE zariadenia...
+Device List	Zoznam zariadení
+Disabled	Vypnuté
+Disc (DKWDRV)	Disk (DKWDRV)
+Discard & Exit	Zrušiť zmeny a odísť
+Display	Obrazovka
+Display reverted -- new mode wasn't confirmed	Zobrazenie sa vrátilo do pôvodného stavu -- nový mód nebol potvrdený
+Dithering	Dithering (rozptyl farieb/pixelov)
+Done	Hotovo
+ERROR: HDD is not accessible	CHYBA: HDD nie je prístupný
+ERROR: Hardware issue detected\nCheck your HDD, network adapter and connection	CHYBA: Zistený hardvérový problém\nSkontroluj HDD, sieťový adaptér a pripojenie
+Edit	Upraviť
+Edit %s	Upraviť %s
+Edit DKWDRV Path	Upraviť cestu k DKWDRV
+Edit POPStarter Path	Upraviť cestu k POPStarteru
+Edit Path	Upraviť cestu
+Ember 480p requires compatible video output	Ember 480p vyžaduje kompatibilný video výstup
+Ember Controller	Ember Ovládač
+Ember Display	Ember Obrazovka
+Ember Dithering	Ember Dithering
+Ember ELF returned: %s	Ember ELF vrátil: %s
+Ember Game Settings	Ember Nastavenia hry
+Ember PS1 Core	Ember PS1 core (jadro)
+Ember Shading	Ember Tieňovanie
+Ember Timing	Ember Časovanie
+Ember did not launch	Ember sa nespustil
+Ember game scan unavailable	Ember skenovanie hier je nedostupné
+Ember global settings could not be saved on %s	Ember globálne nastavenia sa nepodarili uložiť na %s
+Ember launch error: %s	Ember chyba spúšťania: %s
+Ember needs a 512 KB BIOS: %s	Ember potrebuje 512 KB BIOS: %s
+Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)	Najskôr povoľ priečinok POPSTARTER\n(BDMA / SMB moduly musia byť umiestnenie na pamäťovej karte)
+Enable the POPSTARTER Folder first\n(SMB modules must live on the memory card)	Najskôr povoľ priečinok POPSTARTER\n(SMB moduly musia byť umiestnenie na pamäťovej karte)
+Enter	Potvrdiť
+Ethernet protocol	Ethernet protokol
+Exit	Ukončiť
+FAT32-USB (None)	FAT32-USB (žiadny)
+Failed to apply FAT32 BDMA	Nepodarilo sa aplikovať FAT32 BDMA
+Failed to connect to SMB	Nepodarilo sa pripojiť k SMB
+Failed to install SMB modules	Nepodarilo sa nainštalovať SMB moduly
+Failed to load HDD	Nepodarilo sa načítať HDD
+Failed to load HDD (exFAT)	Nepodarilo sa načítať HDD (exFAT)
+Failed to load MMCE	Nepodarilo sa načítať MMCE
+Failed to load MX4SIO	Nepodarilo sa načítať MX4SIO
+Failed to load USB	Nepodarilo sa načítať USB
+Failed to refresh HDD list	Nepodarilo sa obnoviť zoznam HDD
+Failed to refresh list	Nepodarilo sa obnoviť zoznam
+Failed to remove some SMB modules	Nepodarilo sa odstrániť niektoré SMB moduly
+Failed to save settings	Nepodarilo sa uložiť nastavenia
+Finalizing settings	Dokončovanie nastavení
+First disc only	Iba prvý disk
+Game List	Zoznam hier
+Game details	Podrobnosti o hre
+Game file missing	Chýba súbor hry
+Game hidden	Hra skrytá
+Game list cache	Cache (bufer) zoznamu hier
+Game shown	Hra zobrazená
+GameName derivation failed	Odvodenie názvu hry zlyhalo
+Games path (folder holding POPS)	Cesta k hrám (priečinok obsahujúci POPS)
+Games path affects browsing only:\nPOPStarter can only launch games from <share>/POPS	Cesta k hrám ovplyvňuje iba prehliadanie:\nPOPStarter môže spustiť hry iba z <share>/POPS
+Games will list but will not boot\nInstall them from Settings > SMB modules when ready	Hry sa zobrazia v zozname, ale nespustia sa\nKeď budú pripravené, nainštaluj ich cez Nastavenia > SMB moduly
+Gateway	Gateway (brána)
+HDD (exFAT)	HDD (exFAT)
+HDD Alt	HDD Alt
+HDD Alt mode needs POPSTARTER on HDD	Mód HDD Alt potrebuje POPSTARTER na HDD
+HDD boot mount lost during settings write\nReboot to restore HDD access	Pri zápise nastavení došlo k strate pripojenia spúšťacieho HDD\nReštartuj konzolu na obnovenie prístupu k HDD
+HDD dir read failed:	Čítanie HDD adresára zlyhalo:
+HDD game-partition write test FAILED (%s)	Test zápisu na hernú partíciu HDD ZLYHAL (%s)
+HDD is ready now (status recovered)	HDD je teraz pripravený (stav obnovený)
+HDD list loaded from cache (R1 rescans)	Zoznam HDD bol načítaný z vyrovnávacej pamäte (R1 nové skenovanie)
+HDD list refreshed	Zoznam HDD bol obnovený
+HDD list refreshed (no games found)	Zoznam HDD bol obnovený (nenašli sa žiadne hry)
+HDD modules not loaded	HDD moduly neboli načítané
+HDD not usable	HDD nie je použiteľný
+Hidden	Skryté
+Hidden games	Skryté hry
+Hidden games are already shown here (dimmed)\nEnable "Hide hidden games" in Settings to filter them out	Skryté hry sa tu už zobrazujú (stlmené)\nAk ich chceš odfiltrovať, v nastaveniach zapnite možnosť „Skryť skryté hry“
+Hidden games are filtered out.\nPress R3 to reveal them, then L3 to unhide.	Skryté hry sú odfiltrované.\nStlač R3 pre ich zobrazenie, ďaľším stlačením L3 zrušíš ich skrytie.
+Hidden games filtered out again	Skryté hry boli opäť odfiltrované
+Hide UI Text	Skryť texty rozhrania (UI)
+How to hide a game	Ako skryť hru
+IP address	IP adresa
+IP assignment	Pridelenie IP adresy
+Initializing UDPFS network filesystem...	Inicializácia sieťového súborového systému UDPFS...
+Initializing USB backend...	Inicializácia USB backendu...
+Install them now?	Nainštalovať ich hneď teraz?
+Installed	Nainštalované
+Installing SMB modules...	Inštalácia SMB modulov...
+Internal HDD	Interný HDD
+Internal error: game_base derived as POPSTARTER; refusing to launch.	Interná chyba: game_base bolo identifikované ako POPSTARTER; spustenie odmietnuté.
+Invalid Ember game selection	Neplatný výber hry Ember
+Invalid HDD game entry	Neplatný záznam o hre na HDD
+Invalid game selection	Neplatný výber hry
+Keep	Ponechať
+Keep this display mode?	Ponechať tento režim zobrazenia?
+Keep-IOP ELF loader unavailable	Loader ELF typu Keep-IOP je nedostupný
+Keyboard Layout	Rozloženie klávesnice
+L3 on the game list	L3 v zozname hier
+LAUNCH FAILED	SPUSTENIE ZLYHALO
+Language	Jazyk
+Launch	Spustiť
+Launch DKWDRV?	Spustiť DKWDRV?
+Left aligned	Zarovnané doľava
+Link mode	Režim prepojenia
+List refreshed	Zoznam obnovený
+List refreshed (no games found)	Zoznam obnovený (nenájdené žiadne hry)
+Loaded MMCE list from cache...	Načítaný zoznam MMCE z vyrovnávacej pamäte...
+Loaded MX4SIO list from cache...	Načítaný zoznam MX4SIO z vyrovnávacej pamäte...
+Loaded SMB list from cache...	Načítaný zoznam SMB z vyrovnávacej pamäte...
+Loaded USB list from cache...	Načítaný zoznam USB z vyrovnávacej pamäte...
+Loaded exFAT HDD list from cache...	Načítaný zoznam exFAT HDD z vyrovnávacej pamäte...
+Loading HDD (exFAT)...	Načítavanie HDD (exFAT)...
+Loading HDD modules...	Načítavanie HDD modulov...
+Loading HDD...	Načítavanie HDD...
+Loading MMCE...	Načítavanie MMCE...
+Loading MX4SIO...	Načítavanie MX4SIO...
+Loading UDPFS network drivers...	Načítavanie sieťových ovládačov UDPFS...
+Loading USB...	Načítavanie USB...
+Loading network modules...	Načítavanie sieťových modulov...
+Locating MX4SIO POPS folder...	Vyhľadávanie priečinka MX4SIO POPS...
+Locating exFAT HDD POPS folder...	Vyhľadávanie priečinka exFAT HDD POPS...
+Logging on to the share...	Prihlasovanie sa k zdieľanému adresáru...
+Looking for USB drive...	Hľadám USB disk...
+MMCE has no POPS folder\nexpected mmce0:/POPS/	MMCE nemá POPS priečinok\nočakávané mmce0:/POPS/
+MX4SIO driver failed to load\ntry the page again, or reboot	Načítanie MX4SIO ovládača zlyhalo\nskús stránku znova alebo reštartuj konzolu
+Memory Card	Pamäťová karta
+Menu	Menu
+Missing %s	Chýba %s
+Missing BDMA UI source (tried):	Chýba BDMA UI zdroj (vyskúšané):
+Missing BDMA source (tried):	Chýba BDMA zdroj (vyskúšané):
+Missing SMB module (tried):	Chýba SMB modul (vyskúšané):
+Multi-disc games	Viacdiskové hry
+NTSC (60Hz, 480i/240p)	NTSC (60Hz, 480i/240p)
+NetBIOS isn't supported\nset Address type = IP + a Server IP	NetBIOS nie je podporovaný\nnastav Typ adresy = IP + IP servera
+NetBIOS name	NetBIOS názov
+Netmask	Maska siete
+Network initialization failed	Inicializácia siete zlyhala
+No	Nie
+No '__.POPS' partitions on hdd0:\nformat one with __.POPS / __.POPS0...9	Na hdd0: nie sú žiadne '__.POPS' partície.\nnaformátuj jednu ako __.POPS / __.POPS0...9
+No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.	V adresári UDPFS/POPS sa nenašli žiadne .VCD hry. Skontroluj server a stlač R1 pre nový pokus.
+No .cue/.exe/.bin directly in %s	Žiadne súbory .cue/.exe/.bin priamo v %s
+No DKWDRV found at this path	Na tejto ceste nenájdené žiadne DKWDRV
+No MMCE device detected\nchecked mmce0: and mmce1:	Nezistené žiadne MMCE zariadenie\nskontrolované mmce0: a mmce1:
+No MX4SIO device detected	Nezistené žiadne MX4SIO zariadenie
+No POPSTARTER found at this path	Na tejto ceste nenájdený žiadny POPSTARTER
+No POPSTARTER.ELF found\nPOPSTARTER is never read from the share -- put it in mc0:/POPSTARTER/,\nor beside POPSLOADER.ELF, or set Settings > POPSTARTER Path	Súbor POPSTARTER.ELF nenájdený\nPOPSTARTER sa nikdy nenačíta zo zdieľaného priečinka – umiestni ho do mc0:/POPSTARTER/,\nalebo vedľa súboru POPSLOADER.ELF, alebo nastav cestu v Nastavenia > Cesta k POPStarteru
+No POPSTARTER.ELF found\nchecked the game device, the launcher folder and mc0:/mc1:	Súbor POPSTARTER.ELF nenájdený\nskontrolované herné zariadenie, priečinok spúšťača a mc0:/mc1:
+No Share selected	Nie je vybrané žiadne zdieľanie
+No Share set in SMB settings\n(server returned no shares)	V nastaveniach SMB nie je nastavené žiadne zdieľanie\n(server nevrátil žiadne zdieľané priečinky)
+No USB backend detected\nreseat the drive and try again	Nezistený žiadny USB backend\nznova odpoj/pripoj disk a skús to znova
+No exFAT HDD detected\nformat the internal drive exFAT (BDMA Mode = ATA)	Nezistený žiadny exFAT HDD\nnaformátuj interný disk na exFAT (BDMA mód = ATA)
+No games found	Nenájdené žiadne hry
+No games found on hdd0:	Nenájdené žiadne hry na hdd0:
+No games found on this device	Nenájdené žiadne hry na tomto zariadení
+No memory card detected\nSMB games will not launch or play without one --\nPOPSTARTER reads its network settings from mc0: or mc1:	Nezistená žiadna pamäťová karta\nSMB hry sa bez nej nespustia alebo nebudú fungovať --\nPOPSTARTER načíta svoje sieťové nastavenia z mc0: alebo mc1:
+No network link\ncheck the Ethernet cable / adapter	Žiadne sieťové pripojenie\nskontroluj Ethernetový kábel / adaptér
+None	Žiadne
+Not implemented yet	Ešte neimplementované
+Not installed	Nenainštalované
+Off	Vypnuté
+Off (deleted)	Vypnuté (vymazané)
+Okeanos UDPFS requires uppercase .VCD filenames. Rename this image on your UDPFS server.	Okeanos UDPFS vyžaduje veľké písmená v názvoch .VCD súborov. Premenuj tento obraz na tvojom UDPFS serveri.
+On	Zapnuté
+On (default)	Zapnuté (predvolené)
+On (per-device)	Zapnuté (podľa zariadenia)
+Opening HDD list...	Otváranie zoznamu HDD...
+Opening MMCE list...	Otváranie zoznamu MMCE...
+Opening MX4SIO list...	Otváranie zoznamu MX4SIO...
+Opening SMB list...	Otváranie zoznamu SMB...
+Opening UDPFS...	Otváranie UDPFS...
+Opening USB list...	Otváranie zoznamu USB...
+Opening exFAT HDD list...	Otváranie zoznamu exFAT HDD...
+Operation failed	Operácia zlyhala
+Overscan (CRT inset)	Overscan (CRT výrez)
+PAL (50Hz, 576i/288p)	PAL (50Hz, 576i/288p)
+POPSLoader\nfor POPStarter	POPSLoader\npre POPStarter
+POPSTARTER Folder	Priečinok POPSTARTERu
+POPSTARTER Path	Cesta POPSTARTERu
+POPSTARTER executable path is empty	Cesta k spustiteľnému súboru POPSTARTERa je prázdna
+POPSTARTER folder deleted from the memory card	Priečinok POPSTARTER bol vymazaný z pamäťovej karty
+POPSTARTER folder restored on the memory card\n(set a BDMA mode to re-add the exFAT/SMB modules)	Priečinok POPSTARTER bol obnovený na pamäťovej karte\n(nastav BDMA mód pre opätovné pridanie exFAT/SMB modulov)
+POPSTARTER needs these filled in first:	POPSTARTER potrebuje najskôr vyplnenie týchto položiek:
+PS2 IP	PS2 IP
+Password	Heslo
+Path saved, file not found:	Cesta uložená, súbor nenájdený:
+Port	Port
+Preparing MMCE list...	Príprava zoznamu MMCE...
+Preparing settings	Príprava nastavení
+Press %s/%s to continue.	Stlač %s/%s pre pokračovanie.
+Press CIRCLE again to discard what you typed	Stlač znova KRÚŽOK pre zrušenie toho, čo si napísal
+Press CROSS again to discard what you typed	Stlač znova KRÍŽIK pre zrušenie toho, čo si napísal
+Reading network POPS folder...	Čítanie sieťového priečinka POPS...
+Rebuilding HDD game list...	Znovu vytváranie zoznamu hier z HDD...
+Reconnecting to SMB...	Opätovné pripájanie k SMB...
+Refreshing HDD list...	Obnovovanie zoznamu HDD...
+Refreshing UDPFS directory...	Obnovovanie adresára UDPFS...
+Refreshing list...	Obnovovanie zoznamu...
+Report this code -- the card may be fine	Nahlás tento kód -- karta môže byť v poriadku
+Report this code -- the drive may be fine	Nahlás tento kód -- disk môže byť v poriadku
+Rescanning HDD partitions...	Opätovné skenovanie partící HDD...
+Reset Defaults	Obnoviť predvolené
+Resolved:	Vyriešené:
+Restoring BDMA mode	Obnovenie módu BDMA
+Retro GEM Game ID	Retro GEM Game ID
+Retrying USB scan...	Opakovanie skenovania USB...
+Return to OSDSYS?	Návrat do OSDSYS?
+Revert	Vrátiť
+Reverting in	Návrat k
+Right aligned	Zarovnané doprava
+SMB (v1)	SMB (v1)
+SMB / Network	SMB / Sieť
+SMB already owns the network adapter\nRestart POPSLoader to switch to UDPFS	SMB už má k dispozícii sieťový adaptér\nReštartuj POPSLoader pre prepnutie na UDPFS
+SMB connect failed	Pripojenie SMB zlyhalo
+SMB connection dropped	Pripojenie SMB bolo prerušené
+SMB login failed\ncheck User / Password	Prihlásenie SMB zlyhalo\nskontroluj Používateľa / Heslo
+SMB modules	SMB moduly
+SMB modules are missing from the memory card\nThe setting is on but the files are not there --\nre-install via Settings > SMB modules, then Save	Na pamäťovej karte chýbajú SMB moduly\nNastavenie je zapnuté, ale súbory tam nie sú --\npreinštaluj ich cez Nastavenia > SMB moduly a potom Ulož
+SMB modules are not installed\nGames list but won't boot without them --\ninstall via Settings > SMB modules, then Save	SMB moduly nie sú nainštalované\nHry sa zobrazia, ale bez nich sa nespustia --\nnainštaluj ich cez Nastavenia > SMB moduly a potom Ulož
+SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	SMB moduly sa nenainštalovali/neodstránili\nnastavenie modulu sa obnovilo; ostatné nastavenia boli uložené
+SMB modules failed to load	SMB moduly sa nepodarilo načítať
+SMB modules installed	SMB moduly nainštalované
+SPACE	MEDZERNÍK
+Save	Uložiť
+Save Changes	Uložiť zmeny
+Saved to	Uložené do
+Saving settings	Ukladanie nastavení
+Saving...	Ukladanie...
+Saving/Applying...	Ukladanie/Aplikovanie...
+Scanning Ember games...	Skenujem Ember hry...
+Scanning HDD partitions...	Skenujem partície HDD...
+Scanning MMCE games...	Skenujem MMCE hry..
+Scanning MX4SIO games...	Skenujem MX4SIO hry...
+Scanning SMB games...	Skenujem SMB hry...
+Scanning UDPFS PS1 games...	Skenujem UDPFS PS1 hry...
+Scanning UDPFS games...	Skenujem UDPFS hry...
+Scanning exFAT HDD games...	Skenujem exFAT HDD hry...
+Scanning games...	Skenujem hry...
+Select	Vybrať
+Select a share	Vyber zdieľanie
+Server IP	IP servera
+Server refused SMBv1\nenable SMBv1 support on the host	Server odmietol SMBv1\npovoľ podporu SMBv1 na hostiteľovi
+Set a static PS2 address in SMB / Network settings	Nastav statickú IP adresu PS2 v nastaveniach SMB / Sieť
+Set a valid static PS2 IP, contiguous netmask and gateway in Settings > SMB / Network	Nastav platnú statickú IP adresu PS2, súvislú masku siete a bránu v Nastavenia > SMB / Sieť
+Settings	Nastavenia
+Settings > SMB / Network	Nastavenia > SMB / Sieť
+Shading	Tieňovanie
+Share	Zdieľanie
+Share not found\ncheck the Share name (host must allow SMB1)	Zdieľanie nebolo nájdené\nskontroluj názov zdieľania (hostiteľ musí povoliť SMB1)
+Show all discs	Zobraziť všetky disky
+Showing hidden games (dimmed) -- press L3 to unhide	Zobrazovanie skrytých hier (stlmené) -- stlač L3 pre ich odkrytie
+Shown	Zobrazené
+Slot:	Slot:
+Staging UDPFS POPSTARTER drivers...	Príprava ovládačov UDPFS POPSTARTER...
+Staging drivers for this device	Príprava ovládačov pre toto zariadenie
+Start held at boot: display reset to Auto, Boot Page reset to Carousel.\nAdjust them in Settings if needed.	Pri spúšťaní bolo držané tlačidlo START: zobrazenie obnovené na Automaticky, úvodná stránka obnovená na Karusel.\nV prípade potreby ich uprav v časti Nastavenia.
+Starting Ember...	Spúšťanie Ember...
+Starting the game...	Spúšťanie hry...
+Startup	Spustenie
+Static (manual)	Statická (manuálne)
+Storage	Úložisko
+The SMB modules are not on your memory card.\nGames will list, but none of them will boot.	SMB moduly nie sú na tvojej pamäťovej karte.\nHry sa zobrazia v zozname, ale žiadna z nich sa nespustí.
+The internal drive is still starting\nopen this page again in a moment	Interný disk sa ešte stále spúšťa\nznova otvor túto stránku o chvíľu
+The network adapter is already initialized in another mode.\nRestart POPSLoader to switch network protocols.	Sieťový adaptér je už inicializovaný v inom móde.\nReštartuj POPSLoader pre možnosť prepnúť sieťové protokoly.
+This backend isn't implemented yet	Tento backend ešte nie je implementovaný
+This removes the POPSTARTER pack -- including the\nBDMA and SMB modules -- from mc0: / mc1:. They won't\nreturn until you turn this back On (or re-add them\nmanually). Your POPSLoader settings are kept.	Toto odstráni balík POPSTARTER -- vrátane\nBDMA a SMB modulov -- z mc0: / mc1:. Nebudú\nznovu k dispozícii, kým túto funkciu opäť nezapnete (alebo ich nepridáte\nmanuálne). Vaše nastavenia POPSLoaderu zostanú zachované.
+Timing	Časovanie
+Triangle	Trojuholník
+UDPFS (network R/W)	UDPFS (sieť R/W)
+UDPFS IP changed after network initialization\nRestart POPSLoader to apply the new static PS2 IP	IP adresa UDPFS sa zmenila po inicializácii siete\nReštartuj POPSLoader, aby sa aplikovala nová statická IP adresa PS2
+UDPFS IPCONFIG.DAT conflicts with menu settings:\n%s\nEdit it to match %s %s (not overwritten)	Súbor UDPFS IPCONFIG.DAT je v konflikte s nastaveniami v menu:\n%s\nUprav ho tak, aby zodpovedal %s %s (nebol prepísaný)
+UDPFS SMAP driver failed to load	Načítanie UDPFS SMAP ovládača zlyhalo
+UDPFS already owns the network adapter.\nRestart POPSLoader to switch to SMBv1.	UDPFS už má k dispozícii sieťový adaptér\nReštartuj POPSLoader pre prepnutie na SMBv1
+UDPFS config must contain 1-120 bytes:\n%s	Konfigurácia UDPFS musí obsahovať 1-120 bajtov:\n%s
+UDPFS driver staging failed -- launch cancelled	Príprava ovládača UDPFS zlyhala -- spúšťanie zrušené
+UDPFS filesystem module failed to load	Načítanie modulu súborového systému UDPF zlyhalo
+UDPFS menu modules are not available	Moduly menu UDPFS nie sú dostupné
+UDPFS menu support is missing from this build	V tejto verzii chýba podpora ponuky UDPFS
+UDPFS module initialization failed	Inicializácia modulu UDPFS zlyhala
+UDPFS needs a static PS2 address. Turn off DHCP in Settings > SMB / Network.	UDPFS potrebuje statickú IP adresu PS2. Vypni DHCP v Nastavenia > SMB / Sieť.
+UDPFS network initialization incomplete\nRestart POPSLoader	Sieťová inicializácia UDPFS je neúplná\nReštartuj POPSLoader
+UDPFS network stack failed to load	Načítanie sieťového zásobníka (stack) UDPFS zlyhalo
+UDPFS requires POPSTARTER modules on a memory card	UDPFS vyžaduje moduly POPSTARTER na pamäťovej karte
+UDPFS server unavailable\nCheck your network and UDPFS server	Server UDPFS je nedostupný\nSkontroluj tvoju sieť a UDPFS server
+UDPFS: %s\nCheck the static PS2 IP, cable and UDPFS server	UDPFS: %s\nSkontroluj statickú IP adresu PS2, kábel a UDPFS server
+UI text hidden	Text rozhrania (UI) je skrytý
+UI text shown	Text rozhrania (UI) je zobrazený
+Unable to keep Ember PFS mount	Nepodarilo sa udržať pripojenie Ember PFS
+Unchanged	Nezmenené
+Unknown BDMA mode:	Neznámy BDMA mód:
+User	Používateľ
+Version	Verzia
+Video Standard	Video štandard
+Visible (manage)	Zobrazené (spravovať)
+WARNING: HDD has no APA format	POZOR: HDD nemá formát APA
+WARNING: No HDD detected	POZOR: Nebol zistený žiadny HDD
+Waiting for link + DHCP lease...	Čakanie na pripojenie + pridelenie DHCP...
+Waiting for network link...	Čakanie na sieťové pripojenie...
+Working...	Pracuje...
+Yes	Áno
+You can still add a "<game>.hide" next to the .VCD from a PC.	Stále môžeš pridať súbor "<game>.hide" vedľa súboru .VCD z PC.
+__.POPS partition %s accepts writes (game-partition RW test)	Partícia __.POPS %s umožňuje zápisy (RW test hernej partície)
+adjusted -- using	upravené -- používa sa
+check the memory card, or turn Adaptive BDMA off	skontroluj pamäťovú kartu alebo vypni Adaptívne BDMA
+exFAT-HDD (ata)	exFAT-HDD (ata)
+if not confirmed	ak nebude potvrdené
+re-select it under Settings > Storage to restage	vyber ho znovu v časti Nastavenia > Úložisko, aby sa znovu načítal
+return code:	návratový kód:
+status:	stav:

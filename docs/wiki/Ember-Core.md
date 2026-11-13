@@ -1,6 +1,6 @@
 # Ember PS1 Core in POPSLoader
 
-**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Included in the official 1.4.2 release (unmodified Ember Beta-2) and **not yet console-certified**.
+**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Included in every official 1.4.x release, 1.4.4 being current (unmodified Ember Beta-2), and **not yet console-certified**.
 
 Ember by [Gageformer](https://github.com/Gageformer/Ember) is a separate PS1 emulator; it is **not** POPStarter and it does not run POPStarter VCD images through the POPStarter launch path. POPSLoader discovers compatible Ember game folders on the selected storage device, labels their list rows `[Ember]`, and provides Ember's Beta 2 global and per-game settings.
 

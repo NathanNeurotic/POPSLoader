@@ -37,7 +37,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release=$(gh api "repos/$EMBER_REPO/releases/latest")
+          # "releases/latest" skips pre-releases, and Ember ships as pre-releases too: take the newest published
+          # release that carries an ember.elf (the Launcher pre-release has none and is skipped).
+          release=$(gh api --paginate --slurp "repos/$EMBER_REPO/releases?per_page=100" | jq -c \
+            '[.[][] | select(.draft | not) | select(any(.assets[]; .name == "ember.elf"))] | sort_by(.published_at) | last // empty')
+          if [ -z "$release" ]; then
+            echo "::error::No published Ember release carries ember.elf. Not updating."
+            exit 1
+          fi
           tag=$(jq -r .tag_name <<< "$release")
           url=$(jq -r .html_url <<< "$release")
           digest=$(jq -r '[.assets[] | select(.name == "ember.elf")][0].digest // empty' <<< "$release")
