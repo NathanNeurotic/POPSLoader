@@ -343,8 +343,8 @@
         }
         var pAlpha = pt.life * 0.85;
         var pColor = pt.hue === 'cyan'
-          ? 'rgba(56, 189, 248, ' + pAlpha + ')'
-          : 'rgba(96, 165, 250, ' + pAlpha + ')';
+          ? 'rgba(152, 160, 163, ' + pAlpha + ')'
+          : 'rgba(171, 175, 180, ' + pAlpha + ')';
         ctx.fillStyle = pColor;
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, pt.size * pt.life, 0, Math.PI * 2);
@@ -403,8 +403,8 @@
             var p1 = hist[h];
             var trailAlpha = (1 - h / hist.length) * 0.45 * p1.depth;
             var trailCol = item.hue === 'blue'
-              ? 'rgba(96, 165, 250, ' + trailAlpha + ')'
-              : (item.hue === 'ice' ? 'rgba(224, 242, 254, ' + trailAlpha + ')' : 'rgba(56, 189, 248, ' + trailAlpha + ')');
+              ? 'rgba(171, 175, 180, ' + trailAlpha + ')'
+              : (item.hue === 'ice' ? 'rgba(201, 205, 207, ' + trailAlpha + ')' : 'rgba(152, 160, 163, ' + trailAlpha + ')');
             ctx.strokeStyle = trailCol;
             ctx.lineWidth = Math.max(0.9, item.size * 0.6 * (1 - h / hist.length));
             ctx.beginPath();
@@ -423,18 +423,18 @@
         // Outer soft ambient glow
         var grad = ctx.createRadialGradient(ro.x, ro.y, 0, ro.x, ro.y, glowRadius);
 
-        var colorCore = 'rgba(255, 255, 255, ' + (0.98 * ro.depth) + ')';
+        var colorCore = 'rgba(208, 208, 208, ' + (0.98 * ro.depth) + ')';
         var colorInner, colorOuter;
 
         if (ro.hue === 'blue') {
-          colorInner = 'rgba(96, 165, 250, ' + (0.75 * ro.depth) + ')';
-          colorOuter = 'rgba(30, 64, 175, 0)';
+          colorInner = 'rgba(171, 175, 180, ' + (0.75 * ro.depth) + ')';
+          colorOuter = 'rgba(90, 99, 128, 0)';
         } else if (ro.hue === 'ice') {
-          colorInner = 'rgba(186, 230, 253, ' + (0.85 * ro.depth) + ')';
-          colorOuter = 'rgba(56, 189, 248, 0)';
+          colorInner = 'rgba(195, 200, 202, ' + (0.85 * ro.depth) + ')';
+          colorOuter = 'rgba(132, 164, 178, 0)';
         } else { // cyan
-          colorInner = 'rgba(56, 189, 248, ' + (0.85 * ro.depth) + ')';
-          colorOuter = 'rgba(14, 116, 144, 0)';
+          colorInner = 'rgba(152, 160, 163, ' + (0.85 * ro.depth) + ')';
+          colorOuter = 'rgba(69, 97, 105, 0)';
         }
 
         grad.addColorStop(0, colorCore);
@@ -463,7 +463,7 @@
           if (distSq < maxDist * maxDist) {
             var dist = Math.sqrt(distSq);
             var filamentAlpha = (1 - dist / maxDist) * 0.28 * Math.min(oA.depth, oB.depth);
-            ctx.strokeStyle = 'rgba(56, 189, 248, ' + filamentAlpha + ')';
+            ctx.strokeStyle = 'rgba(152, 160, 163, ' + filamentAlpha + ')';
             ctx.lineWidth = 1.0;
             ctx.beginPath();
             ctx.moveTo(oA.x, oA.y);
