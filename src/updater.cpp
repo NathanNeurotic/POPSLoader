@@ -10,7 +10,7 @@
   Two jobs: "check" reads the latest release's SHA256SUMS.txt (version from the zip's name, hash
   of POPSLOADER.ELF); "install" streams POPSLOADER.ELF to a file the caller names, checking the
   ELF header and the SHA-256 from the check. Moving the file into place is Lua's (System.rename,
-  with a .BAK of the old ELF), so a failed download never touches the running ELF.
+  with no backup of the old ELF), so a failed download never touches the running ELF.
 */
 
 #include "ratls.h"

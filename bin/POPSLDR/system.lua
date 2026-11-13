@@ -9365,7 +9365,7 @@ end
 -- ===== Check for Updates (src/updater.cpp) =====
 -- Official releases only: the latest GitHub release's POPSLOADER.ELF, fetched over verified HTTPS on a worker
 -- thread (System.updateStart / updateStatus), checked against the release's SHA256SUMS.txt, then swapped in
--- for the running ELF with the old one kept as <name>.BAK. Memory card and USB / MX4SIO / MMCE boots only.
+-- for the running ELF; no backup of the old one is kept. Memory card and USB / MX4SIO / MMCE boots only.
 PLDR._U = {}
 PLDR._U.ERR = {
   [2] = "Could not reach GitHub\nCheck the network settings and the cable",
@@ -9446,11 +9446,10 @@ end
 function PLDR.InstallUpdate(report)
   local target = PLDR._U.state.target
   if target == nil or PLDR._U.state.remote == nil then return false, "Check for updates first" end
-  local fresh, bak = target..".NEW", target..".BAK"
-  -- A failed install that also failed to put the old ELF back leaves <name>.BAK as the only good copy:
-  -- never delete it below, and never back up a missing or half-written target over it.
-  if PLDR._U.state.stuck or not doesFileExist(target) then
-    return false, "The last update left the old POPSLOADER.ELF saved as\n"..bak.."\nCopy it back before updating again"
+  local fresh = target..".NEW"
+  -- A failed final rename leaves the verified download as <name>.NEW and no ELF: keep it for the user.
+  if not doesFileExist(target) then
+    return false, "POPSLOADER.ELF is missing. The new one is saved as\n"..fresh.."\nRename it before updating again"
   end
   pcall(System.removeFile, fresh)
   report("Downloading...", 0.05)
@@ -9461,21 +9460,13 @@ function PLDR.InstallUpdate(report)
     return false, PLDR._U.ERR[result] or "The download failed"
   end
   report("Installing...", 0.95)
-  pcall(System.removeFile, bak)
-  if not pcall(System.rename, target, bak) then
-    pcall(System.removeFile, bak)
+  if not pcall(System.removeFile, target) or doesFileExist(target) then
     pcall(System.removeFile, fresh)
-    return false, "Could not back up the current POPSLOADER.ELF\nNothing was changed"
+    return false, "Could not remove the current POPSLOADER.ELF\nNothing was changed"
   end
   if not pcall(System.rename, fresh, target) or not doesFileExist(target) then
-    if not pcall(System.rename, bak, target) or not doesFileExist(target) then
-      PLDR._U.state.stuck = true
-      return false, "The update failed and the old POPSLOADER.ELF is saved as\n"..bak
-    end
-    pcall(System.removeFile, fresh)
-    return false, "Could not install the update\nThe old POPSLOADER.ELF was put back"
+    return false, "The update could not be put in place. The new ELF is saved as\n"..fresh.."\nRename it to POPSLOADER.ELF"
   end
-  if string.find(target, "^mc") then pcall(System.removeFile, bak) end
   local version = PLDR._U.state.remote
   PLDR._U.state.remote = nil
   return true, "Updated to "..tostring(version).."\nRestart POPSLoader to use it"
