@@ -9391,7 +9391,7 @@ function PLDR._U.wait(report, label, lo, hi)
     if phase == 1 then text = "Writing..." end
     if (tonumber(total) or 0) > 0 then
       frac = lo + (hi - lo) * (done / total)
-      text = string.format("%s %d / %d KB", label, math.floor(done / 1024), math.floor(total / 1024))
+      text = string.format("%s %d / %d KB", text:gsub("%.%.%.$", ""), math.floor(done / 1024), math.floor(total / 1024))
     end
     report(text, frac)
   end

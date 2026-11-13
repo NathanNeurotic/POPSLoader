@@ -531,8 +531,9 @@ static int overwrite(const unsigned char *data, int size)
         gDone = off;
     }
     gStep = 3;
-    if (fileXioClose(fd) < 0) {
-        gErrno = EIO;
+    int cr = fileXioClose(fd);
+    if (cr < 0) {
+        gErrno = -cr;
         return -1;
     }
     return 0;
