@@ -7,7 +7,7 @@
   supplies, so it builds unchanged on the host for tests. raTlsDownload is
   Check for Updates' streamed GET (every standard edition; the non-RA ones
   build this file with the slim TLS 1.2 configuration). Sockets, DNS, the
-  console clock, entropy and the embedded roots are in ratls_ps2.cpp.
+  console clock, entropy and the embedded roots are in updater.cpp.
 
   Certificates are always verified (VERIFY_REQUIRED, SNI, host name) against
   the anchors passed in; a clock that is not set fails closed before anything

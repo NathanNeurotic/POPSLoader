@@ -20,7 +20,7 @@ for f in POPSTARTER.ELF icon.sys list.icn copy.icn del.icn title.cfg APPINFO.PBT
   test -s "bin/POPSLDR/$f"
   cp "bin/POPSLDR/$f" "dist_root/APPS/PS1_POPSLOADER/$f"
 done
-cp third_party/mbedtls/LICENSE dist_root/LICENSE-MBEDTLS.txt
+cp third_party/mbedtls/LICENSE dist_root/APPS/PS1_POPSLOADER/LICENSE-MBEDTLS.txt
 cp -a /tmp/riptopl-kit/POPS/. dist_root/POPS/
 cp -a /tmp/riptopl-kit/EMBER/. dist_root/EMBER/
 for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.BIN; do
