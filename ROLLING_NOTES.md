@@ -1,10 +1,10 @@
 # POPSLoader ? Rolling channel
 
-## 1.4.3 channel cut (November 12, 2026)
+## 1.4.4 channel cut (November 12, 2026)
 
-**Rolling is a prerelease channel.** At this cut, master carries the **v1.4.3** stamp;
+**Rolling is a prerelease channel.** At this cut, master carries the **v1.4.4** stamp;
 dev and experimental are brought up to it after the release. The official versioned release is
-[POPSLoader 1.4.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.3).
+[POPSLoader 1.4.4](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.4).
 
 - Network-only UDPFS (Okeanos' UDPFS Assault 1.0.1 since 1.4.2; not yet confirmed on a real PS2); no USB requirement and no USB-first mode.
 - MC SYS-CONF precedence, persistent config recovery and discovery by default.
@@ -18,7 +18,7 @@ dev and experimental are brought up to it after the release. The official versio
 
 # POPSLoader — Rolling Development Release
 
-**Current stable:** 1.4.3. The rolling `dev` channel is a **prerelease**;
+**Current stable:** 1.4.4. The rolling `dev` channel is a **prerelease**;
 it is not an official hardware-verified compatibility release.
 
 ### Ember integration and installable development package (PR #600)
