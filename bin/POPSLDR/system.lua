@@ -9442,6 +9442,11 @@ function PLDR.InstallUpdate(report)
   local target = PLDR._U.state.target
   if target == nil or PLDR._U.state.remote == nil then return false, "Check for updates first" end
   local fresh, bak = target..".NEW", target..".BAK"
+  -- A failed install that also failed to put the old ELF back leaves <name>.BAK as the only good copy:
+  -- never delete it below, and never back up a missing or half-written target over it.
+  if PLDR._U.state.stuck or not doesFileExist(target) then
+    return false, "The last update left the old POPSLOADER.ELF saved as\n"..bak.."\nCopy it back before updating again"
+  end
   pcall(System.removeFile, fresh)
   report("Downloading...", 0.05)
   if not System.updateStart("install", fresh) then return false, PLDR._U.ERR[9] end
@@ -9459,6 +9464,7 @@ function PLDR.InstallUpdate(report)
   end
   if not pcall(System.rename, fresh, target) or not doesFileExist(target) then
     if not pcall(System.rename, bak, target) or not doesFileExist(target) then
+      PLDR._U.state.stuck = true
       return false, "The update failed and the old POPSLOADER.ELF is saved as\n"..bak
     end
     pcall(System.removeFile, fresh)
