@@ -1,7 +1,7 @@
 # Ember PS1 core in POPSLoader — development integration
 
 **Status: in development, host and physical-PS2 verification required.**
-This is adapted from [RiptOPL's Ember integration](https://github.com/NathanNeurotic/Open-PS2-Loader/blob/rebuild/main/docs/EMBER-INTEGRATION-PLAN.md) and [Gageformer's Ember](https://github.com/Gageformer/Ember).
+This is adapted from [RiptOPL's Ember integration](https://github.com/NathanNeurotic/RiptOPL/blob/rebuild/main/docs/EMBER-INTEGRATION-PLAN.md) and [Gageformer's Ember](https://github.com/Gageformer/Ember).
 Ember is a second PS1 emulator alongside POPStarter, *not* a VCD decoder.
 POPSLoader never bundles a console BIOS.
 
