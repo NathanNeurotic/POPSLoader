@@ -71,7 +71,7 @@ HDD/PFS artwork belongs under `__common/POPS/ART/`. The UDPFS mode uses Okeanos'
 
 Set the bundled **Ember Beta-2** core's global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
 
-Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL / Open-PS2-Loader](https://github.com/NathanNeurotic/Open-PS2-Loader) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
+Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL](https://github.com/NathanNeurotic/RiptOPL) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
 
 ## Main features
 
@@ -279,6 +279,7 @@ See [STATE.md](STATE.md) "Known Open Work" and [ROADMAP.md](ROADMAP.md) for the 
 *   **[Hugopocked](https://www.psx-place.com/members/hugopocked.47440/)**: [POPStarter](https://www.psx-place.com/resources/popstarter.683/) fixes.
 *   **[saildot4k](https://github.com/saildot4k) (R3Z3N)**: BDMA-ATA (exFAT internal-HDD / ATA backend), the [wLaunchELF_R3Z](https://github.com/saildot4k/wLaunchELF_R3Z) reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.
 *   **[oldman63](https://github.com/oldman63) (sAGA, Sári Gábor)**: The complete Hungarian localization and the localization bug reports that hardened it for every language, plus relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.
+*   **[SVKghost](https://github.com/SVKghost)**: The Slovak (Slovenčina) translation and its corrections ([#605](https://github.com/NathanNeurotic/POPSLoader/issues/605)).
 *   **[CosmicScale](https://github.com/CosmicScale)**: exFAT internal-HDD hardware verification and the per-device [POPSTARTER](https://www.psx-place.com/resources/popstarter.683/) idea.
 *   **FifthFox**: The per-device USB-delay POPSTARTER report that shaped the launch resolver.
 *   **[Ripto / NathanNeurotic](https://github.com/NathanNeurotic)**: Maintenance, UI polishing, and release engineering.

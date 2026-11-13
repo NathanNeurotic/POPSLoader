@@ -311,7 +311,7 @@ def shell(title, body, active, base=''):
     <a href="{base}credits.html"{refcls('credits')}>Credits</a>
     <a href="{base}wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://nathanneurotic.github.io/RiptOPL/">RiptOPL docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content">{body}</main>
@@ -2018,7 +2018,7 @@ CREDITS_SECTIONS = [
     ('Devices &amp; modern backends', [
         ('israpps (El_isra)', '<b>BDM Assault</b> (exFAT / BDMA), <code>MMCEMAN</code>, and much of the modern device tooling that lets POPStarter reach exFAT USB, MX4SIO and MMCE.'),
         ('saildot4k', '<b>BDMA-ATA</b> — the exFAT internal-HDD (ATA) backend for POPSLoader: implementation, fixes, feedback, and oversight that brought the <code>HDD (exFAT)</code> page to life.'),
-        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (experimental in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1"><b>UDPFS Assault</b></a> (1.0.1 in POPSLoader 1.4.2), the network UDPFS driver for POPSTARTER VCDs, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, driver staging and launch integration are implemented but hardware-unverified; <a href="popsloader/udpfs-bdma.html">setup and credits</a>.'),
+        ('<a href="https://github.com/Okeanos86">Okeanos</a> — BDM-UDPFS Assault (experimental in POPSLoader)', 'Author of <a href="https://github.com/Okeanos86/BDMAssault/releases/tag/1.0.1"><b>UDPFS Assault</b></a> (1.0.1 since POPSLoader 1.4.2), the network UDPFS driver for POPSTARTER VCDs, based on <a href="https://github.com/israpps/BDMAssault">israpps&#39; BDM Assault</a>. POPSLoader menu browsing, driver staging and launch integration are implemented but hardware-unverified; <a href="popsloader/udpfs-bdma.html">setup and credits</a>.'),
         ('The Open PS2 Loader (OPL) project', 'The BDM device-backend ecosystem POPSLoader builds on — USB, MX4SIO, MMCE, ATA and iLink — and the patterns the fork mirrors. (OPL also ships a UDPBD network backend; POPSLoader does not.)'),
         ('Rick Gaiser', '<b>udpbd</b> — the UDP block-device network backend.'),
     ]),
@@ -2028,6 +2028,9 @@ CREDITS_SECTIONS = [
         ('Ripto / NathanNeurotic', 'Maintainer of this fork — maintenance, UI polishing, device backends, and release engineering.'),
         ('Berion', 'User-interface design and theme assets.'),
         ('nuno6573', 'Cover-art engine integrations and scripting (plus hardware testing).'),
+        ('<a href="https://github.com/Gageformer">Gageformer</a>', '<b><a href="https://github.com/Gageformer/Ember">Ember</a></b>, the PS1 emulator POPSLoader offers beside POPStarter, bundled unmodified (Beta-2) with its beta licence.'),
+        ('oldman63 (sAGA)', 'The complete Hungarian translation, and the localization reports that hardened every language.'),
+        ('<a href="https://github.com/SVKghost">SVKghost</a>', 'The Slovak (Sloven&#269;ina) translation and its corrections.'),
         ('P4NCHOL1NO, VizoR, provato, TnA-Plastic, oldman63, and the community', 'Hardware testing on real PS2 consoles — the only thing that proves a launch path actually works.'),
     ]),
     ('This archive &amp; site', [
@@ -2070,7 +2073,7 @@ def build_credits():
         'credits thanks acknowledgements who made authors contributors ShaolinAssassin krHACKen kHn POPStarter POPS Sony '
         'El_isra israpps Enceladus Daniel Santos Berion nuno6573 Hugopocked Ripto NathanNeurotic hardware testers '
         'gledson999 El_Patas arkl1t32 LopoTRI Rick Gaiser udpbd OPL Open PS2 Loader BDM Assault Retro-Jogos R3Z3N '
-        'saildot4k BDMA-ATA ATA exFAT HDD backend Okeanos BDM UDPFS Assault Coming soon TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history', 'credits.html')
+        'saildot4k BDMA-ATA ATA exFAT HDD backend Okeanos BDM UDPFS Assault Coming soon TnA-Plastic provato oldman63 P4NCHOL1NO VizoR AstroSnail original Bitbucket wiki Git history Gageformer Ember Hungarian SVKghost Slovak translation', 'credits.html')
 
 # ---------- HOME ----------
 def build_home():
