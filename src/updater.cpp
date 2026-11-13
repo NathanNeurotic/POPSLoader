@@ -8,9 +8,10 @@
   (third_party/ca-roots). TLS 1.2 client only, full certificate verification (ratls.c).
 
   Two jobs: "check" reads the latest release's SHA256SUMS.txt (version from the zip's name, hash
-  of POPSLOADER.ELF); "install" streams POPSLOADER.ELF to a file the caller names, checking the
-  ELF header and the SHA-256 from the check. Moving the file into place is Lua's (System.rename,
-  with no backup of the old ELF), so a failed download never touches the running ELF.
+  of POPSLOADER.ELF); "install" downloads POPSLOADER.ELF into RAM, checks its size, ELF header and
+  the SHA-256 from the check, and only then opens the caller's path (the running ELF) with
+  O_TRUNC and writes it straight over it: no second file, rename, delete or backup. A failed
+  download or check never touches the running ELF.
 */
 
 #include "ratls.h"
@@ -21,6 +22,7 @@
 #include <kernel.h>
 #include <delaythread.h>
 #include <libcdvd.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -63,7 +65,7 @@ enum {
     UP_CLOCK = 3,    /* console clock unset */
     UP_TLS = 4,      /* handshake or certificate */
     UP_GITHUB = 5,   /* GitHub answered something unusable */
-    UP_WRITE = 6,    /* the file could not be written */
+    UP_WRITE = 6,    /* the running ELF could not be overwritten: see gStep and gErrno */
     UP_VERIFY = 7,   /* not an ELF, or the SHA-256 differs */
     UP_MEMORY = 8,
     UP_BUSY = 9
@@ -77,6 +79,9 @@ static unsigned char gSha[32];
 static char gLocal[32];
 static char gDest[256];
 static int gInstall;
+static volatile int gStage, gDetail; /* where a request failed (1 clock, 2 DNS, 3 socket, 4 connect, 5 timeout, 6 TLS/HTTP) and its code */
+static volatile int gPhase; /* install: 0 downloading, 1 writing the ELF */
+static volatile int gStep, gErrno; /* a failed write: 1 open, 2 write, 3 close, and its errno */
 
 static int bcd(unsigned char v)
 {
@@ -204,25 +209,37 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
 
     if (location != NULL && location_size > 0)
         location[0] = '\0';
-    if (!raTlsClockOk(now)) /* before any DNS lookup or connection */
+    gStage = gDetail = 0;
+    if (!raTlsClockOk(now)) { /* before any DNS lookup or connection */
+        gStage = 1;
         return RATLS_ERR_CLOCK;
+    }
 
     struct hostent *he = gethostbyname(host);
-    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL)
+    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL) {
+        gStage = 2; /* no DNS answer: the saved DNS server is wrong or missing */
+        gDetail = 0;
         return RATLS_ERR_NET;
+    }
     memset(&to, 0, sizeof(to));
     to.sin_family = AF_INET;
     to.sin_port = 0xBB01; /* htons(443) on this little-endian EE */
     memcpy(&to.sin_addr, he->h_addr_list[0], sizeof(to.sin_addr));
 
     Bio bio = {socket(AF_INET, SOCK_STREAM, 0), start, 0};
-    if (bio.sock < 0)
+    if (bio.sock < 0) {
+        gStage = 3;
+        gDetail = bio.sock;
         return RATLS_ERR_NET;
+    }
     if (connect(bio.sock, reinterpret_cast<struct sockaddr *>(&to), sizeof(to)) < 0) {
+        gStage = 4;
+        gDetail = errno;
         disconnect(bio.sock);
         return RATLS_ERR_NET;
     }
     if (expired(start, DEADLINE_MS)) { /* DNS and connect already used the budget */
+        gStage = 5;
         disconnect(bio.sock);
         return RATLS_ERR_TIMEOUT;
     }
@@ -232,6 +249,10 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
 
     int rc = raTlsDownload(&io, host, path, "POPSLoader-updater", anchors, sizeof(anchors) / sizeof(anchors[0]), buf, max, max_body,
                            sink, sink_ctx, location, location_size);
+    if (rc < 0 && rc != RATLS_ERR_REDIRECT) {
+        gStage = 6;
+        gDetail = rc;
+    }
     disconnect(bio.sock);
     return rc;
 }
@@ -405,43 +426,54 @@ static int versionNewer(const char *remote, const char *local)
 
 /* ---- the ELF ---- */
 
-struct FileSink
+struct RamSink
 {
-    int fd;
+    unsigned char *data;
+    int cap;
     int written;
-    int headLen;
-    unsigned char head[4];
+    int fail; /* 1 no memory, 2 not an ELF or the wrong length */
     mbedtls_sha256_context sha;
 };
 
-static int fileSink(void *ctx, const char *data, int len)
+/* The first piece carries the length (Content-Length): take that much memory once, so the ELF is
+   whole in RAM before the card is touched. */
+static int ramSink(void *ctx, const char *data, int len)
 {
-    FileSink *f = static_cast<FileSink *>(ctx);
+    RamSink *f = static_cast<RamSink *>(ctx);
 
-    if (f->written == 0) { /* hold the magic until it is whole: the first piece can be short */
-        int take = len < 4 - f->headLen ? len : 4 - f->headLen;
-        memcpy(f->head + f->headLen, data, take);
-        f->headLen += take;
-        data += take;
-        len -= take;
-        if (f->headLen < 4)
-            return 0;
-        if (f->head[0] != 0x7F || f->head[1] != 'E' || f->head[2] != 'L' || f->head[3] != 'F')
-            return -1; /* not an ELF: stop before writing anything */
-        if (write(f->fd, f->head, 4) != 4)
+    if (f->data == NULL) {
+        if (raTlsBodyLength < 52 || raTlsBodyLength > ELF_MAX) {
+            f->fail = 2;
             return -1;
-        mbedtls_sha256_update(&f->sha, f->head, 4);
-        f->written = 4;
+        }
+        f->data = static_cast<unsigned char *>(malloc(raTlsBodyLength));
+        if (f->data == NULL) {
+            f->fail = 1;
+            return -1;
+        }
+        f->cap = raTlsBodyLength;
     }
-    if (len > 0) {
-        if (write(f->fd, data, len) != len)
-            return -1;
-        mbedtls_sha256_update(&f->sha, reinterpret_cast<const unsigned char *>(data), len);
-        f->written += len;
+    if (len > f->cap - f->written) {
+        f->fail = 2;
+        return -1;
+    }
+    memcpy(f->data + f->written, data, len);
+    mbedtls_sha256_update(&f->sha, reinterpret_cast<const unsigned char *>(data), len);
+    f->written += len;
+    if (f->written >= 4 && (f->data[0] != 0x7F || f->data[1] != 'E' || f->data[2] != 'L' || f->data[3] != 'F')) {
+        f->fail = 2; /* not an ELF: stop at the first bytes */
+        return -1;
     }
     gDone = f->written;
-    gTotal = raTlsBodyLength;
+    gTotal = f->cap;
     return 0;
+}
+
+/* A 32-bit little-endian MIPS executable. */
+static bool looksLikeElf(const unsigned char *h, int n)
+{
+    return n >= 20 && h[0] == 0x7F && h[1] == 'E' && h[2] == 'L' && h[3] == 'F' && h[4] == 1 && h[5] == 1 && h[16] == 2 &&
+           h[17] == 0 && h[18] == 8 && h[19] == 0;
 }
 
 static void jobCheck(Buffers *b)
@@ -464,35 +496,68 @@ static void jobCheck(Buffers *b)
     free(sums);
 }
 
+/* Open the running ELF's own path with O_TRUNC and write the verified bytes into it. The step
+   (1 open, 2 write, 3 close) and errno are kept for the message. mcman answers a first access after
+   the card was read with "changed card", so the open is tried again a few times on a card. */
+static int overwrite(const unsigned char *data, int size)
+{
+    int fd = -1;
+
+    gStep = 1;
+    for (int tries = 0; tries < 4 && (fd = open(gDest, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0 && !strncmp(gDest, "mc", 2); tries++)
+        DelayThread(200 * 1000);
+    if (fd < 0) {
+        gErrno = errno;
+        return -1;
+    }
+    gStep = 2;
+    gPhase = 1;
+    gDone = 0;
+    gTotal = size;
+    for (int off = 0; off < size;) {
+        int n = size - off > 16 * 1024 ? 16 * 1024 : size - off;
+        int w = write(fd, data + off, n);
+        if (w <= 0) {
+            gErrno = errno ? errno : ENOSPC;
+            close(fd);
+            return -1;
+        }
+        off += w;
+        gDone = off;
+    }
+    gStep = 3;
+    if (close(fd) < 0) {
+        gErrno = errno;
+        return -1;
+    }
+    return 0;
+}
+
 static void jobInstall(Buffers *b)
 {
-    FileSink f;
+    RamSink f;
     unsigned char sha[32];
 
-    gResult = UP_WRITE;
-    if ((f.fd = open(gDest, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0)
-        return;
-    f.written = 0;
-    f.headLen = 0;
+    gStep = gErrno = gPhase = 0;
+    f.data = NULL;
+    f.cap = f.written = f.fail = 0;
     mbedtls_sha256_init(&f.sha);
     mbedtls_sha256_starts(&f.sha, 0);
-    int rc = fetch(b, "/NathanNeurotic/POPSLoader/releases/latest/download/POPSLOADER.ELF", ELF_MAX, fileSink, &f);
-    int closed = close(f.fd);
+    int rc = fetch(b, "/NathanNeurotic/POPSLoader/releases/latest/download/POPSLOADER.ELF", ELF_MAX, ramSink, &f);
     mbedtls_sha256_finish(&f.sha, sha);
     mbedtls_sha256_free(&f.sha);
-    if (rc >= 0 && f.written == 0)
-        rc = RATLS_ERR_SINK; /* shorter than an ELF header */
-    if (rc < 0 || closed < 0) {
-        gResult = rc < 0 ? (rc == RATLS_ERR_SINK && f.written == 0 && f.headLen >= 4 ? UP_VERIFY : toResult(rc)) : UP_WRITE;
-        unlink(gDest);
-        return;
+    if (rc >= 0 && (f.data == NULL || f.written != f.cap)) { /* shorter than it announced */
+        rc = RATLS_ERR_SINK;
+        f.fail = 2;
     }
-    if (memcmp(sha, gSha, sizeof(sha)) != 0) {
-        unlink(gDest);
+    if (rc < 0) {
+        gResult = rc == RATLS_ERR_SINK ? (f.fail == 1 ? UP_MEMORY : UP_VERIFY) : toResult(rc);
+    } else if (!looksLikeElf(f.data, f.written) || memcmp(sha, gSha, sizeof(sha)) != 0) {
         gResult = UP_VERIFY;
-        return;
+    } else {
+        gResult = overwrite(f.data, f.written) == 0 ? UP_OK : UP_WRITE;
     }
-    gResult = UP_OK;
+    free(f.data);
 }
 
 static void worker(void *)
@@ -528,6 +593,7 @@ extern "C" int lua_updateStart(lua_State *L)
         return 1;
     }
     gInstall = !strcmp(job, "install");
+    gPhase = 0;
     if (gInstall) {
         if (strlen(arg) >= sizeof(gDest) || gRemote[0] == '\0')
             return luaL_error(L, "System.updateStart: no check result or path too long");
@@ -559,7 +625,8 @@ extern "C" int lua_updateStart(lua_State *L)
     return 1;
 }
 
-/* System.updateStatus() -> running (bool), result, doneBytes, totalBytes, remoteVersion */
+/* System.updateStatus() -> running (bool), result, doneBytes, totalBytes, remoteVersion, phase (1 =
+   writing the ELF), step and errno of a failed write, stage and code of a failed request */
 extern "C" int lua_updateStatus(lua_State *L)
 {
     int running = gState == 1;
@@ -569,5 +636,10 @@ extern "C" int lua_updateStatus(lua_State *L)
     lua_pushinteger(L, gDone);
     lua_pushinteger(L, gTotal);
     lua_pushstring(L, running ? "" : gRemote); /* the worker writes gRemote until it finishes */
-    return 5;
+    lua_pushinteger(L, gPhase);
+    lua_pushinteger(L, gStep);
+    lua_pushinteger(L, gErrno);
+    lua_pushinteger(L, gStage);
+    lua_pushinteger(L, gDetail);
+    return 10;
 }
