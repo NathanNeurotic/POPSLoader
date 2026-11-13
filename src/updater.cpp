@@ -23,6 +23,7 @@
 #include <delaythread.h>
 #include <libcdvd.h>
 #include <errno.h>
+#include <fileXio_rpc.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -482,15 +483,35 @@ static void jobCheck(Buffers *b)
 /* Open the running ELF's own path with O_TRUNC and write the verified bytes into it. The step
    (1 open, 2 write, 3 close) and errno are kept for the message. mcman answers a first access after
    the card was read with "changed card", so the open is tried again a few times on a card. */
+/* As Launchstation does: fileXioOpen with the iomanX WRONLY|CREAT|TRUNC flags (mcman truncates only in its
+   CREAT branch), trying "dev:/path" and then "dev:path"; fileXioWrite in 16 KB chunks; fileXioClose. */
+static int xioOpen(const char *path)
+{
+    const int mode = 0x0002 | 0x0200 | 0x0400; /* iomanX FIO_O_WRONLY | FIO_O_CREAT | FIO_O_TRUNC */
+    char alt[sizeof(gDest) + 1];
+    int fd = fileXioOpen(path, mode, 0777);
+
+    if (fd >= 0)
+        return fd;
+    strcpy(alt, path);
+    char *sep = strchr(alt, ':');
+    if (sep == NULL || sep[1] == '\0')
+        return fd;
+    if (sep[1] == '/') {
+        memmove(sep + 1, sep + 2, strlen(sep + 2) + 1);
+    } else {
+        memmove(sep + 2, sep + 1, strlen(sep + 1) + 1);
+        sep[1] = '/';
+    }
+    return fileXioOpen(alt, mode, 0777);
+}
+
 static int overwrite(const unsigned char *data, int size)
 {
-    int fd = -1;
-
     gStep = 1;
-    for (int tries = 0; tries < 4 && (fd = open(gDest, O_WRONLY | O_CREAT | O_TRUNC, 0644)) < 0 && !strncmp(gDest, "mc", 2); tries++)
-        DelayThread(200 * 1000);
+    int fd = xioOpen(gDest);
     if (fd < 0) {
-        gErrno = errno;
+        gErrno = -fd;
         return -1;
     }
     gStep = 2;
@@ -499,18 +520,18 @@ static int overwrite(const unsigned char *data, int size)
     gTotal = size;
     for (int off = 0; off < size;) {
         int n = size - off > 16 * 1024 ? 16 * 1024 : size - off;
-        int w = write(fd, data + off, n);
-        if (w <= 0) {
-            gErrno = errno ? errno : ENOSPC;
-            close(fd);
+        int w = fileXioWrite(fd, (void *)(data + off), n);
+        if (w <= 0 || w > n) {
+            gErrno = w < 0 ? -w : ENOSPC;
+            fileXioClose(fd);
             return -1;
         }
         off += w;
         gDone = off;
     }
     gStep = 3;
-    if (close(fd) < 0) {
-        gErrno = errno;
+    if (fileXioClose(fd) < 0) {
+        gErrno = EIO;
         return -1;
     }
     return 0;
