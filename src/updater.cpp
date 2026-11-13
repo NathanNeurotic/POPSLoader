@@ -509,6 +509,7 @@ static void worker(void *)
             jobCheck(b);
         free(b);
     }
+    __sync_synchronize(); /* publish the results before the done flag */
     gState = 2;
     ExitDeleteThread();
 }
@@ -561,10 +562,12 @@ extern "C" int lua_updateStart(lua_State *L)
 /* System.updateStatus() -> running (bool), result, doneBytes, totalBytes, remoteVersion */
 extern "C" int lua_updateStatus(lua_State *L)
 {
-    lua_pushboolean(L, gState == 1);
+    int running = gState == 1;
+
+    lua_pushboolean(L, running);
     lua_pushinteger(L, gResult);
     lua_pushinteger(L, gDone);
     lua_pushinteger(L, gTotal);
-    lua_pushstring(L, gRemote);
+    lua_pushstring(L, running ? "" : gRemote); /* the worker writes gRemote until it finishes */
     return 5;
 }

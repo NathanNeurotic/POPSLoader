@@ -9386,7 +9386,7 @@ function PLDR.UpdateTarget()
           or string.find(p, "^mx4sio%d*:") or string.find(p, "^mmce%d*:")) then
     return nil
   end
-  return p
+  return PLDR.ResolveDeviceLabelRoot(p)
 end
 
 function PLDR._U.wait(report, label, lo, hi)
@@ -9465,7 +9465,7 @@ function PLDR.InstallUpdate(report)
     return false, "Could not remove the current POPSLOADER.ELF\nNothing was changed"
   end
   if not pcall(System.rename, fresh, target) or not doesFileExist(target) then
-    return false, "The update could not be put in place. The new ELF is saved as\n"..fresh.."\nRename it to POPSLOADER.ELF"
+    return false, "The update could not be put in place. The new ELF is saved as\n"..fresh.."\nRename it to "..target
   end
   local version = PLDR._U.state.remote
   PLDR._U.state.remote = nil

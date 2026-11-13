@@ -443,11 +443,12 @@ obj/mbedtls:
 	@mkdir -p $@
 obj/mbedtls/%.o: third_party/mbedtls/library/%.c | obj/mbedtls
 	@echo "  - $@"
-	@$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+	@$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -MMD -MP -c $< -o $@
 obj/libmbedtls.a: $(MBEDTLS_OBJS)
 	@rm -f $@
 	@$(EE_AR) cru $@ $^
 $(EE_BIN): obj/libmbedtls.a
+-include $(MBEDTLS_OBJS:.o=.d)
 
 $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.c | $(EE_OBJS_DIR)
 	@echo "  - $@"

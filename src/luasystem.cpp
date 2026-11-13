@@ -846,7 +846,7 @@ static int copy_file_contents(const char *src, const char *dst)
 	}
 
 	close(source);
-	close(dest);
+	if (close(dest) != 0) return -1; /* a failed flush must not let rename remove the source */
 	if (size < 0) {
 		return -1; /* read error mid-stream: don't report a partial copy as success */
 	}

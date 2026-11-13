@@ -5491,6 +5491,10 @@ UI = {
           return ver
         end)
         AddAction("Check for Updates", function()
+          if UI.SmbDirty == true then
+            UI.Notif_queue.add("Save the network settings first, then check for updates", "error")
+            return
+          end
           local state, info
           UI.RunBusyTask("Checking for updates...", function (report)
             state, info = PLDR.CheckForUpdate(report)
