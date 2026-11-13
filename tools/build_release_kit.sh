@@ -20,7 +20,7 @@ for f in POPSTARTER.ELF icon.sys list.icn copy.icn del.icn title.cfg APPINFO.PBT
   test -s "bin/POPSLDR/$f"
   cp "bin/POPSLDR/$f" "dist_root/APPS/PS1_POPSLOADER/$f"
 done
-cp third_party/mbedtls/LICENSE dist_root/APPS/PS1_POPSLOADER/LICENSE-MBEDTLS.txt
+cp third_party/mbedtls/LICENSE dist_root/LICENSE-MBEDTLS.txt
 cp -a /tmp/riptopl-kit/POPS/. dist_root/POPS/
 cp -a /tmp/riptopl-kit/EMBER/. dist_root/EMBER/
 for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.BIN; do
@@ -85,6 +85,6 @@ g++ -std=c++17 -O2 /tmp/riptopl-kit/.github/scripts/verify_psu_with_psumanager.c
 /tmp/popsloader-verify-psu dist_root/PS1_POPSLOADER.psu dist_root/APPS/PS1_POPSLOADER
 cp dist_root/PS1_POPSLOADER.psu PS1_POPSLOADER.psu
 (cd dist_root && find APPS POPS EMBER -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null)
-(cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
+(cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu LICENSE-MBEDTLS.txt >/dev/null)
 
 python3 tools/test_udpfs_integration.py POPSLOADER.zip
