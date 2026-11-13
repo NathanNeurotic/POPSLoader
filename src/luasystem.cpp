@@ -876,6 +876,10 @@ static int lua_rename(lua_State *L)
 	return 0;
 }
 
+// Check for Updates (src/updater/updater.cpp): worker-thread HTTPS to GitHub, polled from Lua.
+extern "C" int lua_updateStart(lua_State *L);
+extern "C" int lua_updateStatus(lua_State *L);
+
 static int lua_sleep(lua_State *L)
 {
 	if (lua_gettop(L) != 1) return luaL_error(L, "seconds expected.");
@@ -2527,6 +2531,8 @@ static const luaL_Reg System_functions[] = {
 	{"createDirectory",           lua_createDir},
 	{"removeDirectory",           lua_removeDir},
 	{"removeFile",               lua_removeFile},
+	{"updateStart",              lua_updateStart},
+	{"updateStatus",             lua_updateStatus},
 	{"rename",                       lua_rename},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},

@@ -56,6 +56,16 @@ EE_LIBS += src/elf_loader/libcustom-elf-loader.a
 EE_INCS += -I$(PS2DEV)/gsKit/include -I$(PS2SDK)/ports/include -I$(PS2SDK)/ports/include/freetype2 -I$(PS2SDK)/ports/include/zlib
 EE_INCS += -Imodules/ds34bt/ee -Imodules/ds34usb/ee
 
+# Check for Updates: mbedTLS 3.6.7 (third_party/mbedtls, Apache-2.0), TLS 1.2 client only, built into a
+# static archive so only the members the updater reaches are linked.
+EE_INCS += -Ithird_party/mbedtls/include -Ithird_party/mbedtls
+MBEDTLS_CFG = -DMBEDTLS_CONFIG_FILE=\"popsloader_mbedtls_slim_config.h\"
+EE_CFLAGS   += $(MBEDTLS_CFG)
+EE_CXXFLAGS += $(MBEDTLS_CFG)
+MBEDTLS_SRCS = $(wildcard third_party/mbedtls/library/*.c)
+MBEDTLS_OBJS = $(patsubst third_party/mbedtls/library/%.c,obj/mbedtls/%.o,$(MBEDTLS_SRCS))
+EE_LIBS += obj/libmbedtls.a
+
 EE_CFLAGS   += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_CXXFLAGS += -Wno-sign-compare -fno-strict-aliasing -fno-exceptions -DLUA_USE_PS2
 EE_ASFLAGS += -call_shared
@@ -83,7 +93,7 @@ EXT_LIBS = modules/ds34usb/ee/libds34usb.a modules/ds34bt/ee/libds34bt.a
 
 # ftmin.o overrides FT_Init_FreeType/FT_Done_FreeType so libfreetype's ftinit.c
 # (which names EVERY font driver) never enters the link -- see src/ftmin.c.
-APP_CORE = main.o system.o pad.o graphics.o retrogem.o \
+APP_CORE = main.o system.o pad.o graphics.o retrogem.o ratls.o updater.o \
 		   atlas.o fntsys.o embed_assets.o \
 		   sound.o ftmin.o
 
@@ -119,7 +129,8 @@ EMBEDDED_RSC = boot.o builtin_font.o \
 	asset_usbd_irx_udpfs.o asset_usbhdfsd_irx_udpfs.o \
 	asset_icon_sys_bdma.o asset_list_icn_bdma.o asset_del_icn_bdma.o \
 	asset_smb_poweroff_irx.o asset_smb_ps2dev9_irx.o asset_smb_ps2ip_irx.o \
-	asset_smb_ps2smap_irx.o asset_smb_smbman_irx.o asset_smb_smsutils_irx.o
+	asset_smb_ps2smap_irx.o asset_smb_smbman_irx.o asset_smb_smsutils_irx.o \
+	ratls_root_sectigoe46.o ratls_root_sectigor46.o ratls_root_isrgrootx1.o ratls_root_isrgrootx2.o
 
 EE_OBJS = $(APP_CORE) $(LUA_LIBS) $(IOP_MODULES) $(EMBEDDED_RSC)
 
@@ -417,6 +428,26 @@ cleandummy:
 	rm -rf bin/*.vcd
 	rm -rf bin/*.VCD
 
+
+# GitHub's TLS roots (third_party/ca-roots), embedded as ratls_root_<name> / size_ratls_root_<name>.
+$(EE_ASM_DIR)ratls_root_sectigoe46.c: third_party/ca-roots/sectigo-e46.der | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ratls_root_sectigoe46
+$(EE_ASM_DIR)ratls_root_sectigor46.c: third_party/ca-roots/sectigo-r46.der | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ratls_root_sectigor46
+$(EE_ASM_DIR)ratls_root_isrgrootx1.c: third_party/ca-roots/isrgrootx1.der | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ratls_root_isrgrootx1
+$(EE_ASM_DIR)ratls_root_isrgrootx2.c: third_party/ca-roots/isrg-root-x2.der | $(EE_ASM_DIR)
+	$(BIN2S) $< $@ ratls_root_isrgrootx2
+
+obj/mbedtls:
+	@mkdir -p $@
+obj/mbedtls/%.o: third_party/mbedtls/library/%.c | obj/mbedtls
+	@echo "  - $@"
+	@$(EE_CC) $(EE_CFLAGS) $(EE_INCS) -c $< -o $@
+obj/libmbedtls.a: $(MBEDTLS_OBJS)
+	@rm -f $@
+	@$(EE_AR) cru $@ $^
+$(EE_BIN): obj/libmbedtls.a
 
 $(EE_OBJS_DIR)%.o: $(EE_SRC_DIR)%.c | $(EE_OBJS_DIR)
 	@echo "  - $@"

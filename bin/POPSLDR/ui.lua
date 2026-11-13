@@ -5490,6 +5490,33 @@ UI = {
           if ver == "" then return "(unknown)" end
           return ver
         end)
+        AddAction("Check for Updates", function()
+          local state, info
+          UI.RunBusyTask("Checking for updates...", function (report)
+            state, info = PLDR.CheckForUpdate(report)
+          end, "Update check failed")
+          if state == "available" then
+            UI.Modal.active = true
+            UI.Modal.title = "Update"
+            UI.Modal.body = "POPSLoader "..tostring(info).." is available.\nInstall it now?"
+            UI.Modal.options = {"Install", "Cancel"}
+            UI.Modal.confirm_action = function ()
+              UI.Modal.Close()
+              local ok, msg
+              UI.RunBusyTask("Updating...", function (report)
+                ok, msg = PLDR.InstallUpdate(report)
+              end, "Update failed")
+              UI.Notif_queue.add(tostring(msg or "Update failed"), ok and "info" or "error")
+            end
+            UI.Modal.cancel_action = UI.Modal.Close
+            UI.Modal.triangle_action = nil
+            UI.Modal.ignore_until_release = true
+          elseif state == "newest" then
+            UI.Notif_queue.add("POPSLoader is up to date", "info")
+          elseif state == "error" then
+            UI.Notif_queue.add(tostring(info or "The update check failed"), "error")
+          end
+        end)
         AddAction("Credits", function()
           UI.CreditsReturnScene = UI.SCENES.MPROFILE
           UI.SceneChange(UI.SCENES.CREDITS)
