@@ -45,6 +45,7 @@ FAKEFS = { files = {}, dirs = {} }
 local function norm(p) return tostring(p or "") end
 
 FREAD, FCREATE, FRDWR = 1, 2, 3
+FCREATE_TRUNC = 2
 
 -- ==== fake HDD with mount state (partition data set from the test battery)
 FAKEHDD = {

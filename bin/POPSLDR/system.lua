@@ -5258,12 +5258,11 @@ local function PromoteTmpToDest(tmp, dest)
   return true
 end
 
+-- Write dest in place: opened with O_TRUNC and written straight through, as Launchstation does. No
+-- temporary file, rename or backup, so a memory card needs no room for a second copy (a rename on a
+-- card is copy-then-delete). Returns true only when every byte was written.
 local function WriteAtomic(dest, data)
-  local tmp = dest..".tmp"
-  if doesFileExist(tmp) then
-    pcall(System.removeFile, tmp)
-  end
-  local ok_open, fd = pcall(System.openFile, tmp, FCREATE)
+  local ok_open, fd = pcall(System.openFile, dest, FCREATE_TRUNC)
   if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
     return false
   end
@@ -5272,21 +5271,16 @@ local function WriteAtomic(dest, data)
   while offset <= total do
     local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, total))
     local chunk_len = string.len(chunk)
-    -- System.writeFile is a raw POSIX write(): it returns the bytes ACTUALLY written
-    -- (short on a full/flaky device, -1 on error) and does NOT throw. Require the full
-    -- count, else a truncated temp file gets promoted as a valid save/cache. (Codex F1)
+    -- System.writeFile is a raw POSIX write(): it returns the bytes ACTUALLY written (short on a
+    -- full/flaky device, -1 on error) and does NOT throw.
     local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
     if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
       pcall(System.closeFile, fd)
-      pcall(System.removeFile, tmp)
       return false
     end
     offset = offset + chunk_len
   end
   pcall(System.closeFile, fd)
-  if not PromoteTmpToDest(tmp, dest) then
-    return false
-  end
   return true
 end
 
@@ -9378,15 +9372,6 @@ PLDR._U.ERR = {
   [9] = "An update is already running",
 }
 PLDR._U.state = { remote = nil, target = nil }
--- The text for a failed result, with where the request stopped (1 clock, 2 DNS, 3 socket, 4 connect,
--- 5 timeout, 6 TLS/HTTP) and its code, so a screenshot says which step failed.
-function PLDR._U.failText(result, stage, detail)
-  local text = PLDR._U.ERR[result] or "The update failed"
-  if (tonumber(stage) or 0) > 0 then
-    text = text.."\n(step "..tostring(stage)..", code "..tostring(detail)..")"
-  end
-  return text
-end
 
 function PLDR.UpdateTarget()
   local p = BOOT_ARGV0_RAW
@@ -9400,8 +9385,8 @@ end
 
 function PLDR._U.wait(report, label, lo, hi)
   while true do
-    local running, result, done, total, remote, phase, step, err, stage, detail = System.updateStatus()
-    if not running then return result, remote, step, err, stage, detail end
+    local running, result, done, total, remote, phase, step, err = System.updateStatus()
+    if not running then return result, remote, step, err end
     local text, frac = label, lo
     if phase == 1 then text = "Writing..." end
     if (tonumber(total) or 0) > 0 then
@@ -9439,14 +9424,14 @@ function PLDR.CheckForUpdate(report)
   report("Checking GitHub...", 0.3)
   local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
   if not System.updateStart("check", ver) then return "error", PLDR._U.ERR[9] end
-  local result, remote, _, _, stage, detail = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
+  local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
   if result == 1 then
     -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
     PLDR._U.state.remote = remote
     PLDR._U.state.target = target
     return "newest", remote
   end
-  if result ~= 0 then return "error", PLDR._U.failText(result, stage, detail) end
+  if result ~= 0 then return "error", PLDR._U.ERR[result] or "The update check failed" end
   PLDR._U.state.remote = remote
   PLDR._U.state.target = target
   return "available", remote
@@ -9458,13 +9443,13 @@ function PLDR.InstallUpdate(report)
   if target == nil or PLDR._U.state.remote == nil then return false, "Check for updates first" end
   report("Downloading...", 0.05)
   if not System.updateStart("install", target) then return false, PLDR._U.ERR[9] end
-  local result, _, step, err, stage, detail = PLDR._U.wait(report, "Downloading...", 0.05, 0.98)
+  local result, _, step, err = PLDR._U.wait(report, "Downloading...", 0.05, 0.98)
   if result == 6 and step == 1 then
     return false, "Could not open POPSLOADER.ELF for writing (error "..tostring(err)..")\nIt was not changed"
   elseif result == 6 then
     return false, "Could not finish replacing POPSLOADER.ELF\n(step "..tostring(step).." of 3, error "..tostring(err)..")\nIt may be damaged: copy it to the device again"
   elseif result ~= 0 then
-    return false, PLDR._U.failText(result, stage, detail)
+    return false, PLDR._U.ERR[result] or "The download failed"
   end
   local version = PLDR._U.state.remote
   PLDR._U.state.remote = nil

@@ -2163,6 +2163,18 @@ static int SmbApplyIPConfig(int dhcp, const unsigned char ip[4], const unsigned 
 		ip_addr_set((struct ip4_addr *)&ip_info.gw, &gateway);
 		ip_info.dhcp_enabled = 0;
 		ps2ip_setconfig(&ip_info);
+		// SMB needs no DNS, so the saved DNS field is often blank; the update check does. As
+		// Launchstation does: with none saved, ask the gateway, and 1.1.1.1 as the second.
+		if (dns[0] == 0 && dns[1] == 0 && dns[2] == 0 && dns[3] == 0) {
+			if (gw[0] != 0)
+				IP4_ADDR(&dnsaddr, gw[0], gw[1], gw[2], gw[3]);
+			else
+				IP4_ADDR(&dnsaddr, 1, 1, 1, 1);
+			struct ip4_addr second;
+			const int q = gw[0] != 0 ? 1 : 8; // 1.1.1.1, or 8.8.8.8 when that is the first
+			IP4_ADDR(&second, q, q, q, q);
+			dns_setserver(1, &second);
+		}
 		dns_setserver(0, &dnsaddr);
 	}
 	return 0;
@@ -2699,6 +2711,8 @@ void luaSystem_init(lua_State *L) {
 
 	lua_pushinteger(L, O_CREAT | O_WRONLY);
 	lua_setglobal(L, "FCREATE");
+	lua_pushinteger(L, O_CREAT | O_WRONLY | O_TRUNC);
+	lua_setglobal(L, "FCREATE_TRUNC"); // overwrite in place: a shorter file must not keep the old tail
 
 	lua_pushinteger(L, O_RDWR);
 	lua_setglobal(L, "FRDWR");

@@ -79,7 +79,6 @@ static unsigned char gSha[32];
 static char gLocal[32];
 static char gDest[256];
 static int gInstall;
-static volatile int gStage, gDetail; /* where a request failed (1 clock, 2 DNS, 3 socket, 4 connect, 5 timeout, 6 TLS/HTTP) and its code */
 static volatile int gPhase; /* install: 0 downloading, 1 writing the ELF */
 static volatile int gStep, gErrno; /* a failed write: 1 open, 2 write, 3 close, and its errno */
 
@@ -209,37 +208,25 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
 
     if (location != NULL && location_size > 0)
         location[0] = '\0';
-    gStage = gDetail = 0;
-    if (!raTlsClockOk(now)) { /* before any DNS lookup or connection */
-        gStage = 1;
+    if (!raTlsClockOk(now)) /* before any DNS lookup or connection */
         return RATLS_ERR_CLOCK;
-    }
 
     struct hostent *he = gethostbyname(host);
-    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL) {
-        gStage = 2; /* no DNS answer: the saved DNS server is wrong or missing */
-        gDetail = 0;
+    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL)
         return RATLS_ERR_NET;
-    }
     memset(&to, 0, sizeof(to));
     to.sin_family = AF_INET;
     to.sin_port = 0xBB01; /* htons(443) on this little-endian EE */
     memcpy(&to.sin_addr, he->h_addr_list[0], sizeof(to.sin_addr));
 
     Bio bio = {socket(AF_INET, SOCK_STREAM, 0), start, 0};
-    if (bio.sock < 0) {
-        gStage = 3;
-        gDetail = bio.sock;
+    if (bio.sock < 0)
         return RATLS_ERR_NET;
-    }
     if (connect(bio.sock, reinterpret_cast<struct sockaddr *>(&to), sizeof(to)) < 0) {
-        gStage = 4;
-        gDetail = errno;
         disconnect(bio.sock);
         return RATLS_ERR_NET;
     }
     if (expired(start, DEADLINE_MS)) { /* DNS and connect already used the budget */
-        gStage = 5;
         disconnect(bio.sock);
         return RATLS_ERR_TIMEOUT;
     }
@@ -249,10 +236,6 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
 
     int rc = raTlsDownload(&io, host, path, "POPSLoader-updater", anchors, sizeof(anchors) / sizeof(anchors[0]), buf, max, max_body,
                            sink, sink_ctx, location, location_size);
-    if (rc < 0 && rc != RATLS_ERR_REDIRECT) {
-        gStage = 6;
-        gDetail = rc;
-    }
     disconnect(bio.sock);
     return rc;
 }
@@ -626,7 +609,7 @@ extern "C" int lua_updateStart(lua_State *L)
 }
 
 /* System.updateStatus() -> running (bool), result, doneBytes, totalBytes, remoteVersion, phase (1 =
-   writing the ELF), step and errno of a failed write, stage and code of a failed request */
+   writing the ELF), step and errno of a failed write */
 extern "C" int lua_updateStatus(lua_State *L)
 {
     int running = gState == 1;
@@ -639,7 +622,5 @@ extern "C" int lua_updateStatus(lua_State *L)
     lua_pushinteger(L, gPhase);
     lua_pushinteger(L, gStep);
     lua_pushinteger(L, gErrno);
-    lua_pushinteger(L, gStage);
-    lua_pushinteger(L, gDetail);
-    return 10;
+    return 8;
 }
