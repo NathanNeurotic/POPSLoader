@@ -23,6 +23,7 @@
 #include <delaythread.h>
 #include <libcdvd.h>
 #include <errno.h>
+#define NEWLIB_PORT_AWARE // fileXioOpen/Write/Close, as Launchstation overwrites its ELF
 #include <fileXio_rpc.h>
 #include <fcntl.h>
 #include <unistd.h>
