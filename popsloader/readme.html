@@ -51,7 +51,7 @@
     <a href="../credits.html">Credits</a>
     <a href="../wiki/index.html">Historical POPStarter wiki</a>
     <h4>Related projects</h4>
-    <a href="https://nathanneurotic.github.io/Open-PS2-Loader">RiptOPL (OPL) docs ↗</a>
+    <a href="https://nathanneurotic.github.io/RiptOPL/">RiptOPL docs ↗</a>
     <a href="https://ps2homebrewstore.com">PS2 Homebrew Store ↗</a>
   </nav>
   <main class="content"><h1>README — Overview</h1><p class="prov-inline"><a href="../popsloader.html">&larr; POPSLoader docs</a> · <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/README.md">view on GitHub ↗</a></p><p><img alt="POPSLoader interface" src="https://github.com/user-attachments/assets/0a5ded44-3012-4608-bddf-9adbf1173cc6" /></p>
@@ -68,9 +68,9 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Official 1.4.2</strong></td>
-<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.2">Official 1.4.2 release</a></td>
-<td>Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), completed translations and a Circle-on-No fix. Console acceptance remains pending.</td>
+<td><strong>Official 1.4.4</strong></td>
+<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.4">Official 1.4.4 release</a></td>
+<td>A warning when a disc icon cannot be loaded and SVKghost's Slovak corrections, on top of 1.4.3's Slovak translation, long text that fits in every language, finished Brazilian Portuguese and a larger disc icon, on top of 1.4.2's Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2) and experimental i.Link page (hidden by default, hardware-untested). Console acceptance remains pending.</td>
 </tr>
 <tr>
 <td>Prior stable 1.2.3</td>
@@ -96,7 +96,7 @@
 </table>
 <p>Passing CI proves builds and packages passed automated checks; <strong>it does not prove that a game, device, controller or VMC works on a physical PS2</strong>. Consult the <a href="qa-regression-matrix.html">hardware QA matrix</a>.</p>
 <h2 id="install-popsloader-with-ember-beta-2">Install POPSLoader with Ember Beta-2</h2>
-<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER-1.4.2.zip">POPSLoader 1.4.2 PS1_POPSLOADER-1.4.2.zip</a> or select <code>PS1_POPSLOADER-&lt;version&gt;.zip</code> from the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">latest rolling release</a>. The package's device-root layout is:</p>
+<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.4/PS1_POPSLOADER-1.4.4.zip">POPSLoader 1.4.4 PS1_POPSLOADER-1.4.4.zip</a> or select <code>PS1_POPSLOADER-&lt;version&gt;.zip</code> from the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">latest rolling release</a>. The package's device-root layout is:</p>
 <pre><code class="language-text">APPS/
   PS1_POPSLOADER/
     POPSLOADER.ELF
@@ -121,7 +121,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 </code></pre>
 <ol>
-<li><strong>Application:</strong> Copy <code>APPS/PS1_POPSLOADER/</code> to your launcher’s APPS location and run <code>POPSLOADER.ELF</code>. Alternatively import <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.2/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a></strong> using a PS2 PSU-capable save manager. Its PS2 save header is named <code>PS1_POPSLOADER</code> and contains <strong>exactly those eight direct files, with no nested folder</strong>.</li>
+<li><strong>Application:</strong> Copy <code>APPS/PS1_POPSLOADER/</code> to your launcher’s APPS location and run <code>POPSLOADER.ELF</code>. Alternatively import <strong><a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.4/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a></strong> using a PS2 PSU-capable save manager. Its PS2 save header is named <code>PS1_POPSLOADER</code> and contains <strong>exactly those eight direct files, with no nested folder</strong>.</li>
 <li><strong>POPStarter:</strong> Copy <code>POPS/</code> to the storage-device root. Add your own lawfully obtained Sony POPS files (<code>POPS.ELF</code>, <code>POPS.PAK</code>, <code>POPS_IOX.PAK</code> and <code>IOPRP252.IMG</code>) as required. Those copyrighted emulator components are <strong>not included</strong>.</li>
 <li><strong>Ember:</strong> Copy <code>EMBER/</code> to the same device root. Add <strong>your own 512 KiB PlayStation BIOS</strong> at <code>EMBER/bios.bin</code> and your own disc images under <code>EMBER/games/&lt;GameFolder&gt;/</code>, with a <code>.cue</code> and matching <code>.bin</code> tracks. <strong>No BIOS or commercial game images are provided</strong>. The included <code>ExampleGame.bin</code> is intentionally empty: delete or replace this non-playable example.</li>
 <li><strong>Artwork:</strong> POPStarter uses <code>POPS/&lt;GameName&gt;.VCD</code>; Ember uses <code>EMBER/games/&lt;GameFolder&gt;/</code>. For removable storage, covers go in the device-root <code>ART/</code> as <code>&lt;VCD-basename&gt;_COV.png</code> or <code>&lt;Ember-folder&gt;_COV.png</code>; <code>_ICO.png</code> is the optional disc icon.</li>
@@ -172,7 +172,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <p>HDD/PFS artwork belongs under <code>__common/POPS/ART/</code>. The UDPFS mode uses Okeanos' UDPFS Assault 1.0.1 (since 1.4.2) with no USB requirement; it also plays <code>POPS/*.cue</code> games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See <a href="device-support.html">device details</a> and <a href="udpfs-bdma.html">UDPFS setup</a>.</p>
 <h3 id="ember-options-and-safety">Ember options and safety</h3>
 <p>Set the bundled <strong>Ember Beta-2</strong> core's global options under <strong>Settings → Ember PS1 Core</strong>. On an <code>[Ember]</code> game row, press <strong>L2</strong> for timing, dither, shading and controller overrides; <code>Default</code> inherits the global option. Ember may create virtual memory cards in each game folder on writable media. <strong>Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.</strong> POPStarter VCD success does not establish Ember success.</p>
-<p>Credits and redistribution: <a href="https://github.com/Gageformer/Ember">Gageformer's Ember</a> (unmodified core with <code>EMBER/LICENSE-BETA.txt</code>), <a href="https://github.com/NathanNeurotic/Open-PS2-Loader">RiptOPL / Open-PS2-Loader</a> (device/backend reference), <a href="https://github.com/Okeanos86/BDMAssault">Okeanos's BDM-UDPFS Assault</a> and <a href="https://github.com/israpps/BDMAssault">israpps BDM Assault</a>. The <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/github/workflows/ember-watch.yml">weekly Ember Watch</a> verifies upstream asset digests, <strong>not</strong> hardware gameplay.</p>
+<p>Credits and redistribution: <a href="https://github.com/Gageformer/Ember">Gageformer's Ember</a> (unmodified core with <code>EMBER/LICENSE-BETA.txt</code>), <a href="https://github.com/NathanNeurotic/RiptOPL">RiptOPL</a> (device/backend reference), <a href="https://github.com/Okeanos86/BDMAssault">Okeanos's BDM-UDPFS Assault</a> and <a href="https://github.com/israpps/BDMAssault">israpps BDM Assault</a>. The <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/github/workflows/ember-watch.yml">weekly Ember Watch</a> verifies upstream asset digests, <strong>not</strong> hardware gameplay.</p>
 <h2 id="main-features">Main features</h2>
 <ul>
 <li>Cover-art PS1 browser for POPStarter VCD games and separate labeled Ember games.</li>
@@ -502,6 +502,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 <li><strong><a href="https://www.psx-place.com/members/hugopocked.47440/">Hugopocked</a></strong>: <a href="https://www.psx-place.com/resources/popstarter.683/">POPStarter</a> fixes.</li>
 <li><strong><a href="https://github.com/saildot4k">saildot4k</a> (R3Z3N)</strong>: BDMA-ATA (exFAT internal-HDD / ATA backend), the <a href="https://github.com/saildot4k/wLaunchELF_R3Z">wLaunchELF_R3Z</a> reference work our USB fixes are built on, the settings-UI review rounds, fixes, feedback, and oversight.</li>
 <li><strong><a href="https://github.com/oldman63">oldman63</a> (sAGA, Sári Gábor)</strong>: The complete Hungarian localization and the localization bug reports that hardened it for every language, plus relentless hardware testing and pin-sharp reports — the USB enumeration saga, the internal-HDD freeze diagnosis rounds, and UI suggestions that shipped.</li>
+<li><strong><a href="https://github.com/SVKghost">SVKghost</a></strong>: The Slovak (Slovenčina) translation and its corrections (<a href="https://github.com/NathanNeurotic/POPSLoader/issues/605">#605</a>).</li>
 <li><strong><a href="https://github.com/CosmicScale">CosmicScale</a></strong>: exFAT internal-HDD hardware verification and the per-device <a href="https://www.psx-place.com/resources/popstarter.683/">POPSTARTER</a> idea.</li>
 <li><strong>FifthFox</strong>: The per-device USB-delay POPSTARTER report that shaped the launch resolver.</li>
 <li><strong><a href="https://github.com/NathanNeurotic">Ripto / NathanNeurotic</a></strong>: Maintenance, UI polishing, and release engineering.</li>
