@@ -811,7 +811,7 @@ blockquote {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background: linear-gradient(135deg, #3b5562, #617194);
+  background: linear-gradient(135deg, #34505c, #4a5878);
   color: #e0e0e0;
   font-weight: 700;
   font-size: 14.5px;
