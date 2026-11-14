@@ -2,29 +2,29 @@
    Self-contained (no external CDNs or webfonts). */
 
 :root {
-  /* Lighter Blue PlayStation Palette */
-  --bg: #252830;
-  --bg2: #2a2e37;
-  --bg3: #303540;
-  --panel: rgba(42, 47, 56, 0.78);
-  --panel-solid: #2b2f39;
-  --panel2: rgba(49, 53, 64, 0.88);
+  /* Charcoal palette */
+  --bg: #121212;
+  --bg2: #181818;
+  --bg3: #202020;
+  --panel: rgba(24, 24, 24, 0.92);
+  --panel-solid: #1c1c1c;
+  --panel2: rgba(28, 28, 28, 0.94);
 
-  /* High-readability white and cool gray text */
+  /* High-readability neutral text */
   --ink: #e0e0e0;
-  --ink2: #d1d6dd;
-  --ink3: #bac1ca;
-  --ink4: #959da8;
+  --ink2: #e0e0e0;
+  --ink3: #b0b0b0;
+  --ink4: #888888;
 
   /* Tech lines and borders */
-  --line: rgba(181, 193, 211, 0.22);
-  --line2: rgba(191, 204, 216, 0.42);
-  --line3: rgba(199, 211, 221, 0.70);
+  --line: #444444;
+  --line2: #666666;
+  --line3: #888888;
 
-  /* Accents & Hues */
-  --accent: #7499a9;
-  --accent2: #acc2cc;
-  --accent-ghost: rgba(116, 153, 169, 0.18);
+  /* Neutral accents */
+  --accent: #888888;
+  --accent2: #b0b0b0;
+  --accent-ghost: rgba(136, 136, 136, 0.16);
 
   /* PlayStation face-button colours */
   --ps-x: #94a6bd;
@@ -55,11 +55,7 @@ body {
   font-size: 15.5px;
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(1300px 700px at 50% -10%, rgba(131, 149, 180, 0.30), transparent 65%),
-    radial-gradient(1100px 600px at 50% 115%, rgba(103, 119, 152, 0.25), transparent 60%),
-    radial-gradient(800px 800px at 85% 10%, rgba(149, 138, 185, 0.16), transparent 65%),
-    var(--bg);
+  background: var(--bg);
   background-attachment: fixed;
 }
 
@@ -101,7 +97,7 @@ img {
   gap: 16px;
   padding: 0 20px;
   height: 60px;
-  background: linear-gradient(180deg, rgba(41, 45, 54, 0.98), rgba(36, 39, 48, 0.95));
+  background: linear-gradient(180deg, rgba(27, 27, 27, 0.98), rgba(19, 19, 19, 0.96));
   border-bottom: 1px solid var(--line2);
   backdrop-filter: blur(8px);
   box-shadow: 0 1px 0 rgba(181, 194, 211, 0.18), 0 8px 24px rgba(27, 30, 38, 0.45);
