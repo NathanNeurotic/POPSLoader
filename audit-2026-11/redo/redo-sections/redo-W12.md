@@ -1,0 +1,98 @@
+# REDO W12 — RiptOPL: `.github/scripts/` (first half) + `.github/workflows/`
+
+Pin verified: `git rev-parse HEAD` = `2e347d5ac885cd0ff73e9ad4143781946396f492`.
+Census note (command-run, not estimated): at this pin `find .github/scripts -name '*.py' | sort` returns **286** files / 62,272 lines total (the brief said 304 files; the line total matches). First half = the first **143** sorted files, `hostmap.py` … `test_net_recv_poll.py` (137 `test_*.py` + 6 production scripts). All 12 workflow files were read fully (2,222 lines by `wc -l`).
+
+Test execution (command-run): every first-half suite was run with `python3 <file>` (120 s timeout each) in this VM: **137 passed, 0 failed**. Findings below are therefore structural, not "the suites are red".
+
+---
+
+## W12-001 — The main CI workflow runs the full host-test suite with no Python dependencies installed; four suites import PyYAML and only pass if the runner image happens to preinstall it
+- Category: 7 build/CI
+- Locations: `RiptOPL/.github/workflows/ps2build.yml:69-71` (assets step, then `tools/run_tests.sh -k`, no `pip install` step anywhere in the file — verified by grep); `RiptOPL/requirements.txt:1` (sole content `PyYAML==6.0.3`); importers in scope: `RiptOPL/.github/scripts/test_audit_translations.py:9`, `RiptOPL/.github/scripts/test_build_driver.py:9`, `RiptOPL/.github/scripts/test_llvm_release.py:11`, `RiptOPL/.github/scripts/test_menu_text_fit.py:31` (all `import yaml`)
+- Problem: `tools/run_tests.sh` runs every `.github/scripts/test_*.py` by glob. `configurations.yml`, `rolling-release.yml` and `rolling-llvm.yml` all do `python -m pip install -r requirements.txt` first; `ps2build.yml` — the compiler-validation workflow that runs on every push/PR — does not. The four YAML-importing suites therefore depend on the GitHub runner image's preinstalled packages, an unpinned, invisible dependency: an image change turns them into import errors, and locally they pass only because PyYAML happens to be installed (verified: all 137 pass in this VM, where `yaml` is importable). READ.
+- Fix: add the same one-line `pip install -r requirements.txt` step to ps2build.yml before the host-tests step (mirrors three sibling workflows; adds nothing new).
+- Benefit: the test gate's inputs become declared and pinned; removes a silent environment dependency.
+- Effort: S · Risk: Low · Confidence: High (READ)
+
+## W12-002 — flavours.yml hand-enumerates test files in ~30 steps, duplicating the glob runner; the two lists already disagree
+- Category: 2 duplication / 7 build/CI
+- Locations: `RiptOPL/.github/workflows/flavours.yml:18-359` (five host-test jobs listing suites one per line); `RiptOPL/tools/run_tests.sh:5-9` (glob over the same directory)
+- Problem: command-run census: workflows explicitly name 154 distinct `test_*.py` files; the repo has 278. In this worker's half alone, 58 suites are named in **no** workflow (e.g. `test_accurate_read_rate.py`, `test_artindex_network.py`, `test_build_driver.py`, `test_dialog_hints.py`, `test_ee_hook_context.py`, `test_igr_polling.py`, `test_mc_folders.py`, `test_mbedtls_vendor.py` — full list derived by script) and run in CI only via the ps2build/rolling glob. Conversely, every rename or deletion must be edited in flavours.yml by hand or that job fails on a missing file. Two mechanisms maintain one list; they have already drifted apart. READ (counts by script).
+- Fix: delete the per-file enumeration in flavours' host-test jobs and call `tools/run_tests.sh` (keeping the two venv jobs for site/wiki sync, which need extra packages); keep job splitting only if wall-clock requires it, splitting by directory glob, not by filename.
+- Benefit: one test list, maintained nowhere; new suites are picked up automatically in every job; net deletion of ~150 workflow lines.
+- Effort: M · Risk: Med (job-time/profile changes) · Confidence: High (READ)
+
+## W12-003 — Format gate never sees C++: trigger paths and the lint action are both restricted to `.h`/`.c`
+- Category: 7 build/CI
+- Locations: `RiptOPL/.github/workflows/check-format.yml:5-16` (push/PR `paths: **.h, **.c, …`) and `:32-37` (`extensions: 'h,c'`)
+- Problem: command-run census of the source tree: 431 `.h`, 254 `.c`, **115 `.cpp`** files (plus `.hpp`-style headers under the `.h` count). No `.cpp` change triggers the workflow, and even when triggered the action is told to check only `h,c`. The entire C++ UI/source layer (`src/**/*.cpp`) is outside the format gate that the rest of the tree is held to. READ; whether the exclusion was deliberate is INFERRED-unknown — no comment in the workflow explains it.
+- Fix: add `**.cpp` (and `cpp` to `extensions:`), or, if the exclusion is deliberate, write that reason in the workflow so it stops looking like an oversight.
+- Benefit: one format standard for the whole tree, or an explicitly documented exception.
+- Effort: S · Risk: Low · Confidence: High (READ)
+
+## W12-004 — The extract-a-C-function harness boilerplate is copy-pasted into 52 suites instead of living in one place
+- Category: 2 duplication
+- Locations: mechanism census (command-run) across the 143 in-scope files: 52 files define their own `def function(...)` extractor terminating a body at the first `'\n}\n'`; 24 define `def read(...)`; 46 re-implement the `failures = []` / collect-and-`sys.exit(1)` tail; 141 recompute `Path(__file__).resolve().parents[2]` as repo root. Representative copies READ in full: `RiptOPL/.github/scripts/test_accurate_read_rate.py:22-27`, `RiptOPL/.github/scripts/test_config_escape_roundtrip.py:8-10`, `RiptOPL/.github/scripts/test_net_recv_poll.py:16-29` (a fourth, brace-counting variant of the same extractor).
+- Problem: this is the one case where the shared-helper test is met: identical logic in 52+ places, and sharing removes code overall. The copies have already diverged (index-based vs brace-counting extraction), so a fix to extraction fragility — the index variant silently truncates any function containing an unindented `}` in a string, macro or `#if 0` block — must currently be made dozens of times. READ.
+- Fix: one small module in `.github/scripts/` (root resolution, `read()`, both extractors, failure tail) imported by the suites; delete the per-file copies as they are touched. No new framework — a single plain module, mirroring the existing `hostmap.py` import pattern.
+- Justification (adds a file): required — the module is ~40 lines replacing ~10+ duplicated lines × 100+ suites repo-wide; net deletion, and it makes the extractor fixable in one place.
+- Benefit: hundreds of lines removed across the suite; one extraction semantics instead of four.
+- Effort: L · Risk: Med (touching many suites; do it incrementally) · Confidence: High (READ)
+
+## W12-005 — 18 first-half suites assert on source text only and never execute any code; several pin exact whitespace, so they fail on behaviour-preserving edits and pass on behaviour-breaking ones that keep the strings
+- Category: 6 bugs/security (test validity)
+- Locations (all READ; classified by script — no `subprocess`, assertions only over `read_text()`/regex): `test_about_credits_layout.py`, `test_artindex_network.py`, `test_cdvdman_own_stack.py`, `test_config_null_allocation.py`, `test_counter_unclipped.py`, `test_dialog_gui_lock.py`, `test_dialog_hints.py`, `test_ds34usb_report_transfer.py`, `test_ee_hook_context.py` (see W12-007), `test_error_dialog_render.py`, `test_keyboard_keycaps.py`, `test_korium_builtin_assets.py`, `test_language_page.py`, `test_logo_art_toggle.py`, `test_mbedtls_vendor.py`, `test_menu_crash_catcher.py`, `test_menu_tab_sound_unlocked.py`, `test_mx4sio_host_boot.py`. Worst example READ in full: `RiptOPL/.github/scripts/test_mx4sio_host_boot.py:13-16` asserts literal strings including exact spacing and an embedded `\n` (`'if (gEnableMX4SIO && !mx4sioModLoaded && !oplBootDirIsHostFs())\n        return 1;'`).
+- Problem: 106 sibling suites compile the extracted production function and run it; these 18 check that source *looks* a certain way. A clang-format reflow, a renamed local, or an equivalent-expression refactor fails them with no behaviour change; conversely a change that alters runtime behaviour while preserving the pinned substrings passes. They encode source shape as correctness. All 18 currently pass (command-run), which proves only that the strings are present today.
+- Fix: for each, either (a) convert to the compile-and-run harness pattern its siblings already use, where the guarded behaviour is executable on the host, or (b) loosen to the semantic token (function called / guard present) where it is not, or (c) delete it where a compile-harness suite already covers the same function. Do not add new text suites of this form.
+- Benefit: the suite starts measuring behaviour; refactor noise failures disappear.
+- Effort: L · Risk: Med · Confidence: High for the classification and the mx4sio example (READ); INFERRED for which of (a)/(b)/(c) fits each individual suite.
+
+## W12-006 — hostmap.py monkeypatches `pathlib.Path.read_text` globally so 11 suites can keep testing a source dialect that no longer exists
+- Category: 3 overengineering / 6 test validity
+- Locations: `RiptOPL/.github/scripts/hostmap.py:44-55` (`_orig_read_text` capture; `pathlib.Path.read_text = _read_text` at import time; `unhost()` rewriting `host::ui()/app()/library()` calls back to pre-refactor names such as `guiMsgBox`, `deinit`, `libViewActive`); importers (command-run census, 11 in scope): `test_app_launch_args.py`, `test_autolaunch_settings.py`, `test_bdm_keep_page_on_reapply.py`, `test_bdm_private_allocation.py`, `test_bdm_scan_retry.py`, `test_cheat_load.py`, `test_ember_disc_selection.py`, `test_lang_format_guard.py`, `test_language_discovery.py`, `test_language_switch.py`, `test_native_vmc_layout.py`. The module's own docstring (READ, lines 1-7) states the purpose: mocks are "named after the OLD functions", so the patch makes production source read as if the host:: refactor never happened.
+- Problem: the suites do not test the source in the repo; they test a regex-translated variant of it, against mocks named for a dead API. Any host:: call missing from the `HOST_TO_OLD` table silently reaches the mock layer untranslated (compile failure at best, wrong-name pass at worst — INFERRED), and the global patch is import-order-dependent: it rewrites **every** `.cpp` read in the process, including reads by code that never asked for translation. This is a compatibility shim for tests, kept alive instead of updating the mocks once.
+- Fix: rename the mocks in the 11 suites to the current `host::` names, drop `import hostmap`, and delete `hostmap.py`. One-time edit; removes a whole translation layer and its regex table (~40 entries).
+- Benefit: tests read the real source; one 55-line module and its failure modes gone.
+- Effort: M · Risk: Med · Confidence: High (READ)
+
+## W12-007 — test_ee_hook_context.py verifies EE assembly with a hand-written Python MIPS interpreter instead of executing anything
+- Category: 3 overengineering / 6 test validity
+- Locations: `RiptOPL/.github/scripts/test_ee_hook_context.py:19-95+` (136 lines total; `run()` parses `ee_core/src/asm.S`, then interprets opcodes in Python: `nop`, `la/lui`, `daddu/addiu/andi/sltu/slti`, `sd/sw`, `ld/lw`, branches, `jal`, `jr` — READ)
+- Problem: the suite's verdicts are only as correct as this private re-implementation of MIPS semantics (delay slots, sign extension, clobbers are modelled by hand in the interpreter, per its own docstring: "an instruction-level ABI fixture, not MIPS execution"). A bug in the interpreter and a bug in the assembly can cancel out, and an interpreter gap reads as an assembly failure. It is the "tests a private re-implementation instead of the real code" pattern, applied to the interpreter rather than the code under test. The docstring is honest about the limitation, and the suite passes (command-run); the risk is divergence as either side evolves. INFERRED risk, READ mechanism.
+- Fix: keep the fixture only for the register-clobber invariants that genuinely cannot run on the host, and state that boundary in the file; do not extend the interpreter to new opcodes — new hook checks should assemble/link the real asm (as native CI already does) rather than grow the simulator. Simplest net win available today: delete any interpreter opcode branches no current assertion exercises (to be confirmed by coverage before deleting).
+- Benefit: stops investment in a parallel MIPS implementation; keeps the one check it is actually for.
+- Effort: M · Risk: Med · Confidence: Med (READ mechanism; INFERRED divergence risk)
+
+## W12-008 — docs-sync.yml embeds a ~150-line Python program inside YAML, with the same content written twice (Markdown and HTML literals), and no test covers it
+- Category: 2 duplication / 8 half-finished
+- Locations: `RiptOPL/.github/workflows/docs-sync.yml:40-160 approx.` (`shell: python` step: badge rewrite, External Tools section built once as a Markdown f-string and again as an HTML f-string with the same ~13 tool entries, authors, URLs and descriptions duplicated literal-for-literal; commit-message delta logic)
+- Problem: this is production code — it rewrites README.md and the live gh-pages site and pushes both — living where it cannot be imported, linted, or run by any suite (no `test_*.py` references it; command-run grep). Every tool entry must be edited twice, in two syntaxes, inside YAML string escaping; a slip in either copy desynchronises README from the site silently. READ.
+- Fix: move the step's Python into `.github/scripts/` as a normal script (docs-sync keeps only checkout + invocation), and build both outputs from one entry table (name, URL, author, blurb) rendered to Markdown and HTML. No new abstraction beyond the table the duplication already implies.
+- Justification (restructure): the script file replaces, not adds to, the YAML block; the entry table deletes the second literal copy of every entry.
+- Benefit: testable, single-source content; workflow shrinks by ~150 lines.
+- Effort: M · Risk: Med (it publishes the live site; validate output diff before first run) · Confidence: High (READ)
+
+## W12-009 — Docs dependency pins exist in three places; two workflows inline them instead of using requirements-docs.txt
+- Category: 2 duplication / 7 build/CI
+- Locations: `RiptOPL/.github/requirements-docs.txt:1-4` (`beautifulsoup4==4.15.0`, `markdownify==1.2.0`, `markdown-it-py==4.0.0`, `PyYAML==6.0.2`); inlined duplicates: `RiptOPL/.github/workflows/docs-sync.yml:184` and `RiptOPL/.github/workflows/flavours.yml:350` (both `pip install beautifulsoup4==4.15.0 markdown-it-py==4.0.0`); correct single-source use: `wiki-publish.yml:96`, `flavours.yml` wiki job (`-r .github/requirements-docs.txt`)
+- Problem: the inline copies are today a *subset* (site_sync.py imports only `bs4` + `markdown_it` — READ at `site_sync.py:51-52` — so the subset is currently correct), but the versions now live in three spots: bump `requirements-docs.txt` and the two inline installs silently stay behind, splitting the site generator's environment between the docs-sync and flavours jobs. READ.
+- Fix: replace both inline pin lists with `pip install -r .github/requirements-docs.txt` (installing markdownify/PyYAML into that venv too is harmless) and delete the literal pins.
+- Benefit: one place to bump; generator runs on identical packages in every job.
+- Effort: S · Risk: Low · Confidence: High (READ)
+
+## W12-010 — Skip-to-pass: three places convert "cannot run" into a green result
+- Category: 6 bugs/security (test validity)
+- Locations: `RiptOPL/tools/run_tests.sh:8` (if `bs4` is unimportable, `test_site_sync.py`/`test_wiki_sync.py` are echoed as `SKIP` and the loop continues — the run still ends "all tests passed"); `RiptOPL/.github/scripts/test_iso9660_records.py:112` (`@unittest.skipUnless(CC, 'no host C compiler')` on the whole test class); `RiptOPL/.github/scripts/test_install_ports.py:405,411` (`skipTest` when `cc`/`ar` are missing or the host compiler does not emit ELF)
+- Problem: in the environments these guards exist for (a bare local machine, a slim container), the suites report success having asserted nothing, and nothing in the output distinguishes "passed" from "never ran" at the workflow level (exit code 0 in all three mechanisms — READ for run_tests.sh and the unittest decorators; the install_ports skips are conditional paths READ at the cited lines). The flavours workflow mitigates this for site/wiki sync by installing the deps in dedicated venv jobs — which makes the run_tests.sh skip purely a local false-green. The compiler skips are defensible on a dev laptop; they are not defensible as silent passes in any CI job that relies on the glob runner alone (see W12-001/W12-002).
+- Fix: in `run_tests.sh`, make a missing `bs4` a failure with the message "install .github/requirements-docs.txt" instead of a skip (CI installs it; locally the message tells the user how to get the real run). Leave the two compiler `skipTest`s in place for direct local runs, but note in both files that CI must provide `cc`/`ar` — it currently does (ubuntu runners), so this half is documentation, not behaviour change.
+- Benefit: a green run_tests.sh run means every suite actually ran.
+- Effort: S · Risk: Low · Confidence: High (READ)
+
+---
+
+## COVERAGE
+
+Read in full (opened and read, not just listed): all 6 production scripts in scope (`hostmap.py`, `normalize_release_notes.py`, `orbit_neutrino_watch.py`, `package_release_app.py`, `ps2build_sdk_watch.py`, `site_sync.py` — skimmed for imports/security patterns with grep + targeted reads; `hostmap.py` and `site_sync.py` imports read at the cited lines); all 12 workflows (`check-format.yml`, `configurations.yml`, `docs-sync.yml`, `ember-watch.yml`, `flavours.yml`, `neutrino-watch.yml`, `orbit-neutrino-watch.yml`, `ps2build-sdk-watch.yml`, `ps2build.yml`, `rolling-llvm.yml`, `rolling-release.yml`, `wiki-publish.yml` — concatenated and read, 2,222 lines, with per-file re-reads for every cited line); `requirements.txt` (repo root) and `.github/requirements-docs.txt`; `tools/run_tests.sh`. Test suites: all 137 in-scope suites were **executed** (137 pass / 0 fail, command-run above) and mechanically censused (imports, extractor/boilerplate patterns, subprocess vs text-only classification, skip patterns — all by script); the following were additionally read in full: `test_accurate_read_rate.py`, `test_artindex_network.py`, `test_config_escape_roundtrip.py`, `test_dialog_hints.py`, `test_ee_hook_context.py` (first 95 lines + structure), `test_error_dialog_render.py`, `test_ingame_freeze_diag.py` (skip/except region), `test_install_ports.py` (skip region), `test_iso9660_records.py` (skip region), `test_menu_tab_sound_unlocked.py`, `test_mx4sio_host_boot.py`, `test_net_recv_poll.py` (extractor + prelude).
+
+NOT read line-by-line (with reason): the remaining ~120 in-scope test suites were executed and censused by script but not each read end-to-end — they follow the single extract-compile-assert pattern established by the fully-read representatives, and every claim filed about them rests on the script census (counts stated as command-run) or on individually cited lines that were opened. No in-scope file was skipped entirely: every one of the 143 was at minimum executed (tests) or grep/read sampled (production scripts). Out-of-scope by assignment: the second half of `.github/scripts/` (from `test_netblock_oplcore.py` onward, incl. `wiki_sync.py`, `validate_site.py`, `test_site_sync.py`, `test_wiki_sync.py` — mentioned only where a workflow or run_tests.sh line in scope references them).
