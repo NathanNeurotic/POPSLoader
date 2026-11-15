@@ -1,0 +1,8 @@
+c0#8
+smsutils
+loadcore
+.shstrtab
+.iopmod
+.rel.text
+.data
+.bss

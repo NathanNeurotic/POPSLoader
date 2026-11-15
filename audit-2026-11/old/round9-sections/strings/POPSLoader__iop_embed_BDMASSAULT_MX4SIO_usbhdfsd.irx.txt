@@ -1,0 +1,80 @@
+$%(@
+$%( 
+<.( 
+<0( 
+<2( 
+@BB$
+<((1&
+<.( 
+<0( 
+<2( 
+c0&0C
+< (B
+< ("
+< (B
+< (B
+< ( 
+<4(c
+<@BR$
+<$&B$
+<p'B$
+$c$! d
+$B$!
+$c$!(e
+$!@h
+<((c$
+((k%
+B0!@
+k5UUJ%
+<`&B$%(
+<`&B$%(
+dmacman
+intrman
+loadcore
+stdio
+sysclib
+thbase
+thevent
+thsemap
+$-6?HAZSle~w
+=4/&QXCJu|gn2; )
+zsha^WLE+"90
+cjqxGNU\dmv
+@IR[,%>7
+}tofYPKB5<'.
+V_DMr{`i
+:3(!OF]Tkbyp
+#*18AHSZelw~	
+-$?6XQJC|ung
+4=&/szahW^EL;2) 
+jcxqNG\U"+09
+%,7>
+vI@[R<5.'
+t}foPYBK
+3:!(_VMD{ri`
+*#81FOT]bkpy
+MX4SIO: %lu %u-byte logical blocks: (%luMB / %luMiB)
+sio2man
+loadcore
+MX4SIO: card detection thread running
+MX4SIO: Trying to init card
+MX4SIO: Starting module
+MX4SIO:  - argv[%d] = %s
+MX4SIO: ERROR: CreateEventFlag returned %d
+MX4SIO: ERROR: sio2man_hook_init returned %d
+MX4SIO: ERROR: CreateThread returned %d
+MX4SIO: ERROR: StartThread returned %d
+modload
+MX4SIO: Stopping module
+MX4SIO: MX4SIO v1.2
+mx4sio
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

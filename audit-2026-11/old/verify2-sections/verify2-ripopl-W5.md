@@ -1,0 +1,79 @@
+# FULL-VERIFICATION Phase 2 — RiptOPL — Worker W5
+
+- **Worker:** W5 (adversarial verification; findings survive only if the code at the pin proves them)
+- **Repo / pin:** RiptOPL (rebuild/main) at `2e347d5ac885cd0ff73e9ad4143781946396f492`
+- **HEAD verified:** `git rev-parse HEAD` = `2e347d5ac885cd0ff73e9ad4143781946396f492` at start and at end; `git status --porcelain` empty at end. Clone read-only, never edited.
+- **Source of findings:** `~/workspace/Sable-audit/Sable-RiptOPL-ROUND5.md` (RIPTOPL-192…236, full bodies read first)
+- **Assigned count:** 45
+- **Method:** per-category re-derivation — Cat 6 mechanisms re-traced (bounds, guards, callers); Cat 5 structural re-read only (no hardware-behaviour claims); Cat 4 re-measured from in-tree constants/struct layouts; ziso findings (200/203/204) re-executed on a /tmp copy; VMC group table (216) re-derived by script over the pin's arrays.
+
+## Verdict table
+
+| ID | Verdict | Basis |
+|---|---|---|
+| RIPTOPL-192 | VERIFIED | `modules/usb/usbd-ra/src/usbd.c:139` clears `[arg - memPool.hcIsoTdBuf]` inside the `curTd` walk; `arg` slot already cleared at `:109`; correct sibling `[tdListPos - memPool.hcTdBuf]` at `:224` |
+| RIPTOPL-193 | VERIFIED | `hcd.c:380-381` `AllocSysMemory` then unconditional `memset(memBuf,…)`; `initHardware()` ignored at `:361`; `initHcdStructs()`/`initHubDriver()` ignored at `:535`/`:538`; `hcdInit()` ignored at `usbd.c:406`, `_start` returns `MODULE_RESIDENT_END`; `hub.c:49-53` does check and return −1 |
+| RIPTOPL-194 | VERIFIED | `tools/pc/iso2opl/src/isofs.c:195` `offset = lsn * 2048;` with `lsn` u32 (wraps ≥ sector 2,097,152); correct widening-first form at `:981` in `isofs_Read` |
+| RIPTOPL-195 | VERIFIED | `tools/pc/http/http_conformance.py:58-68` `body = resp.read()` unbounded; cap applied only inside `parse_catalog` after the read; file path reads `CATALOG_BYTES_MAX + 1` at `catalog_reference.py:416` |
+| RIPTOPL-196 | VERIFIED | `modules/debug/ps2link/nprintf.c:28` `printf(buffer);` — RPC payload as format string, `size` ignored, 512-byte `rpc_buffer` not NUL-bounded |
+| RIPTOPL-197 | VERIFIED | `src/ui/diaeditors.cpp:130-138` caret = `strlen` bytes; L1/R1 `caret--`/`caret++` at `:298-307`; both backspaces `memmove` exactly 1 byte at `:362-368`, `:396-403`; `diaKeybNextChar`/`diaKeybPrevChar` (`:112-126`) used only for view scrolling |
+| RIPTOPL-198 | VERIFIED | `modules/iopcore/patches/apemodpatch/main.c:104-115` instruction writes, `:118` `// FlushIcache();` commented out before `StartModule`; sibling `iremsndpatch/main.c:110` flushes with the identical comment |
+| RIPTOPL-199 | VERIFIED | `tools/pc/genvmc/src/genvmc.c:399-413`: `if (argc != 3) printUsage();` with no return, falls through to `strtol(argv[1],…)` and `vmc_mcformat(argv[2],…)` |
+| RIPTOPL-200 | VERIFIED | `tools/pc/ziso.py:336-366` `level=None` default, only check `bsize % 2048 != 0` at `:362`; re-executed on /tmp copy: no `-c` → `TypeError: %d format… not NoneType`; `-b 0` → `ZeroDivisionError` at `total_block` division (`:233`) |
+| RIPTOPL-201 | VERIFIED | `modules/mx4sio_bd/src/spi_sdcard_driver.c:513-518`: CMD55 result assigned, overwritten by ACMD23, overwritten by CMD25, never tested; init path tests CMD55/ACMD41 replies at `:191-195`, `:235-239` |
+| RIPTOPL-202 | VERIFIED | `src/gfx/plasma.cpp:177` `memalign` stored in `tex_.Mem` unchecked; `draw()` writes `tex_.Mem + kWidth * row_` at `:225` and passes `&tex_` to `rmDrawPixmap`; `shutdown()` at `:201` does NULL-test it; init/draw driven unconditionally from `src/ui/gui.cpp:85,146` |
+| RIPTOPL-203 | VERIFIED | `tools/pc/ziso.py:62-72` trim-and-retry with no floor (`b""[:-1] == b""`); re-executed: `lz4_decompress(b"\xff", 2048)` still spinning at 3 s timeout (exit 124), `b"\x00"` returns immediately |
+| RIPTOPL-204 | VERIFIED | `tools/pc/ziso.py:233` `total_block = total_bytes // block_size`, header records true `total_bytes` at `:228-231`; re-executed round-trip: 3,000-byte input at 2,048 block size "completed" both ways and returned 2,048 bytes (952 silently lost) |
+| RIPTOPL-205 | VERIFIED | `modules/iopcore/cdvdman/device-hdd.c:70-73` unbounded `while ((r = sceAtaDmaTransfer(...)) != 0) DelayThread(2000);`; siblings bounded: `device-mmce.c:105` 100×100 ms, `device-udpfs.c` 300 polls, `device-http.c:109` 50×10 ms |
+| RIPTOPL-206 | VERIFIED | `modules/iopcore/cdvdman/ioops.c:305-306,321-322,334-335` three unbounded `while (sceCdRead(...) == 0) DelayThread(10000);` phases; sibling `cdvdfsv/ncmd.c` `cdvd_readee` treats 0 as failure (`SCECdErREADCF`, `:344`) |
+| RIPTOPL-207 | VERIFIED | `modules/debug/ps2link/net_fio.c:86-105`: `pko_recv_bytes` handles `len < 0` only; `len == 0` leaves `left` unchanged → infinite `recv` loop; `pko_accept_pkt` (`:107-160`) has `hlen > len` check at `:137`-area but no `hlen < sizeof(pko_pkt_hdr)` rejection before `hlen - sizeof(...)` at payload read |
+| RIPTOPL-208 | VERIFIED | `modules/iopcore/igrmbox/igrmbox.c:72-88` `mbSendEE`: `do…while (!id)` on `sceSifSetDma` then `while (sceSifDmaStat(id) >= 0);`, both unbounded; sole caller is the module's only thread `mbThread` (`:133-150`); verified as filed in ROUND5 (canonical survivor of the −455 merge) |
+| RIPTOPL-209 | VERIFIED | `modules/network/smbman-ra/smb.c:1632-1633` `while (recv(main_socket, &dummy, sizeof(dummy), 0) > 0);` on a blocking socket, no bound; `RecvTimeout`'s lockup-avoidance comment at `:148-155` in the same file |
+| RIPTOPL-210 | VERIFIED | `modules/iopcore/cdvdfsv/cdvdfsv.c:253-271` `sysmemSendEE`: `sceSifSetDma` retry `:260-267` and empty `sceSifDmaStat` spin `:269-270`, no yield/bound; fixed sibling pattern with `DelayThread(500)` + explanatory comment at `cdvdman/streaming.c:215-232` |
+| RIPTOPL-211 | VERIFIED | `src/core/vmcsaves.cpp:1181` `u32_t files[SAVE_FILES]` (64, `:44`); collection loop capped `nfiles < SAVE_FILES` at `:1193` while trusting `vsDirLen(dir.length)` up to `DIR_MAX` 4096 (`:43`); root entry hidden and folder chain freed regardless — files 65+ chains never freed |
+| RIPTOPL-212 | VERIFIED | `modules/hdd/apa/src/journal.c:73-85`: replay loop `break`s on transfer error (`:76`/`:80`) with `ret = -EIO`, then falls through to `return apaJournalReset(device);` at `:85` — error discarded, journal erased |
+| RIPTOPL-213 | VERIFIED | `modules/hdd/apa/src/cache.c:101` `clink->flags &= ~APA_CACHE_FLAG_DIRTY;` unconditional in `apaCacheTransfer` (`:87-105`); `apaCacheFlushAllDirty` (`:111-126`) ignores `apaJournalWrite`/`apaJournalFlush`/`apaCacheTransfer` returns and returns `apaJournalReset(device)` |
+| RIPTOPL-214 | VERIFIED | `src/sources/appscan.cpp:103` `if (pdirent->d_type != DT_DIR) continue;` in `scanApps`; in-repo precedent comment at `src/gfx/themes.cpp:995-1002` (#152) documenting exactly this MMCE/clone-firmware DT_UNKNOWN failure |
+| RIPTOPL-215 | VERIFIED | `src/ui/guigame.cpp:2121-2170` `guiGameRemoveSettings` removal list contains none of `CONFIG_ITEM_NEUTRINO_ARGS/VIDEO/GSMCOMP/BSDFS` (written per-game at `:2014-2050`) nor the four `CONFIG_ITEM_EMBER_*` keys (written at `src/ui/guisettings.cpp:3396-3399`, read at `src/sources/cuesupport.cpp:812-818`) |
+| RIPTOPL-216 | VERIFIED-DRIFT | Mechanism and counts hold (script at pin: 97 groups, 1,046 IDs, 8 non-canonical, 5 intra-group dups, `titles_XEBP_100_71` ≡ `titles_XEBP_100_72` byte-identical); one sub-claim misstated — see reasoning |
+| RIPTOPL-217 | VERIFIED | `modules/pademu/padmacro.c:47-67` single globals `gPreviousButtons`, slowdown toggles, `gTurboButtonWaiting/Mask/Counter`; edge test + toggle flip in `changeInternalState` `:139-205`; `padMacroPerform` `:234-256` called per pad from `ds34bt.c:1234,1274` and `ds34usb.c:302-354` with no port argument |
+| RIPTOPL-218 | VERIFIED | `modules/debug/udptty-ingame/udptty.c:225-236`: `lwip_sendto` result discarded at `:233`, `udp_send` returns 0 unconditionally at `:235`; `tty_write` (`:259-268`) therefore reports 0 bytes for every write; KPRTTY caller `write(1, …)` at `:148` |
+| RIPTOPL-219 | VERIFIED | `tools/pc/opl2iso/src/opl2iso.c:260-266` `while (!feof(fsrc))` loop; an error read (0 bytes, error indicator, no EOF) never sets `feof` and the write check compares 0 == 0 — infinite spinner loop |
+| RIPTOPL-220 | VERIFIED | `src/core/OSDHistory.cpp:168-186`: on a strictly lower `LaunchCount` the code updates `LeastUsedRecord`/`LeastUsedRecordLaunchCount` but not `LeastUsedRecordTimestamp`; worked example (5,100),(3,500),(3,200) traced — victim stays (3,500) instead of (3,200); victim consumed at `:246` |
+| RIPTOPL-221 | VERIFIED | `src/platform/ioman.cpp:275-278` `pendingByType_` incremented in `appendLocked`, decremented only on normal drain (`:148-149`); termination cleanup (`:163-168`) frees queued requests with no decrement; `start()` (`:201-208`) resets `blocked_`/`terminate_`/`handlerCount_`/`head_`/`tail_`/`current_` but not `pendingByType_[]` |
+| RIPTOPL-222 | VERIFIED | `modules/hdd/apa/src/cache.c:26-44`: header array allocated at `:32`; on `cacheBuf == NULL` at `:33-35` returns `-ENOMEM` without freeing the header block |
+| RIPTOPL-223 | VERIFIED | `modules/hdd/apa/src/misc.c:93-111` non-IOP branch: `rawtime += (-9 * 60 * 60);` under `// Convert to JST` before `gmtime_r` — JST is UTC+9, so this yields UTC−9 (18 h off); IOP branch `:64-92` unaffected |
+| RIPTOPL-224 | VERIFIED | `modules/hdd/xhdd/hdpro.c:8-11` entire body of `hdproata_device_set_transfer_mode` is `return 0;`; dispatched for HDPro at `modules/hdd/xhdd/xhdd.c:45-47`; working sibling `ata_device_set_transfer_mode` at `xatad.c:55` |
+| RIPTOPL-225 | VERIFIED | `modules/mmce/mmceman/src/mmce_sio2.c`: setter at `:176-179`; honoured at `:278-279`/`:291-292` (rx_dma) and `:381-382`/`:394-395` (rx_mixed); unconditional `SetAlarm`/`CancelAlarm` at `:211` (`tx_rx_pio`) and `:492`, `:533`, `:570` (tx_mixed stages) |
+| RIPTOPL-226 | VERIFIED | `src/sources/httpsupport.cpp:165-166` mallocs both arrays at `HTTP_CATALOG_ROWS_MAX` 2048 (`include/httpsupport.h:19`); re-measured: `base_game_info_t` ≈188 B → ~385 KB, `http_catalog_extra_t` (`path[256]`+flag, `:40-47`) ≈260 B → ~532 KB, ~0.9 MB per parse regardless of catalog size |
+| RIPTOPL-227 | VERIFIED | `src/sources/achievements.cpp:145` `XERA_LIST_MAX 1024`, `XERA_DOC_MAX 512*1024`; `:356` cap-sized malloc on every parse; `achievement_entry_t` (`include/achievements.h:19-21`) = 5 ints + 33+57+101+20 chars = 232 B padded → ~232 KB; old `xeraList` freed only at `:383` after the new parse, doc buffer held by `xeraFetch` throughout — ~1 MB transient |
+| RIPTOPL-228 | VERIFIED | `src/gfx/artindex.cpp:191` hashes malloc 4096×4 B = 16,384 B; `:199` pics malloc 4096×8 B (`Pic` at `include/artindexint.h:40-45`) = 32,768 B; 49,152 B per directory retained as-is at `:281-286`; `kSlots` 3, `kMaxEntries` 4096 at `artindexint.h:29-38`; names buffer by contrast grows from 16 KB |
+| RIPTOPL-229 | VERIFIED | `src/gfx/fntsys.cpp:581-621`: `pageid = gid / 256` at `:594-600` and `prepareGlyphCachePage` (`:187-221`, realloc to `pageid+1` pointers + 256×36 B page = 9,216 B) run before `FT_Load_Char` at `:617`; the only `FT_Get_Char_Index` pre-check (`:586-591`) selects the fallback font, never gates allocation for the primary face |
+| RIPTOPL-230 | VERIFIED | `src/core/diagsave.cpp:21` `static char copy[DIAG_SIZE]` permanent BSS, `DIAG_SIZE` 16 KB at `:17`, duplicating the ring `static char diagRing[DIAG_SIZE]` at `src/platform/diaglog.cpp:16`; copy used only for the duration of `diagSave()` |
+| RIPTOPL-231 | VERIFIED | `src/core/cheatman.cpp:476` `read_text_file(cheatfile, 0)` (0 = arbitrary size per `:393` contract); the cap it opts out of is at `:411-415`, the `malloc(filesize + 1)` at `:417`; parser bounds: `CHEAT_LINE_MAX` 255 (`:305`), `MAX_CODES` 250 (`include/cheatman.h:40`, enforced `:360`) |
+| RIPTOPL-232 | VERIFIED | `src/platform/system.cpp:465` `static unsigned int crctab[0x400]` (4 KB BSS); `:475-489` rebuilds the 256-entry constant table (256×8 iterations) on every `USBA_crc32` call; both loops index only 0–255 (`crctab[255 - table]`, `byte ^ ((crc >> 24) & 0xFF)`) — 768 entries / 3 KB dead |
+| RIPTOPL-233 | VERIFIED | `src/ui/dia.cpp:616-624` `diaSettingsFitGap` re-walks the whole list via `diaLayoutBottom` (`:568`) once per candidate gap; called every `diaRenderUI` frame at `:640`; render pass re-measures/re-wraps the same rows again at `:690` |
+| RIPTOPL-234 | VERIFIED | `src/sources/bdmboot.cpp:387-400`: each scan iteration re-runs `bdmReadDeviceIdentity` + `bootElfPresent` (`:65`, open/close) + `bootDirPresent` (`:44`, Dopen/Dclose) per slot with no cross-iteration caching; poll cadence `DelayThread(100 * 1000)` at `:468`; budgets 3,000+3,000+8,000 = 14 s (bootstrap ~6.5 s) per the ladder comment at `:361-371` |
+| RIPTOPL-235 | VERIFIED | `src/core/filemgr.cpp:225-248` `fmChildren`: starts cap 64, on a full buffer `free()`s and re-runs `fmList` from entry zero at 4× cap; `fmList` (`:199-223`) calls `fmIsDir` — a `stat()` per entry (`:174-190`) — so N>64 directories are listed/stat'ed ~2× over |
+| RIPTOPL-236 | VERIFIED-DRIFT | Core claim exact at `src/core/filemgr.cpp:468-477` (`fmRemove` 4 tries + `fmPause()` after every try, no `fmIsMc` gate); the finding's contrast citations are off — see reasoning |
+
+## Reasoning for non-VERIFIED verdicts
+
+### RIPTOPL-216 — VERIFIED-DRIFT
+Script re-derivation over the pin's `src/core/vmc_groups.cpp` confirms almost everything: 97 group arrays, 1,046 title IDs total; `titles_XEBP_100_71` (`:1143-1146`) and `titles_XEBP_100_72` (`:1149-1152`) byte-identical (3 IDs each); the 8 non-canonical IDs exactly as listed (`SLUS_20754`, `SLUS_20824` at `:443-444`; `SCES_50422`/`SLES_50422`; `SCES_51154`/`SLES_51154`; `SLES-5350`; `SSCES_540.95` at `:614`); the 5 intra-group duplicates exactly as listed (in groups XEBP_100_38/39/60/61 and XEBP_000_06); first-match linear scan in `getGroupIdForTitleId` (`:1452-1473`) with the 100-series preceding the 000-series in the table.
+The drift: the finding states "`titles_XEBP_000_12`'s 4 IDs are exactly `titles_XEBP_100_53`'s 4 IDs." At the pin, `titles_XEBP_100_53` (`:929`) holds **10** IDs, not 4; `titles_XEBP_000_12` (`:1271`) holds 4 IDs that are exactly the **last 4** of `100_53`'s 10 (`SLPM_666.02`, `SLKA_252.80`, `SLKA_252.81`, `SLPM_743.01`). Corrected statement: `000_12`'s ID set is a proper subset of `100_53`'s. The consequence the finding draws still holds — every `000_12` ID matches `100_53` first, so group `XEBP_000.12` can never be returned — hence DRIFT, not WEAKENED.
+
+### RIPTOPL-236 — VERIFIED-DRIFT
+The defect itself is exactly where and as described: `fmRemove` at `src/core/filemgr.cpp:468-477` runs 4 tries with an `fmPause()` after each (including the last) and no device gate, and `fmDeleteTree` (`:479-498`) calls it per entry. Only the finding's *contrast* citations are off at the pin: the card-gated mkdir retry is `fmMkdirDev` at `:374-388` (breaks out for non-card paths at `:383-385`), not `:396-408`; the `fmIsMc`-gated open retries in `fmCopyFile` are the loop conditions at `:323` and `:333`, not `:352,361`. Corrected citations: `fmRemove` `:468-477`; `fmMkdirDev` `:374-388`; `fmCopyFile` retries `:323,333`. The asymmetry against the file's own helpers — the substance of the finding — is fully present.
+
+## Incidental candidates
+
+None filed. Two observations were checked and deliberately *not* filed as candidates: (1) the `count_XEBP_100_73/74/75` comments in `vmc_groups.cpp` describe a past copy-paste count bug that is already fixed at the pin (numerators now use their own arrays); (2) `USBA_crc32`'s reuse of the `count` variable as its data-loop index is sound at the pin (the table-build loop leaves it at 0). Neither is a live defect.
+
+## Tallies (counted from this file)
+
+- VERIFIED: 43
+- VERIFIED-DRIFT: 2 (RIPTOPL-216, RIPTOPL-236)
+- WEAKENED: 0
+- REFUTED: 0
+- Total rows: 45

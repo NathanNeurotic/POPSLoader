@@ -1,0 +1,26 @@
+c$@ 
+c$@0
+c$@ 
+c$@8
+b0%(
+mstack
+smap
+ioman
+thsemap
+sysclib
+stdio
+thbase
+loadcore
+ministack
+tty00:
+TTY via Udp
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab
