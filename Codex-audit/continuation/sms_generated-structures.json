@@ -1,0 +1,391 @@
+[
+  {
+    "path": "src/SMS_Data.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_PCMClamps",
+        "declared_size": "8",
+        "literal_count": 8,
+        "start": 15,
+        "end": 18
+      },
+      {
+        "name": "g_DataBuffer",
+        "declared_size": "SMS_DATA_BUFFER_SIZE",
+        "literal_count": 266544,
+        "start": 20,
+        "end": 16728,
+        "payload_sha256": "3d5941c6fd90bdeb60e87369bf66e4846c0cecc4714b52c101e4878593c5a742"
+      }
+    ]
+  },
+  {
+    "path": "include/s_iop_image.h",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "s_iop_image",
+        "declared_size": "",
+        "literal_count": 61005,
+        "start": 4,
+        "end": 3818,
+        "payload_sha256": "0da31434aa71fa41609788d1880a61ac69e9d92f66fc673fff37b32858b3c3f0"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_GSFont.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_ASCII",
+        "declared_size": "5416",
+        "literal_count": 5416,
+        "start": 11,
+        "end": 351,
+        "payload_sha256": "017229e904c0fd37f110e8bd5ed62e02d912f3652d783e47a77c8f2f32adf521"
+      },
+      {
+        "name": "g_1250",
+        "declared_size": "7736",
+        "literal_count": 7736,
+        "start": 353,
+        "end": 838,
+        "payload_sha256": "1861251e01c4e589db3cf2cce4d51e6223b6cff2e8ee783f920cc406fe124a38"
+      },
+      {
+        "name": "g_1251",
+        "declared_size": "7856",
+        "literal_count": 7856,
+        "start": 840,
+        "end": 1332,
+        "payload_sha256": "25a85549efccd6a784f5e1b6749e600da7b7b4d388a2aae3ce0b51a82763a7da"
+      },
+      {
+        "name": "g_1252",
+        "declared_size": "7732",
+        "literal_count": 7732,
+        "start": 1334,
+        "end": 1819,
+        "payload_sha256": "4cdf749110754e46ef76b26a897b338b12ba2660f9b4d6e3f669caab91353e40"
+      },
+      {
+        "name": "g_1253",
+        "declared_size": "7588",
+        "literal_count": 7588,
+        "start": 1821,
+        "end": 2297,
+        "payload_sha256": "f467596b7da552d7b8b6ec6ca41ce088e935d93541b6f9f99685a94c61ca99ef"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_GUIcons.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_IconBall",
+        "declared_size": "316",
+        "literal_count": 316,
+        "start": 36,
+        "end": 57,
+        "payload_sha256": "597f81683b0074d2de94ec4ca4e7b7842b4a1204714718292bf3b4c6672caf44"
+      },
+      {
+        "name": "s_IconCDROM",
+        "declared_size": "1060",
+        "literal_count": 1060,
+        "start": 59,
+        "end": 127,
+        "payload_sha256": "eafd61cd994f49732a3e8088c51c2554ffdba6316b217c54765451d7b95965df"
+      },
+      {
+        "name": "s_IconHost",
+        "declared_size": "921",
+        "literal_count": 921,
+        "start": 129,
+        "end": 188,
+        "payload_sha256": "17519129c1ae7c008fec184469739553d64eac464f1f0ccdcbe25637e2229f6b"
+      },
+      {
+        "name": "s_IconAVI",
+        "declared_size": "631",
+        "literal_count": 631,
+        "start": 190,
+        "end": 231,
+        "payload_sha256": "d248aade33d8218ff4990d34e346d105ea81bf850e6e64f330179b518da68cdf"
+      },
+      {
+        "name": "s_IconAVIS",
+        "declared_size": "763",
+        "literal_count": 763,
+        "start": 233,
+        "end": 282,
+        "payload_sha256": "529708479799649cdcddee2aeebde55d5b774c5ef41cadf9aeee80656e4fb875"
+      },
+      {
+        "name": "s_IconFile",
+        "declared_size": "624",
+        "literal_count": 624,
+        "start": 284,
+        "end": 324,
+        "payload_sha256": "108e3ffb819eb09acceb5423b21588cb2a6af21d051efa9574e04dc207c9aa1a"
+      },
+      {
+        "name": "s_IconFolder",
+        "declared_size": "563",
+        "literal_count": 563,
+        "start": 326,
+        "end": 363,
+        "payload_sha256": "896f9bbfa53fc9337df8078562b122b819ba3e8dd06d6913680caeca18691050"
+      },
+      {
+        "name": "s_IconHDD",
+        "declared_size": "823",
+        "literal_count": 823,
+        "start": 365,
+        "end": 418,
+        "payload_sha256": "bef39ee8be2717f993c8b3621883dfc89fdd0e0ad05e678a049553d1bf8928d1"
+      },
+      {
+        "name": "s_IconCDDA",
+        "declared_size": "1056",
+        "literal_count": 1056,
+        "start": 420,
+        "end": 487,
+        "payload_sha256": "fc67eaaf1e230e4c2cd1c0429eefa3981b073bb3745a7e9c35cb4d5e41cb15a9"
+      },
+      {
+        "name": "s_IconPart",
+        "declared_size": "551",
+        "literal_count": 551,
+        "start": 489,
+        "end": 525,
+        "payload_sha256": "ffb364d821facfd8ee43c8d2be1fa7ba679da84b15afccf0467279bd2c4cee76"
+      },
+      {
+        "name": "s_IconUSB",
+        "declared_size": "840",
+        "literal_count": 840,
+        "start": 527,
+        "end": 581,
+        "payload_sha256": "84eaac56bae7c9cca3cbb316bebf88c73b34f888eeef55d38b2c9a8bdd8ddfea"
+      },
+      {
+        "name": "s_IconDVD",
+        "declared_size": "1285",
+        "literal_count": 1285,
+        "start": 583,
+        "end": 665,
+        "payload_sha256": "f6e4ffb1c23aa3369ae64d3761969924cb05487c322b93717da81db808e1a245"
+      },
+      {
+        "name": "s_IconError",
+        "declared_size": "549",
+        "literal_count": 549,
+        "start": 667,
+        "end": 703,
+        "payload_sha256": "1c1499e59deff5407755aebfe85d3bdbc975bc6992057a8dc4a57f278c559186"
+      },
+      {
+        "name": "s_IconDisplay",
+        "declared_size": "549",
+        "literal_count": 549,
+        "start": 705,
+        "end": 741,
+        "payload_sha256": "025f0dfcc13ce1f93765b5d182cc2f9edaaddec57fd5d5190c73c2c94e6428f9"
+      },
+      {
+        "name": "s_IconHelp",
+        "declared_size": "597",
+        "literal_count": 597,
+        "start": 743,
+        "end": 782,
+        "payload_sha256": "60adab6f6a654170c7824e69608d6a2718835a9e199b5704c12a439c3c38a58d"
+      },
+      {
+        "name": "s_IconNetwork",
+        "declared_size": "615",
+        "literal_count": 615,
+        "start": 784,
+        "end": 824,
+        "payload_sha256": "b4af73fe28517a232e759134ea5d8c51385158ddf6b70ad3e660cb4abd15c39e"
+      },
+      {
+        "name": "s_IconBrowser",
+        "declared_size": "613",
+        "literal_count": 613,
+        "start": 826,
+        "end": 866,
+        "payload_sha256": "76e0b1f2e06022e19ebc66cfd76cfce401f56136dc36cdd97ee43e29a563fe73"
+      },
+      {
+        "name": "s_IconPlayer",
+        "declared_size": "512",
+        "literal_count": 512,
+        "start": 868,
+        "end": 901,
+        "payload_sha256": "ca445b57d071528957a34cd7417d9f950ebb238c207286eb02542210bdbe1276"
+      },
+      {
+        "name": "s_IconOn",
+        "declared_size": "376",
+        "literal_count": 376,
+        "start": 903,
+        "end": 928,
+        "payload_sha256": "8922682eceda48e8f20d09892c292605901679a0918623139181c81d1782e8bb"
+      },
+      {
+        "name": "s_IconOff",
+        "declared_size": "579",
+        "literal_count": 579,
+        "start": 930,
+        "end": 968,
+        "payload_sha256": "6345030135f6b0ca59133fdaf67281fc1ea13153ea6a53e047559cc09c7def69"
+      },
+      {
+        "name": "s_IconSave",
+        "declared_size": "608",
+        "literal_count": 608,
+        "start": 970,
+        "end": 1009,
+        "payload_sha256": "59c598dbb07eb51676e2517073f5d8842e977d212da842ccf23c0aca9485bc6e"
+      },
+      {
+        "name": "s_IconExit",
+        "declared_size": "588",
+        "literal_count": 588,
+        "start": 1011,
+        "end": 1049,
+        "payload_sha256": "2e4d3ece744071b1c90ca71afadb6cdaff06ed3961807b221f5c0f7f4452e448"
+      },
+      {
+        "name": "s_IconFinish",
+        "declared_size": "577",
+        "literal_count": 577,
+        "start": 1051,
+        "end": 1089,
+        "payload_sha256": "abb5f7bee12d9781780f2caeed9d4e85a25b56733214d257aef00a224e142a8c"
+      },
+      {
+        "name": "s_IconMP3",
+        "declared_size": "518",
+        "literal_count": 518,
+        "start": 1091,
+        "end": 1125,
+        "payload_sha256": "d646309eadf60628a45d734e70a30797fd87d569be8aaf9aade280cca675274d"
+      },
+      {
+        "name": "s_IconM3U",
+        "declared_size": "648",
+        "literal_count": 648,
+        "start": 1127,
+        "end": 1169,
+        "payload_sha256": "53489d084e3e1e5a8e2e02ad5b0d8f9d9bfb50c5fc3a69c2f01a32500c58ce12"
+      },
+      {
+        "name": "s_IconShare",
+        "declared_size": "630",
+        "literal_count": 630,
+        "start": 1171,
+        "end": 1212,
+        "payload_sha256": "bcfa60ac4bd7e475d607fddd77b7323306ccd0f602885f4ec3fdd3e68371ee0d"
+      },
+      {
+        "name": "s_IconSMB",
+        "declared_size": "1221",
+        "literal_count": 1221,
+        "start": 1214,
+        "end": 1292,
+        "payload_sha256": "9a5de124b77c56a3cbf476a2b3d5f3f8844addfa7dde530331f944f6da96d103"
+      },
+      {
+        "name": "s_IconPicture",
+        "declared_size": "617",
+        "literal_count": 617,
+        "start": 1294,
+        "end": 1334,
+        "payload_sha256": "7084d7b4c747cd32fa5ac490336d32559867a9a69a4ed991d8ed76f404a475ca"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_IconsRGBA.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_RGBA_Blob",
+        "declared_size": "27764",
+        "literal_count": 27764,
+        "start": 8,
+        "end": 1745,
+        "payload_sha256": "2c998087bc6101b4e444bd1821a6b37514319c5f445a72325f59fe087861f362",
+        "xz_decoded_bytes": 205824
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_Sounds.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_SMSound",
+        "declared_size": "4",
+        "literal_count": 8,
+        "start": 13,
+        "end": 18
+      },
+      {
+        "name": "g_SMSounds",
+        "declared_size": "70816",
+        "literal_count": 70816,
+        "start": 20,
+        "end": 4447,
+        "payload_sha256": "b26d3c60610f790644f7db7a4a874bc55170ce211b3c4114c2b8ab68922f32a3"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_BallRGBA.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_IconBallRGBA",
+        "declared_size": "4096",
+        "literal_count": 4096,
+        "start": 5,
+        "end": 262,
+        "payload_sha256": "950d5267afd1643490c3a8befd077eb60869cf9145833bcffe16b6159569c51b"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_LoadingRGBA.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_IconLoadingRGBA",
+        "declared_size": "4096",
+        "literal_count": 4096,
+        "start": 5,
+        "end": 262,
+        "payload_sha256": "d068ecd1edbb7b72d388d1b2342f2eb16cf6e841cfc486d28f44d4cf55e8203a"
+      }
+    ]
+  },
+  {
+    "path": "src/SMS_ConfigIcon.c",
+    "review": "All literal tokens parsed; numeric grammar, byte bounds and declared byte counts verified. All surrounding declarations/comments/control code read. Payload semantics not claimed.",
+    "arrays": [
+      {
+        "name": "g_IconSMS",
+        "declared_size": "2020",
+        "literal_count": 2020,
+        "start": 11,
+        "end": 139,
+        "payload_sha256": "16fc36146916fa1309602803e6d1e556be98724a8a501e2ef4718106e2557078"
+      }
+    ]
+  }
+]

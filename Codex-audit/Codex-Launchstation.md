@@ -1,0 +1,1361 @@
+# Codex — Launchstation audit (partial review)
+
+**-unfinished- checkpoint:** This is the earlier baseline report, preserved with its validation results. See [the resume index](Codex-RESUME-unfinished.md) and linked continuation findings for the later review. Earlier read-only statements describe source handling before the user authorized this report-only draft PR.
+
+Snapshot: `NathanNeurotic/Launchstation`, default `master`, commit `8cd3329a98c09a570bfbf60137717edd42324990`. Local repository remained unchanged.
+
+Unless explicitly described as measured or as a source-declared capacity/count, proposed reductions are INFERRED until implemented. READ denotes source evidence, not hardware verification.
+
+This report is an evidence-backed partial review, **not an exhaustive completion**. All eight requested categories remain incomplete across the unread files below, especially the IOP drivers, classic UI/configuration, installers, cloud/network code, tests and CI. Findings are ordered by practical reliability/memory benefit, then simplification benefit; unmeasured size/timing claims are explicitly identified. The 30 finding IDs are stable. This report ends a coherent limited pass; the exact remaining scope is listed below. Cross-repository duplicates are indexed in Codex-SUMMARY.md. Licences were not assessed.
+
+## Findings
+
+### LAUNCHSTATION-001 / Bound the classic editor row table before indexing / Category 6
+
+- **Location(s):** Launchstation/src/editor_rules.c:14-28,58-100; Launchstation/src/editor_input.c:449-474; Launchstation/src/editor_file.c:89-91; Launchstation/include/launchelf.h:204-205
+- **Problem:** An accepted 2,050-byte newline file overruns the 2,048-entry row table. Pressing Up with cursor 1 on the first line also reads entry -1 before the later cursor clamp.
+- **Fix:** Reject row-table overflow before publishing an open/edit, and handle first/last-row movement before evaluating i-1 or i+1. Keep the fixed table.
+- **Justification:** These two small bounds decisions prevent demonstrated memory corruption without allocating a larger table or adding a layer.
+- **Benefit:** Real memory corruption fixed; host UBSan reproduced index 2048 at editor_rules.c:26 and index -1 at :89. No PS2 size delta measured.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ; host reproduced).
+
+### LAUNCHSTATION-002 / Replace the duplicated classic editor splice allocations / Category 2,4,6
+
+- **Location(s):** Launchstation/src/editor_input.c:369-425,644-695
+- **Problem:** Both insertion paths replace TextBuffer[Active_Window] with malloc without freeing the old buffer: the apparent free is inside a // comment. Every typed character leaks the previous document; the duplicated delete paths also allocate/copy whole documents and dereference unchecked allocations.
+- **Fix:** Use one checked realloc into a temporary pointer for growth and memmove for the splice; delete the TMP document copies and use the same splice routine for keyboard and virtual-keyboard input. Deletion can move bytes in place.
+- **Justification:** The same splice exists twice. One small shared routine removes both copies and fixes the leak/allocation failure path with fewer allocations and less code.
+- **Benefit:** One previous text allocation (TextSize + 256 bytes) no longer leaked per insertion; full-document temporary allocation and multiple copies removed. Approximate source reduction INFERRED; ELF bytes unmeasured.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ).
+
+### LAUNCHSTATION-003 / Bound configuration strings at their actual destinations / Category 6
+
+- **Location(s):** Launchstation/src/config.c:130-157,959-975,1039-1067; Launchstation/include/launchelf.h:281-307
+- **Problem:** The parser accepts arbitrary-length values, then strcpy copies them into 1,025-byte paths and sprintf joins into 64-byte Misc fields. A long value in a local configuration can overwrite the SETTING allocation.
+- **Fix:** Reject a value when its complete string/join does not fit the existing field; otherwise copy it with the field size. Do not silently truncate executable paths.
+- **Justification:** Destination-size decisions fix concrete heap corruption. Existing fields remain fixed size; no new parser or configuration setting is needed.
+- **Benefit:** Heap corruption fixed; no additional persistent RAM; code-size impact unmeasured.
+- **Effort:** M. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-004 / Bound the uLE path expansion / Category 6
+
+- **Location(s):** Launchstation/src/main_fileops.c:27-52; Launchstation/src/main_actions.c:286-312; Launchstation/src/filer.c:924-934; Launchstation/include/launchelf.h:204
+- **Problem:** uLE_related joins LaunchElfDir and the uLE:/ suffix with sprintf into a MAX_PATH output. Each component may fit its own path buffer while the joined path exceeds 1,025 bytes.
+- **Fix:** Use the known MAX_PATH capacity for the existing two callers and fail the path expansion when snprintf would truncate; keep a single bounded join path.
+- **Justification:** A bounded join fixes a reachable path-buffer overwrite with the existing API and buffers.
+- **Benefit:** Stack/static-buffer overwrite fixed; no new persistent memory; bytes unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-005 / Preserve native-editor state on allocation failure / Category 6
+
+- **Location(s):** Launchstation/src/dash_editor.c:60-80,156-190,465-483,628-636
+- **Problem:** docInsert deletes the selected text before verifying the insertion allocation, so a failed paste destroys the selection. docRelines silently keeps stale line offsets after failure, and docNew publishes a document even when its first line-table allocation fails.
+- **Fix:** Reserve the final text capacity and required line-table capacity before mutating the document; return failure from docRelines, and have docNew refuse an unusable document as docOpenPath already does.
+- **Justification:** The checks fix text loss and invalid line-table access on a 32-MB target. Reuse the current buffer and line table rather than adding recovery state.
+- **Benefit:** User text retained on failed paste; NULL/stale line-table access avoided. Code/ELF delta unmeasured.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ).
+
+### LAUNCHSTATION-006 / Report editor save success only after write and close succeed / Category 6
+
+- **Location(s):** Launchstation/src/editor_file.c:226-238,292-301; Launchstation/src/dash_editor.c:317-323,523-531; Launchstation/src/config.c:777-786
+- **Problem:** Both classic save paths ignore write and close results and mark the document saved. The native text/hex path and classic configuration save also ignore close failure, which can hide a deferred storage error.
+- **Fix:** Require the existing write to return the requested byte count and close to succeed before setting SAVED, clearing dirty, recording LoadedConfigPath, or displaying success. Share the two classic-editor save bodies only if that removes code.
+- **Justification:** The minimal return-value decisions prevent acknowledged data loss; no retries, backups, or new persistence mechanism are needed.
+- **Benefit:** False save confirmation fixed; existing dirty buffer remains available after an error. Added checks are a reliability net win; byte delta unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-007 / Reject an incomplete classic-editor read / Category 6
+
+- **Location(s):** Launchstation/src/editor_file.c:104-115,228-234
+- **Problem:** The known-size open path performs one genRead and accepts any positive result as the complete document. A short successful read silently drops the tail, which a later O_TRUNC save can permanently remove.
+- **Fix:** For a known size, require exactly that size or use the existing bounded streaming read loop; report failure if an error/early EOF prevents a complete read.
+- **Justification:** A byte-count comparison fixes a cited truncation path; reusing the existing loop can remove the duplicate fast path.
+- **Benefit:** Silent document truncation fixed; possible duplicate read-path code removed; bytes unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-020 / Do not discard applications after an incomplete scan / Category 6
+
+- **Location(s):** Launchstation/src/dash_lib.c:656,696-723,787-812
+- **Problem:** scanDir keeps at most 48 subdirectories, ignores getDirComplete's more flag, ignores a child's failed read, and still reports the whole root as scanned. Applying that result drops old cached apps under unvisited/failed children; a root with 49 app folders is sufficient to hit the fixed cap.
+- **Fix:** Propagate incomplete results and preserve cached entries under any unvisited or failed subtree. Do not label the entire root successfully scanned when its listing, child quota or child read was incomplete.
+- **Justification:** A small completeness result fixes real cache eviction without a larger listing buffer, new worker or retry policy. Full discovery beyond the existing cap remains separate work.
+- **Benefit:** Applications no longer vanish from the cache after a partial refresh. No measured size or wall-time delta.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; 49-folder scenario inferred directly from loop bound).
+
+### LAUNCHSTATION-009 / Do not consume a partial FTP receiver request as malformed / Category 6
+
+- **Location(s):** Launchstation/src/pc_game_receiver.c:49-81,324-330; Launchstation/src/remote_control.c:65-79
+- **Problem:** readRequest can return -1 for an incomplete header, row or size before seeing FIM. Its caller immediately removes the request file, so an FTP upload observed between writes can be deleted before completion.
+- **Fix:** Determine that a complete FIM-terminated request has arrived before validating/consuming it, as the adjacent remote-command parser already does; incomplete data should return 0.
+- **Justification:** One completion-first decision fixes the observed race without retries or a second protocol.
+- **Benefit:** Lost transfer requests fixed; no size or timing measurement.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; timing-dependent trigger INFERRED).
+
+### LAUNCHSTATION-008 / Release interlaced-PNG scratch on the existing error path / Category 4,6
+
+- **Location(s):** Launchstation/src/dash_png.c:77-83,139-178
+- **Problem:** The interlaced branch allocates full and rows locally. A libpng longjmp during png_read_image bypasses their frees, and the existing error handler cannot access them.
+- **Fix:** Make those two scratch pointers available to the existing cleanup path and free them there. Keep the current image limit.
+- **Justification:** Two tracked scratch allocations and matching cleanup prevent a real malformed-image leak; no new ownership layer is needed.
+- **Benefit:** Up to 262,144 bytes of pixel scratch plus 1,024 bytes of row pointers on 32-bit EE no longer leaked per failed 256x256 interlaced decode. Bounds derived from source; runtime leak reproduction unavailable.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-012 / Allocate optional large transfer scratch only while in use / Category 4
+
+- **Location(s):** Launchstation/src/pc_game_receiver.c:15-33,129-208,309-339; Launchstation/src/mc_card_export.c:13-22,239-350,377-498; Launchstation/src/mmce_backup.c:13-18,31-43,204-277
+- **Problem:** The optional FTP-triggered receiver reserves 256 KiB for its entire lifetime. Card export and MMCE history additionally retain 196 KiB and 144 KiB of static transfer/cache scratch while those tools are idle.
+- **Fix:** Allocate each feature's aligned scratch once when its operation begins and free it on the existing operation exit paths. Refuse an operation if its allocation fails; retain the current block sizes.
+- **Justification:** A small number of operation-scoped allocations trade limited cleanup code for 596 KiB of otherwise permanently occupied EE RAM. No shared arena or allocator abstraction is needed.
+- **Benefit:** 610,304 bytes (596 KiB) of static EE RAM released while these features are idle: receiver 262,144; exporter 200,704; MMCE comparison/fingerprint scratch 147,456. File-backed ELF savings are not implied for BSS.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ).
+
+### LAUNCHSTATION-028 / Delete the unreachable classic launch-key shell / Category 1,2,8
+
+- **Location(s):** Launchstation/src/main.c:271-317,318-372; Launchstation/src/dash_main.c:21-23,1331-1340,1387-1529; Launchstation/src/main_menu.c:1-348; Launchstation/include/main_menu.h:1-39; Launchstation/ps2.yaml:493-494; Launchstation/include/dash.h:11-18
+- **Problem:** main always enters DashRun with a valid local context while dash_active is zero. That dashboard loop never returns on this startup path, leaving the old menu loop, its dedicated main_menu module, state/timer setup and return-to-classic header comments behind.
+- **Fix:** Delete the old main loop and its unused local state/timer initialization, remove src/main_menu.c and its header/build entry, and correct the public dashboard comment. Retain ordinary legacy tool implementations still called by ExecuteMainAction.
+- **Justification:** No added runtime mechanism is required.
+- **Benefit:** At least 442 source/header lines removed (348-line module + 39-line header + 55-line dead loop), plus unused setup/state and related declarations. Main-stack state and linked code shrink; exact ELF/stack bytes unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; control-flow and repository-wide caller search).
+
+### LAUNCHSTATION-010 / Keep slow image opens and receiver waits off the render thread / Category 5
+
+- **Location(s):** Launchstation/src/dash_image.c:105-119; Launchstation/src/dash_main.c:726-735,1449-1452; Launchstation/src/pc_game_receiver.c:129-208,233-240,335-337; Launchstation/src/dash_worker.c:231-249,298-337
+- **Problem:** The viewer performs synchronous file reads/decode after drawing a loading screen. The Home poll can enter receiveGames directly, including five two-second sleeps and synchronous network reads; neither loading-screen call itself continues the frame loop.
+- **Fix:** Queue image read/decode on the existing worker and wait through the existing drawing/polling await loop. Remove the receiver retry sleeps or run its file-copy portion through the existing worker while the UI owns progress/cancellation and IOP transitions.
+- **Justification:** This reuses the existing worker and await mechanism to fix concrete render-thread blocking. No thread pool, wrapper, or retry system is proposed.
+- **Benefit:** Up to 10 seconds of explicit receiver sleeps leave the render thread, plus storage/decode blocking of unmeasured duration. Added glue is justified by the UI freeze.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ; PS2 wall times unmeasured).
+
+### LAUNCHSTATION-011 / Avoid rewriting an unchanged application cache / Category 5
+
+- **Location(s):** Launchstation/src/dash_lib.c:612-639,909-933; Launchstation/src/dash_store.c:148-174,591-598,722-724
+- **Problem:** Every successful scan dirties DASHLIB.CNF even when the serialized application records are unchanged. The save truncates and rewrites the complete cache, then rereads it in 1,024-byte chunks for verification.
+- **Fix:** Compare the persisted fields/count while applying the scan and only dirty the cache when they change; keep UI-only transient fields out of that comparison.
+- **Justification:** A small comparison removes full card writes and their verification reads for unchanged scans. It uses the old and fresh lists already in memory.
+- **Benefit:** One complete DASHLIB.CNF write and verification read avoided per unchanged scan; bytes equal the serialized cache length, timings unmeasured.
+- **Effort:** M. **Risk:** Low. **Confidence:** High (READ; frequency and savings INFERRED).
+
+### LAUNCHSTATION-027 / Use the existing sequential directory walker when listing saves / Category 5
+
+- **Location(s):** Launchstation/src/mc_card_view.c:121-168,288-318,321-357,381-408
+- **Problem:** describeSave and mcViewListSaves repeatedly call dirEntry, which restarts the FAT chain from its first cluster for every entry. The same file already has a sequential walkDir that reads one cluster for two entries.
+- **Fix:** Use the existing walkDir for root/save enumeration, keeping the current output limits and corruption behavior; remove the repeated per-entry chain restarts.
+- **Justification:** Small listing callbacks reuse the existing walker and eliminate quadratic FAT traversal. No new iterator abstraction is needed.
+- **Benefit:** For a 4,096-entry directory, approximately 4.19 million chain advances become about 2,047 (source-derived operation count, not a timing benchmark); directory cluster reads are also shared across the two entries.
+- **Effort:** M. **Risk:** Med. **Confidence:** High (READ; operation-count benefit INFERRED).
+
+LAUNCHSTATION-022 is consolidated into **CROSS-005** in [the summary](Codex-SUMMARY.md); its release-workflow location is recorded there.
+
+### LAUNCHSTATION-024 / Delete unreferenced payload and sound files / Category 1,7
+
+- **Location(s):** Launchstation/exploits/README.md:26-27; Launchstation/src/embed_blobs.S:52-98; Launchstation/src/dash_sound.c:102-110; Launchstation/res/README.md:8; unreferenced binary paths: Launchstation/exploits/IOPRP.IMG, Launchstation/exploits/XSYSTEM2.XLF, Launchstation/res/sfx/boot.adp
+- **Problem:** The exploit README explicitly identifies the two unused payloads. The original boot sound is also absent from the embed list; the original sound theme uses its confirm sound for boot, despite the resource README claiming boot.adp is embedded.
+- **Fix:** Delete these three unreferenced files and correct the resource README's embedded-sound list. Keep the historical UDPFS SMAP binary, which is actively used as a negative build-check fixture.
+- **Benefit:** 173,621 tracked bytes removed (15,741 + 13,896 + 143,984). These bytes are already outside the runtime ELF, so no ELF/RAM saving is claimed. Git history size is unchanged.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ plus stat and repository-wide reference search).
+
+### LAUNCHSTATION-013 / Delete the abandoned spinning-header icon path / Category 1,5
+
+- **Location(s):** Launchstation/src/dash_icons.c:688-705,760,841-871
+- **Problem:** dashHeaderIcon has no reference anywhere in the tracked repository, but dashIconsInit still rasterizes its two private atlas parts at startup. The rotation draw helper is only used by that unreachable function.
+- **Fix:** Delete dashHeaderIcon, drawHeaderIconPart, initHeaderIconParts and its initialization call. Move clipboard atlas coordinates upward only if useful; do not redesign the atlas.
+- **Benefit:** About 52 source lines and 2,048 startup SDF pixel evaluations removed; compiler-dependent ELF savings unmeasured. Existing atlas dimensions need not change.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; repository-wide reference search).
+
+### LAUNCHSTATION-026 / Consolidate the two identical four-block card readers / Category 2
+
+- **Location(s):** Launchstation/src/dash_card_tool.c:29-43,50-94,119-139; Launchstation/src/mmce_backup.c:31-43,204-247,252-272
+- **Problem:** CardIo/ctRead and FpReader/fp_read implement the same four-way 4-KiB seek/read cache and nearly identical open/initialization setup with different names.
+- **Fix:** Use one plain C reader implementation and context type for these two callers, retaining separate caller-owned cache storage where lifetimes can overlap.
+- **Justification:** The logic really occurs twice (about 44 lines each); sharing only this reader removes one implementation without a new filesystem or storage layer. Do not merge the caches merely to chase a speculative RAM saving.
+- **Benefit:** Approximately 40-60 source lines removed after declarations/call changes (INFERRED). Existing 4-KiB cache block sizes and error behavior can remain; no RAM saving claimed.
+- **Effort:** M. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-015 / Use one PNG box-filter loop / Category 2
+
+- **Location(s):** Launchstation/src/dash_png.c:155-208
+- **Problem:** The interlaced and noninterlaced branches duplicate the same destination-row accumulation and flush logic. Their only required difference is how each source row becomes available.
+- **Fix:** Keep the existing interlaced full-image decode, then run one common box-filter loop whose row comes from the full buffer or png_read_row. Keep the final flush once.
+- **Benefit:** About 35-45 source lines removed (INFERRED); one filter implementation to maintain; ELF bytes unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-016 / Remove the redundant artwork file-open probe / Category 2,5
+
+- **Location(s):** Launchstation/src/dash_art.c:151-163,341-345,371-376; Launchstation/src/dash_store.c:105-145
+- **Problem:** For every existing artwork candidate, fileExists opens and closes it, then tryDecode calls dashPngLoadFile which opens it again. A failed decode already returns the same no-artwork result.
+- **Fix:** Call tryDecode directly for each permitted candidate and delete fileExists if it then has no caller.
+- **Benefit:** One open/close pair removed per existing candidate, plus 13 source lines; storage latency and ELF bytes unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-017 / Remove the classic editor's forced result stalls / Category 5
+
+- **Location(s):** Launchstation/src/editor_file.c:58-60,181-183,207-209,249-251,317-320
+- **Problem:** Create/open/close/save/save-as each spin on Timer for 1.5 seconds without polling input or yielding. A message imposes a fixed UI stall even on instant operations.
+- **Fix:** Delete these result-delay busy loops; let the existing status/message rendering and next editor frame show the result.
+- **Benefit:** 1,500 ms forced busy wait removed per operation; approximately 15 lines removed. This is the explicit source delay, not a PS2 benchmark.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-018 / Delete dangling language-error previews / Category 6
+
+- **Location(s):** Launchstation/src/lang.c:493-498,528-529,551-562
+- **Problem:** On an LNG parse error, file_bp is freed before oldf_tp/file_tp are copied into the diagnostic preview. Both pointers still refer into that freed allocation.
+- **Fix:** Delete the preview-snippet block and the now-unused saved-pointer bookkeeping; retain the existing error ID and string index message.
+- **Benefit:** Use-after-free removed with roughly 12 diagnostic lines and bookkeeping deleted; no new buffers.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-030 / Keep classic-editor return mode within its three valid values / Category 6
+
+- **Location(s):** Launchstation/src/editor_input.c:326-328,399-407,508-510,676-684; Launchstation/include/editor_private.h:52-54
+- **Problem:** The mode switch tests the old value with post-increment against 4, producing the sequence 1,2,3,4,1. Mode 4 has no CR/LF insertion branch, so Return still advances the cursor/size without writing the requested newline.
+- **Fix:** Increment first and wrap immediately after MAC (3), in both keyboard and virtual-keyboard mode switches.
+- **Justification:** No added mechanism; the corrected boundary uses the existing constants.
+- **Benefit:** Malformed newline insertion fixed with two small expressions; no RAM growth and effectively unchanged code size.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-021 / Use the GS unity tint for true-color artwork / Category 6
+
+- **Location(s):** Launchstation/src/dash_art.c:765-771; Launchstation/src/dash_bg.c:224-240,386,410-413; Launchstation/src/dash_gfx.c:144-154,675-726; Launchstation/src/dash_image.c:64-72
+- **Problem:** Artwork and wallpaper PNGs are drawn with RGB 255, and gsColor preserves those values. In GS MODULATE mode RGB 128 is unity; the image viewer already applies that correction, while covers/wallpapers still double and clip their decoded color channels.
+- **Fix:** Change untinted true-color image draws to RGB 128 while preserving their current alpha. Keep the SDF/alpha-atlas icon and font tints as they are.
+- **Justification:** No added code is needed.
+- **Benefit:** Correct artwork/wallpaper colors; constant-only edits; no added RAM, abstractions or expected size growth. No hardware capture was available.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; GS behavior also documented by the existing viewer).
+
+### LAUNCHSTATION-023 / Read release metadata once per verification phase / Category 3,5,7
+
+- **Location(s):** Launchstation/.github/workflows/compile.yml:692-707,732-743
+- **Problem:** Each asset's size and digest are fetched with two separate API calls to the same complete release endpoint, repeated for every asset in both archive and latest checks.
+- **Fix:** Fetch the release JSON once for each verification phase, then compare each expected asset's size and digest from that response with the existing local values.
+- **Justification:** One response variable replaces repeated API calls and keeps the current integrity check; no retry or cache system is needed.
+- **Benefit:** For the eight mandatory assets, 16 calls become 1 per phase: 30 API calls removed across the two phases, or 34 when the optional ninth asset is present. Timing unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-025 / Run the same package test and fixture generation only once / Category 2,7
+
+- **Location(s):** Launchstation/.github/workflows/compile.yml:238-240,441-449; Launchstation/tests/test_app_packages.py:16-23,111-115
+- **Problem:** The same standalone package test runs before and after the build, and the same copy-test ZIP is generated twice. The package test always creates temporary synthetic ELF inputs; its second invocation does not inspect the newly built release artifacts.
+- **Fix:** Keep one invocation of test_app_packages.py and one generation of LS-COPY-TEST.zip; the actual package command already checks the archives it writes.
+- **Benefit:** One complete duplicate package/parser test execution (including two host compiler invocations) and one duplicate ZIP-generation command removed per CI run. Wall-time unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; package test also run successfully).
+
+### LAUNCHSTATION-029 / Remove invariant dashboard settings and their dead handlers / Category 1,3,7
+
+- **Location(s):** Launchstation/src/dash_store.c:239-247,308-325,515-525,548-550; Launchstation/src/dash_settings.c:44,52,1019-1024,1698-1704; Launchstation/src/dash_main.c:200-204,1357; Launchstation/include/dash_internal.h:566,574; Launchstation/include/dash.h:16-18
+- **Problem:** The persisted Dash_Enabled and Dash_LegacyTheme values are forcibly set to 1 when loaded, and the shell/theme are always enabled. Their old settings IDs have choice/apply cases but no corresponding row, and DashIsEnabled has no caller.
+- **Fix:** Delete the two invariant fields, ignored-key branches, serialized entries, unused enum/choice/apply cases and unused DashIsEnabled API. Unknown old config keys are already ignored by the parser.
+- **Benefit:** About 25-40 lines removed (INFERRED), 8 bytes per DashSettings instance plus smaller settings text. No new migration code is needed.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; repository-wide identifier searches).
+
+### LAUNCHSTATION-019 / Batch the duplicated CI package-manager work / Category 7
+
+- **Location(s):** Launchstation/.github/workflows/compile.yml:33-44,462-471
+- **Problem:** Three dependency steps each run apt-get update before installing small sets of packages on the same runner.
+- **Fix:** Perform one apt-get update and install libmbedtls-dev, samba, smbclient and p7zip-full together, leaving the existing test commands in place.
+- **Benefit:** Two repository-index refreshes and two apt invocations removed per CI run; wall-time savings unmeasured.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ).
+
+### LAUNCHSTATION-014 / Delete two unused compatibility entry points / Category 1
+
+- **Location(s):** Launchstation/src/config.c:788-791; Launchstation/src/filer.c:758-761
+- **Problem:** saveConfig and setPartyList each occur only at their own definition in the complete tracked text search. Live callers already use saveConfigToPath and setPartyListForDevice.
+- **Fix:** Delete the two four-line wrappers.
+- **Benefit:** 8 source lines removed; possible small ELF saving only if the linker currently retains them.
+- **Effort:** S. **Risk:** Low. **Confidence:** High (READ; repository-wide reference search).
+
+## Evidence and limits
+
+- GCC host ASan/UBSan compiled the unchanged `src/editor_rules.c` with a minimal header/global-state stub outside the repository. Two runs reported `index 2048 out of bounds` at line 26 and `index -1 out of bounds` at line 89. Evidence: `/tmp/codex-audit-work/launchstation-editor/row-count.txt` and `up-first-row.txt`. The source itself was not patched.
+- The host has GCC, but no `ps2build`, PS2 cross compiler, libpng headers or libjpeg headers were available in the inspected paths. No PS2 ELF was built; no ELF/RAM/runtime benchmark was claimed. Existing tests `tests/test_mc_card_view.py` (including 150 deterministic mutations under ASan/UBSan) and `tests/test_app_packages.py` (synthetic payloads, both C PSU-parser variants and short I/O) passed. Their logs are in `/tmp/codex-audit-work/Launchstation-test-mc-card-view.txt` and `Launchstation-test-app-packages.txt`. These do not validate PS2 hardware behavior. No workflows or network services were started.
+- Definition-reference searches cover the tracked source text; they do not prove external ABI usage. The deleted candidates are application-only entry points with no declarations/callers in this tree.
+- Asset byte arrays, payloads and cryptographic constants are not treated as exposed application credentials merely because they are committed. Secret values are excluded from this report.
+
+## Coverage and unread files
+
+The complete tracked inventory has 1,065 files. The following 56 files were read completely (8 contributed by the parent reviewer; semantic review depth still varies):
+
+- `.github/workflows/compile.yml`
+- `AGENTS.md`
+- `exploits/README.md`
+- `include/dash.h`
+- `include/editor_private.h`
+- `include/main_boot.h`
+- `include/main_menu.h`
+- `include/mc_card_view.h`
+- `include/nfsman.h`
+- `include/self_update.h`
+- `iop/nfsman/irx_imports.h`
+- `iop/nfsman/nfsman.c`
+- `iop/nfsman/ps2iop-compat.h`
+- `iop/nfsman/unfs4/unfs4.c`
+- `iop/nfsman/unfs4/unfs4.h`
+- `iop/pccf/ps2.yaml`
+- `iop/ps2ips_rpc/ps2.yaml`
+- `iop/smbman/auth.c`
+- `iop/smbman/poll.c`
+- `loader/loader.c`
+- `ps2.yaml`
+- `res/README.md`
+- `scripts/build_cloud_tls.sh`
+- `scripts/build_jpeg.sh`
+- `scripts/check_ds34_build.py`
+- `scripts/check_udpfs_smap.py`
+- `scripts/configure_ds34.py`
+- `scripts/package_apps.py`
+- `scripts/stale_code_audit.sh`
+- `src/dash_art.c`
+- `src/dash_bg.c`
+- `src/dash_editor.c`
+- `src/dash_image.c`
+- `src/dash_jpeg.c`
+- `src/dash_lib.c`
+- `src/dash_png.c`
+- `src/dash_store.c`
+- `src/dash_worker.c`
+- `src/editor_file.c`
+- `src/editor_input.c`
+- `src/editor_rules.c`
+- `src/lang.c`
+- `src/main.c`
+- `src/main_fileops.c`
+- `src/main_menu.c`
+- `src/main_modules.c`
+- `src/mc_card_export.c`
+- `src/mc_card_view.c`
+- `src/pc_game_receiver.c`
+- `src/remote_control.c`
+- `src/self_update.c`
+- `src/update_psu.c`
+- `tests/mc_card_view_host.c`
+- `tests/test_app_packages.py`
+- `tests/test_mc_card_view.py`
+- `tests/test_png_viewer.py`
+
+Other files were read only in cited ranges or inspected by reference/size searches, so they remain counted as unfinished. **All eight audit categories remain incomplete** across the unreviewed code. In particular, rerun the IOP drivers except the explicitly completed NFS/SMB files, cloud code, memory-card writer/save parsers, exploit installer, device/launch code, remaining rendering/settings UI, tests, scripts and all workflows except compile.yml. Generated font data and binary/media assets were inventoried but not individually decoded or semantically verified. Historical/design documentation was not fully reconciled. The root-owned shared NFS RPC finding is listed once as CROSS-002 in the summary.
+
+<details>
+<summary>Exact unfinished-file inventory (including partially read files)</summary>
+
+```text
+.clang-format
+.clangd
+.claude/hooks/session-start.sh
+.claude/settings.json
+.github/FUNDING.yml
+.github/ISSUE_TEMPLATE/issue.yml
+.github/ps2build-sdk.env
+.github/scripts/ps2build_sdk_watch.py
+.github/scripts/test_ps2build_sdk_watch.py
+.github/workflows/docs-pages.yml
+.github/workflows/download-metrics.yml
+.github/workflows/neutrino-watch.yml
+.github/workflows/ps2build-sdk-watch.yml
+.github/workflows/sync-wiki.yml
+.gitignore
+.vscode/settings.json
+CHANGELOG.md
+CLAUDE.md
+LICENSE
+Lang/DASHBOARD.inc
+Lang/ENG.LNG
+Lang/FRE.LNG
+Lang/GER.LNG
+Lang/HUN.LNG
+Lang/ITA.LNG
+Lang/POL.LNG
+Lang/POR.LNG
+Lang/PTBR.LNG
+Lang/SPA.LNG
+README.md
+USB-STABILITY-AUDIT-2026-10-08.md
+__Headers/PP.FHDB.APPS/icon.sys
+__Headers/PP.FHDB.APPS/list.ico
+__Headers/PP.FHDB.APPS/system.cnf
+__Headers/PP.GSM/icon.sys
+__Headers/PP.GSM/list.ico
+__Headers/PP.GSM/system.cnf
+__Headers/PP.OPL/icon.sys
+__Headers/PP.OPL/list.ico
+__Headers/PP.OPL/system.cnf
+__Headers/PP.ULE/icon.sys
+__Headers/PP.ULE/list.ico
+__Headers/PP.ULE/system.cnf
+__Headers/README.MD
+docs-site/build.py
+docs-site/content/apps.html
+docs-site/content/architecture.html
+docs-site/content/building.html
+docs-site/content/cloud.html
+docs-site/content/configuration.html
+docs-site/content/contributing.html
+docs-site/content/controls.html
+docs-site/content/credits.html
+docs-site/content/dashboard.html
+docs-site/content/developers.html
+docs-site/content/devices.html
+docs-site/content/ecosystem.html
+docs-site/content/ember.html
+docs-site/content/exploit-installer.html
+docs-site/content/faq.html
+docs-site/content/file-browser.html
+docs-site/content/game-launching.html
+docs-site/content/getting-started.html
+docs-site/content/hdd-manager.html
+docs-site/content/hdd.html
+docs-site/content/igr.html
+docs-site/content/ilink.html
+docs-site/content/index.html
+docs-site/content/install.html
+docs-site/content/languages.html
+docs-site/content/launch-arguments.html
+docs-site/content/memory-card.html
+docs-site/content/mmce-backup.html
+docs-site/content/mmce.html
+docs-site/content/mx4sio.html
+docs-site/content/network-services.html
+docs-site/content/network.html
+docs-site/content/neutrino.html
+docs-site/content/nfs.html
+docs-site/content/pc-card-cf.html
+docs-site/content/popstarter.html
+docs-site/content/privacy.html
+docs-site/content/releases.html
+docs-site/content/saves.html
+docs-site/content/settings.html
+docs-site/content/smb.html
+docs-site/content/special-hardware.html
+docs-site/content/text-editor.html
+docs-site/content/themes.html
+docs-site/content/troubleshooting.html
+docs-site/content/udpfs.html
+docs-site/content/ui-captures.html
+docs-site/content/usb.html
+docs-site/content/wiki.html
+docs-site/manifest.json
+docs-site/static/assets/app.js
+docs-site/static/assets/favicon.svg
+docs-site/static/assets/launchstation-logo.avif
+docs-site/static/assets/orbs.js
+docs-site/static/assets/style.css
+docs-site/static/assets/ui/about.png
+docs-site/static/assets/ui/app-details.png
+docs-site/static/assets/ui/app-options.png
+docs-site/static/assets/ui/appearance.png
+docs-site/static/assets/ui/application-views.gif
+docs-site/static/assets/ui/application-views.mp4
+docs-site/static/assets/ui/apps-carousel.png
+docs-site/static/assets/ui/apps-grid.png
+docs-site/static/assets/ui/apps-list.png
+docs-site/static/assets/ui/apps-menu.png
+docs-site/static/assets/ui/build-information.png
+docs-site/static/assets/ui/capture-manifest.json
+docs-site/static/assets/ui/cloud-backups.png
+docs-site/static/assets/ui/colour-editor.png
+docs-site/static/assets/ui/files-context.png
+docs-site/static/assets/ui/files-devices.png
+docs-site/static/assets/ui/files-folder.png
+docs-site/static/assets/ui/files-usb-root.png
+docs-site/static/assets/ui/image-loaders.png
+docs-site/static/assets/ui/image-viewer.png
+docs-site/static/assets/ui/misc-commands.png
+docs-site/static/assets/ui/mmce-backup-settings.png
+docs-site/static/assets/ui/settings-applications.png
+docs-site/static/assets/ui/settings-input.png
+docs-site/static/assets/ui/settings-launching.png
+docs-site/static/assets/ui/settings-network.png
+docs-site/static/assets/ui/settings-overview.png
+docs-site/static/assets/ui/settings-sound.png
+docs-site/static/assets/ui/settings-storage.png
+docs-site/static/assets/ui/settings-system.png
+docs-site/static/assets/ui/system-information.png
+docs-site/static/assets/ui/text-editor-menu.png
+docs-site/static/assets/ui/text-editor.png
+docs-site/static/assets/ui/theme-background.png
+docs-site/static/assets/ui/theme-biosblue.png
+docs-site/static/assets/ui/theme-black.png
+docs-site/static/assets/ui/theme-bootlines.png
+docs-site/static/assets/ui/theme-brushed.png
+docs-site/static/assets/ui/theme-clock.png
+docs-site/static/assets/ui/theme-clockring.png
+docs-site/static/assets/ui/theme-colours.png
+docs-site/static/assets/ui/theme-crt.png
+docs-site/static/assets/ui/theme-crystal.png
+docs-site/static/assets/ui/theme-cubes.png
+docs-site/static/assets/ui/theme-customize.png
+docs-site/static/assets/ui/theme-discred.png
+docs-site/static/assets/ui/theme-highlights.gif
+docs-site/static/assets/ui/theme-highlights.mp4
+docs-site/static/assets/ui/theme-icons.png
+docs-site/static/assets/ui/theme-mcblue.png
+docs-site/static/assets/ui/theme-mcgrid.png
+docs-site/static/assets/ui/theme-minimal.png
+docs-site/static/assets/ui/theme-mist.png
+docs-site/static/assets/ui/theme-mono.png
+docs-site/static/assets/ui/theme-osd.png
+docs-site/static/assets/ui/theme-picker.png
+docs-site/static/assets/ui/theme-psx.png
+docs-site/static/assets/ui/theme-stream.png
+docs-site/static/assets/ui/theme-text.png
+docs-site/static/assets/ui/theme-tiles.png
+docs-site/static/assets/ui/theme-tour.mp4
+docs-site/static/assets/ui/theme-towers.png
+docs-site/static/assets/ui/theme-wallpaper.png
+docs-site/static/assets/ui/tools-essentials.png
+docs-site/static/assets/ui/tools-storage.png
+docs-site/static/assets/ui/usb-diagnostics.png
+docs-site/static/assets/wallpaper-example.png
+docs/BUILDING.md
+docs/DISPLAY_FEEDBACK_2026-10-15.md
+docs/ECOSYSTEM-COMPARISON.md
+docs/EMBER-RETROGEM.md
+docs/FTP-SELECTIVE-PORT-HANDOFF.md
+docs/FileBrowser sort+display modes.txt
+docs/LAUNCHELF.CNF
+docs/MMCE_RESTORE_PROTOCOL.md
+docs/MMCE_SD2PSXTD_FIRMWARE_AUDIT.md
+docs/Multiple USB_mass drives and partitions.txt
+docs/NATIVE_CLOUD.md
+docs/New resolutions.txt
+docs/R3Z-10-PARITY-AUDIT.md
+docs/R3Z-11-GAME-ID-AUDIT.md
+docs/R3Z-CONFIG-PARITY.md
+docs/R3Z-REQUEST-VALIDATION.md
+docs/README.md
+docs/THIRD_PARTY_CREDITS.md
+docs/TODO.txt
+docs/UI-CAPTURES.md
+docs/architecture-maintenance.md
+docs/changes.txt
+docs/dashboard.md
+docs/follow-ups/move-manifest.md
+docs/font-generation.md
+docs/keyboard.txt
+docs/licenses/Emotion-Engine-LICENSE.txt
+docs/licenses/Material-Design-Icons-LICENSE.txt
+docs/licenses/Roboto-COPYRIGHT.txt
+docs/plans/2026-10-17-issue-triage.md
+docs/plans/2026-10-17-storage-driver-lifecycle-172-175.md
+docs/plans/2026-10-18-cloud-handoff.md
+docs/plans/2026-10-18-dev9-transition-follow-up.md
+docs/plans/2026-10-18-tester-follow-up.md
+docs/plans/2026-10-19-zack-issues.md
+docs/plans/2026-10-24-stable-issue-recovery.md
+docs/plans/2026-10-26-sd2cloud-parity-plan.md
+docs/plans/pc-card-cf-integration.md
+docs/plans/wlaunchelf-r3z-oct17-parity.md
+docs/report-follow-up.md
+docs/superpowers/plans/2026-09-26-osdsys-dash.md
+docs/superpowers/plans/2026-11-04-hide-tabs.md
+docs/superpowers/specs/2026-09-26-osdsys-dash-design.md
+docs/superpowers/specs/2026-11-04-boot-defer-design.md
+docs/superpowers/specs/2026-11-04-hide-tabs-design.md
+docs/theme-example/README.md
+docs/theme-example/background.png
+docs/theme-example/theme.cfg
+docs/themes.md
+docs/wiki/Building-and-Validation.md
+docs/wiki/Current-Features.md
+docs/wiki/Home.md
+docs/wiki/MMCE-Recovery.md
+docs/wiki/Releases-and-Recovery.md
+docs/wiki/Theme-and-Wallpaper-Guide.md
+ee_libs/hdd/include/libhdd.h
+ee_libs/hdd/libhdd.c
+ee_libs/iopreboot/SifIopRebootBuffer.c
+ee_libs/iopreboot/patch_romdrv_set_rom1_info.c
+ee_libs/tcpips/VENDORED.md
+ee_libs/tcpips/ps2ipc.c
+exploits/CHN.sys
+exploits/DTL-SYSTEM.XLF
+exploits/EUR.sys
+exploits/IOPRP.IMG
+exploits/IOPRP_LTS.IMG
+exploits/JPN.sys
+exploits/OSD110.KERNEL
+exploits/OSDSYS.KERNEL
+exploits/SYSTEM.XLF
+exploits/USA.sys
+exploits/XSYSTEM.XLF
+exploits/XSYSTEM2.XLF
+exploits/list.icn
+igr/wle_igr.c
+include/cdvd_macro.h
+include/cloud_google.h
+include/cloud_google_roots.h
+include/cloud_http.h
+include/config_private.h
+include/dash_autotest.h
+include/dash_card_tool.h
+include/dash_font_data.h
+include/dash_internal.h
+include/dash_sound.h
+include/draw_private.h
+include/filer_actions.h
+include/filer_copy.h
+include/filer_internal.h
+include/filer_shared.h
+include/ftp_protocol.h
+include/ftp_session.h
+include/gui_colors.h
+include/gui_hdd0_format.h
+include/gui_neutrino.h
+include/gui_sort.h
+include/gui_texteditor.h
+include/hdd_header_injector.h
+include/hdl_rpc.h
+include/init.h
+include/kelf_signer.h
+include/lang.h
+include/launchelf.h
+include/list_scroll.h
+include/main_actions.h
+include/main_console_info.h
+include/main_exploit_installer.h
+include/main_gameid.h
+include/main_history.h
+include/main_info_screens.h
+include/main_modules.h
+include/main_startup.h
+include/main_title.h
+include/mc_card_export.h
+include/mc_card_write.h
+include/mc_ps1_card.h
+include/mc_save_export.h
+include/mc_save_formats.h
+include/mc_sha256.h
+include/mmce_backup.h
+include/mmce_card_switch.h
+include/mmce_igr.h
+include/mmce_save_versions.h
+include/neutrino_gameid.h
+include/neutrino_smb.h
+include/pccf_control.h
+include/psu_functions.h
+include/psu_types.h
+include/qrcodegen.h
+include/smb2man.h
+include/smb_shares.h
+include/smbd_devctl.h
+include/snippets/readCD.h
+include/wle_igr_config.h
+iop/AllowDVDV/AllowDVDV.c
+iop/AllowDVDV/imports.lst
+iop/AllowDVDV/irx_imports.h
+iop/__precompiled/udpfs_ioman.irx
+iop/__precompiled/udpfs_ministack.irx
+iop/__precompiled/udpfs_smap.irx
+iop/__v10/ps2dev9.irx
+iop/__v10/ps2ip.irx
+iop/ata_bd/include/atad.h
+iop/ata_bd/src/exports.tab
+iop/ata_bd/src/imports.lst
+iop/ata_bd/src/irx_imports.h
+iop/ata_bd/src/ps2atad.c
+iop/dev9_poweroff/imports.lst
+iop/dev9_poweroff/irx_imports.h
+iop/dev9_poweroff/main.c
+iop/ds34bt/ee/libds34bt.c
+iop/ds34bt/ee/libds34bt.h
+iop/ds34bt/iop/ds34bt.c
+iop/ds34bt/iop/ds34bt.h
+iop/ds34bt/iop/imports.lst
+iop/ds34bt/iop/irx_imports.h
+iop/ds34bt/iop/smsutils.S
+iop/ds34usb/ee/libds34usb.c
+iop/ds34usb/ee/libds34usb.h
+iop/ds34usb/iop/ds34usb.c
+iop/ds34usb/iop/ds34usb.h
+iop/ds34usb/iop/imports.lst
+iop/ds34usb/iop/irx_imports.h
+iop/ds34usb/iop/smsutils.S
+iop/hdl_info/apa.c
+iop/hdl_info/apa.h
+iop/hdl_info/exports.tab
+iop/hdl_info/hdd.c
+iop/hdl_info/hdd.h
+iop/hdl_info/hdl.c
+iop/hdl_info/hdl.h
+iop/hdl_info/imports.lst
+iop/hdl_info/irx_imports.h
+iop/hdl_info/main.c
+iop/hdl_info/main.h
+iop/hdl_info/ps2_hdd.h
+iop/include_compat/poweroff.h
+iop/mmceman/include/ioplib.h
+iop/mmceman/include/irx_imports.h
+iop/mmceman/include/mmce_cmds.h
+iop/mmceman/include/mmce_fs.h
+iop/mmceman/include/mmce_restore_guard.h
+iop/mmceman/include/mmce_sio2.h
+iop/mmceman/include/mmcedrv_config.h
+iop/mmceman/include/module_debug.h
+iop/mmceman/include/sio2man_hook.h
+iop/mmceman/include/sio2regs.h
+iop/mmceman/src/exports.tab
+iop/mmceman/src/imports.lst
+iop/mmceman/src/ioplib.c
+iop/mmceman/src/mmce_cmds.c
+iop/mmceman/src/mmce_fs.c
+iop/mmceman/src/mmce_sio2.c
+iop/mmceman/src/mmcedrv.c
+iop/mmceman/src/mmceigr.c
+iop/mmceman/src/mmceman.c
+iop/mmceman/src/sio2man_hook.c
+iop/mx4sio_bd/LICENSE
+iop/mx4sio_bd/ORIGIN.md
+iop/mx4sio_bd/src/crc16.c
+iop/mx4sio_bd/src/crc16.h
+iop/mx4sio_bd/src/imports.lst
+iop/mx4sio_bd/src/ioplib.c
+iop/mx4sio_bd/src/ioplib.h
+iop/mx4sio_bd/src/irx_imports.h
+iop/mx4sio_bd/src/module_debug.h
+iop/mx4sio_bd/src/mx4sio.c
+iop/mx4sio_bd/src/mx4sio.h
+iop/mx4sio_bd/src/sio2man_hook.c
+iop/mx4sio_bd/src/sio2man_hook.h
+iop/mx4sio_bd/src/sio2regs.h
+iop/mx4sio_bd/src/spi_sdcard_crc7.c
+iop/mx4sio_bd/src/spi_sdcard_crc7.h
+iop/mx4sio_bd/src/spi_sdcard_driver.c
+iop/mx4sio_bd/src/spi_sdcard_driver.h
+iop/mx4sio_bd/src/spi_sdcard_driver_config.h
+iop/nfsman/README.md
+iop/nfsman/imports.lst
+iop/nfsman/linkfile
+iop/nfsman/unfs4/LICENSE
+iop/nfsman/unfs4/VENDORED.txt
+iop/oldlibs/ps2ftpd/LAUNCHSTATION.md
+iop/oldlibs/ps2ftpd/LICENSE
+iop/oldlibs/ps2ftpd/README
+iop/oldlibs/ps2ftpd/changes.txt
+iop/oldlibs/ps2ftpd/src/FileSystem.c
+iop/oldlibs/ps2ftpd/src/FileSystem.h
+iop/oldlibs/ps2ftpd/src/FtpClient.c
+iop/oldlibs/ps2ftpd/src/FtpClient.h
+iop/oldlibs/ps2ftpd/src/FtpCommands.c
+iop/oldlibs/ps2ftpd/src/FtpControl.c
+iop/oldlibs/ps2ftpd/src/FtpControl.h
+iop/oldlibs/ps2ftpd/src/FtpMessages.c
+iop/oldlibs/ps2ftpd/src/FtpMessages.h
+iop/oldlibs/ps2ftpd/src/FtpServer.c
+iop/oldlibs/ps2ftpd/src/FtpServer.h
+iop/oldlibs/ps2ftpd/src/Makefile.linux
+iop/oldlibs/ps2ftpd/src/imports.lst
+iop/oldlibs/ps2ftpd/src/irx_imports.h
+iop/oldlibs/ps2ftpd/src/main.c
+iop/pccf/PS2SDK_LICENSE.txt
+iop/pccf/VENDORED.md
+iop/pccf/imports.lst
+iop/pccf/irx_imports.h
+iop/pccf/main.c
+iop/pccf/pccf_ata.c
+iop/pccf/pccf_ata.h
+iop/pccf/pccf_control.inc
+iop/pccf/pccf_hw.c
+iop/pccf/pccf_pio_bulk.inc
+iop/pccf/pccf_pio_profile.inc
+iop/pccf/pcclog.h
+iop/pccf/pcdiag_ata.h
+iop/pccf/pcdiag_cf.c
+iop/pccf/pcdiag_cf.h
+iop/pccf/pcdiag_cis.c
+iop/pccf/pcdiag_cis.h
+iop/ps2hdd_osd/README.md
+iop/ps2hdd_osd/apa-opt.h
+iop/ps2hdd_osd/apa.c
+iop/ps2hdd_osd/cache.c
+iop/ps2hdd_osd/free.c
+iop/ps2hdd_osd/hdd.c
+iop/ps2hdd_osd/hdd.h
+iop/ps2hdd_osd/hdd_blkio.c
+iop/ps2hdd_osd/hdd_blkio.h
+iop/ps2hdd_osd/hdd_fio.c
+iop/ps2hdd_osd/hdd_fio.h
+iop/ps2hdd_osd/imports.lst
+iop/ps2hdd_osd/irx_imports.h
+iop/ps2hdd_osd/journal.c
+iop/ps2hdd_osd/libapa.h
+iop/ps2hdd_osd/misc.c
+iop/ps2hdd_osd/password.c
+iop/ps2host/hostlink.h
+iop/ps2host/imports.lst
+iop/ps2host/irx_imports.h
+iop/ps2host/net_fio.c
+iop/ps2host/net_fio.h
+iop/ps2host/net_fsys.c
+iop/ps2host/ps2host.c
+iop/ps2ips_rpc/PS2SDK_LICENSE.txt
+iop/ps2ips_rpc/VENDORED.md
+iop/ps2ips_rpc/imports.lst
+iop/ps2ips_rpc/irx_imports.h
+iop/ps2ips_rpc/ps2ip_rpc.h
+iop/ps2ips_rpc/ps2ips.c
+iop/smb2man/README.md
+iop/smb2man/imports.lst
+iop/smb2man/irx_imports.h
+iop/smb2man/linkfile
+iop/smb2man/ps2iop-compat.h
+iop/smb2man/smb2auth.c
+iop/smb2man/smb2auth.h
+iop/smb2man/smb2man.c
+iop/smb2man/usmb2/LICENSE
+iop/smb2man/usmb2/README
+iop/smb2man/usmb2/VENDORED.txt
+iop/smb2man/usmb2/hmac-md5.c
+iop/smb2man/usmb2/hmac-md5.h
+iop/smb2man/usmb2/md4.h
+iop/smb2man/usmb2/md4c.c
+iop/smb2man/usmb2/md5.c
+iop/smb2man/usmb2/md5.h
+iop/smb2man/usmb2/ntlm.c
+iop/smb2man/usmb2/ntlm.h
+iop/smb2man/usmb2/riptopl.patch
+iop/smb2man/usmb2/unicode.c
+iop/smb2man/usmb2/unicode.h
+iop/smb2man/usmb2/usmb2.c
+iop/smb2man/usmb2/usmb2.h
+iop/smbd/config.h
+iop/smbd/imports.lst
+iop/smbd/irx_imports.h
+iop/smbd/libsmb2-raw-query-info.patch
+iop/smbd/libsmb2-session-key-leak.patch
+iop/smbd/linkfile
+iop/smbd/smbd.c
+iop/smbd/smbd.h
+iop/smbd/smbd_fs.c
+iop/smbman/README.md
+iop/smbman/auth.h
+iop/smbman/debug.h
+iop/smbman/des.c
+iop/smbman/des.h
+iop/smbman/imports.lst
+iop/smbman/irx_imports.h
+iop/smbman/md4.c
+iop/smbman/md4.h
+iop/smbman/poll.h
+iop/smbman/smb.c
+iop/smbman/smb.h
+iop/smbman/smb_fio.c
+iop/smbman/smb_fio.h
+iop/smbman/smbman.c
+iop/udpfs_smap/LICENSE
+iop/udpfs_smap/ORIGIN.md
+iop/udpfs_smap/include/irx_imports.h
+iop/udpfs_smap/include/main.h
+iop/udpfs_smap/include/mprintf.h
+iop/udpfs_smap/include/smap.h
+iop/udpfs_smap/include/xfer.h
+iop/udpfs_smap/src/exports.tab
+iop/udpfs_smap/src/imports.lst
+iop/udpfs_smap/src/main.c
+iop/udpfs_smap/src/smap.c
+iop/udpfs_smap/src/xfer.c
+iop/usbd-ra/include/usbd.h
+iop/usbd-ra/include/usbd_macro.h
+iop/usbd-ra/src/driver.c
+iop/usbd-ra/src/driver.h
+iop/usbd-ra/src/exports.tab
+iop/usbd-ra/src/hcd.c
+iop/usbd-ra/src/hcd.h
+iop/usbd-ra/src/hub.c
+iop/usbd-ra/src/hub.h
+iop/usbd-ra/src/imports.lst
+iop/usbd-ra/src/interface.c
+iop/usbd-ra/src/irx_imports.h
+iop/usbd-ra/src/mem.c
+iop/usbd-ra/src/mem.h
+iop/usbd-ra/src/usbd.c
+iop/usbd-ra/src/usbdpriv.h
+iop/usbd-ra/src/usbio.c
+iop/usbd-ra/src/usbio.h
+iop/usbmass_bd/LICENSE
+iop/usbmass_bd/ORIGIN.md
+iop/usbmass_bd/src/imports.lst
+iop/usbmass_bd/src/include/module_debug.h
+iop/usbmass_bd/src/include/scsi.h
+iop/usbmass_bd/src/irx_imports.h
+iop/usbmass_bd/src/main.c
+iop/usbmass_bd/src/scsi.c
+iop/usbmass_bd/src/usb_mass.c
+iop/vmcman/README.md
+iop/vmcman/include/mcman.h
+iop/vmcman/src/exports.tab
+iop/vmcman/src/imports.lst
+iop/vmcman/src/irx_imports.h
+iop/vmcman/src/main.c
+iop/vmcman/src/mcdev.c
+iop/vmcman/src/mciomanx_backing.c
+iop/vmcman/src/mcman-internal.h
+iop/vmcman/src/mcsio2.c
+iop/vmcman/src/ps1mc_fio.c
+iop/vmcman/src/ps2mc_fio.c
+iop/xparam/include/xparam.h
+iop/xparam/src/database_merged.c
+iop/xparam/src/imports.lst
+iop/xparam/src/irx_imports.h
+iop/xparam/src/xparam.c
+loader/linkfile
+res/APPINFO.PBT
+res/UPDATE-CA.md
+res/WLE-CLOUD.CNF.example
+res/WLE-UPDATE-CA.PEM
+res/bgm.ogg
+res/icons/L1.png
+res/icons/L2.png
+res/icons/L3.png
+res/icons/R1.png
+res/icons/R2.png
+res/icons/R3.png
+res/icons/circle.png
+res/icons/cross.png
+res/icons/down.png
+res/icons/left.png
+res/icons/right.png
+res/icons/rocket-launch.svg
+res/icons/select.png
+res/icons/square.png
+res/icons/start.png
+res/icons/triangle.png
+res/icons/up.png
+res/memory-card/copy.icn
+res/memory-card/del.icn
+res/memory-card/icon.sys
+res/memory-card/list.icn
+res/music.sad
+res/sfx/bd_connect.adp
+res/sfx/bd_disconnect.adp
+res/sfx/boot.adp
+res/sfx/cancel.adp
+res/sfx/confirm.adp
+res/sfx/cursor.adp
+res/sfx/message.adp
+res/sfx/transition.adp
+res/sfx_ps2/bd_connect.adp
+res/sfx_ps2/bd_disconnect.adp
+res/sfx_ps2/boot.adp
+res/sfx_ps2/cancel.adp
+res/sfx_ps2/confirm.adp
+res/sfx_ps2/cursor.adp
+res/sfx_ps2/message.adp
+res/sfx_ps2/transition.adp
+research/sd2psxtd/README.md
+research/sd2psxtd/mmce_restore_txn_model.c
+research/sd2psxtd/mmce_restore_txn_model.h
+scripts/audit_r3z_settings.py
+scripts/check_loader_layout.sh
+scripts/check_stack_realign.py
+scripts/check_toolchain_purity.py
+scripts/copy_test_pack.py
+scripts/download_metrics.py
+scripts/ee_toolchain.sh
+scripts/fetch_libsmb2.sh
+scripts/gen_cloud_client.py
+scripts/gen_dash_font.py
+scripts/gen_githash.py
+scripts/gen_sfx.py
+scripts/package_kit.py
+scripts/prepare_psbbn_theme.py
+scripts/ps2build_sdk.sh
+scripts/release_notes.py
+scripts/sync_github_wiki.py
+ship/KIT-README.txt
+ship/kit-externals.json
+ship/neutrino-ilink/IEEE1394_bd_mini.irx
+ship/neutrino-ilink/LICENSE
+ship/neutrino-ilink/README.txt
+ship/neutrino-ilink/iLinkman.irx
+ship/shortcuts/Launchstation-Documentation.url
+ship/shortcuts/OPL-PS1-AIO-Converter-GUI.url
+ship/shortcuts/OrbitPS2-Manager.url
+ship/shortcuts/PS2-Servers.url
+ship/shortcuts/android-udpfs-server.url
+src/chkesr.c
+src/cloud_google.c
+src/cloud_http.c
+src/config.c
+src/config_advanced.c
+src/config_network.c
+src/config_screen.c
+src/config_startup.c
+src/dash_apps.c
+src/dash_bg_geo.c
+src/dash_bg_ps2.c
+src/dash_browser.c
+src/dash_card_tool.c
+src/dash_clock_sync.c
+src/dash_devices.c
+src/dash_exploit.c
+src/dash_files.c
+src/dash_font.c
+src/dash_font_data.c
+src/dash_font_emotion_engine.c
+src/dash_font_emotion_engine_bold.c
+src/dash_ftp.c
+src/dash_gfx.c
+src/dash_hdd.c
+src/dash_home.c
+src/dash_icons.c
+src/dash_info.c
+src/dash_main.c
+src/dash_ps1_card.c
+src/dash_settings.c
+src/dash_smbd.c
+src/dash_sound.c
+src/dash_theme.c
+src/dash_themes.c
+src/dash_tools.c
+src/dash_ui.c
+src/dash_widgets.c
+src/draw.c
+src/draw_gs.c
+src/draw_text.c
+src/editor.c
+src/editor_menu.c
+src/elf.c
+src/embed_blobs.S
+src/ember.c
+src/ember_gameid.c
+src/filer.c
+src/filer_actions.c
+src/filer_browser.c
+src/filer_copy.c
+src/filer_device.c
+src/filer_fileops.c
+src/filer_mount.c
+src/font_uLE.c
+src/ftp_session.c
+src/gui.c
+src/gui_colors.c
+src/gui_hdd0_format.c
+src/gui_neutrino.c
+src/gui_sort.c
+src/gui_texteditor.c
+src/hdd_header_injector.c
+src/hdl_rpc.c
+src/icon.c
+src/init.c
+src/kelf_signer.c
+src/main_actions.c
+src/main_boot.c
+src/main_console_info.c
+src/main_exploit_installer.c
+src/main_gameid.c
+src/main_gameid_table.c
+src/main_history.c
+src/main_info_screens.c
+src/main_startup.c
+src/main_title.c
+src/makeicon.c
+src/mc_card_write.c
+src/mc_ps1_card.c
+src/mc_save_export.c
+src/mc_save_formats.c
+src/mc_sha256.c
+src/mmce_backup.c
+src/mmce_card_switch.c
+src/mmce_igr.c
+src/mmce_save_versions.c
+src/neutrino_gameid.c
+src/neutrino_iso.c
+src/neutrino_smb.c
+src/pad.c
+src/pad_ds34.c
+src/popstarter.c
+src/popstarter_elf.c
+src/popstarter_gameid.c
+src/popstarter_internal.h
+src/popstarter_path.c
+src/popstarter_vcd.c
+src/psu_functions.c
+src/qrcodegen.c
+src/smb_cnf.c
+src/smb_shares.c
+src/timer.c
+src/virtual_keyboard.c
+storage_driver_fixes_plan.md
+tests/card-tool-shim/dash_internal.h
+tests/card-tool-shim/filer_shared.h
+tests/card-tool-shim/launchelf.h
+tests/card-tool-shim/libcdvd.h
+tests/card-tool-shim/mc_card_export.h
+tests/dash_card_tool_host.c
+tests/fixtures/r3z-06b06d0-config-keys.json
+tests/fixtures/transcend_ts4gcf133.cis
+tests/ftp-ee/delaythread.h
+tests/ftp-ee/init.h
+tests/ftp-ee/launchelf.h
+tests/ftp-ee/sifrpc.h
+tests/ftp-ee/test_session.c
+tests/ftp/loadcore.h
+tests/ftp/platform.h
+tests/ftp/sifrpc.h
+tests/ftp/startup.h
+tests/ftp/test_server.c
+tests/mc_card_write_host.c
+tests/mc_fingerprint_host.c
+tests/mc_fixture.py
+tests/mc_ps1_card_host.c
+tests/mc_save_export_host.c
+tests/mc_save_formats_host.c
+tests/mmce_save_versions_host.c
+tests/nfsman_live/drive.c
+tests/nfsman_live/run.sh
+tests/pccf-stubs/bdm.h
+tests/pccf-stubs/dev9regs.h
+tests/pccf-stubs/io_common.h
+tests/pccf-stubs/iomanX.h
+tests/pccf-stubs/iox_stat.h
+tests/pccf-stubs/irx.h
+tests/pccf-stubs/loadcore.h
+tests/pccf-stubs/sysclib.h
+tests/pccf-stubs/tamtypes.h
+tests/pccf-stubs/thbase.h
+tests/pccf-stubs/thsemap.h
+tests/pccf-stubs/types.h
+tests/pccf_ata_card.h
+tests/smb2man_live/drive.c
+tests/smb2man_live/inc/intrman.h
+tests/smb2man_live/inc/iomanX.h
+tests/smb2man_live/inc/loadcore.h
+tests/smb2man_live/inc/sysclib.h
+tests/smb2man_live/inc/sysmem.h
+tests/smb2man_live/inc/tamtypes.h
+tests/smb2man_live/inc/thbase.h
+tests/smb2man_live/inc/thsemap.h
+tests/smb2man_live/run.sh
+tests/smbd_live/client.c
+tests/smbd_live/host.c
+tests/smbd_live/run.sh
+tests/test_background_only_hotkeys.py
+tests/test_bgm_sidecar.py
+tests/test_bookmark_routes.py
+tests/test_boot_deferred_init.py
+tests/test_browser_sort.py
+tests/test_build_identity.py
+tests/test_carousel_culling.py
+tests/test_cdvd_scmd_buffers.py
+tests/test_cf.c
+tests/test_cis.c
+tests/test_classic_settings_persistence.py
+tests/test_clock_field_editor.py
+tests/test_clock_save_action.py
+tests/test_clock_sync.py
+tests/test_cloud_history_browser.py
+tests/test_cloud_link_screen.py
+tests/test_cloud_menu.py
+tests/test_cloud_recovery.py
+tests/test_cloud_relay.py
+tests/test_cloud_tls_paths.py
+tests/test_cloud_upload_ledger.py
+tests/test_console_region.py
+tests/test_copy_pipeline.py
+tests/test_copy_psu_listing.py
+tests/test_copy_short_io.py
+tests/test_copy_test_pack.py
+tests/test_cursor_sound_ticks.py
+tests/test_dash_card_tool.py
+tests/test_dash_ftp.py
+tests/test_dash_pause.py
+tests/test_dashboard_console_summary.py
+tests/test_dashboard_languages.py
+tests/test_dashboard_pending_loops.py
+tests/test_dashboard_present_buffers.py
+tests/test_dev9_transition.py
+tests/test_device_autostart_safe_mode.py
+tests/test_device_input.py
+tests/test_display_feedback.py
+tests/test_download_metrics.py
+tests/test_editor_keyboard.py
+tests/test_elisa_font_load.py
+tests/test_ember_gameid.py
+tests/test_ember_iop_handoff.py
+tests/test_ember_launch.py
+tests/test_ember_paths.py
+tests/test_ember_retrogem_handoff.py
+tests/test_ember_two_usb_handoff.py
+tests/test_exploit_folder_warning.py
+tests/test_feedback_35_82.py
+tests/test_file_browser_heap.py
+tests/test_file_operation_overlay.py
+tests/test_file_stat_errors.py
+tests/test_files_tab_lifecycle.py
+tests/test_font_weight.py
+tests/test_ftp_network.py
+tests/test_ftp_server.py
+tests/test_ftp_session.py
+tests/test_gage_alignment.py
+tests/test_get_size.py
+tests/test_hdd_manager_browse.py
+tests/test_hex_editor.py
+tests/test_hidden_apps.py
+tests/test_hint_bar_fit.py
+tests/test_hint_clearance.py
+tests/test_hint_order.py
+tests/test_home_focus.py
+tests/test_http_body_cap.py
+tests/test_https_tls.py
+tests/test_igr_return_policy.py
+tests/test_ilink_browser.py
+tests/test_kit_package.py
+tests/test_launch_driver_messages.py
+tests/test_launch_iop_override.py
+tests/test_launch_options.py
+tests/test_listing_callers.py
+tests/test_listing_complete.py
+tests/test_llvm_toolchain.py
+tests/test_loader_linkfile.py
+tests/test_maintained_documentation.py
+tests/test_mc1_mx4sio_handoff.py
+tests/test_mc_card_export.py
+tests/test_mc_card_write.py
+tests/test_mc_fingerprint.py
+tests/test_mc_folder_icon.py
+tests/test_mc_poll_usb_barrier.py
+tests/test_mc_ps1_card.py
+tests/test_mc_save_export.py
+tests/test_mc_save_formats.py
+tests/test_misc_settings_dispatch.py
+tests/test_mmce_backup.py
+tests/test_mmce_bus_restore.py
+tests/test_mmce_dread_returns.py
+tests/test_mmce_exclusive_new_files.py
+tests/test_mmce_fingerprint_backup.py
+tests/test_mmce_fs_restore_guard.py
+tests/test_mmce_handle_release.py
+tests/test_mmce_native_import.py
+tests/test_mmce_presence_probe.py
+tests/test_mmce_protocol.py
+tests/test_mmce_publish.py
+tests/test_mmce_recovery.py
+tests/test_mmce_rename_fallback.py
+tests/test_mmce_restore_txn_model.py
+tests/test_mmce_save_versions.py
+tests/test_mmce_selectable_install.py
+tests/test_mmce_status_failures.py
+tests/test_mmce_targeted_safety.py
+tests/test_mmce_upstream_contract.py
+tests/test_modal_animation.py
+tests/test_move_manifest.py
+tests/test_native_cloud.py
+tests/test_native_four_browser_modes.py
+tests/test_navigation_wraparound.py
+tests/test_nested_scissor.py
+tests/test_network_load_result.py
+tests/test_neutrino_cancel_feedback.py
+tests/test_neutrino_iso.py
+tests/test_neutrino_menu_audio.py
+tests/test_neutrino_profiles.py
+tests/test_neutrino_smb.py
+tests/test_new_folder_save_icons.py
+tests/test_nfs_shares.py
+tests/test_opl_title_cfg.py
+tests/test_orb_seamless.py
+tests/test_own_config_name.py
+tests/test_pad_icon_order.py
+tests/test_panel_transparency.py
+tests/test_pccf.py
+tests/test_pccf_ata.c
+tests/test_pccf_fs.py
+tests/test_pccf_hw.c
+tests/test_pccf_module.c
+tests/test_pccf_owner.py
+tests/test_pccf_rw.c
+tests/test_physical_hold_input.py
+tests/test_popstarter_retrogem.py
+tests/test_portable_filename.py
+tests/test_poweroff_init.py
+tests/test_poweroff_shutdown.py
+tests/test_project_branding.py
+tests/test_ps1_card_rediscovery.py
+tests/test_ps2browser_card_update.py
+tests/test_ps2ips_rpc.py
+tests/test_psu_extract_to_mc.py
+tests/test_r3z_browser_contract.py
+tests/test_r3z_browser_wins.py
+tests/test_r3z_config_inventory.py
+tests/test_r3z_four_browser_modes.py
+tests/test_r3z_loader_disable.py
+tests/test_r3z_neutrino_gameid.py
+tests/test_r3z_neutrino_options.py
+tests/test_r3z_oct15_backport.py
+tests/test_r3z_video_switch.py
+tests/test_recent_skips_game_images.py
+tests/test_release_notes.py
+tests/test_rename_devices.py
+tests/test_rolling_release_workflow.py
+tests/test_root_mc_poll.py
+tests/test_scene_override_nesting.py
+tests/test_sd2cloud_parity.py
+tests/test_selector_centering.py
+tests/test_self_update.py
+tests/test_settings_navigation.py
+tests/test_settings_save_prompt.py
+tests/test_sfx_ps2.py
+tests/test_sjis_dashboard_titles.py
+tests/test_smb_browser_failure.py
+tests/test_smb_cnf_edit.py
+tests/test_smb_connect_state.py
+tests/test_smb_explicit_port.py
+tests/test_smb_settings_row.py
+tests/test_smb_shares.py
+tests/test_software_clock.py
+tests/test_sound_recovery.py
+tests/test_stack_realign_check.py
+tests/test_startup_status.py
+tests/test_storage_probe_frames.py
+tests/test_system_clock_menu.py
+tests/test_temperature.py
+tests/test_theme_motion.py
+tests/test_tile_styles.py
+tests/test_timer_wrap.py
+tests/test_transfer_progress.py
+tests/test_transfer_stack_preflight.py
+tests/test_transition_latency.py
+tests/test_udpfs_directory_errors.py
+tests/test_udpfs_retry.py
+tests/test_udpfs_smap_fifo_tail.py
+tests/test_udpfs_smap_startup.py
+tests/test_unified_dashboard_navigation.py
+tests/test_update_ancestry.py
+tests/test_update_ram_sink.py
+tests/test_update_sas_timestamps.py
+tests/test_update_sidecar_transaction.py
+tests/test_usb_boot_paths.py
+tests/test_usb_browse_cache.py
+tests/test_usb_iop_pad_handoff.py
+tests/test_usb_probe_status.py
+tests/test_usb_shared_namespace.py
+tests/test_usb_stat_timeout.py
+tests/test_usb_storage_lifecycle.py
+tests/test_usb_unit_diagnostics.py
+tests/test_usb_wait_text.py
+tests/test_usbmass_two_drives.py
+tests/test_video_sound_preview.py
+tests/test_vmc_rename.py
+tests/test_wallpaper_docs.py
+tests/test_wiki_capture_media.py
+tests/test_wle_igr.py
+tests/test_worker_queue.py
+tests/test_zack_feedback.py
+tests/test_zack_launch_sizing.py
+tests/test_zack_oct_2026.py
+tests/test_zack_quickwins.py
+tests/test_zack_round3.py
+tests/test_zack_storage_drivers.py
+windows/cloud-relay/Cloud Relay.bat
+windows/cloud-relay/Cloud Relay.ps1
+windows/cloud-relay/README.md
+```
+
+</details>
+
+## Shared controller findings
+
+The Bluetooth transfer-index defect, USB descriptor walk, endpoint cleanup and battery-table bounds are each listed once under **POPSLOADER-017, POPSLOADER-042, POPSLOADER-041 and POPSLOADER-018** in [Codex-POPSLoader.md](Codex-POPSLoader.md), with every affected copy in this repository cited there.
+
+The shared USB timeout cancellation mismatch is **CROSS-004** in [Codex-SUMMARY.md](Codex-SUMMARY.md).
+
+## Durable continuation manifest
+
+[Exact coverage and remaining paths](coverage/Codex-Launchstation-coverage.json): 56 whole-file reads; 16 paths with recorded partial evidence; 1009 paths require further review or explicit binary/document exclusion. This is a tracked-file count, not a claim that binary assets can be source-audited.

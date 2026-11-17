@@ -1,0 +1,2267 @@
+[
+  {
+    "target": "POPSLoader/modules/pademu/ds34bt.c",
+    "reference": "RiptOPL/modules/pademu/ds34bt.c",
+    "reviewed_reference": "Full semantic read recorded by Ript modules reviewer; sensitive initializer opaque.",
+    "equal_spans": [
+      {
+        "reference": [
+          1,
+          15
+        ],
+        "target": [
+          1,
+          15
+        ]
+      },
+      {
+        "reference": [
+          17,
+          233
+        ],
+        "target": [
+          16,
+          232
+        ]
+      },
+      {
+        "reference": [
+          236,
+          338
+        ],
+        "target": [
+          247,
+          349
+        ]
+      },
+      {
+        "reference": [
+          340,
+          347
+        ],
+        "target": [
+          351,
+          358
+        ]
+      },
+      {
+        "reference": [
+          349,
+          744
+        ],
+        "target": [
+          360,
+          755
+        ]
+      },
+      {
+        "reference": [
+          746,
+          1009
+        ],
+        "target": [
+          757,
+          1020
+        ]
+      },
+      {
+        "reference": [
+          1011,
+          1078
+        ],
+        "target": [
+          1022,
+          1089
+        ]
+      },
+      {
+        "reference": [
+          1080,
+          1133
+        ],
+        "target": [
+          1091,
+          1144
+        ]
+      },
+      {
+        "reference": [
+          1145,
+          1147
+        ],
+        "target": [
+          1146,
+          1148
+        ]
+      },
+      {
+        "reference": [
+          1149,
+          1150
+        ],
+        "target": [
+          1149,
+          1150
+        ]
+      },
+      {
+        "reference": [
+          1153,
+          1153
+        ],
+        "target": [
+          1155,
+          1155
+        ]
+      },
+      {
+        "reference": [
+          1156,
+          1157
+        ],
+        "target": [
+          1159,
+          1160
+        ]
+      },
+      {
+        "reference": [
+          1159,
+          1159
+        ],
+        "target": [
+          1162,
+          1162
+        ]
+      },
+      {
+        "reference": [
+          1161,
+          1162
+        ],
+        "target": [
+          1163,
+          1164
+        ]
+      },
+      {
+        "reference": [
+          1175,
+          1176
+        ],
+        "target": [
+          1177,
+          1178
+        ]
+      },
+      {
+        "reference": [
+          1178,
+          1208
+        ],
+        "target": [
+          1180,
+          1210
+        ]
+      },
+      {
+        "reference": [
+          1210,
+          1210
+        ],
+        "target": [
+          1212,
+          1212
+        ]
+      },
+      {
+        "reference": [
+          1212,
+          1213
+        ],
+        "target": [
+          1213,
+          1214
+        ]
+      },
+      {
+        "reference": [
+          1218,
+          1218
+        ],
+        "target": [
+          1216,
+          1216
+        ]
+      },
+      {
+        "reference": [
+          1228,
+          1231
+        ],
+        "target": [
+          1218,
+          1221
+        ]
+      },
+      {
+        "reference": [
+          1232,
+          1232
+        ],
+        "target": [
+          1224,
+          1224
+        ]
+      },
+      {
+        "reference": [
+          1235,
+          1235
+        ],
+        "target": [
+          1229,
+          1229
+        ]
+      },
+      {
+        "reference": [
+          1239,
+          1239
+        ],
+        "target": [
+          1250,
+          1250
+        ]
+      },
+      {
+        "reference": [
+          1241,
+          1242
+        ],
+        "target": [
+          1265,
+          1266
+        ]
+      },
+      {
+        "reference": [
+          1247,
+          1247
+        ],
+        "target": [
+          1271,
+          1271
+        ]
+      },
+      {
+        "reference": [
+          1250,
+          1250
+        ],
+        "target": [
+          1274,
+          1274
+        ]
+      },
+      {
+        "reference": [
+          1253,
+          1253
+        ],
+        "target": [
+          1277,
+          1277
+        ]
+      },
+      {
+        "reference": [
+          1256,
+          1257
+        ],
+        "target": [
+          1280,
+          1281
+        ]
+      },
+      {
+        "reference": [
+          1259,
+          1259
+        ],
+        "target": [
+          1283,
+          1283
+        ]
+      },
+      {
+        "reference": [
+          1262,
+          1264
+        ],
+        "target": [
+          1349,
+          1351
+        ]
+      },
+      {
+        "reference": [
+          1269,
+          1270
+        ],
+        "target": [
+          1399,
+          1400
+        ]
+      },
+      {
+        "reference": [
+          1308,
+          1308
+        ],
+        "target": [
+          1405,
+          1405
+        ]
+      },
+      {
+        "reference": [
+          1312,
+          1425
+        ],
+        "target": [
+          1408,
+          1521
+        ]
+      }
+    ],
+    "changed_spans": [
+      {
+        "reference": [
+          16,
+          16
+        ],
+        "target": [
+          16,
+          15
+        ]
+      },
+      {
+        "reference": [
+          234,
+          235
+        ],
+        "target": [
+          233,
+          246
+        ]
+      },
+      {
+        "reference": [
+          339,
+          339
+        ],
+        "target": [
+          350,
+          350
+        ]
+      },
+      {
+        "reference": [
+          348,
+          348
+        ],
+        "target": [
+          359,
+          359
+        ]
+      },
+      {
+        "reference": [
+          745,
+          745
+        ],
+        "target": [
+          756,
+          756
+        ]
+      },
+      {
+        "reference": [
+          1010,
+          1010
+        ],
+        "target": [
+          1021,
+          1021
+        ]
+      },
+      {
+        "reference": [
+          1079,
+          1079
+        ],
+        "target": [
+          1090,
+          1090
+        ]
+      },
+      {
+        "reference": [
+          1134,
+          1144
+        ],
+        "target": [
+          1145,
+          1145
+        ]
+      },
+      {
+        "reference": [
+          1148,
+          1148
+        ],
+        "target": [
+          1149,
+          1148
+        ]
+      },
+      {
+        "reference": [
+          1151,
+          1152
+        ],
+        "target": [
+          1151,
+          1154
+        ]
+      },
+      {
+        "reference": [
+          1154,
+          1155
+        ],
+        "target": [
+          1156,
+          1158
+        ]
+      },
+      {
+        "reference": [
+          1158,
+          1158
+        ],
+        "target": [
+          1161,
+          1161
+        ]
+      },
+      {
+        "reference": [
+          1160,
+          1160
+        ],
+        "target": [
+          1163,
+          1162
+        ]
+      },
+      {
+        "reference": [
+          1163,
+          1174
+        ],
+        "target": [
+          1165,
+          1176
+        ]
+      },
+      {
+        "reference": [
+          1177,
+          1177
+        ],
+        "target": [
+          1179,
+          1179
+        ]
+      },
+      {
+        "reference": [
+          1209,
+          1209
+        ],
+        "target": [
+          1211,
+          1211
+        ]
+      },
+      {
+        "reference": [
+          1211,
+          1211
+        ],
+        "target": [
+          1213,
+          1212
+        ]
+      },
+      {
+        "reference": [
+          1214,
+          1217
+        ],
+        "target": [
+          1215,
+          1215
+        ]
+      },
+      {
+        "reference": [
+          1219,
+          1227
+        ],
+        "target": [
+          1217,
+          1217
+        ]
+      },
+      {
+        "reference": [
+          1232,
+          1231
+        ],
+        "target": [
+          1222,
+          1223
+        ]
+      },
+      {
+        "reference": [
+          1233,
+          1234
+        ],
+        "target": [
+          1225,
+          1228
+        ]
+      },
+      {
+        "reference": [
+          1236,
+          1238
+        ],
+        "target": [
+          1230,
+          1249
+        ]
+      },
+      {
+        "reference": [
+          1240,
+          1240
+        ],
+        "target": [
+          1251,
+          1264
+        ]
+      },
+      {
+        "reference": [
+          1243,
+          1246
+        ],
+        "target": [
+          1267,
+          1270
+        ]
+      },
+      {
+        "reference": [
+          1248,
+          1249
+        ],
+        "target": [
+          1272,
+          1273
+        ]
+      },
+      {
+        "reference": [
+          1251,
+          1252
+        ],
+        "target": [
+          1275,
+          1276
+        ]
+      },
+      {
+        "reference": [
+          1254,
+          1255
+        ],
+        "target": [
+          1278,
+          1279
+        ]
+      },
+      {
+        "reference": [
+          1258,
+          1258
+        ],
+        "target": [
+          1282,
+          1282
+        ]
+      },
+      {
+        "reference": [
+          1260,
+          1261
+        ],
+        "target": [
+          1284,
+          1348
+        ]
+      },
+      {
+        "reference": [
+          1265,
+          1268
+        ],
+        "target": [
+          1352,
+          1398
+        ]
+      },
+      {
+        "reference": [
+          1271,
+          1307
+        ],
+        "target": [
+          1401,
+          1404
+        ]
+      },
+      {
+        "reference": [
+          1309,
+          1311
+        ],
+        "target": [
+          1406,
+          1407
+        ]
+      }
+    ],
+    "opaque_target_spans": [
+      [
+        256,
+        260
+      ]
+    ]
+  },
+  {
+    "target": "POPSLoader/modules/pademu/ds34bt.h",
+    "reference": "RiptOPL/modules/pademu/ds34bt.h",
+    "reviewed_reference": "Full semantic read recorded by Ript modules reviewer; sensitive initializer opaque.",
+    "equal_spans": [
+      {
+        "reference": [
+          1,
+          5
+        ],
+        "target": [
+          1,
+          5
+        ]
+      },
+      {
+        "reference": [
+          7,
+          40
+        ],
+        "target": [
+          14,
+          47
+        ]
+      },
+      {
+        "reference": [
+          46,
+          232
+        ],
+        "target": [
+          49,
+          235
+        ]
+      },
+      {
+        "reference": [
+          233,
+          240
+        ],
+        "target": [
+          353,
+          360
+        ]
+      }
+    ],
+    "changed_spans": [
+      {
+        "reference": [
+          6,
+          6
+        ],
+        "target": [
+          6,
+          13
+        ]
+      },
+      {
+        "reference": [
+          41,
+          45
+        ],
+        "target": [
+          48,
+          48
+        ]
+      },
+      {
+        "reference": [
+          233,
+          232
+        ],
+        "target": [
+          236,
+          352
+        ]
+      }
+    ],
+    "opaque_target_spans": []
+  },
+  {
+    "target": "POPSLoader/modules/pademu/ds34usb.c",
+    "reference": "RiptOPL/modules/pademu/ds34usb.c",
+    "reviewed_reference": "Full semantic read recorded by Ript modules reviewer; sensitive initializer opaque.",
+    "equal_spans": [
+      {
+        "reference": [
+          1,
+          11
+        ],
+        "target": [
+          1,
+          11
+        ]
+      },
+      {
+        "reference": [
+          13,
+          13
+        ],
+        "target": [
+          12,
+          12
+        ]
+      },
+      {
+        "reference": [
+          15,
+          57
+        ],
+        "target": [
+          14,
+          56
+        ]
+      },
+      {
+        "reference": [
+          59,
+          86
+        ],
+        "target": [
+          57,
+          84
+        ]
+      },
+      {
+        "reference": [
+          91,
+          91
+        ],
+        "target": [
+          85,
+          85
+        ]
+      },
+      {
+        "reference": [
+          95,
+          131
+        ],
+        "target": [
+          86,
+          122
+        ]
+      },
+      {
+        "reference": [
+          136,
+          136
+        ],
+        "target": [
+          124,
+          124
+        ]
+      },
+      {
+        "reference": [
+          143,
+          146
+        ],
+        "target": [
+          125,
+          128
+        ]
+      },
+      {
+        "reference": [
+          154,
+          173
+        ],
+        "target": [
+          129,
+          148
+        ]
+      },
+      {
+        "reference": [
+          176,
+          219
+        ],
+        "target": [
+          150,
+          193
+        ]
+      },
+      {
+        "reference": [
+          222,
+          224
+        ],
+        "target": [
+          194,
+          196
+        ]
+      },
+      {
+        "reference": [
+          225,
+          231
+        ],
+        "target": [
+          199,
+          205
+        ]
+      },
+      {
+        "reference": [
+          234,
+          234
+        ],
+        "target": [
+          207,
+          207
+        ]
+      },
+      {
+        "reference": [
+          236,
+          255
+        ],
+        "target": [
+          209,
+          228
+        ]
+      },
+      {
+        "reference": [
+          264,
+          282
+        ],
+        "target": [
+          229,
+          247
+        ]
+      },
+      {
+        "reference": [
+          286,
+          287
+        ],
+        "target": [
+          248,
+          249
+        ]
+      },
+      {
+        "reference": [
+          289,
+          292
+        ],
+        "target": [
+          256,
+          259
+        ]
+      },
+      {
+        "reference": [
+          294,
+          294
+        ],
+        "target": [
+          261,
+          261
+        ]
+      },
+      {
+        "reference": [
+          309,
+          310
+        ],
+        "target": [
+          262,
+          263
+        ]
+      },
+      {
+        "reference": [
+          312,
+          318
+        ],
+        "target": [
+          265,
+          271
+        ]
+      },
+      {
+        "reference": [
+          321,
+          321
+        ],
+        "target": [
+          274,
+          274
+        ]
+      },
+      {
+        "reference": [
+          328,
+          328
+        ],
+        "target": [
+          279,
+          279
+        ]
+      },
+      {
+        "reference": [
+          331,
+          331
+        ],
+        "target": [
+          302,
+          302
+        ]
+      },
+      {
+        "reference": [
+          334,
+          334
+        ],
+        "target": [
+          305,
+          305
+        ]
+      },
+      {
+        "reference": [
+          337,
+          338
+        ],
+        "target": [
+          308,
+          309
+        ]
+      },
+      {
+        "reference": [
+          340,
+          340
+        ],
+        "target": [
+          311,
+          311
+        ]
+      },
+      {
+        "reference": [
+          343,
+          345
+        ],
+        "target": [
+          314,
+          316
+        ]
+      },
+      {
+        "reference": [
+          347,
+          347
+        ],
+        "target": [
+          318,
+          318
+        ]
+      },
+      {
+        "reference": [
+          349,
+          349
+        ],
+        "target": [
+          320,
+          320
+        ]
+      },
+      {
+        "reference": [
+          351,
+          351
+        ],
+        "target": [
+          322,
+          322
+        ]
+      },
+      {
+        "reference": [
+          352,
+          352
+        ],
+        "target": [
+          325,
+          325
+        ]
+      },
+      {
+        "reference": [
+          355,
+          355
+        ],
+        "target": [
+          326,
+          326
+        ]
+      },
+      {
+        "reference": [
+          360,
+          360
+        ],
+        "target": [
+          363,
+          363
+        ]
+      },
+      {
+        "reference": [
+          365,
+          365
+        ],
+        "target": [
+          412,
+          412
+        ]
+      },
+      {
+        "reference": [
+          369,
+          369
+        ],
+        "target": [
+          416,
+          416
+        ]
+      },
+      {
+        "reference": [
+          372,
+          373
+        ],
+        "target": [
+          419,
+          420
+        ]
+      },
+      {
+        "reference": [
+          377,
+          377
+        ],
+        "target": [
+          424,
+          424
+        ]
+      },
+      {
+        "reference": [
+          380,
+          382
+        ],
+        "target": [
+          427,
+          429
+        ]
+      },
+      {
+        "reference": [
+          384,
+          384
+        ],
+        "target": [
+          431,
+          431
+        ]
+      },
+      {
+        "reference": [
+          386,
+          386
+        ],
+        "target": [
+          433,
+          433
+        ]
+      },
+      {
+        "reference": [
+          389,
+          463
+        ],
+        "target": [
+          436,
+          510
+        ]
+      },
+      {
+        "reference": [
+          465,
+          484
+        ],
+        "target": [
+          512,
+          531
+        ]
+      },
+      {
+        "reference": [
+          489,
+          489
+        ],
+        "target": [
+          533,
+          533
+        ]
+      },
+      {
+        "reference": [
+          497,
+          497
+        ],
+        "target": [
+          535,
+          535
+        ]
+      },
+      {
+        "reference": [
+          506,
+          510
+        ],
+        "target": [
+          544,
+          548
+        ]
+      },
+      {
+        "reference": [
+          514,
+          554
+        ],
+        "target": [
+          550,
+          590
+        ]
+      },
+      {
+        "reference": [
+          570,
+          585
+        ],
+        "target": [
+          591,
+          606
+        ]
+      },
+      {
+        "reference": [
+          588,
+          601
+        ],
+        "target": [
+          607,
+          620
+        ]
+      },
+      {
+        "reference": [
+          603,
+          603
+        ],
+        "target": [
+          621,
+          621
+        ]
+      },
+      {
+        "reference": [
+          605,
+          616
+        ],
+        "target": [
+          623,
+          634
+        ]
+      }
+    ],
+    "changed_spans": [
+      {
+        "reference": [
+          12,
+          12
+        ],
+        "target": [
+          12,
+          11
+        ]
+      },
+      {
+        "reference": [
+          14,
+          14
+        ],
+        "target": [
+          13,
+          13
+        ]
+      },
+      {
+        "reference": [
+          58,
+          58
+        ],
+        "target": [
+          57,
+          56
+        ]
+      },
+      {
+        "reference": [
+          87,
+          90
+        ],
+        "target": [
+          85,
+          84
+        ]
+      },
+      {
+        "reference": [
+          92,
+          94
+        ],
+        "target": [
+          86,
+          85
+        ]
+      },
+      {
+        "reference": [
+          132,
+          135
+        ],
+        "target": [
+          123,
+          123
+        ]
+      },
+      {
+        "reference": [
+          137,
+          142
+        ],
+        "target": [
+          125,
+          124
+        ]
+      },
+      {
+        "reference": [
+          147,
+          153
+        ],
+        "target": [
+          129,
+          128
+        ]
+      },
+      {
+        "reference": [
+          174,
+          175
+        ],
+        "target": [
+          149,
+          149
+        ]
+      },
+      {
+        "reference": [
+          220,
+          221
+        ],
+        "target": [
+          194,
+          193
+        ]
+      },
+      {
+        "reference": [
+          225,
+          224
+        ],
+        "target": [
+          197,
+          198
+        ]
+      },
+      {
+        "reference": [
+          232,
+          233
+        ],
+        "target": [
+          206,
+          206
+        ]
+      },
+      {
+        "reference": [
+          235,
+          235
+        ],
+        "target": [
+          208,
+          208
+        ]
+      },
+      {
+        "reference": [
+          256,
+          263
+        ],
+        "target": [
+          229,
+          228
+        ]
+      },
+      {
+        "reference": [
+          283,
+          285
+        ],
+        "target": [
+          248,
+          247
+        ]
+      },
+      {
+        "reference": [
+          288,
+          288
+        ],
+        "target": [
+          250,
+          255
+        ]
+      },
+      {
+        "reference": [
+          293,
+          293
+        ],
+        "target": [
+          260,
+          260
+        ]
+      },
+      {
+        "reference": [
+          295,
+          308
+        ],
+        "target": [
+          262,
+          261
+        ]
+      },
+      {
+        "reference": [
+          311,
+          311
+        ],
+        "target": [
+          264,
+          264
+        ]
+      },
+      {
+        "reference": [
+          319,
+          320
+        ],
+        "target": [
+          272,
+          273
+        ]
+      },
+      {
+        "reference": [
+          322,
+          327
+        ],
+        "target": [
+          275,
+          278
+        ]
+      },
+      {
+        "reference": [
+          329,
+          330
+        ],
+        "target": [
+          280,
+          301
+        ]
+      },
+      {
+        "reference": [
+          332,
+          333
+        ],
+        "target": [
+          303,
+          304
+        ]
+      },
+      {
+        "reference": [
+          335,
+          336
+        ],
+        "target": [
+          306,
+          307
+        ]
+      },
+      {
+        "reference": [
+          339,
+          339
+        ],
+        "target": [
+          310,
+          310
+        ]
+      },
+      {
+        "reference": [
+          341,
+          342
+        ],
+        "target": [
+          312,
+          313
+        ]
+      },
+      {
+        "reference": [
+          346,
+          346
+        ],
+        "target": [
+          317,
+          317
+        ]
+      },
+      {
+        "reference": [
+          348,
+          348
+        ],
+        "target": [
+          319,
+          319
+        ]
+      },
+      {
+        "reference": [
+          350,
+          350
+        ],
+        "target": [
+          321,
+          321
+        ]
+      },
+      {
+        "reference": [
+          352,
+          351
+        ],
+        "target": [
+          323,
+          324
+        ]
+      },
+      {
+        "reference": [
+          353,
+          354
+        ],
+        "target": [
+          326,
+          325
+        ]
+      },
+      {
+        "reference": [
+          356,
+          359
+        ],
+        "target": [
+          327,
+          362
+        ]
+      },
+      {
+        "reference": [
+          361,
+          364
+        ],
+        "target": [
+          364,
+          411
+        ]
+      },
+      {
+        "reference": [
+          366,
+          368
+        ],
+        "target": [
+          413,
+          415
+        ]
+      },
+      {
+        "reference": [
+          370,
+          371
+        ],
+        "target": [
+          417,
+          418
+        ]
+      },
+      {
+        "reference": [
+          374,
+          376
+        ],
+        "target": [
+          421,
+          423
+        ]
+      },
+      {
+        "reference": [
+          378,
+          379
+        ],
+        "target": [
+          425,
+          426
+        ]
+      },
+      {
+        "reference": [
+          383,
+          383
+        ],
+        "target": [
+          430,
+          430
+        ]
+      },
+      {
+        "reference": [
+          385,
+          385
+        ],
+        "target": [
+          432,
+          432
+        ]
+      },
+      {
+        "reference": [
+          387,
+          388
+        ],
+        "target": [
+          434,
+          435
+        ]
+      },
+      {
+        "reference": [
+          464,
+          464
+        ],
+        "target": [
+          511,
+          511
+        ]
+      },
+      {
+        "reference": [
+          485,
+          488
+        ],
+        "target": [
+          532,
+          532
+        ]
+      },
+      {
+        "reference": [
+          490,
+          496
+        ],
+        "target": [
+          534,
+          534
+        ]
+      },
+      {
+        "reference": [
+          498,
+          505
+        ],
+        "target": [
+          536,
+          543
+        ]
+      },
+      {
+        "reference": [
+          511,
+          513
+        ],
+        "target": [
+          549,
+          549
+        ]
+      },
+      {
+        "reference": [
+          555,
+          569
+        ],
+        "target": [
+          591,
+          590
+        ]
+      },
+      {
+        "reference": [
+          586,
+          587
+        ],
+        "target": [
+          607,
+          606
+        ]
+      },
+      {
+        "reference": [
+          602,
+          602
+        ],
+        "target": [
+          621,
+          620
+        ]
+      },
+      {
+        "reference": [
+          604,
+          604
+        ],
+        "target": [
+          622,
+          622
+        ]
+      }
+    ],
+    "opaque_target_spans": []
+  },
+  {
+    "target": "POPSLoader/modules/pademu/ds34usb.h",
+    "reference": "RiptOPL/modules/pademu/ds34usb.h",
+    "reviewed_reference": "Full semantic read recorded by Ript modules reviewer; sensitive initializer opaque.",
+    "equal_spans": [
+      {
+        "reference": [
+          1,
+          5
+        ],
+        "target": [
+          1,
+          5
+        ]
+      },
+      {
+        "reference": [
+          7,
+          7
+        ],
+        "target": [
+          10,
+          10
+        ]
+      },
+      {
+        "reference": [
+          16,
+          23
+        ],
+        "target": [
+          13,
+          20
+        ]
+      },
+      {
+        "reference": [
+          26,
+          30
+        ],
+        "target": [
+          21,
+          25
+        ]
+      },
+      {
+        "reference": [
+          32,
+          35
+        ],
+        "target": [
+          27,
+          30
+        ]
+      },
+      {
+        "reference": [
+          42,
+          79
+        ],
+        "target": [
+          32,
+          69
+        ]
+      },
+      {
+        "reference": [
+          80,
+          81
+        ],
+        "target": [
+          187,
+          188
+        ]
+      },
+      {
+        "reference": [
+          83,
+          88
+        ],
+        "target": [
+          189,
+          194
+        ]
+      }
+    ],
+    "changed_spans": [
+      {
+        "reference": [
+          6,
+          6
+        ],
+        "target": [
+          6,
+          9
+        ]
+      },
+      {
+        "reference": [
+          8,
+          15
+        ],
+        "target": [
+          11,
+          12
+        ]
+      },
+      {
+        "reference": [
+          24,
+          25
+        ],
+        "target": [
+          21,
+          20
+        ]
+      },
+      {
+        "reference": [
+          31,
+          31
+        ],
+        "target": [
+          26,
+          26
+        ]
+      },
+      {
+        "reference": [
+          36,
+          41
+        ],
+        "target": [
+          31,
+          31
+        ]
+      },
+      {
+        "reference": [
+          80,
+          79
+        ],
+        "target": [
+          70,
+          186
+        ]
+      },
+      {
+        "reference": [
+          82,
+          82
+        ],
+        "target": [
+          189,
+          188
+        ]
+      }
+    ],
+    "opaque_target_spans": []
+  },
+  {
+    "target": "POPSLoader/modules/pademu/pademu.c",
+    "reference": "RiptOPL/modules/pademu/pademu.c",
+    "reviewed_reference": "Full semantic read recorded by Ript modules reviewer; sensitive initializer opaque.",
+    "equal_spans": [
+      {
+        "reference": [
+          1,
+          9
+        ],
+        "target": [
+          1,
+          9
+        ]
+      },
+      {
+        "reference": [
+          11,
+          15
+        ],
+        "target": [
+          10,
+          14
+        ]
+      },
+      {
+        "reference": [
+          23,
+          31
+        ],
+        "target": [
+          21,
+          29
+        ]
+      },
+      {
+        "reference": [
+          33,
+          68
+        ],
+        "target": [
+          30,
+          65
+        ]
+      },
+      {
+        "reference": [
+          70,
+          83
+        ],
+        "target": [
+          67,
+          80
+        ]
+      },
+      {
+        "reference": [
+          88,
+          100
+        ],
+        "target": [
+          83,
+          95
+        ]
+      },
+      {
+        "reference": [
+          113,
+          117
+        ],
+        "target": [
+          96,
+          100
+        ]
+      },
+      {
+        "reference": [
+          127,
+          168
+        ],
+        "target": [
+          106,
+          147
+        ]
+      },
+      {
+        "reference": [
+          171,
+          171
+        ],
+        "target": [
+          150,
+          150
+        ]
+      },
+      {
+        "reference": [
+          181,
+          182
+        ],
+        "target": [
+          152,
+          153
+        ]
+      },
+      {
+        "reference": [
+          184,
+          190
+        ],
+        "target": [
+          155,
+          161
+        ]
+      },
+      {
+        "reference": [
+          198,
+          198
+        ],
+        "target": [
+          162,
+          162
+        ]
+      },
+      {
+        "reference": [
+          208,
+          232
+        ],
+        "target": [
+          166,
+          190
+        ]
+      },
+      {
+        "reference": [
+          234,
+          234
+        ],
+        "target": [
+          192,
+          192
+        ]
+      },
+      {
+        "reference": [
+          236,
+          237
+        ],
+        "target": [
+          194,
+          195
+        ]
+      },
+      {
+        "reference": [
+          239,
+          239
+        ],
+        "target": [
+          198,
+          198
+        ]
+      },
+      {
+        "reference": [
+          252,
+          500
+        ],
+        "target": [
+          200,
+          448
+        ]
+      },
+      {
+        "reference": [
+          502,
+          589
+        ],
+        "target": [
+          449,
+          536
+        ]
+      }
+    ],
+    "changed_spans": [
+      {
+        "reference": [
+          10,
+          10
+        ],
+        "target": [
+          10,
+          9
+        ]
+      },
+      {
+        "reference": [
+          16,
+          22
+        ],
+        "target": [
+          15,
+          20
+        ]
+      },
+      {
+        "reference": [
+          32,
+          32
+        ],
+        "target": [
+          30,
+          29
+        ]
+      },
+      {
+        "reference": [
+          69,
+          69
+        ],
+        "target": [
+          66,
+          66
+        ]
+      },
+      {
+        "reference": [
+          84,
+          87
+        ],
+        "target": [
+          81,
+          82
+        ]
+      },
+      {
+        "reference": [
+          101,
+          112
+        ],
+        "target": [
+          96,
+          95
+        ]
+      },
+      {
+        "reference": [
+          118,
+          126
+        ],
+        "target": [
+          101,
+          105
+        ]
+      },
+      {
+        "reference": [
+          169,
+          170
+        ],
+        "target": [
+          148,
+          149
+        ]
+      },
+      {
+        "reference": [
+          172,
+          180
+        ],
+        "target": [
+          151,
+          151
+        ]
+      },
+      {
+        "reference": [
+          183,
+          183
+        ],
+        "target": [
+          154,
+          154
+        ]
+      },
+      {
+        "reference": [
+          191,
+          197
+        ],
+        "target": [
+          162,
+          161
+        ]
+      },
+      {
+        "reference": [
+          199,
+          207
+        ],
+        "target": [
+          163,
+          165
+        ]
+      },
+      {
+        "reference": [
+          233,
+          233
+        ],
+        "target": [
+          191,
+          191
+        ]
+      },
+      {
+        "reference": [
+          235,
+          235
+        ],
+        "target": [
+          193,
+          193
+        ]
+      },
+      {
+        "reference": [
+          238,
+          238
+        ],
+        "target": [
+          196,
+          197
+        ]
+      },
+      {
+        "reference": [
+          240,
+          251
+        ],
+        "target": [
+          199,
+          199
+        ]
+      },
+      {
+        "reference": [
+          501,
+          501
+        ],
+        "target": [
+          449,
+          448
+        ]
+      }
+    ],
+    "opaque_target_spans": []
+  }
+]

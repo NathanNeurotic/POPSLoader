@@ -1,0 +1,21 @@
+{
+  "path": "POPSLoader/bin/POPSLDR/system.lua",
+  "range": [
+    2568,
+    4843
+  ],
+  "review": "Literal-only localization table parsed entirely under Lua 5.4; all row key/value types, duplicate keys and ordered printf placeholders inspected; English lookup/format consumers and surrounding comments read separately. Linguistic translation accuracy not claimed.",
+  "literal_rows": 2249,
+  "final_rows_by_language": {
+    "ES": 304,
+    "PT": 305,
+    "FR": 304,
+    "HU": 317,
+    "SK": 409,
+    "IT": 305,
+    "DE": 305
+  },
+  "duplicate_keys": [],
+  "format_mismatches": [],
+  "control_character_rows": []
+}
