@@ -42,7 +42,7 @@ Both	Obe
 Bringing up network...	Spúšťanie siete...
 Building HDD game list...	Vytváranie zoznamu hier z HDD...
 Building USB game list...	Vytváranie zoznamu hier z USB...
-CLR	CLR (Vyčistiť)
+CLR	ČISTI
 Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first	Nedá sa vypnúť, kým je zapnuté Adaptívne BDMA\nNajskôr vypni Adaptívne BDMA
 Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first	Nedá sa vypnúť, kým je BDMA povolené\nNajskôr nastav BDMA mód na FAT32 (None)
 Can't disable while SMB modules are installed\nSet SMB modules to Not installed first	Nedá sa vypnúť, kým sú nainštalované SMB moduly\nNajskôr nastav SMB moduly na Nenainštalované
@@ -88,7 +88,7 @@ Couldn't write .hide to the HDD	Nepodarilo sa zapísať súbor .hide na HDD
 Cover art	Obal hry
 Credits	Tvorcovia
 Cursor: L1 / R1	Kurzor: L1 / R1
-DEL	DEL (Vymazať)
+DEL	MAZAŤ
 DEV9 module failed to load	Načítanie DEV9 modulu zlyhalo
 DHCP (automatic)	DHCP (automaticky)
 DHCP failed\nset a static IP in SMB settings	DHCP zlyhalo\nnastav statickú IP v nastaveniach SMB
@@ -321,7 +321,7 @@ SMB modules are not installed\nGames list but won't boot without them --\ninstal
 SMB modules didn't install/remove\nmodule setting reverted; other settings were saved	SMB moduly sa nenainštalovali/neodstránili\nnastavenie modulu sa obnovilo; ostatné nastavenia boli uložené
 SMB modules failed to load	SMB moduly sa nepodarilo načítať
 SMB modules installed	SMB moduly nainštalované
-SPACE	MEDZERNÍK
+SPACE	MEDZERA
 Save	Uložiť
 Save Changes	Uložiť zmeny
 Saved to	Uložené do
