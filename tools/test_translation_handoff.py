@@ -68,6 +68,16 @@ class TranslationHandoffTests(unittest.TestCase):
                 else:
                     self.assertEqual(read_xlsx(path), [('Settings', expected)])
 
+    def test_slovak_keyboard_label_corrections(self):
+        # The 54px delete/clear keys clipped the previous verbose translations (#605).
+        _, _, dictionaries = source_data()
+        slovak = dict(dictionaries["SK"])
+        tsv = dict(read_tsv(Path(__file__).resolve().parent.parent / "docs/translations/slovak.tsv"))
+        for key, expected in {"SPACE": "MEDZERA", "DEL": "MAZAŤ", "CLR": "ČISTI"}.items():
+            with self.subTest(key=key):
+                self.assertEqual(slovak[key], expected)
+                self.assertEqual(tsv[key], expected)
+
     def test_shipped_catalogs_cover_current_runtime_keys(self):
         _, required, dictionaries = source_data()
         self.assertEqual({'FR', 'DE', 'PT', 'ES', 'IT', 'HU', 'SK'}, set(dictionaries))
