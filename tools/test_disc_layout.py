@@ -40,7 +40,7 @@ for height in (448, 480, 512):
     for y in (32, 96):  # details lift the artwork; icon must follow it
         for iw, ih in ((128, 128), (256, 128), (128, 256)):
             rect, frame_h = render(height, iw, ih, y, True, True)
-            assert max(rect.w, rect.h) == min(120, int(frame_h * 0.5 + 0.5)), "incorrect disc icon size"
+            assert max(rect.w, rect.h) == min(128, frame_h, 256), "incorrect OPL-sized disc icon box"
             assert rect.x >= 344 and rect.x + rect.w <= 600, "icon overlaps game list or safe edge"
             assert rect.y >= y and rect.y + rect.h <= y + frame_h, "icon exceeds artwork height"
             expected = iw / ih * 480 / height
@@ -53,4 +53,11 @@ for height in (448, 480, 512):
         rect, _ = render(height, iw, ih, 96, enabled, present)
         assert rect is None, "disabled/missing/invalid icon was drawn"
         cases += 1
+    # OPL's 128px display box is independent of the source PNG resolution.
+    small, _ = render(height, 128, 128, 96, True, True)
+    large, _ = render(height, 256, 256, 96, True, True)
+    assert (small.x, small.y, small.w, small.h) == (large.x, large.y, large.w, large.h), (
+        "disc icon rendering unexpectedly depends on PNG resolution"
+    )
+    cases += 1
 print(f"PASS {cases} disc-icon layout cases (NTSC, PAL, details lift, aspect and visibility)")

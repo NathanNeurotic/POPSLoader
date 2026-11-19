@@ -4473,7 +4473,7 @@ PLDR.I18N = {
     ["Bringing up network..."] = "Spúšťanie siete...",
     ["Building HDD game list..."] = "Vytváranie zoznamu hier z HDD...",
     ["Building USB game list..."] = "Vytváranie zoznamu hier z USB...",
-    ["CLR"] = "CLR (Vyčistiť)",
+    ["CLR"] = "ČISTI",
     ["Can't disable while Adaptive BDMA is on\nTurn Adaptive BDMA off first"] = "Nedá sa vypnúť, kým je zapnuté Adaptívne BDMA\nNajskôr vypni Adaptívne BDMA",
     ["Can't disable while BDMA is enabled\nSet BDMA Mode to FAT32 (None) first"] = "Nedá sa vypnúť, kým je BDMA povolené\nNajskôr nastav BDMA mód na FAT32 (None)",
     ["Can't disable while SMB modules are installed\nSet SMB modules to Not installed first"] = "Nedá sa vypnúť, kým sú nainštalované SMB moduly\nNajskôr nastav SMB moduly na Nenainštalované",
@@ -4519,7 +4519,7 @@ PLDR.I18N = {
     ["Cover art"] = "Obal hry",
     ["Credits"] = "Tvorcovia",
     ["Cursor: L1 / R1"] = "Kurzor: L1 / R1",
-    ["DEL"] = "DEL (Vymazať)",
+    ["DEL"] = "MAZAŤ",
     ["DEV9 module failed to load"] = "Načítanie DEV9 modulu zlyhalo",
     ["DHCP (automatic)"] = "DHCP (automaticky)",
     ["DHCP failed\nset a static IP in SMB settings"] = "DHCP zlyhalo\nnastav statickú IP v nastaveniach SMB",
@@ -4752,7 +4752,7 @@ PLDR.I18N = {
     ["SMB modules didn't install/remove\nmodule setting reverted; other settings were saved"] = "SMB moduly sa nenainštalovali/neodstránili\nnastavenie modulu sa obnovilo; ostatné nastavenia boli uložené",
     ["SMB modules failed to load"] = "SMB moduly sa nepodarilo načítať",
     ["SMB modules installed"] = "SMB moduly nainštalované",
-    ["SPACE"] = "MEDZERNÍK",
+    ["SPACE"] = "MEDZERA",
     ["Save"] = "Uložiť",
     ["Save Changes"] = "Uložiť zmeny",
     ["Saved to"] = "Uložené do",
@@ -7963,11 +7963,10 @@ end
 -- ============================================================================
 -- Adaptive BDMA (issue #509): with the manual global BDMA Mode, a user playing
 -- from BOTH e.g. MMCE and FAT32-USB must flip Settings between launches (the
--- staged variant serves one device and breaks the other). When BDMA_ADAPTIVE is
--- on, the variant for the LAUNCHED game's device is staged at launch time --
--- and, per the design ask, only after an equipped check so an already-correct
--- card takes ZERO memory-card writes. With Adaptive OFF the same launch hook
--- restages the chosen BDMA Mode for its own device when the card lost it (#616).
+-- staged variant serves one device and breaks the other). The variant for the
+-- LAUNCHED game's device is staged after an equipped check so an already-correct
+-- card takes ZERO memory-card writes. Devices that require BDMA always stage
+-- their own pair; manual FAT32 USB retains POPStarter's built-in USB option.
 
 -- The -bdma=<mode> launch argument, normalised, or nil when absent/unrecognised.
 -- Deliberately tolerant: an unknown value is ignored rather than pinning
@@ -8043,20 +8042,29 @@ function PLDR.IsBdmaModeEquipped(mode_key)
   return ResolveEffectiveBdmaMode() == target
 end
 
+function PLDR.IsBdmaRequiredForLaunch(ui_scene, device_page)
+  if type(UI) == "table" and type(UI.SCENES) == "table"
+     and (ui_scene == UI.SCENES.GBDMHDD or ui_scene == UI.SCENES.GILINK) then
+    return true
+  end
+  return device_page == "MX4SIO" or device_page == "MMCE" or device_page == "SMB/MMCE"
+end
+
 function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
-  -- POPSTARTER folder off: modules can't live on the card, and the load-time
-  -- invariant keeps effective BDMA at FAT32 in that state. Nothing to stage.
-  if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   local target = PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if target == nil then return true end
+  local required = PLDR.IsBdmaRequiredForLaunch(ui_scene, device_page)
+  if PLDR.POPSTARTER_MC_FOLDER == false then
+    if not required then return true end
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add(PLDR.L("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"), "warn")
+    end
+    return false
+  end
   local manual = PLDR.BDMA_ADAPTIVE ~= true
-  -- Adaptive OFF (#616): the chosen BDMA Mode reaches the card only on a
-  -- Settings save that changes it, so a card that lost the pair (files deleted,
-  -- card swapped or absent at save time) launched with POPStarter's stock USB
-  -- drivers ("mass:/POPS/POPS.ELF not found") while Settings still showed the
-  -- mode. Restage it for launches on the device it serves; every other launch
-  -- keeps the manual behaviour, and FAT32 (None) never touches hand-placed drivers.
-  if manual and (target == "FAT32" or target ~= NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY)) then
+  -- Required devices cannot launch with another variant or POPStarter's stock
+  -- USB stack. Optional USB keeps the manual FAT32/no-BDMA choice.
+  if manual and not required and (target == "FAT32" or target ~= NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY)) then
     return true
   end
   if PLDR.IsBdmaModeEquipped(target) then return true end
@@ -9373,6 +9381,10 @@ PLDR._U.ERR = {
 }
 PLDR._U.state = { remote = nil, target = nil }
 
+function PLDR._U.error(code, fallback)
+  return PLDR.L(PLDR._U.ERR[code] or fallback)
+end
+
 function PLDR.UpdateTarget()
   local p = BOOT_ARGV0_RAW
   if type(p) ~= "string" or p == "" then return nil end
@@ -9387,11 +9399,11 @@ function PLDR._U.wait(report, label, lo, hi)
   while true do
     local running, result, done, total, remote, phase, step, err = System.updateStatus()
     if not running then return result, remote, step, err end
-    local text, frac = label, lo
-    if phase == 1 then text = "Writing..." end
+    local text, frac = PLDR.L(label), lo
+    if phase == 1 then text = PLDR.L("Writing...") end
     if (tonumber(total) or 0) > 0 then
       frac = lo + (hi - lo) * (done / total)
-      text = string.format("%s %d / %d KB", text:gsub("%.%.%.$", ""), math.floor(done / 1024), math.floor(total / 1024))
+      text = PLDR.LFmt("%s %d / %d KB", text:gsub("%.%.%.$", ""), math.floor(done / 1024), math.floor(total / 1024))
     end
     report(text, frac)
   end
@@ -9399,16 +9411,16 @@ end
 
 function PLDR._U.net(report)
   if type(System) ~= "table" or type(System.updateStart) ~= "function" then
-    return false, "Updates are not available in this build"
+    return false, PLDR.L("Updates are not available in this build")
   end
-  report("Loading network modules...", 0.05)
+  report(PLDR.L("Loading network modules..."), 0.05)
   if type(System.initSMB) == "function" and not System.initSMB() then
-    return false, "Could not start the network"
+    return false, PLDR.L("Could not start the network")
   end
-  report((type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true) and "Waiting for link + DHCP lease..." or "Waiting for network link...", 0.1)
+  report((type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true) and PLDR.L("Waiting for link + DHCP lease...") or PLDR.L("Waiting for network link..."), 0.1)
   local ok, err = System.smbNetUp(PLDR.SMB)
   if not ok then
-    return false, "The network is not up ("..tostring(err or "NO_LINK")..")\nSet it up in Settings > Network"
+    return false, PLDR.LFmt("The network is not up (%s)\nSet it up in Settings > Network", tostring(err or "NO_LINK"))
   end
   return true
 end
@@ -9417,13 +9429,13 @@ end
 function PLDR.CheckForUpdate(report)
   local target = PLDR.UpdateTarget()
   if target == nil then
-    return "error", "Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive"
+    return "error", PLDR.L("Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive")
   end
   local ok, msg = PLDR._U.net(report)
   if not ok then return "error", msg end
-  report("Checking GitHub...", 0.3)
+  report(PLDR.L("Checking GitHub..."), 0.3)
   local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
-  if not System.updateStart("check", ver) then return "error", PLDR._U.ERR[9] end
+  if not System.updateStart("check", ver) then return "error", PLDR._U.error(9) end
   local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
   if result == 1 then
     -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
@@ -9431,7 +9443,7 @@ function PLDR.CheckForUpdate(report)
     PLDR._U.state.target = target
     return "newest", remote
   end
-  if result ~= 0 then return "error", PLDR._U.ERR[result] or "The update check failed" end
+  if result ~= 0 then return "error", PLDR._U.error(result, PLDR.L("The update check failed")) end
   PLDR._U.state.remote = remote
   PLDR._U.state.target = target
   return "available", remote
@@ -9440,20 +9452,20 @@ end
 -- Needs a CheckForUpdate that found a newer release. Returns true, <message> | false, <message>.
 function PLDR.InstallUpdate(report)
   local target = PLDR._U.state.target
-  if target == nil or PLDR._U.state.remote == nil then return false, "Check for updates first" end
-  report("Downloading...", 0.05)
-  if not System.updateStart("install", target) then return false, PLDR._U.ERR[9] end
+  if target == nil or PLDR._U.state.remote == nil then return false, PLDR.L("Check for updates first") end
+  report(PLDR.L("Downloading..."), 0.05)
+  if not System.updateStart("install", target) then return false, PLDR._U.error(9) end
   local result, _, step, err = PLDR._U.wait(report, "Downloading...", 0.05, 0.98)
   if result == 6 and step == 1 then
-    return false, "Could not open POPSLOADER.ELF for writing (error "..tostring(err)..")\nIt was not changed"
+    return false, PLDR.LFmt("Could not open POPSLOADER.ELF for writing (error %s)\nIt was not changed", tostring(err))
   elseif result == 6 then
-    return false, "Could not finish replacing POPSLOADER.ELF\n(step "..tostring(step).." of 3, error "..tostring(err)..")\nIt may be damaged: copy it to the device again"
+    return false, PLDR.LFmt("Could not finish replacing POPSLOADER.ELF\n(step %s of 3, error %s)\nIt may be damaged: copy it to the device again", tostring(step), tostring(err))
   elseif result ~= 0 then
-    return false, PLDR._U.ERR[result] or "The download failed"
+    return false, PLDR._U.error(result, PLDR.L("The download failed"))
   end
   local version = PLDR._U.state.remote
   PLDR._U.state.remote = nil
-  return true, "Updated to "..tostring(version).."\nRestart POPSLoader to use it"
+  return true, PLDR.LFmt("Updated to %s\nRestart POPSLoader to use it", tostring(version))
 end
 
 function PLDR.InitSMBPopsRoot(report)
@@ -11142,8 +11154,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     )
     return
   end
-  -- Adaptive BDMA (issue #509): stage the launched device's module variant;
-  -- with Adaptive OFF, restage the chosen BDMA Mode when the card lost it (#616).
+  -- Stage the launched device's required module variant; optional USB retains
+  -- the manual FAT32 choice when Adaptive BDMA is off.
   -- Runs AFTER the cheap launch validations above (a blocked launch must not
   -- cost memory-card writes) and before the exec; nothing in between reads the
   -- staged modules. Zero card writes when the right variant is already
