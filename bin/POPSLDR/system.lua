@@ -5138,6 +5138,7 @@ local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
 -- still READ for back-compat in ResolveEffectiveBdmaMode so existing cards keep
 -- working; the writer always writes this current name.
 local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/bdma_mode.txt"
+local BDMA_STAGING_MARKER = "STAGING"
 local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx"
@@ -7871,6 +7872,12 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return false
   end
 
+  -- Invalidate the equipped state before replacing either driver. If a later
+  -- source/read/write fails, mixed old/new files cannot pass the old marker.
+  if not WriteBdmaModeMarker(BDMA_STAGING_MARKER, launch_fast) then
+    return false
+  end
+
   if launch_fast == true or selected == "UDPFS" then
     -- UDPFS always uses the released embedded pair, including Settings apply:
     -- a stale external Alpha override must not reinstall the removed backend.
@@ -8015,6 +8022,9 @@ end
 function PLDR.IsBdmaModeEquipped(mode_key)
   local target = NormalizeBdmaModeKey(mode_key)
   if target == nil then
+    return false
+  end
+  if ReadBdmaModeMarkerCompat(BDMA_MODE_MARKER_PATH) == BDMA_STAGING_MARKER then
     return false
   end
   local have_all = true
