@@ -2858,6 +2858,48 @@ t64 = E('''function()
 end''')()
 check("T64 busy overlay translates existing ATA/network messages (#605)", t64)
 
+# T65 a failed variant switch must not leave mixed drivers looking equipped.
+# The incomplete marker must also win over any legacy marker fallback.
+t65 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local saved_adaptive, saved_mode, saved_folder = PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER
+  local saved_embeds = {}
+  for _, key in ipairs({"usbd.irx.ata", "usbhdfsd.irx.ata", "usbd.irx.mx4sio", "usbhdfsd.irx.mx4sio"}) do
+    saved_embeds[key] = EMBEDDED[key]
+  end
+  local function restore()
+    PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER = saved_adaptive, saved_mode, saved_folder
+    for key, value in pairs(saved_embeds) do EMBEDDED[key] = value end
+    FAKEFS.files[root.."/usbd.irx"] = nil
+    FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+    FAKEFS.files[root.."/bdma_mode.txt"] = nil
+    FAKEFS.files[root.."/.pldr_bdma_mode"] = nil
+  end
+  PLDR.BDMA_ADAPTIVE = false
+  PLDR.BDMA_MODE_KEY = "MX4SIO"
+  PLDR.POPSTARTER_MC_FOLDER = true
+  FAKEFS.files[root.."/usbd.irx"] = "OLD-MX4-USBD"
+  FAKEFS.files[root.."/usbhdfsd.irx"] = "OLD-MX4-HDFSD"
+  FAKEFS.files[root.."/bdma_mode.txt"] = "MX4SIO"
+  FAKEFS.files[root.."/.pldr_bdma_mode"] = "MX4SIO"
+  EMBEDDED["usbd.irx.ata"] = "NEW-ATA-USBD"
+  EMBEDDED["usbhdfsd.irx.ata"] = nil
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+
+  local failed = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  local mixed_rejected = PLDR.IsBdmaModeEquipped("MX4SIO") == false
+  EMBEDDED["usbd.irx.mx4sio"] = "OLD-MX4-USBD"
+  EMBEDDED["usbhdfsd.irx.mx4sio"] = "OLD-MX4-HDFSD"
+  local recovered = PLDR.MaybeApplyAdaptiveBdma(nil, "MX4SIO")
+  local restored = FAKEFS.files[root.."/usbd.irx"] == "OLD-MX4-USBD"
+               and FAKEFS.files[root.."/usbhdfsd.irx"] == "OLD-MX4-HDFSD"
+               and FAKEFS.files[root.."/bdma_mode.txt"] == "MX4SIO"
+  restore()
+  return failed == false and mixed_rejected and recovered == true and restored,
+         "failed variant switch left mixed drivers equipped or blocked clean recovery"
+end''')()
+check("T65 incomplete staging invalidates mixed drivers and recovers (#605)", t65)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
