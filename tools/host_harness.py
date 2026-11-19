@@ -2842,6 +2842,22 @@ t63 = E('''function()
 end''')()
 check("T63 RunPOPStarterGame stages required ATA drivers before exec (#605)", t63)
 
+# T64 existing ATA/network translations must reach the busy overlay. The
+# reporter saw English here even though the Slovak dictionary had the key.
+t64 = E('''function()
+  local saved_language = PLDR.LANGUAGE
+  local saved_message, saved_active, saved_progress = UI.SavingMessage, UI.SavingActive, UI.SavingProgress
+  PLDR.LANGUAGE = "SK"
+  UI.ShowSavingOverlay("Loading HDD modules...", 0.25)
+  local got = UI.SavingMessage
+  local expected = PLDR.I18N.SK["Loading HDD modules..."]
+  PLDR.LANGUAGE = saved_language
+  UI.SavingMessage, UI.SavingActive, UI.SavingProgress = saved_message, saved_active, saved_progress
+  return got == expected and got ~= "Loading HDD modules...",
+         "busy overlay did not apply the existing Slovak ATA translation"
+end''')()
+check("T64 busy overlay translates existing ATA/network messages (#605)", t64)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

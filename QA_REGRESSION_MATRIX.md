@@ -14,6 +14,13 @@ Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BE
 | Equipped-card write avoidance | T62 proves both driver files plus the matching marker are accepted with the embedded source poisoned, so no read/rewrite is needed. The existing marker-last writer is unchanged. | Confirm on a memory card that a second same-device launch performs no rewrite and switching required device types updates both drivers and marker. |
 | POPSTARTER folder disabled on a required launch | T62 verifies a cancelled result and the existing enable-folder warning rather than a driverless launch. | Unknown (verify on hardware): warning visibility and successful launch after enabling the folder. |
 
+## Slovak updater and remaining-translation handoff (2026-11-19)
+
+| Case | Evidence / result | Remaining verification |
+|---|---|---|
+| Updater and ATA/network display reachability | Updater static/dynamic messages use `PLDR.L` / `PLDR.LFmt`; busy overlays apply existing translations. T64 failed before the overlay fix and passes after; full host harness 64/64. | Unknown (verify on hardware): Slovak updater, network error and ATA driver-progress display. |
+| Full and remaining workbooks | Full catalog: 442 rows, preserving all prior nonblank entries. Delta: 33 updater rows, all Slovak cells blank. Both are formula-free, Arial, importer-readable; delta rows exactly match the pending set. Catalog checker and 11 handoff tests pass. | Awaiting SVKghost's completed/partial `slovak-remaining.xlsx`; no new Slovak wording has been invented or integrated. |
+
 ## 1.4.0 release validation (2026-10-28)
 
 The release source carries matching 1.4.0 stamps in `etc/boot.lua`, `title.cfg`

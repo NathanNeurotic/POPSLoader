@@ -1375,7 +1375,7 @@ UI = {
       return scene
     end;
     ShowSavingOverlay = function (msg, progress)
-      UI.SavingMessage = tostring(msg or "Saving...")
+      UI.SavingMessage = PLDR.L(tostring(msg or "Saving..."))
       UI.SavingActive = true
       UI.SavingAnimTick = (tonumber(UI.SavingAnimTick) or 0) + 1
       if type(progress) == "number" then
@@ -5488,35 +5488,35 @@ UI = {
           if ver == "" then return "(unknown)" end
           return ver
         end)
-        AddAction("Check for Updates", function()
+        AddAction(PLDR.L("Check for Updates"), function()
           if UI.SmbDirty == true then
-            UI.Notif_queue.add("Save the network settings first, then check for updates", "error")
+            UI.Notif_queue.add(PLDR.L("Save the network settings first, then check for updates"), "error")
             return
           end
           local state, info
-          UI.RunBusyTask("Checking for updates...", function (report)
+          UI.RunBusyTask(PLDR.L("Checking for updates..."), function (report)
             state, info = PLDR.CheckForUpdate(report)
-          end, "Update check failed")
+          end, PLDR.L("Update check failed"))
           if state == "available" or state == "newest" then
             local newer = state == "available"
             UI.Modal.active = true
-            UI.Modal.title = "Update"
-            UI.Modal.body = newer and ("POPSLoader "..tostring(info).." is available.\nInstall it now?")
-                                   or ("POPSLoader is up to date.\nDownload "..tostring(info).." again anyway?")
-            UI.Modal.options = {newer and "Install" or "Download", "Cancel"}
+            UI.Modal.title = PLDR.L("Update")
+            UI.Modal.body = newer and PLDR.LFmt("POPSLoader %s is available.\nInstall it now?", tostring(info))
+                                   or PLDR.LFmt("POPSLoader is up to date.\nDownload %s again anyway?", tostring(info))
+            UI.Modal.options = {(newer and PLDR.L("Install") or PLDR.L("Download")), PLDR.L("Cancel")}
             UI.Modal.confirm_action = function ()
               UI.Modal.Close()
               local ok, msg
-              UI.RunBusyTask("Updating...", function (report)
+              UI.RunBusyTask(PLDR.L("Updating..."), function (report)
                 ok, msg = PLDR.InstallUpdate(report)
-              end, "Update failed")
-              UI.Notif_queue.add(tostring(msg or "Update failed"), ok and "info" or "error")
+              end, PLDR.L("Update failed"))
+              UI.Notif_queue.add(tostring(msg or PLDR.L("Update failed")), ok and "info" or "error")
             end
             UI.Modal.cancel_action = UI.Modal.Close
             UI.Modal.triangle_action = nil
             UI.Modal.ignore_until_release = true
           elseif state == "error" then
-            UI.Notif_queue.add(tostring(info or "The update check failed"), "error")
+            UI.Notif_queue.add(tostring(info or PLDR.L("The update check failed")), "error")
           end
         end)
         AddAction("Credits", function()
