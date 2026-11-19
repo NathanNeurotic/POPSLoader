@@ -7963,11 +7963,10 @@ end
 -- ============================================================================
 -- Adaptive BDMA (issue #509): with the manual global BDMA Mode, a user playing
 -- from BOTH e.g. MMCE and FAT32-USB must flip Settings between launches (the
--- staged variant serves one device and breaks the other). When BDMA_ADAPTIVE is
--- on, the variant for the LAUNCHED game's device is staged at launch time --
--- and, per the design ask, only after an equipped check so an already-correct
--- card takes ZERO memory-card writes. With Adaptive OFF the same launch hook
--- restages the chosen BDMA Mode for its own device when the card lost it (#616).
+-- staged variant serves one device and breaks the other). The variant for the
+-- LAUNCHED game's device is staged after an equipped check so an already-correct
+-- card takes ZERO memory-card writes. Devices that require BDMA always stage
+-- their own pair; manual FAT32 USB retains POPStarter's built-in USB option.
 
 -- The -bdma=<mode> launch argument, normalised, or nil when absent/unrecognised.
 -- Deliberately tolerant: an unknown value is ignored rather than pinning
@@ -8043,20 +8042,29 @@ function PLDR.IsBdmaModeEquipped(mode_key)
   return ResolveEffectiveBdmaMode() == target
 end
 
+function PLDR.IsBdmaRequiredForLaunch(ui_scene, device_page)
+  if type(UI) == "table" and type(UI.SCENES) == "table"
+     and (ui_scene == UI.SCENES.GBDMHDD or ui_scene == UI.SCENES.GILINK) then
+    return true
+  end
+  return device_page == "MX4SIO" or device_page == "MMCE" or device_page == "SMB/MMCE"
+end
+
 function PLDR.MaybeApplyAdaptiveBdma(ui_scene, device_page)
-  -- POPSTARTER folder off: modules can't live on the card, and the load-time
-  -- invariant keeps effective BDMA at FAT32 in that state. Nothing to stage.
-  if PLDR.POPSTARTER_MC_FOLDER == false then return true end
   local target = PLDR.ResolveAdaptiveBdmaTarget(ui_scene, device_page)
   if target == nil then return true end
+  local required = PLDR.IsBdmaRequiredForLaunch(ui_scene, device_page)
+  if PLDR.POPSTARTER_MC_FOLDER == false then
+    if not required then return true end
+    if UI ~= nil and UI.Notif_queue ~= nil then
+      UI.Notif_queue.add(PLDR.L("Enable the POPSTARTER Folder first\n(BDMA / SMB modules must live on the memory card)"), "warn")
+    end
+    return false
+  end
   local manual = PLDR.BDMA_ADAPTIVE ~= true
-  -- Adaptive OFF (#616): the chosen BDMA Mode reaches the card only on a
-  -- Settings save that changes it, so a card that lost the pair (files deleted,
-  -- card swapped or absent at save time) launched with POPStarter's stock USB
-  -- drivers ("mass:/POPS/POPS.ELF not found") while Settings still showed the
-  -- mode. Restage it for launches on the device it serves; every other launch
-  -- keeps the manual behaviour, and FAT32 (None) never touches hand-placed drivers.
-  if manual and (target == "FAT32" or target ~= NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY)) then
+  -- Required devices cannot launch with another variant or POPStarter's stock
+  -- USB stack. Optional USB keeps the manual FAT32/no-BDMA choice.
+  if manual and not required and (target == "FAT32" or target ~= NormalizeBdmaModeKey(PLDR.BDMA_MODE_KEY)) then
     return true
   end
   if PLDR.IsBdmaModeEquipped(target) then return true end
@@ -11142,8 +11150,8 @@ function PLDR.RunPOPStarterGame(gamelocation, game, ui_scene, launch_options)
     )
     return
   end
-  -- Adaptive BDMA (issue #509): stage the launched device's module variant;
-  -- with Adaptive OFF, restage the chosen BDMA Mode when the card lost it (#616).
+  -- Stage the launched device's required module variant; optional USB retains
+  -- the manual FAT32 choice when Adaptive BDMA is off.
   -- Runs AFTER the cheap launch validations above (a blocked launch must not
   -- cost memory-card writes) and before the exec; nothing in between reads the
   -- staged modules. Zero card writes when the right variant is already

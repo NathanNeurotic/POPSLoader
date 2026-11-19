@@ -404,17 +404,21 @@ t61 = E('''function()
 end''')()
 check("T61 manual apply embeds-first (stale APP_DIR override cannot win; no-embed fallback stays)", t61)
 
-# T62 Adaptive OFF (issue #616): the chosen BDMA Mode reached the card only on a
-# Settings save that changed it, and nothing at launch checked the card. A card
-# that lost the pair (files deleted, card swapped/absent at save time) launched
-# exFAT-HDD games with POPStarter's stock USB drivers -> "mass:/POPS/POPS.ELF not
-# found", while the UI kept showing the chosen mode. A launch on the device the
-# chosen mode serves must restage it; other launches and FAT32 (None) must not
-# write anything.
+# T62 required-device launches stage their own embedded pair regardless of the
+# Adaptive/manual preference. An already-equipped card (both files + matching
+# marker) remains a zero-write launch; optional FAT32 USB and non-BDMA devices
+# retain their manual behavior.
 t62 = E('''function()
   local root = PLDR.POPSTARTER_DIR
   local saved_adaptive, saved_mode, saved_folder = PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER
-  local saved_usbd, saved_hdfsd = EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"]
+  local saved_msgs = UI.Notif_queue.msg
+  local saved_embeds = {}
+  for _, suffix in ipairs({"ata", "mx4sio", "mmce", "ilink"}) do
+    for _, base in ipairs({"usbd.irx", "usbhdfsd.irx"}) do
+      local key = base.."."..suffix
+      saved_embeds[key] = EMBEDDED[key]
+    end
+  end
   local function clear_card()
     FAKEFS.files[root.."/usbd.irx"] = nil
     FAKEFS.files[root.."/usbhdfsd.irx"] = nil
@@ -422,70 +426,94 @@ t62 = E('''function()
   end
   local function finish(ok, why)
     PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER = saved_adaptive, saved_mode, saved_folder
-    EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"] = saved_usbd, saved_hdfsd
+    for key, value in pairs(saved_embeds) do EMBEDDED[key] = value end
+    UI.Notif_queue.msg = saved_msgs
     clear_card()
     return ok, why
   end
-  EMBEDDED["usbd.irx.ata"] = "REAL-USBD-ATA"
-  EMBEDDED["usbhdfsd.irx.ata"] = "REAL-HDFSD-ATA"
   EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
   PLDR.POPSTARTER_MC_FOLDER = true
   PLDR.BDMA_ADAPTIVE = false
-  PLDR.BDMA_MODE_KEY = "ATA"
-  clear_card()
-  -- (a) card lost the chosen pair: an exFAT-HDD launch restages it
-  local ok = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
-  if ok ~= true or FAKEFS.files[root.."/usbd.irx"] ~= "REAL-USBD-ATA"
-     or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "REAL-HDFSD-ATA"
-     or FAKEFS.files[root.."/bdma_mode.txt"] ~= "ATA" then
-    return finish(false, "Adaptive OFF exFAT-HDD launch did not restage the chosen ATA pair")
-  end
-  -- (b) already equipped: zero writes (embed removed, so any restage would fail)
-  EMBEDDED["usbd.irx.ata"] = nil
-  if PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB") ~= true then
-    return finish(false, "an equipped card was restaged")
-  end
-  EMBEDDED["usbd.irx.ata"] = "REAL-USBD-ATA"
-  -- (c) launches the chosen mode doesn't serve keep the manual behaviour: no writes
-  clear_card()
-  for _, page in ipairs({"USB", "MMCE", "MX4SIO", "HDD"}) do
-    if PLDR.MaybeApplyAdaptiveBdma(nil, page) ~= true or FAKEFS.files[root.."/usbd.irx"] ~= nil
-       or FAKEFS.files[root.."/bdma_mode.txt"] ~= nil then
-      return finish(false, "manual ATA staged drivers for a "..page.." launch")
+  UI.Notif_queue.msg = {}
+
+  local cases = {
+    { target = "ATA", scene = UI.SCENES.GBDMHDD, page = "USB" },
+    { target = "ILINK", scene = UI.SCENES.GILINK, page = "ILINK" },
+    { target = "MX4SIO", page = "MX4SIO" },
+    { target = "MMCE", page = "MMCE" },
+    { target = "MMCE", page = "SMB/MMCE" },
+  }
+  for i, case in ipairs(cases) do
+    local suffix = string.lower(case.target)
+    EMBEDDED["usbd.irx."..suffix] = "USBD-"..case.target
+    EMBEDDED["usbhdfsd.irx."..suffix] = "HDFSD-"..case.target
+    PLDR.BDMA_MODE_KEY = (i % 2 == 1) and "FAT32" or "USBEXFAT"
+    clear_card()
+    local ok = PLDR.MaybeApplyAdaptiveBdma(case.scene, case.page)
+    if ok ~= true or FAKEFS.files[root.."/usbd.irx"] ~= "USBD-"..case.target
+       or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "HDFSD-"..case.target
+       or FAKEFS.files[root.."/bdma_mode.txt"] ~= case.target then
+      return finish(false, "required "..case.target.." launch skipped staging with a mismatched manual mode")
+    end
+    if case.target == "ATA" then
+      -- Matching marker + both files: no embedded read or card rewrite is needed.
+      EMBEDDED["usbd.irx.ata"] = nil
+      if PLDR.MaybeApplyAdaptiveBdma(case.scene, case.page) ~= true
+         or FAKEFS.files[root.."/usbd.irx"] ~= "USBD-ATA"
+         or FAKEFS.files[root.."/bdma_mode.txt"] ~= "ATA" then
+        return finish(false, "an equipped ATA card was not accepted as-is")
+      end
     end
   end
-  -- (d) FAT32 (None): hand-placed drivers are never touched at launch
+
+  -- Manual FAT32 USB keeps hand-placed drivers and performs no staging.
   PLDR.BDMA_MODE_KEY = "FAT32"
   FAKEFS.files[root.."/usbd.irx"] = "HAND-USBD"
   FAKEFS.files[root.."/usbhdfsd.irx"] = "HAND-HDFSD"
-  for _, page in ipairs({"USB", "MMCE", "MX4SIO"}) do
-    PLDR.MaybeApplyAdaptiveBdma(nil, page)
-  end
-  PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
-  local saved_args = PLDR.LAUNCH_ARGS
-  PLDR.LAUNCH_ARGS = { bdma_raw = "fat32" }   -- a -bdma=fat32 pin must not strip them either
-  PLDR.MaybeApplyAdaptiveBdma(nil, "USB")
-  PLDR.LAUNCH_ARGS = saved_args
-  if FAKEFS.files[root.."/usbd.irx"] ~= "HAND-USBD" or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "HAND-HDFSD"
+  FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  if PLDR.MaybeApplyAdaptiveBdma(nil, "USB") ~= true
+     or FAKEFS.files[root.."/usbd.irx"] ~= "HAND-USBD"
+     or FAKEFS.files[root.."/usbhdfsd.irx"] ~= "HAND-HDFSD"
      or FAKEFS.files[root.."/bdma_mode.txt"] ~= nil then
-    return finish(false, "FAT32 (None) touched hand-placed drivers")
+    return finish(false, "manual FAT32 USB was changed at launch")
   end
-  -- (e) restage failure cancels the launch with a visible warn
-  PLDR.BDMA_MODE_KEY = "ATA"
+
+  -- HDD/PFS and ordinary SMB do not consume this BDMA pair.
   clear_card()
+  for _, page in ipairs({"HDD", "SMB"}) do
+    if PLDR.MaybeApplyAdaptiveBdma(nil, page) ~= true
+       or FAKEFS.files[root.."/usbd.irx"] ~= nil
+       or FAKEFS.files[root.."/bdma_mode.txt"] ~= nil then
+      return finish(false, page.." unexpectedly staged BDMA drivers")
+    end
+  end
+
+  -- A required launch with the folder disabled must not continue driverless.
+  PLDR.POPSTARTER_MC_FOLDER = false
+  UI.Notif_queue.msg = {}
+  local folder_ok = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  local enable_warned = false
+  for _, msg in ipairs(UI.Notif_queue.msg) do
+    local text = tostring(msg.head or "").."\\n"..tostring(msg.body or "")
+    if string.find(text, "Enable the POPSTARTER Folder first", 1, true) then enable_warned = true end
+  end
+  if folder_ok ~= false or not enable_warned then
+    return finish(false, "folder-off required launch did not cancel with the enable-folder warning")
+  end
+
+  -- A required staging failure cancels and warns rather than launching.
+  PLDR.POPSTARTER_MC_FOLDER = true
   EMBEDDED["usbd.irx.ata"] = nil
   EMBEDDED["usbhdfsd.irx.ata"] = nil
-  local saved_msgs = UI.Notif_queue.msg
-  UI.Notif_queue.msg = {}   -- the queue holds at most MAX toasts; start empty
-  local ok_fail = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
-  local warned = #UI.Notif_queue.msg > 0
-  UI.Notif_queue.msg = saved_msgs
-  if ok_fail ~= false or not warned then
-    return finish(false, "a failed restage did not cancel with a warn")
+  clear_card()
+  UI.Notif_queue.msg = {}
+  local failed = PLDR.MaybeApplyAdaptiveBdma(UI.SCENES.GBDMHDD, "USB")
+  if failed ~= false or #UI.Notif_queue.msg == 0 then
+    return finish(false, "required staging failure did not cancel with a warning")
   end
   return finish(true)
 end''')()
-check("T62 Adaptive OFF restages the chosen BDMA Mode when the card lost it (#616)", t62)
+check("T62 required devices always stage; equipped cards skip writes (#605)", t62)
 
 # T7 settings round-trip for BDMA_ADAPTIVE
 t7 = E('''function()
@@ -2750,7 +2778,69 @@ t60 = E('''function()
 end''')()
 check("T60 APA __.EMBER scan, RW write-through + inherited PFS mount at launch",t60)
 
+# T63 exercise the central launch function, not only the staging helper. The
+# exec sentinel stops the real RunPOPStarterGame at the external boundary; the
+# ATA pair and its marker must already be on the fake card by then.
+t63 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local saved_path = PLDR.POPSTARTER_PATH
+  local saved_pads_get = Pads.get
+  local saved_pad_listen = UI.Pad.Listen
+  local saved_font_print = Font.ftPrintMultiLineAligned
+  local saved_system_open = System.openFile
+  local failure_body = ""
+  local saved_adaptive, saved_mode, saved_folder = PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER
+  local saved_usbd, saved_hdfsd = EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"]
+  local fixtures = {
+    ["mc0:/POPSLOADER/POPSTARTER.ELF"] = "POPSTARTER",
+    ["mass:/POPS/GAME.VCD"] = "VCD",
+    ["mass:/POPS/XX.GAME.VCD"] = "SELECTOR",
+  }
+  local saved_fixtures = {}
+  for path, content in pairs(fixtures) do
+    saved_fixtures[path] = FAKEFS.files[path]
+    FAKEFS.files[path] = content
+  end
+  PLDR.POPSTARTER_PATH = "mc0:/POPSLOADER/POPSTARTER.ELF"
+  PLDR.BDMA_ADAPTIVE = false
+  PLDR.BDMA_MODE_KEY = "FAT32"
+  PLDR.POPSTARTER_MC_FOLDER = true
+  FAKEFS.files[root.."/usbd.irx"] = nil
+  FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+  FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  EMBEDDED["usbd.irx.ata"] = "CENTRAL-USBD-ATA"
+  EMBEDDED["usbhdfsd.irx.ata"] = "CENTRAL-HDFSD-ATA"
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+  Pads.get = function() return 0 end
+  UI.Pad.Listen = function() UI.Pad.Events.BACK = true end
+  Font.ftPrintMultiLineAligned = function(_, _, _, _, _, _, body) failure_body = tostring(body) end
+  System.openFile = function(path, mode)
+    if path == "mc0:/POPSLOADER/POPSTARTER.ELF" and mode == FREAD then return 0 end
+    return saved_system_open(path, mode)
+  end
 
+  local ok, err = pcall(PLDR.RunPOPStarterGame, "mass:/POPS/", "GAME.VCD", UI.SCENES.GBDMHDD)
+  local reached_exec = not ok and string.find(tostring(err), "EXEC loadELF reached in harness", 1, true) ~= nil
+  local staged = FAKEFS.files[root.."/usbd.irx"] == "CENTRAL-USBD-ATA"
+             and FAKEFS.files[root.."/usbhdfsd.irx"] == "CENTRAL-HDFSD-ATA"
+             and FAKEFS.files[root.."/bdma_mode.txt"] == "ATA"
+
+  PLDR.POPSTARTER_PATH = saved_path
+  Pads.get = saved_pads_get
+  UI.Pad.Listen = saved_pad_listen
+  Font.ftPrintMultiLineAligned = saved_font_print
+  System.openFile = saved_system_open
+  PLDR.BDMA_ADAPTIVE, PLDR.BDMA_MODE_KEY, PLDR.POPSTARTER_MC_FOLDER = saved_adaptive, saved_mode, saved_folder
+  EMBEDDED["usbd.irx.ata"], EMBEDDED["usbhdfsd.irx.ata"] = saved_usbd, saved_hdfsd
+  for path in pairs(fixtures) do FAKEFS.files[path] = saved_fixtures[path] end
+  FAKEFS.files[root.."/usbd.irx"] = nil
+  FAKEFS.files[root.."/usbhdfsd.irx"] = nil
+  FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  if not staged then return false, "central exFAT launch reached its boundary without the ATA pair and marker" end
+  if not reached_exec then return false, "central launch stopped before the exec sentinel: "..tostring(err).."; "..failure_body end
+  return true
+end''')()
+check("T63 RunPOPStarterGame stages required ATA drivers before exec (#605)", t63)
 
 print()
 fails = [r for r in results if not r[1]]
