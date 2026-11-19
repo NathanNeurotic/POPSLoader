@@ -72,13 +72,13 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 <tbody>
 <tr>
 <td>#605 internal exFAT launch with Adaptive off and a mismatched saved manual mode</td>
-<td>T62 failed before the fix because no ATA files were staged; it now covers ATA, MX4SIO, MMCE/SMB-MMCE and i.Link, plus manual FAT32 USB and non-BDMA negative cases. T63 drives the real <code>RunPOPStarterGame</code> to the exec sentinel and verifies both ATA files and <code>bdma_mode.txt=ATA</code> before exec. Full host harness: 63/63.</td>
+<td>T62 failed before the fix because no ATA files were staged; it now covers ATA, MX4SIO, MMCE/SMB-MMCE and i.Link, plus manual FAT32 USB and non-BDMA negative cases. T63 drives the real <code>RunPOPStarterGame</code> to the exec sentinel and verifies both ATA files and <code>bdma_mode.txt=ATA</code> before exec. Full host harness: 65/65.</td>
 <td><strong>Unknown (verify on hardware):</strong> SVKghost must retest a rolling build containing this change. No physical-console run is claimed.</td>
 </tr>
 <tr>
-<td>Equipped-card write avoidance</td>
-<td>T62 proves both driver files plus the matching marker are accepted with the embedded source poisoned, so no read/rewrite is needed. The existing marker-last writer is unchanged.</td>
-<td>Confirm on a memory card that a second same-device launch performs no rewrite and switching required device types updates both drivers and marker.</td>
+<td>Equipped-card write avoidance and incomplete replacement</td>
+<td>T62 proves both driver files plus the matching marker are accepted with the embedded source poisoned, so no read/rewrite is needed. T65 failed before the follow-up: a missing second ATA source left mixed files accepted under the old MX4SIO marker. Staging now records <code>STAGING</code> before replacement; equipped checks reject it even with a legacy marker, and a later MX4SIO launch restages both files and the target marker.</td>
+<td>Confirm on a memory card that a second same-device launch performs no rewrite, switching required device types updates both drivers and marker, and an interrupted replacement is retried rather than launched.</td>
 </tr>
 <tr>
 <td>POPSTARTER folder disabled on a required launch</td>
@@ -99,7 +99,7 @@ Active dev branch is now <strong><code>dev</code></strong> (created off <code>BE
 <tbody>
 <tr>
 <td>Updater and ATA/network display reachability</td>
-<td>Updater static/dynamic messages use <code>PLDR.L</code> / <code>PLDR.LFmt</code>; busy overlays apply existing translations. T64 failed before the overlay fix and passes after; full host harness 64/64.</td>
+<td>Updater static/dynamic messages use <code>PLDR.L</code> / <code>PLDR.LFmt</code>; busy overlays apply existing translations. T64 failed before the overlay fix and passes after; full host harness 65/65.</td>
 <td>Unknown (verify on hardware): Slovak updater, network error and ATA driver-progress display.</td>
 </tr>
 <tr>
