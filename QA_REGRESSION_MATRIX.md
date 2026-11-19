@@ -1,10 +1,18 @@
 # POPSLoader Regression Matrix
 
-Last updated: 2026-10-27 (Slovak translation handoff; host checks)
+Last updated: 2026-11-19 (required-device BDMA launch staging; host checks)
 Released line: **1.4.4** (2026-11-12). `master` carries the `v1.4.4` stamp; `dev` and `experimental` are brought up to it after the release. Earlier rows retain their original artifact identity and hardware status. This release adds no physical-console acceptance result.
 Active dev branch is now **`dev`** (created off `BETA-12-PLAY` @`8d1e67a`; **`BETA-12-PLAY` is now ARCHIVAL/frozen**). `.github/workflows/rolling-release.yml` publishes from `dev` (repiped @`8c78296`). The development tip moves every push — see `git log` for the exact HEAD (don't pin a SHA here; it goes stale immediately). Post-release PR work is CI-verified but `Unknown (verify on hardware)` unless explicitly recorded below.
 
 > This file is the detailed run ledger. For the canonical current state — Settings behavior, Known Issues, Preservation Contracts, Behavioral Invariants, and Hardware Status — see **`STATE.md`**; those shared blocks are not restated here.
+
+## Required-device BDMA launch staging (2026-11-19)
+
+| Case | Evidence / result | Remaining verification |
+|---|---|---|
+| #605 internal exFAT launch with Adaptive off and a mismatched saved manual mode | T62 failed before the fix because no ATA files were staged; it now covers ATA, MX4SIO, MMCE/SMB-MMCE and i.Link, plus manual FAT32 USB and non-BDMA negative cases. T63 drives the real `RunPOPStarterGame` to the exec sentinel and verifies both ATA files and `bdma_mode.txt=ATA` before exec. Full host harness: 63/63. | **Unknown (verify on hardware):** SVKghost must retest a rolling build containing this change. No physical-console run is claimed. |
+| Equipped-card write avoidance | T62 proves both driver files plus the matching marker are accepted with the embedded source poisoned, so no read/rewrite is needed. The existing marker-last writer is unchanged. | Confirm on a memory card that a second same-device launch performs no rewrite and switching required device types updates both drivers and marker. |
+| POPSTARTER folder disabled on a required launch | T62 verifies a cancelled result and the existing enable-folder warning rather than a driverless launch. | Unknown (verify on hardware): warning visibility and successful launch after enabling the folder. |
 
 ## 1.4.0 release validation (2026-10-28)
 
