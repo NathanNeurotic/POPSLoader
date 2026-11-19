@@ -3595,12 +3595,10 @@ UI = {
             local icon = UI.CoverCache.last_icon_img
             local iw, ih = Graphics.getImageWidth(icon), Graphics.getImageHeight(icon)
             if iw > 0 and ih > 0 then
-              -- About half the case height: the old 48px cap made disc art
-              -- unreadable on a TV, and the later 45% / 112px size still read
-              -- small next to the cover (#568). Overlap the lower-left case
-              -- corner and keep it inside the preview panel, clear of the
-              -- game-name list.
-              local icon_box = math.min(120, Round((frame_h or draw_h) * 0.5))
+              -- Match official OPL's default 128x128 ItemIcon display box.
+              -- PNG resolution does not control on-screen size; keep the PS2
+              -- pixel-aspect correction and clear the game-name list (#568).
+              local icon_box = math.min(128, frame_h or draw_h, draw_w)
               local ratio = (iw / ih) * (480 / (UI.SCR.Y or 448))
               local icon_w, icon_h
               if ratio >= 1 then icon_w = icon_box; icon_h = Round(icon_box / ratio)
