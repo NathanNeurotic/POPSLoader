@@ -1,0 +1,1052 @@
+{
+  "scope": "ript_modules",
+  "snapshot": "679d3d8626dd09a913e7081101418e337234fe7c",
+  "fully_read_paths": [
+    "modules/bdm/Makefile",
+    "modules/bdm/bdmfs_fatfs/fatfs/diskio.c",
+    "modules/bdm/bdmfs_fatfs/fatfs/include/diskio.h",
+    "modules/bdm/bdmfs_fatfs/fatfs/include/ff.h",
+    "modules/bdm/bdmfs_fatfs/fatfs/include/ffconf.h",
+    "modules/bdm/bdmfs_fatfs/src/fs_driver.c",
+    "modules/bdm/bdmfs_fatfs/src/imports.lst",
+    "modules/bdm/bdmfs_fatfs/src/include/fs_driver.h",
+    "modules/bdm/bdmfs_fatfs/src/include/module_debug.h",
+    "modules/bdm/bdmfs_fatfs/src/irx_imports.h",
+    "modules/bdm/bdmfs_fatfs/src/main.c",
+    "modules/bdm/libbdm/Makefile",
+    "modules/bdm/libbdm/include/bd_cache.h",
+    "modules/bdm/libbdm/include/bd_defrag.h",
+    "modules/bdm/libbdm/src/bd_cache.c",
+    "modules/bdm/libbdm/src/bd_defrag.c",
+    "modules/bdm/libbdm/src/include/module_debug.h",
+    "modules/bdm/src/bdm.c",
+    "modules/bdm/src/imports.lst",
+    "modules/bdm/src/include/gpt_types.h",
+    "modules/bdm/src/include/mbr_types.h",
+    "modules/bdm/src/include/module_debug.h",
+    "modules/bdm/src/include/part_driver.h",
+    "modules/bdm/src/irx_imports.h",
+    "modules/bdm/src/main.c",
+    "modules/bdm/src/part_driver.c",
+    "modules/bdm/src/part_driver_gpt.c",
+    "modules/bdm/src/part_driver_mbr.c",
+    "modules/bdm/bdmfs_fatfs/fatfs/ffsystem.c",
+    "modules/bdm/bdmfs_fatfs/fatfs/ff.c",
+    "modules/bdmevent/Makefile",
+    "modules/bdmevent/imports.lst",
+    "modules/bdmevent/irx_imports.h",
+    "modules/bdmevent/main.c",
+    "modules/Rules.bin.make",
+    "modules/debug/ps2link/Makefile",
+    "modules/debug/ps2link/cmdHandler.c",
+    "modules/debug/ps2link/excepHandler.c",
+    "modules/debug/ps2link/excepHandler.h",
+    "modules/debug/ps2link/hostlink.h",
+    "modules/debug/ps2link/imports.lst",
+    "modules/debug/ps2link/irx_imports.h",
+    "modules/debug/ps2link/net_fio.c",
+    "modules/debug/ps2link/net_fio.h",
+    "modules/debug/ps2link/net_fsys.c",
+    "modules/debug/ps2link/nprintf.c",
+    "modules/debug/ps2link/ps2link.c",
+    "modules/debug/udptty-ingame/Makefile",
+    "modules/debug/udptty-ingame/imports.lst",
+    "modules/debug/udptty-ingame/irx_imports.h",
+    "modules/debug/udptty-ingame/udptty.c",
+    "modules/ds34usb/Makefile",
+    "modules/ds34usb/ee/Makefile",
+    "modules/ds34usb/ee/libds34usb.c",
+    "modules/ds34usb/ee/libds34usb.h",
+    "modules/ds34usb/iop/Makefile",
+    "modules/ds34usb/iop/ds34usb.c",
+    "modules/ds34usb/iop/ds34usb.h",
+    "modules/ds34usb/iop/imports.lst",
+    "modules/ds34usb/iop/irx_imports.h",
+    "modules/ds34usb/iop/smsutils.S",
+    "modules/ds34bt/Makefile",
+    "modules/ds34bt/ee/Makefile",
+    "modules/ds34bt/ee/libds34bt.c",
+    "modules/ds34bt/ee/libds34bt.h",
+    "modules/ds34bt/iop/Makefile",
+    "modules/ds34bt/iop/ds34bt.c",
+    "modules/ds34bt/iop/ds34bt.h",
+    "modules/ds34bt/iop/imports.lst",
+    "modules/ds34bt/iop/irx_imports.h",
+    "modules/ds34bt/iop/smsutils.S",
+    "modules/pademu/Makefile",
+    "modules/pademu/ds34bt.c",
+    "modules/pademu/ds34bt.h",
+    "modules/pademu/ds34common.c",
+    "modules/pademu/ds34usb.c",
+    "modules/pademu/ds34usb.h",
+    "modules/pademu/imports.lst",
+    "modules/pademu/irx_imports.h",
+    "modules/pademu/pademu.c",
+    "modules/pademu/pademu.h",
+    "modules/pademu/padmacro.c",
+    "modules/pademu/padmacro.h",
+    "modules/pademu/sys_utils.c",
+    "modules/pademu/sys_utils.h",
+    "modules/hdd/apa/Makefile",
+    "modules/hdd/apa/src/apa-opt.h",
+    "modules/hdd/apa/src/apa.c",
+    "modules/hdd/apa/src/cache.c",
+    "modules/hdd/apa/src/free.c",
+    "modules/hdd/apa/src/hdd.c",
+    "modules/hdd/apa/src/hdd.h",
+    "modules/hdd/apa/src/hdd_blkio.c",
+    "modules/hdd/apa/src/hdd_blkio.h",
+    "modules/hdd/apa/src/hdd_fio.c",
+    "modules/hdd/apa/src/hdd_fio.h",
+    "modules/hdd/apa/src/imports.lst",
+    "modules/hdd/apa/src/irx_imports.h",
+    "modules/hdd/apa/src/journal.c",
+    "modules/hdd/apa/src/libapa.h",
+    "modules/hdd/apa/src/misc.c",
+    "modules/hdd/apa/src/password.c",
+    "modules/hdd/apa/src/table_fence.c",
+    "modules/hdd/apa/src/table_fence.h",
+    "modules/hdd/atad/Makefile",
+    "modules/hdd/atad/src/imports.lst",
+    "modules/hdd/atad/src/irx_imports.h",
+    "modules/hdd/atad/src/ps2atad.c",
+    "modules/hdd/xhdd/Makefile",
+    "modules/hdd/xhdd/ata_identify.h",
+    "modules/hdd/xhdd/hdpro.c",
+    "modules/hdd/xhdd/imports.lst",
+    "modules/hdd/xhdd/irx_imports.h",
+    "modules/hdd/xhdd/xatad.c",
+    "modules/hdd/xhdd/xhdd.c",
+    "modules/hdd/xhdd/xhdd.h",
+    "modules/hdd/common/opl-hdd-ioctl.h",
+    "modules/iopcore/common/cdvd_config.h",
+    "modules/iopcore/common/cdvdman_opl.h",
+    "modules/iopcore/common/freeze_diag.h",
+    "modules/iopcore/common/heap_diag.h",
+    "modules/iopcore/common/igrmbox.h",
+    "modules/iopcore/common/mmcedrv_config.h",
+    "modules/iopcore/common/oplsmb.h",
+    "modules/iopcore/common/smsutils.h",
+    "modules/iopcore/igrmbox/igrmbox.c",
+    "modules/iopcore/igrmbox/imports.lst",
+    "modules/iopcore/igrmbox/irx_imports.h",
+    "modules/iopcore/freezediag/freezediag.c",
+    "modules/iopcore/freezediag/imports.lst",
+    "modules/iopcore/freezediag/irx_imports.h",
+    "modules/iopcore/patches/apemodpatch/Makefile",
+    "modules/iopcore/patches/apemodpatch/imports.lst",
+    "modules/iopcore/patches/apemodpatch/irx_imports.h",
+    "modules/iopcore/patches/apemodpatch/main.c",
+    "modules/iopcore/patches/cleareffects/Makefile",
+    "modules/iopcore/patches/cleareffects/imports.lst",
+    "modules/iopcore/patches/cleareffects/irx_imports.h",
+    "modules/iopcore/patches/cleareffects/main.c",
+    "modules/iopcore/patches/f2techioppatch/Makefile",
+    "modules/iopcore/patches/f2techioppatch/imports.lst",
+    "modules/iopcore/patches/f2techioppatch/irx_imports.h",
+    "modules/iopcore/patches/f2techioppatch/main.c",
+    "modules/iopcore/patches/iremsndpatch/Makefile",
+    "modules/iopcore/patches/iremsndpatch/asm.S",
+    "modules/iopcore/patches/iremsndpatch/imports.lst",
+    "modules/iopcore/patches/iremsndpatch/irx_imports.h",
+    "modules/iopcore/patches/iremsndpatch/main.c",
+    "modules/iopcore/imgdrv/Makefile",
+    "modules/iopcore/imgdrv/imgdrv.c",
+    "modules/iopcore/imgdrv/imports.lst",
+    "modules/iopcore/imgdrv/irx_imports.h",
+    "modules/iopcore/resetspu/Makefile",
+    "modules/iopcore/resetspu/imports.lst",
+    "modules/iopcore/resetspu/irx_imports.h",
+    "modules/iopcore/resetspu/resetspu.c",
+    "modules/iopcore/cdvdfsv/Makefile",
+    "modules/iopcore/cdvdfsv/cdvdfsv-internal.h",
+    "modules/iopcore/cdvdfsv/cdvdfsv.c",
+    "modules/iopcore/cdvdfsv/imports.lst",
+    "modules/iopcore/cdvdfsv/irx_imports.h",
+    "modules/iopcore/cdvdfsv/ncmd.c",
+    "modules/iopcore/cdvdfsv/scmd.c",
+    "modules/iopcore/cdvdfsv/searchfile.c",
+    "modules/iopcore/cdvdman/Makefile",
+    "modules/iopcore/cdvdman/atad.c",
+    "modules/iopcore/cdvdman/atad.h",
+    "modules/iopcore/cdvdman/cdvdman.c",
+    "modules/iopcore/cdvdman/dev9-pccf.c",
+    "modules/iopcore/cdvdman/dev9.c",
+    "modules/iopcore/cdvdman/dev9.h",
+    "modules/iopcore/cdvdman/device-bdm.c",
+    "modules/iopcore/cdvdman/device-hdd.c",
+    "modules/iopcore/cdvdman/device-http.c",
+    "modules/iopcore/cdvdman/device-mmce.c",
+    "modules/iopcore/cdvdman/device-smb.c",
+    "modules/iopcore/cdvdman/device-udpfs.c",
+    "modules/iopcore/cdvdman/device.h",
+    "modules/iopcore/cdvdman/hdpro_atad.c",
+    "modules/iopcore/cdvdman/heapdiag.c",
+    "modules/iopcore/cdvdman/imports.lst",
+    "modules/iopcore/cdvdman/internal.h",
+    "modules/iopcore/cdvdman/ioman_add.h",
+    "modules/iopcore/cdvdman/ioops.c",
+    "modules/iopcore/cdvdman/ioplib_util.c",
+    "modules/iopcore/cdvdman/ioplib_util.h",
+    "modules/iopcore/cdvdman/irx_imports.h",
+    "modules/iopcore/cdvdman/ncmd.c",
+    "modules/iopcore/cdvdman/scmd.c",
+    "modules/iopcore/cdvdman/searchfile.c",
+    "modules/iopcore/cdvdman/smb.c",
+    "modules/iopcore/cdvdman/smb.h",
+    "modules/iopcore/cdvdman/smb2.c",
+    "modules/iopcore/cdvdman/smb2auth.c",
+    "modules/iopcore/cdvdman/smb2auth.h",
+    "modules/iopcore/cdvdman/smsutils.S"
+  ],
+  "partial_paths": {
+    "modules/iopcore/cdvdman/streaming.c": [
+      [
+        1,
+        332
+      ]
+    ]
+  },
+  "structural_generated_data_reviews": [
+    {
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/ffunicode.c",
+      "semantic_read_ranges": [
+        [
+          1,
+          38
+        ],
+        [
+          15212,
+          15593
+        ]
+      ],
+      "fully_machine_parsed_payload_ranges": [
+        [
+          39,
+          964
+        ],
+        [
+          966,
+          1891
+        ],
+        [
+          1895,
+          4621
+        ],
+        [
+          4623,
+          7349
+        ],
+        [
+          7353,
+          9486
+        ],
+        [
+          9488,
+          11621
+        ],
+        [
+          11625,
+          13314
+        ],
+        [
+          13316,
+          15005
+        ],
+        [
+          15009,
+          15018
+        ],
+        [
+          15021,
+          15030
+        ],
+        [
+          15033,
+          15042
+        ],
+        [
+          15045,
+          15054
+        ],
+        [
+          15057,
+          15066
+        ],
+        [
+          15069,
+          15078
+        ],
+        [
+          15081,
+          15090
+        ],
+        [
+          15093,
+          15102
+        ],
+        [
+          15105,
+          15114
+        ],
+        [
+          15117,
+          15126
+        ],
+        [
+          15129,
+          15138
+        ],
+        [
+          15141,
+          15150
+        ],
+        [
+          15153,
+          15162
+        ],
+        [
+          15165,
+          15174
+        ],
+        [
+          15177,
+          15186
+        ],
+        [
+          15189,
+          15198
+        ],
+        [
+          15201,
+          15210
+        ]
+      ],
+      "method": "All WCHAR tables completely parsed as 16-bit literals; SBCS length 128; DBCS even key/value pairs, sorted keys before zero sentinel; all declarations/preprocessor boundaries/comments outside arrays and all conversion-function bodies read. Mapping values not independently checked against Unicode specification.",
+      "tables": [
+        {
+          "name": "uni2oem932",
+          "lines": [
+            39,
+            964
+          ],
+          "elements": 14780,
+          "sha256": "8c3884155025e877649c0fc2fd17e5d9234c40088505def05fdc436700054a66",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "oem2uni932",
+          "lines": [
+            966,
+            1891
+          ],
+          "elements": 14780,
+          "sha256": "aa8f2fc18ee92c5f459ccbbc9519859d5dc29b8ea8df4af3bf9debef08d9fe08",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "uni2oem936",
+          "lines": [
+            1895,
+            4621
+          ],
+          "elements": 43586,
+          "sha256": "e3983a80e1aac2e8447760d2749b701524b24d6880c3921f15341838c440dc30",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "oem2uni936",
+          "lines": [
+            4623,
+            7349
+          ],
+          "elements": 43586,
+          "sha256": "eebb3417e1ff0982d5d9fcc4e08113782237777288ed4814ad2c046f6c33df4d",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "uni2oem949",
+          "lines": [
+            7353,
+            9486
+          ],
+          "elements": 34098,
+          "sha256": "ef5f3148325756be4a677d8f5c98d9f1ab71d5ce9c40d2c16b3ed39b2387235f",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "oem2uni949",
+          "lines": [
+            9488,
+            11621
+          ],
+          "elements": 34098,
+          "sha256": "19174b46e414c603fc926fc90fd2869c80f61c22e0f2e1b233f27136c4bc36bc",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "uni2oem950",
+          "lines": [
+            11625,
+            13314
+          ],
+          "elements": 27008,
+          "sha256": "f6504846b1a7597464ab3bce497af42f2bbe2b0fa3846b0f6adee8279b5be94a",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "oem2uni950",
+          "lines": [
+            13316,
+            15005
+          ],
+          "elements": 27008,
+          "sha256": "89f2dc5a0e516d084211ad5b3ebc23df20a44cc5feae19c34964c9357a917e0b",
+          "sorted_keys_before_zero_sentinel": true
+        },
+        {
+          "name": "uc437",
+          "lines": [
+            15009,
+            15018
+          ],
+          "elements": 128,
+          "sha256": "c89429b3c7e9035c65350047481c97fdfb311703b919c640439a1900f33117d7"
+        },
+        {
+          "name": "uc720",
+          "lines": [
+            15021,
+            15030
+          ],
+          "elements": 128,
+          "sha256": "43f48ee5356ecfbf7cd27521ddb0e2c8f8b8cb2a03ce5c7ce8c8de42937fca68"
+        },
+        {
+          "name": "uc737",
+          "lines": [
+            15033,
+            15042
+          ],
+          "elements": 128,
+          "sha256": "491a9d50c624d537dcf71c8ac56d1ba28d510a61e23240a9e5fc1889b0a0ec32"
+        },
+        {
+          "name": "uc771",
+          "lines": [
+            15045,
+            15054
+          ],
+          "elements": 128,
+          "sha256": "c1fcc703693f707e4f4610cf0536823a4258d1d85a312a1770bc72a331c0b4bb"
+        },
+        {
+          "name": "uc775",
+          "lines": [
+            15057,
+            15066
+          ],
+          "elements": 128,
+          "sha256": "d304a340850017e8c6de1b3e208ea67d042f663f9f3b01822f3860182a03ebbd"
+        },
+        {
+          "name": "uc850",
+          "lines": [
+            15069,
+            15078
+          ],
+          "elements": 128,
+          "sha256": "75c4a7408f40c4a926628491e27fd2cfae4ae8206be442dd14ab29b748001379"
+        },
+        {
+          "name": "uc852",
+          "lines": [
+            15081,
+            15090
+          ],
+          "elements": 128,
+          "sha256": "2e6adda8c8a302ae6d1afe1e705077fe8cf785375198e2f8937d0675ddccb7b1"
+        },
+        {
+          "name": "uc855",
+          "lines": [
+            15093,
+            15102
+          ],
+          "elements": 128,
+          "sha256": "4aff100b74c6f7391e5269c084db58ea7441114b7be9a61611d36c1e1ea931b2"
+        },
+        {
+          "name": "uc857",
+          "lines": [
+            15105,
+            15114
+          ],
+          "elements": 128,
+          "sha256": "373170ee9b05de5ea14819cf19dd55060358d4c51a46a5252d18417d9ae35621"
+        },
+        {
+          "name": "uc860",
+          "lines": [
+            15117,
+            15126
+          ],
+          "elements": 128,
+          "sha256": "4b7633a83c198999d67e7d57b916f6e27830736084c11c1c864752638f01ae07"
+        },
+        {
+          "name": "uc861",
+          "lines": [
+            15129,
+            15138
+          ],
+          "elements": 128,
+          "sha256": "7e8dc734a47154121b351f733df5ce66fe2b63059638cac90c95ab307430a979"
+        },
+        {
+          "name": "uc862",
+          "lines": [
+            15141,
+            15150
+          ],
+          "elements": 128,
+          "sha256": "51acf96894d3064c58f6ec377c02721d1021b53513dc7a682fb10b8513800da9"
+        },
+        {
+          "name": "uc863",
+          "lines": [
+            15153,
+            15162
+          ],
+          "elements": 128,
+          "sha256": "bf309a1bbc798dd792742541eac0732d11328489b5d66b5e33e2e407b2db7fc2"
+        },
+        {
+          "name": "uc864",
+          "lines": [
+            15165,
+            15174
+          ],
+          "elements": 128,
+          "sha256": "a637ebe03c5b19ccfa42b88d3c060529a5894e925d5783080a90d355205a16e3"
+        },
+        {
+          "name": "uc865",
+          "lines": [
+            15177,
+            15186
+          ],
+          "elements": 128,
+          "sha256": "8f2dfd5fc82b17c3a1b55ff03b04cf48050f4085ce22950d4db923b6cf5c3297"
+        },
+        {
+          "name": "uc866",
+          "lines": [
+            15189,
+            15198
+          ],
+          "elements": 128,
+          "sha256": "34379a382c4d007e134b94ee242df9618b3668f83df1904a0ff7d453985a77b1"
+        },
+        {
+          "name": "uc869",
+          "lines": [
+            15201,
+            15210
+          ],
+          "elements": 128,
+          "sha256": "4a8ed5dc001e12b6d2753ec1cceb24f5d6d193c61c8a787a3accf0fd3fb08529"
+        }
+      ],
+      "build_consumer_audit": "ffconf.h FF_CODE_PAGE=869 and FF_USE_LFN=2; ff.h prototypes read; ps2.yaml:308-314 build inputs read; ff.c consumers still in progress."
+    }
+  ],
+  "remaining_paths": [
+    "modules/bdmassault/ilink_bd_assault/Makefile",
+    "modules/bdmassault/ilink_bd_assault/include/bdm.h",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/imports.lst",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/module_debug.h",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/sbp2_disk.h",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/scsi.h",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/irx_imports.h",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/main.c",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/sbp2_driver.c",
+    "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/scsi.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/include/iLinkman.h",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_DMA.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_PHY.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_TxRx.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_crom.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/imports.lst",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_CROM.h",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_internal.h",
+    "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/irx_imports.h",
+    "modules/bdmassault/ilink_bd_assault/src/imports.lst",
+    "modules/bdmassault/ilink_bd_assault/src/irx_imports.h",
+    "modules/ilink/IEEE1394_bd/Makefile",
+    "modules/ilink/IEEE1394_bd/src/imports.lst",
+    "modules/ilink/IEEE1394_bd/src/include/module_debug.h",
+    "modules/ilink/IEEE1394_bd/src/include/sbp2_disk.h",
+    "modules/ilink/IEEE1394_bd/src/include/scsi.h",
+    "modules/ilink/IEEE1394_bd/src/irx_imports.h",
+    "modules/ilink/IEEE1394_bd/src/main.c",
+    "modules/ilink/IEEE1394_bd/src/sbp2_driver.c",
+    "modules/ilink/IEEE1394_bd/src/scsi.c",
+    "modules/ilink/iLinkman/Makefile",
+    "modules/ilink/iLinkman/include/iLinkman.h",
+    "modules/ilink/iLinkman/src/iLink.c",
+    "modules/ilink/iLinkman/src/iLink_DMA.c",
+    "modules/ilink/iLinkman/src/iLink_PHY.c",
+    "modules/ilink/iLinkman/src/iLink_TxRx.c",
+    "modules/ilink/iLinkman/src/iLink_crom.c",
+    "modules/ilink/iLinkman/src/iLink_internal.c",
+    "modules/ilink/iLinkman/src/iLink_intr.c",
+    "modules/ilink/iLinkman/src/imports.lst",
+    "modules/ilink/iLinkman/src/include/iLink_CROM.h",
+    "modules/ilink/iLinkman/src/include/iLink_internal.h",
+    "modules/ilink/iLinkman/src/irx_imports.h",
+    "modules/iopcore/cdvdman/streaming.c",
+    "modules/isofs/Makefile",
+    "modules/isofs/imports.lst",
+    "modules/isofs/irx_imports.h",
+    "modules/isofs/isofs.c",
+    "modules/isofs/lz4.c",
+    "modules/isofs/lz4.h",
+    "modules/mcemu/Makefile",
+    "modules/mcemu/device-bdm.c",
+    "modules/mcemu/device-hdd.c",
+    "modules/mcemu/device-mmce.c",
+    "modules/mcemu/device-smb.c",
+    "modules/mcemu/device.h",
+    "modules/mcemu/imports.lst",
+    "modules/mcemu/ioman_add.h",
+    "modules/mcemu/irx_imports.h",
+    "modules/mcemu/mcemu.c",
+    "modules/mcemu/mcemu.h",
+    "modules/mcemu/mcemu_io.c",
+    "modules/mcemu/mcemu_rpc.c",
+    "modules/mcemu/mcemu_sys.c",
+    "modules/mcemu/mcemu_utils.h",
+    "modules/mcemu/mcemu_var.c",
+    "modules/mmce/mmceman/include/ioplib.h",
+    "modules/mmce/mmceman/include/irx_imports.h",
+    "modules/mmce/mmceman/include/mmce_cmds.h",
+    "modules/mmce/mmceman/include/mmce_fs.h",
+    "modules/mmce/mmceman/include/mmce_sio2.h",
+    "modules/mmce/mmceman/include/module_debug.h",
+    "modules/mmce/mmceman/include/sio2man_hook.h",
+    "modules/mmce/mmceman/include/sio2regs.h",
+    "modules/mmce/mmceman/src/imports.lst",
+    "modules/mmce/mmceman/src/ioplib.c",
+    "modules/mmce/mmceman/src/mmce_cmds.c",
+    "modules/mmce/mmceman/src/mmce_fs.c",
+    "modules/mmce/mmceman/src/mmce_sio2.c",
+    "modules/mmce/mmceman/src/mmceman.c",
+    "modules/mmce/mmceman/src/sio2man_hook.c",
+    "modules/mx4sio_bd/Makefile",
+    "modules/mx4sio_bd/src/crc16.c",
+    "modules/mx4sio_bd/src/crc16.h",
+    "modules/mx4sio_bd/src/imports.lst",
+    "modules/mx4sio_bd/src/ioplib.c",
+    "modules/mx4sio_bd/src/ioplib.h",
+    "modules/mx4sio_bd/src/irx_imports.h",
+    "modules/mx4sio_bd/src/module_debug.h",
+    "modules/mx4sio_bd/src/mx4sio.c",
+    "modules/mx4sio_bd/src/mx4sio.h",
+    "modules/mx4sio_bd/src/sio2man_hook.c",
+    "modules/mx4sio_bd/src/sio2man_hook.h",
+    "modules/mx4sio_bd/src/sio2regs.h",
+    "modules/mx4sio_bd/src/spi_sdcard_crc7.c",
+    "modules/mx4sio_bd/src/spi_sdcard_crc7.h",
+    "modules/mx4sio_bd/src/spi_sdcard_driver.c",
+    "modules/mx4sio_bd/src/spi_sdcard_driver.h",
+    "modules/mx4sio_bd/src/spi_sdcard_driver_config.h",
+    "modules/network/SMSTCPIP/Makefile",
+    "modules/network/SMSTCPIP/api_lib.c",
+    "modules/network/SMSTCPIP/api_msg.c",
+    "modules/network/SMSTCPIP/etharp.c",
+    "modules/network/SMSTCPIP/icmp.c",
+    "modules/network/SMSTCPIP/imports.lst",
+    "modules/network/SMSTCPIP/include/arch/cc.h",
+    "modules/network/SMSTCPIP/include/arch/sys_arch.h",
+    "modules/network/SMSTCPIP/include/irx_imports.h",
+    "modules/network/SMSTCPIP/include/lwip/api.h",
+    "modules/network/SMSTCPIP/include/lwip/api_msg.h",
+    "modules/network/SMSTCPIP/include/lwip/arch.h",
+    "modules/network/SMSTCPIP/include/lwip/debug.h",
+    "modules/network/SMSTCPIP/include/lwip/def.h",
+    "modules/network/SMSTCPIP/include/lwip/dhcp.h",
+    "modules/network/SMSTCPIP/include/lwip/err.h",
+    "modules/network/SMSTCPIP/include/lwip/icmp.h",
+    "modules/network/SMSTCPIP/include/lwip/inet.h",
+    "modules/network/SMSTCPIP/include/lwip/ip.h",
+    "modules/network/SMSTCPIP/include/lwip/ip_addr.h",
+    "modules/network/SMSTCPIP/include/lwip/ip_frag.h",
+    "modules/network/SMSTCPIP/include/lwip/mem.h",
+    "modules/network/SMSTCPIP/include/lwip/memp.h",
+    "modules/network/SMSTCPIP/include/lwip/netif.h",
+    "modules/network/SMSTCPIP/include/lwip/opt.h",
+    "modules/network/SMSTCPIP/include/lwip/pbuf.h",
+    "modules/network/SMSTCPIP/include/lwip/raw.h",
+    "modules/network/SMSTCPIP/include/lwip/snmp.h",
+    "modules/network/SMSTCPIP/include/lwip/sockets.h",
+    "modules/network/SMSTCPIP/include/lwip/stats.h",
+    "modules/network/SMSTCPIP/include/lwip/sys.h",
+    "modules/network/SMSTCPIP/include/lwip/tcp.h",
+    "modules/network/SMSTCPIP/include/lwip/tcpip.h",
+    "modules/network/SMSTCPIP/include/lwip/timers.h",
+    "modules/network/SMSTCPIP/include/lwip/udp.h",
+    "modules/network/SMSTCPIP/include/lwipopts.h",
+    "modules/network/SMSTCPIP/include/netif/etharp.h",
+    "modules/network/SMSTCPIP/include/netif/loopif.h",
+    "modules/network/SMSTCPIP/include/ps2ip_internal.h",
+    "modules/network/SMSTCPIP/inet.S",
+    "modules/network/SMSTCPIP/ip.c",
+    "modules/network/SMSTCPIP/ip_addr.c",
+    "modules/network/SMSTCPIP/ip_frag.c",
+    "modules/network/SMSTCPIP/loopif.c",
+    "modules/network/SMSTCPIP/mem.c",
+    "modules/network/SMSTCPIP/memp.c",
+    "modules/network/SMSTCPIP/netif.c",
+    "modules/network/SMSTCPIP/pbuf.c",
+    "modules/network/SMSTCPIP/ps2ip.c",
+    "modules/network/SMSTCPIP/sockets.c",
+    "modules/network/SMSTCPIP/tcp.c",
+    "modules/network/SMSTCPIP/tcp_in.c",
+    "modules/network/SMSTCPIP/tcp_out.c",
+    "modules/network/SMSTCPIP/tcpip.c",
+    "modules/network/SMSTCPIP/timers.c",
+    "modules/network/SMSTCPIP/udp.c",
+    "modules/network/SMSUTILS/Makefile",
+    "modules/network/SMSUTILS/SMSUTILS.S",
+    "modules/network/common/httpclient.h",
+    "modules/network/common/httpstream.inc",
+    "modules/network/common/ra_client.h",
+    "modules/network/common/ra_snap.h",
+    "modules/network/common/ra_watch.h",
+    "modules/network/common/rapops_cfg.h",
+    "modules/network/common/smap_tx.h",
+    "modules/network/common/smstcpip-common.h",
+    "modules/network/common/smstcpip.h",
+    "modules/network/httpclient/Makefile",
+    "modules/network/httpclient/httpclient.c",
+    "modules/network/httpclient/imports.lst",
+    "modules/network/httpclient/irx_imports.h",
+    "modules/network/httpclient/main.c",
+    "modules/network/nbns/Makefile",
+    "modules/network/nbns/imports.lst",
+    "modules/network/nbns/irx_imports.h",
+    "modules/network/nbns/main.c",
+    "modules/network/nbns/nbns.c",
+    "modules/network/nfsman/imports.lst",
+    "modules/network/nfsman/irx_imports.h",
+    "modules/network/nfsman/linkfile",
+    "modules/network/nfsman/nfsman.c",
+    "modules/network/nfsman/nfsman.h",
+    "modules/network/nfsman/ps2iop-compat.h",
+    "modules/network/nfsman/unfs4/unfs4.c",
+    "modules/network/nfsman/unfs4/unfs4.h",
+    "modules/network/ps2ips/Makefile",
+    "modules/network/ps2ips/imports.lst",
+    "modules/network/ps2ips/irx_imports.h",
+    "modules/network/ps2ips/ps2ips.c",
+    "modules/network/rapops/imports.lst",
+    "modules/network/rapops/irx_imports.h",
+    "modules/network/rapops/rapops.c",
+    "modules/network/rapull/imports.lst",
+    "modules/network/rapull/irx_imports.h",
+    "modules/network/rapull/rapull.c",
+    "modules/network/raudp/Makefile",
+    "modules/network/raudp/imports.lst",
+    "modules/network/raudp/irx_imports.h",
+    "modules/network/raudp/raudp.c",
+    "modules/network/smap-ingame/Makefile",
+    "modules/network/smap-ingame/imports.lst",
+    "modules/network/smap-ingame/irx_imports.h",
+    "modules/network/smap-ingame/main.c",
+    "modules/network/smap-ingame/main.h",
+    "modules/network/smap-ingame/smap.c",
+    "modules/network/smap-ingame/xfer.c",
+    "modules/network/smap-ingame/xfer.h",
+    "modules/network/smap_udpbd/Makefile",
+    "modules/network/smap_udpbd/src/imports.lst",
+    "modules/network/smap_udpbd/src/include/irx_imports.h",
+    "modules/network/smap_udpbd/src/include/main.h",
+    "modules/network/smap_udpbd/src/include/mprintf.h",
+    "modules/network/smap_udpbd/src/include/xfer.h",
+    "modules/network/smap_udpbd/src/main.c",
+    "modules/network/smap_udpbd/src/ministack.c",
+    "modules/network/smap_udpbd/src/ministack.h",
+    "modules/network/smap_udpbd/src/smap.c",
+    "modules/network/smap_udpbd/src/udpbd.c",
+    "modules/network/smap_udpbd/src/udpbd.h",
+    "modules/network/smap_udpbd/src/udptty.c",
+    "modules/network/smap_udpbd/src/udptty.h",
+    "modules/network/smap_udpbd/src/xfer.c",
+    "modules/network/smb2man/imports.lst",
+    "modules/network/smb2man/irx_imports.h",
+    "modules/network/smb2man/linkfile",
+    "modules/network/smb2man/ps2iop-compat.h",
+    "modules/network/smb2man/smb2man.c",
+    "modules/network/smb2man/smb2man_devctl.h",
+    "modules/network/smb2man/usmb2/hmac-md5.c",
+    "modules/network/smb2man/usmb2/hmac-md5.h",
+    "modules/network/smb2man/usmb2/md4.h",
+    "modules/network/smb2man/usmb2/md4c.c",
+    "modules/network/smb2man/usmb2/md5.c",
+    "modules/network/smb2man/usmb2/md5.h",
+    "modules/network/smb2man/usmb2/ntlm.c",
+    "modules/network/smb2man/usmb2/ntlm.h",
+    "modules/network/smb2man/usmb2/unicode.c",
+    "modules/network/smb2man/usmb2/unicode.h",
+    "modules/network/smb2man/usmb2/usmb2.c",
+    "modules/network/smb2man/usmb2/usmb2.h",
+    "modules/network/smbinit/Makefile",
+    "modules/network/smbinit/des.c",
+    "modules/network/smbinit/des.h",
+    "modules/network/smbinit/imports.lst",
+    "modules/network/smbinit/irx_imports.h",
+    "modules/network/smbinit/main.c",
+    "modules/network/smbinit/md4.c",
+    "modules/network/smbinit/md4.h",
+    "modules/network/smbinit/smbauth.c",
+    "modules/network/smbinit/smbauth.h",
+    "modules/network/smbman-ra/Makefile",
+    "modules/network/smbman-ra/auth.c",
+    "modules/network/smbman-ra/auth.h",
+    "modules/network/smbman-ra/debug.h",
+    "modules/network/smbman-ra/des.c",
+    "modules/network/smbman-ra/des.h",
+    "modules/network/smbman-ra/imports.lst",
+    "modules/network/smbman-ra/irx_imports.h",
+    "modules/network/smbman-ra/md4.c",
+    "modules/network/smbman-ra/md4.h",
+    "modules/network/smbman-ra/poll.c",
+    "modules/network/smbman-ra/poll.h",
+    "modules/network/smbman-ra/smb.c",
+    "modules/network/smbman-ra/smb.h",
+    "modules/network/smbman-ra/smb_fio.c",
+    "modules/network/smbman-ra/smb_fio.h",
+    "modules/network/smbman-ra/smbman.c",
+    "modules/network/udpfs_bd/Makefile",
+    "modules/network/udpfs_bd/include/main.h",
+    "modules/network/udpfs_bd/include/mprintf.h",
+    "modules/network/udpfs_bd/src/imports.lst",
+    "modules/network/udpfs_bd/src/irx_imports.h",
+    "modules/network/udpfs_bd/src/main.c",
+    "modules/network/udpfs_bd/src/udpfs_bd.c",
+    "modules/network/udpfs_bd/src/udpfs_core.c",
+    "modules/network/udpfs_bd/src/udpfs_core.h",
+    "modules/network/udpfs_bd/src/udpfs_packet.h",
+    "modules/network/udpfs_bd/src/udprdma.c",
+    "modules/network/udpfs_bd/src/udprdma.h",
+    "modules/network/udpfs_bd/src/udprdma_packet.h",
+    "modules/network/udpfs_bd/src/udprdma_seq.h",
+    "modules/network/udpfs_fhi/Makefile",
+    "modules/network/udpfs_fhi/include/main.h",
+    "modules/network/udpfs_fhi/include/mprintf.h",
+    "modules/network/udpfs_fhi/src/imports.lst",
+    "modules/network/udpfs_fhi/src/irx_imports.h",
+    "modules/network/udpfs_fhi/src/main.c",
+    "modules/network/udpfs_fhi/src/udpfs_core.c",
+    "modules/network/udpfs_fhi/src/udpfs_core.h",
+    "modules/network/udpfs_fhi/src/udpfs_fhi.c",
+    "modules/network/udpfs_fhi/src/udpfs_packet.h",
+    "modules/network/udpfs_fhi/src/udprdma.c",
+    "modules/network/udpfs_fhi/src/udprdma.h",
+    "modules/network/udpfs_fhi/src/udprdma_packet.h",
+    "modules/network/udpfs_fhi/src/udprdma_seq.h",
+    "modules/network/udpfs_ioman/Makefile",
+    "modules/network/udpfs_ioman/include/main.h",
+    "modules/network/udpfs_ioman/include/mprintf.h",
+    "modules/network/udpfs_ioman/src/imports.lst",
+    "modules/network/udpfs_ioman/src/irx_imports.h",
+    "modules/network/udpfs_ioman/src/main.c",
+    "modules/network/udpfs_ioman/src/udpfs_core.c",
+    "modules/network/udpfs_ioman/src/udpfs_core.h",
+    "modules/network/udpfs_ioman/src/udpfs_ioman.c",
+    "modules/network/udpfs_ioman/src/udpfs_packet.h",
+    "modules/network/udpfs_ioman/src/udprdma.c",
+    "modules/network/udpfs_ioman/src/udprdma.h",
+    "modules/network/udpfs_ioman/src/udprdma_packet.h",
+    "modules/network/udpfs_ioman/src/udprdma_seq.h",
+    "modules/network/udpfs_ioman/tests/test_ack_sequence.c",
+    "modules/network/udpfs_ministack/Makefile",
+    "modules/network/udpfs_ministack/include/main.h",
+    "modules/network/udpfs_ministack/include/ministack_arp.h",
+    "modules/network/udpfs_ministack/include/ministack_eth.h",
+    "modules/network/udpfs_ministack/include/ministack_ip.h",
+    "modules/network/udpfs_ministack/include/ministack_udp.h",
+    "modules/network/udpfs_ministack/include/mprintf.h",
+    "modules/network/udpfs_ministack/include/mstack.h",
+    "modules/network/udpfs_ministack/include/mstack_xchg.h",
+    "modules/network/udpfs_ministack/include/udptty.h",
+    "modules/network/udpfs_ministack/src/imports.lst",
+    "modules/network/udpfs_ministack/src/irx_imports.h",
+    "modules/network/udpfs_ministack/src/main.c",
+    "modules/network/udpfs_ministack/src/ministack_arp.c",
+    "modules/network/udpfs_ministack/src/ministack_eth.c",
+    "modules/network/udpfs_ministack/src/ministack_ip.c",
+    "modules/network/udpfs_ministack/src/ministack_udp.c",
+    "modules/network/udpfs_ministack/src/ministack_xchg.c",
+    "modules/network/udpfs_ministack/src/udptty.c",
+    "modules/network/udpfs_shared/src/udpfs_core.c",
+    "modules/network/udpfs_shared/src/udprdma.c",
+    "modules/network/udpfs_shared/tests/stubs/iomanX.h",
+    "modules/network/udpfs_shared/tests/stubs/irx.h",
+    "modules/network/udpfs_shared/tests/stubs/thbase.h",
+    "modules/network/udpfs_shared/tests/stubs/thevent.h",
+    "modules/network/udpfs_shared/tests/test_ministack_announce.c",
+    "modules/network/udpfs_shared/tests/test_ministack_conflict.c",
+    "modules/network/udpfs_shared/tests/test_ministack_xchg.c",
+    "modules/network/udpfs_shared/tests/test_udprdma_session.c",
+    "modules/network/udpfs_smap/Makefile",
+    "modules/network/udpfs_smap/include/irx_imports.h",
+    "modules/network/udpfs_smap/include/main.h",
+    "modules/network/udpfs_smap/include/mprintf.h",
+    "modules/network/udpfs_smap/include/smap.h",
+    "modules/network/udpfs_smap/include/xfer.h",
+    "modules/network/udpfs_smap/src/imports.lst",
+    "modules/network/udpfs_smap/src/main.c",
+    "modules/network/udpfs_smap/src/smap.c",
+    "modules/network/udpfs_smap/src/xfer.c",
+    "modules/pccf/Makefile",
+    "modules/pccf/format.inc",
+    "modules/pccf/imports.lst",
+    "modules/pccf/irx_imports.h",
+    "modules/pccf/main.c",
+    "modules/pccf/pccf_ata.c",
+    "modules/pccf/pccf_ata.h",
+    "modules/pccf/pccf_hw.c",
+    "modules/pccf/pccf_mbr.h",
+    "modules/pccf/pccf_pio_bulk.inc",
+    "modules/pccf/pccf_pio_profile.inc",
+    "modules/pccf/pcclog.h",
+    "modules/pccf/pcdiag_ata.h",
+    "modules/pccf/pcdiag_cf.c",
+    "modules/pccf/pcdiag_cf.h",
+    "modules/pccf/pcdiag_cis.c",
+    "modules/pccf/pcdiag_cis.h",
+    "modules/usb/usbd-ra/Makefile",
+    "modules/usb/usbd-ra/include/usbd.h",
+    "modules/usb/usbd-ra/include/usbd_macro.h",
+    "modules/usb/usbd-ra/src/driver.c",
+    "modules/usb/usbd-ra/src/driver.h",
+    "modules/usb/usbd-ra/src/hcd.c",
+    "modules/usb/usbd-ra/src/hcd.h",
+    "modules/usb/usbd-ra/src/hub.c",
+    "modules/usb/usbd-ra/src/hub.h",
+    "modules/usb/usbd-ra/src/imports.lst",
+    "modules/usb/usbd-ra/src/interface.c",
+    "modules/usb/usbd-ra/src/irx_imports.h",
+    "modules/usb/usbd-ra/src/mem.c",
+    "modules/usb/usbd-ra/src/mem.h",
+    "modules/usb/usbd-ra/src/usbd.c",
+    "modules/usb/usbd-ra/src/usbdpriv.h",
+    "modules/usb/usbd-ra/src/usbio.c",
+    "modules/usb/usbd-ra/src/usbio.h",
+    "modules/usb/usbmass_bd/src/imports.lst",
+    "modules/usb/usbmass_bd/src/include/module_debug.h",
+    "modules/usb/usbmass_bd/src/include/scsi.h",
+    "modules/usb/usbmass_bd/src/irx_imports.h",
+    "modules/usb/usbmass_bd/src/main.c",
+    "modules/usb/usbmass_bd/src/scsi.c",
+    "modules/usb/usbmass_bd/src/usb_mass.c",
+    "modules/vmc/genvmc/Makefile",
+    "modules/vmc/genvmc/genvmc.c",
+    "modules/vmc/genvmc/genvmc.h",
+    "modules/vmc/genvmc/imports.lst",
+    "modules/vmc/genvmc/irx_imports.h",
+    "modules/vmc/genvmc/vmc_alloc.h"
+  ],
+  "notes": [
+    "Initial bounded source review started. Previous report reads were truncated and not counted.",
+    "Fully-read source paths exclude opaque sensitive literal initializer bytes explicitly listed; all surrounding logic and consumers were read. Reader suppresses blank lines and strips leading/trailing whitespace only; comments and disabled code retained."
+  ],
+  "last_acknowledged_batch": [
+    [
+      "modules/iopcore/cdvdman/smb2.c",
+      1068,
+      1153,
+      1153
+    ],
+    [
+      "modules/iopcore/cdvdman/smb2auth.c",
+      1,
+      307,
+      307
+    ],
+    [
+      "modules/iopcore/cdvdman/smb2auth.h",
+      1,
+      42,
+      42
+    ],
+    [
+      "modules/iopcore/cdvdman/smsutils.S",
+      1,
+      180,
+      180
+    ],
+    [
+      "modules/iopcore/cdvdman/streaming.c",
+      1,
+      332,
+      455
+    ]
+  ],
+  "sensitive_opaque_initializers": [
+    {
+      "path": "modules/ds34usb/iop/ds34usb.c",
+      "lines": [
+        57,
+        60
+      ]
+    },
+    {
+      "path": "modules/ds34bt/iop/ds34bt.c",
+      "lines": [
+        273,
+        276
+      ]
+    },
+    {
+      "path": "modules/pademu/ds34bt.c",
+      "lines": [
+        257,
+        260
+      ]
+    }
+  ],
+  "supplemental_reads": [
+    {
+      "path": "include/bdmevent.h",
+      "range": "full"
+    },
+    {
+      "path": "include/ds34common.h",
+      "range": "full"
+    },
+    {
+      "path": "ps2.yaml",
+      "ranges": [
+        [
+          300,
+          322
+        ]
+      ]
+    },
+    {
+      "path": "Makefile",
+      "ranges": [
+        [
+          820,
+          846
+        ]
+      ]
+    }
+  ]
+}

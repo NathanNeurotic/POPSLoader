@@ -1,0 +1,35 @@
+[
+  {
+    "path": "docs/assets/app.js",
+    "sha256": "a97729454dc6ffd7ae46ee5cce4900ac5938d6bed0a40130559bedf56d195a99",
+    "matches": [
+      [
+        "Simple-Media-System",
+        "docs-site/static/assets/app.js",
+        "sms_remaining-progress.json"
+      ]
+    ]
+  },
+  {
+    "path": "docs/assets/orbs.js",
+    "sha256": "2be2e75450b94de7f54945c53361daae1d2462162a73ab5cb347cc7ff652f5c7",
+    "matches": [
+      [
+        "Simple-Media-System",
+        "docs-site/static/assets/orbs.js",
+        "sms_remaining-progress.json"
+      ]
+    ]
+  },
+  {
+    "path": "docs/assets/sms.css",
+    "sha256": "a83db7a8175983abeac234f9693479cf1a8e21c96a6aecc6e37c49cee1c4727b",
+    "matches": [
+      [
+        "Simple-Media-System",
+        "docs-site/static/assets/sms.css",
+        "sms_remaining-progress.json"
+      ]
+    ]
+  }
+]

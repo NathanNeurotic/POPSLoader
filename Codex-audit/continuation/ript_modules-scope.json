@@ -1,0 +1,4250 @@
+{
+  "scope": "ript_modules",
+  "files": [
+    {
+      "repo": "RiptOPL",
+      "path": "modules/Rules.bin.make",
+      "lines": 12,
+      "bytes": 215,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/Makefile",
+      "lines": 30,
+      "bytes": 1014,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/diskio.c",
+      "lines": 169,
+      "bytes": 4843,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/ff.c",
+      "lines": 7257,
+      "bytes": 259722,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/ffsystem.c",
+      "lines": 230,
+      "bytes": 6475,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/ffunicode.c",
+      "lines": 15593,
+      "bytes": 1959402,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/include/diskio.h",
+      "lines": 77,
+      "bytes": 2656,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/include/ff.h",
+      "lines": 457,
+      "bytes": 17262,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/fatfs/include/ffconf.h",
+      "lines": 315,
+      "bytes": 12465,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/fs_driver.c",
+      "lines": 1093,
+      "bytes": 30603,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/imports.lst",
+      "lines": 49,
+      "bytes": 634,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/include/fs_driver.h",
+      "lines": 21,
+      "bytes": 522,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/include/module_debug.h",
+      "lines": 24,
+      "bytes": 498,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/irx_imports.h",
+      "lines": 28,
+      "bytes": 733,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/bdmfs_fatfs/src/main.c",
+      "lines": 67,
+      "bytes": 1319,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/Makefile",
+      "lines": 20,
+      "bytes": 533,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/include/bd_cache.h",
+      "lines": 30,
+      "bytes": 694,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/include/bd_defrag.h",
+      "lines": 30,
+      "bytes": 872,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/src/bd_cache.c",
+      "lines": 269,
+      "bytes": 8433,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/src/bd_defrag.c",
+      "lines": 101,
+      "bytes": 3191,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/libbdm/src/include/module_debug.h",
+      "lines": 36,
+      "bytes": 744,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/bdm.c",
+      "lines": 275,
+      "bytes": 8302,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/imports.lst",
+      "lines": 36,
+      "bytes": 532,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/include/gpt_types.h",
+      "lines": 70,
+      "bytes": 4231,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/include/mbr_types.h",
+      "lines": 47,
+      "bytes": 2340,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/include/module_debug.h",
+      "lines": 35,
+      "bytes": 726,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/include/part_driver.h",
+      "lines": 33,
+      "bytes": 800,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/irx_imports.h",
+      "lines": 28,
+      "bytes": 735,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/main.c",
+      "lines": 41,
+      "bytes": 899,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/part_driver.c",
+      "lines": 143,
+      "bytes": 3770,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/part_driver_gpt.c",
+      "lines": 184,
+      "bytes": 9460,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdm/src/part_driver_mbr.c",
+      "lines": 134,
+      "bytes": 4551,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/Makefile",
+      "lines": 36,
+      "bytes": 941,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/include/bdm.h",
+      "lines": 77,
+      "bytes": 2296,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/imports.lst",
+      "lines": 73,
+      "bytes": 1144,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/module_debug.h",
+      "lines": 22,
+      "bytes": 439,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/sbp2_disk.h",
+      "lines": 183,
+      "bytes": 5555,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/include/scsi.h",
+      "lines": 19,
+      "bytes": 567,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/irx_imports.h",
+      "lines": 35,
+      "bytes": 872,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/main.c",
+      "lines": 33,
+      "bytes": 724,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/sbp2_driver.c",
+      "lines": 801,
+      "bytes": 30428,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/IEEE1394_bd/src/scsi.c",
+      "lines": 386,
+      "bytes": 11478,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/include/iLinkman.h",
+      "lines": 88,
+      "bytes": 3840,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink.c",
+      "lines": 369,
+      "bytes": 10601,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_DMA.c",
+      "lines": 132,
+      "bytes": 6374,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_PHY.c",
+      "lines": 74,
+      "bytes": 1717,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_TxRx.c",
+      "lines": 212,
+      "bytes": 8423,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_crom.c",
+      "lines": 398,
+      "bytes": 14915,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_internal.c",
+      "lines": 190,
+      "bytes": 6109,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/iLink_intr.c",
+      "lines": 469,
+      "bytes": 17250,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/imports.lst",
+      "lines": 74,
+      "bytes": 1069,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_CROM.h",
+      "lines": 72,
+      "bytes": 1908,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/include/iLink_internal.h",
+      "lines": 327,
+      "bytes": 12535,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/iLinkman/src/irx_imports.h",
+      "lines": 32,
+      "bytes": 822,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/imports.lst",
+      "lines": 77,
+      "bytes": 1126,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmassault/ilink_bd_assault/src/irx_imports.h",
+      "lines": 36,
+      "bytes": 893,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmevent/Makefile",
+      "lines": 8,
+      "bytes": 182,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmevent/imports.lst",
+      "lines": 9,
+      "bytes": 149,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmevent/irx_imports.h",
+      "lines": 23,
+      "bytes": 482,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/bdmevent/main.c",
+      "lines": 88,
+      "bytes": 3007,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/Makefile",
+      "lines": 20,
+      "bytes": 434,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/cmdHandler.c",
+      "lines": 395,
+      "bytes": 9904,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/excepHandler.c",
+      "lines": 115,
+      "bytes": 2958,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/excepHandler.h",
+      "lines": 13,
+      "bytes": 383,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/hostlink.h",
+      "lines": 262,
+      "bytes": 5802,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/imports.lst",
+      "lines": 85,
+      "bytes": 1193,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/irx_imports.h",
+      "lines": 31,
+      "bytes": 631,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/net_fio.c",
+      "lines": 728,
+      "bytes": 20513,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/net_fio.h",
+      "lines": 35,
+      "bytes": 1229,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/net_fsys.c",
+      "lines": 337,
+      "bytes": 8257,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/nprintf.c",
+      "lines": 81,
+      "bytes": 2129,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/ps2link/ps2link.c",
+      "lines": 48,
+      "bytes": 1126,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/udptty-ingame/Makefile",
+      "lines": 9,
+      "bytes": 224,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/udptty-ingame/imports.lst",
+      "lines": 55,
+      "bytes": 746,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/udptty-ingame/irx_imports.h",
+      "lines": 31,
+      "bytes": 838,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/debug/udptty-ingame/udptty.c",
+      "lines": 273,
+      "bytes": 5460,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/Makefile",
+      "lines": 11,
+      "bytes": 144,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/ee/Makefile",
+      "lines": 15,
+      "bytes": 235,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/ee/libds34bt.c",
+      "lines": 181,
+      "bytes": 3732,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/ee/libds34bt.h",
+      "lines": 41,
+      "bytes": 1178,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/Makefile",
+      "lines": 8,
+      "bytes": 198,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/ds34bt.c",
+      "lines": 1719,
+      "bytes": 61919,
+      "partial": [
+        [
+          107,
+          146
+        ],
+        [
+          972,
+          978
+        ],
+        [
+          1332,
+          1335
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/ds34bt.h",
+      "lines": 256,
+      "bytes": 8579,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/imports.lst",
+      "lines": 34,
+      "bytes": 549,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/irx_imports.h",
+      "lines": 37,
+      "bytes": 905,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34bt/iop/smsutils.S",
+      "lines": 180,
+      "bytes": 3655,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/Makefile",
+      "lines": 11,
+      "bytes": 144,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/ee/Makefile",
+      "lines": 15,
+      "bytes": 239,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/ee/libds34usb.c",
+      "lines": 153,
+      "bytes": 3136,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/ee/libds34usb.h",
+      "lines": 27,
+      "bytes": 637,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/Makefile",
+      "lines": 13,
+      "bytes": 351,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/ds34usb.c",
+      "lines": 998,
+      "bytes": 31005,
+      "partial": [
+        [
+          133,
+          176
+        ],
+        [
+          337,
+          340
+        ],
+        [
+          622,
+          658
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/ds34usb.h",
+      "lines": 74,
+      "bytes": 1676,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/imports.lst",
+      "lines": 33,
+      "bytes": 536,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/irx_imports.h",
+      "lines": 37,
+      "bytes": 905,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ds34usb/iop/smsutils.S",
+      "lines": 180,
+      "bytes": 3655,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/Makefile",
+      "lines": 25,
+      "bytes": 918,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/apa-opt.h",
+      "lines": 51,
+      "bytes": 1764,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/apa.c",
+      "lines": 525,
+      "bytes": 16415,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/cache.c",
+      "lines": 211,
+      "bytes": 5678,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/free.c",
+      "lines": 84,
+      "bytes": 2498,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd.c",
+      "lines": 384,
+      "bytes": 11599,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd.h",
+      "lines": 31,
+      "bytes": 1024,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd_blkio.c",
+      "lines": 415,
+      "bytes": 9775,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd_blkio.h",
+      "lines": 85,
+      "bytes": 2185,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd_fio.c",
+      "lines": 1247,
+      "bytes": 37696,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/hdd_fio.h",
+      "lines": 38,
+      "bytes": 1910,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/imports.lst",
+      "lines": 84,
+      "bytes": 1184,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/irx_imports.h",
+      "lines": 37,
+      "bytes": 872,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/journal.c",
+      "lines": 86,
+      "bytes": 2509,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/libapa.h",
+      "lines": 219,
+      "bytes": 6491,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/misc.c",
+      "lines": 141,
+      "bytes": 3002,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/password.c",
+      "lines": 498,
+      "bytes": 22485,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/table_fence.c",
+      "lines": 51,
+      "bytes": 2581,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/apa/src/table_fence.h",
+      "lines": 94,
+      "bytes": 4144,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/atad/Makefile",
+      "lines": 26,
+      "bytes": 990,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/atad/src/imports.lst",
+      "lines": 56,
+      "bytes": 879,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/atad/src/irx_imports.h",
+      "lines": 34,
+      "bytes": 821,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/atad/src/ps2atad.c",
+      "lines": 1646,
+      "bytes": 49791,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/common/opl-hdd-ioctl.h",
+      "lines": 21,
+      "bytes": 452,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/Makefile",
+      "lines": 8,
+      "bytes": 191,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/ata_identify.h",
+      "lines": 407,
+      "bytes": 15278,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/hdpro.c",
+      "lines": 11,
+      "bytes": 195,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/imports.lst",
+      "lines": 14,
+      "bytes": 204,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/irx_imports.h",
+      "lines": 10,
+      "bytes": 137,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/xatad.c",
+      "lines": 86,
+      "bytes": 1781,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/xhdd.c",
+      "lines": 135,
+      "bytes": 3948,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/hdd/xhdd/xhdd.h",
+      "lines": 6,
+      "bytes": 304,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/Makefile",
+      "lines": 36,
+      "bytes": 1411,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/imports.lst",
+      "lines": 74,
+      "bytes": 1160,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/include/module_debug.h",
+      "lines": 33,
+      "bytes": 703,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/include/sbp2_disk.h",
+      "lines": 183,
+      "bytes": 5578,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/include/scsi.h",
+      "lines": 34,
+      "bytes": 947,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/irx_imports.h",
+      "lines": 35,
+      "bytes": 872,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/main.c",
+      "lines": 33,
+      "bytes": 690,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/sbp2_driver.c",
+      "lines": 828,
+      "bytes": 31626,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/IEEE1394_bd/src/scsi.c",
+      "lines": 455,
+      "bytes": 14513,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/Makefile",
+      "lines": 31,
+      "bytes": 1065,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/include/iLinkman.h",
+      "lines": 88,
+      "bytes": 3994,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink.c",
+      "lines": 365,
+      "bytes": 10433,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_DMA.c",
+      "lines": 132,
+      "bytes": 6398,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_PHY.c",
+      "lines": 74,
+      "bytes": 1709,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_TxRx.c",
+      "lines": 211,
+      "bytes": 8475,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_crom.c",
+      "lines": 396,
+      "bytes": 14781,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_internal.c",
+      "lines": 203,
+      "bytes": 6346,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/iLink_intr.c",
+      "lines": 469,
+      "bytes": 17285,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/imports.lst",
+      "lines": 74,
+      "bytes": 1085,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/include/iLink_CROM.h",
+      "lines": 72,
+      "bytes": 1628,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/include/iLink_internal.h",
+      "lines": 327,
+      "bytes": 12724,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/ilink/iLinkman/src/irx_imports.h",
+      "lines": 32,
+      "bytes": 822,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/Makefile",
+      "lines": 12,
+      "bytes": 265,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/cdvdfsv-internal.h",
+      "lines": 40,
+      "bytes": 991,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/cdvdfsv.c",
+      "lines": 288,
+      "bytes": 8400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/imports.lst",
+      "lines": 79,
+      "bytes": 1231,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/irx_imports.h",
+      "lines": 16,
+      "bytes": 267,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/ncmd.c",
+      "lines": 451,
+      "bytes": 13392,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/scmd.c",
+      "lines": 186,
+      "bytes": 5186,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdfsv/searchfile.c",
+      "lines": 81,
+      "bytes": 2496,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/Makefile",
+      "lines": 109,
+      "bytes": 2524,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/atad.c",
+      "lines": 796,
+      "bytes": 23718,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/atad.h",
+      "lines": 100,
+      "bytes": 2555,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/cdvdman.c",
+      "lines": 1233,
+      "bytes": 41370,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/dev9-pccf.c",
+      "lines": 19,
+      "bytes": 336,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/dev9.c",
+      "lines": 658,
+      "bytes": 15202,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/dev9.h",
+      "lines": 38,
+      "bytes": 1496,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-bdm.c",
+      "lines": 310,
+      "bytes": 9597,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-hdd.c",
+      "lines": 150,
+      "bytes": 4081,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-http.c",
+      "lines": 170,
+      "bytes": 5372,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-mmce.c",
+      "lines": 272,
+      "bytes": 11429,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-smb.c",
+      "lines": 252,
+      "bytes": 8533,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device-udpfs.c",
+      "lines": 244,
+      "bytes": 7957,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/device.h",
+      "lines": 10,
+      "bytes": 523,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/hdpro_atad.c",
+      "lines": 756,
+      "bytes": 19653,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/heapdiag.c",
+      "lines": 179,
+      "bytes": 5855,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/imports.lst",
+      "lines": 93,
+      "bytes": 1370,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/internal.h",
+      "lines": 188,
+      "bytes": 5944,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/ioman_add.h",
+      "lines": 50,
+      "bytes": 1856,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/ioops.c",
+      "lines": 647,
+      "bytes": 17952,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/ioplib_util.c",
+      "lines": 392,
+      "bytes": 12617,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/ioplib_util.h",
+      "lines": 21,
+      "bytes": 445,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/irx_imports.h",
+      "lines": 30,
+      "bytes": 617,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/ncmd.c",
+      "lines": 316,
+      "bytes": 8308,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/scmd.c",
+      "lines": 268,
+      "bytes": 6743,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/searchfile.c",
+      "lines": 316,
+      "bytes": 12290,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smb.c",
+      "lines": 1173,
+      "bytes": 42779,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smb.h",
+      "lines": 515,
+      "bytes": 16283,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smb2.c",
+      "lines": 1153,
+      "bytes": 39352,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smb2auth.c",
+      "lines": 307,
+      "bytes": 9549,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smb2auth.h",
+      "lines": 42,
+      "bytes": 1343,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/smsutils.S",
+      "lines": 180,
+      "bytes": 3655,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/cdvdman/streaming.c",
+      "lines": 455,
+      "bytes": 15606,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/cdvd_config.h",
+      "lines": 187,
+      "bytes": 7813,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/cdvdman_opl.h",
+      "lines": 78,
+      "bytes": 2987,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/freeze_diag.h",
+      "lines": 66,
+      "bytes": 2199,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/heap_diag.h",
+      "lines": 87,
+      "bytes": 3640,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/igrmbox.h",
+      "lines": 56,
+      "bytes": 2701,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/mmcedrv_config.h",
+      "lines": 9,
+      "bytes": 198,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/oplsmb.h",
+      "lines": 30,
+      "bytes": 796,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/common/smsutils.h",
+      "lines": 35,
+      "bytes": 874,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/freezediag/freezediag.c",
+      "lines": 81,
+      "bytes": 2417,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/freezediag/imports.lst",
+      "lines": 10,
+      "bytes": 135,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/freezediag/irx_imports.h",
+      "lines": 11,
+      "bytes": 212,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/igrmbox/igrmbox.c",
+      "lines": 188,
+      "bytes": 5689,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/igrmbox/imports.lst",
+      "lines": 20,
+      "bytes": 305,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/igrmbox/irx_imports.h",
+      "lines": 13,
+      "bytes": 254,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/imgdrv/Makefile",
+      "lines": 6,
+      "bytes": 155,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/imgdrv/imgdrv.c",
+      "lines": 98,
+      "bytes": 2280,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/imgdrv/imports.lst",
+      "lines": 8,
+      "bytes": 108,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/imgdrv/irx_imports.h",
+      "lines": 25,
+      "bytes": 707,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/apemodpatch/Makefile",
+      "lines": 6,
+      "bytes": 161,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/apemodpatch/imports.lst",
+      "lines": 30,
+      "bytes": 441,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/apemodpatch/irx_imports.h",
+      "lines": 15,
+      "bytes": 296,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/apemodpatch/main.c",
+      "lines": 128,
+      "bytes": 3554,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/cleareffects/Makefile",
+      "lines": 6,
+      "bytes": 162,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/cleareffects/imports.lst",
+      "lines": 8,
+      "bytes": 123,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/cleareffects/irx_imports.h",
+      "lines": 11,
+      "bytes": 213,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/cleareffects/main.c",
+      "lines": 30,
+      "bytes": 674,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/f2techioppatch/Makefile",
+      "lines": 6,
+      "bytes": 164,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/f2techioppatch/imports.lst",
+      "lines": 12,
+      "bytes": 188,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/f2techioppatch/irx_imports.h",
+      "lines": 12,
+      "bytes": 234,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/f2techioppatch/main.c",
+      "lines": 60,
+      "bytes": 1712,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/iremsndpatch/Makefile",
+      "lines": 6,
+      "bytes": 168,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/iremsndpatch/asm.S",
+      "lines": 30,
+      "bytes": 480,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/iremsndpatch/imports.lst",
+      "lines": 22,
+      "bytes": 320,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/iremsndpatch/irx_imports.h",
+      "lines": 27,
+      "bytes": 752,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/patches/iremsndpatch/main.c",
+      "lines": 118,
+      "bytes": 4155,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/resetspu/Makefile",
+      "lines": 6,
+      "bytes": 159,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/resetspu/imports.lst",
+      "lines": 3,
+      "bytes": 55,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/resetspu/irx_imports.h",
+      "lines": 10,
+      "bytes": 194,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/iopcore/resetspu/resetspu.c",
+      "lines": 96,
+      "bytes": 2422,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/Makefile",
+      "lines": 6,
+      "bytes": 162,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/imports.lst",
+      "lines": 30,
+      "bytes": 356,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/irx_imports.h",
+      "lines": 13,
+      "bytes": 252,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/isofs.c",
+      "lines": 669,
+      "bytes": 17525,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/lz4.c",
+      "lines": 506,
+      "bytes": 17102,
+      "partial": [
+        [
+          360,
+          507
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/isofs/lz4.h",
+      "lines": 248,
+      "bytes": 12319,
+      "partial": [
+        [
+          52,
+          135
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/Makefile",
+      "lines": 41,
+      "bytes": 797,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/device-bdm.c",
+      "lines": 36,
+      "bytes": 1043,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/device-hdd.c",
+      "lines": 52,
+      "bytes": 1372,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/device-mmce.c",
+      "lines": 38,
+      "bytes": 938,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/device-smb.c",
+      "lines": 51,
+      "bytes": 1663,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/device.h",
+      "lines": 7,
+      "bytes": 290,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/imports.lst",
+      "lines": 88,
+      "bytes": 1652,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/ioman_add.h",
+      "lines": 48,
+      "bytes": 1843,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/irx_imports.h",
+      "lines": 28,
+      "bytes": 604,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu.c",
+      "lines": 931,
+      "bytes": 30827,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu.h",
+      "lines": 225,
+      "bytes": 5514,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu_io.c",
+      "lines": 41,
+      "bytes": 1402,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu_rpc.c",
+      "lines": 152,
+      "bytes": 4247,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu_sys.c",
+      "lines": 188,
+      "bytes": 4532,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu_utils.h",
+      "lines": 94,
+      "bytes": 3004,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mcemu/mcemu_var.c",
+      "lines": 72,
+      "bytes": 3418,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/ioplib.h",
+      "lines": 40,
+      "bytes": 1435,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/irx_imports.h",
+      "lines": 33,
+      "bytes": 787,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/mmce_cmds.h",
+      "lines": 61,
+      "bytes": 1486,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/mmce_fs.h",
+      "lines": 6,
+      "bytes": 102,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/mmce_sio2.h",
+      "lines": 48,
+      "bytes": 1070,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/module_debug.h",
+      "lines": 19,
+      "bytes": 277,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/sio2man_hook.h",
+      "lines": 33,
+      "bytes": 1094,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/include/sio2regs.h",
+      "lines": 201,
+      "bytes": 10617,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/imports.lst",
+      "lines": 55,
+      "bytes": 834,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/ioplib.c",
+      "lines": 101,
+      "bytes": 2582,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/mmce_cmds.c",
+      "lines": 317,
+      "bytes": 8714,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/mmce_fs.c",
+      "lines": 1238,
+      "bytes": 36930,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/mmce_sio2.c",
+      "lines": 592,
+      "bytes": 18520,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/mmceman.c",
+      "lines": 99,
+      "bytes": 2372,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mmce/mmceman/src/sio2man_hook.c",
+      "lines": 318,
+      "bytes": 9755,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/Makefile",
+      "lines": 28,
+      "bytes": 860,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/crc16.c",
+      "lines": 27,
+      "bytes": 1045,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/crc16.h",
+      "lines": 8,
+      "bytes": 105,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/imports.lst",
+      "lines": 58,
+      "bytes": 879,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/ioplib.c",
+      "lines": 101,
+      "bytes": 2582,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/ioplib.h",
+      "lines": 40,
+      "bytes": 1435,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/irx_imports.h",
+      "lines": 31,
+      "bytes": 765,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/module_debug.h",
+      "lines": 24,
+      "bytes": 429,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/mx4sio.c",
+      "lines": 847,
+      "bytes": 25481,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/mx4sio.h",
+      "lines": 78,
+      "bytes": 1971,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/sio2man_hook.c",
+      "lines": 315,
+      "bytes": 9716,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/sio2man_hook.h",
+      "lines": 33,
+      "bytes": 1094,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/sio2regs.h",
+      "lines": 174,
+      "bytes": 9143,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/spi_sdcard_crc7.c",
+      "lines": 83,
+      "bytes": 3166,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/spi_sdcard_crc7.h",
+      "lines": 16,
+      "bytes": 410,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/spi_sdcard_driver.c",
+      "lines": 736,
+      "bytes": 21834,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/spi_sdcard_driver.h",
+      "lines": 177,
+      "bytes": 4867,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/mx4sio_bd/src/spi_sdcard_driver_config.h",
+      "lines": 25,
+      "bytes": 715,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/Makefile",
+      "lines": 45,
+      "bytes": 1165,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/api_lib.c",
+      "lines": 599,
+      "bytes": 14946,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/api_msg.c",
+      "lines": 824,
+      "bytes": 24083,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/etharp.c",
+      "lines": 848,
+      "bytes": 32019,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/icmp.c",
+      "lines": 199,
+      "bytes": 6734,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/imports.lst",
+      "lines": 57,
+      "bytes": 838,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/arch/cc.h",
+      "lines": 17,
+      "bytes": 394,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/arch/sys_arch.h",
+      "lines": 22,
+      "bytes": 509,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/irx_imports.h",
+      "lines": 27,
+      "bytes": 769,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/api.h",
+      "lines": 157,
+      "bytes": 5109,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/api_msg.h",
+      "lines": 101,
+      "bytes": 2753,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/arch.h",
+      "lines": 216,
+      "bytes": 10538,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/debug.h",
+      "lines": 96,
+      "bytes": 4064,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/def.h",
+      "lines": 46,
+      "bytes": 1866,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/dhcp.h",
+      "lines": 212,
+      "bytes": 7099,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/err.h",
+      "lines": 69,
+      "bytes": 2500,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/icmp.h",
+      "lines": 113,
+      "bytes": 3927,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/inet.h",
+      "lines": 83,
+      "bytes": 2780,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/ip.h",
+      "lines": 156,
+      "bytes": 6066,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/ip_addr.h",
+      "lines": 133,
+      "bytes": 5992,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/ip_frag.h",
+      "lines": 44,
+      "bytes": 1879,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/mem.h",
+      "lines": 60,
+      "bytes": 2256,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/memp.h",
+      "lines": 62,
+      "bytes": 2105,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/netif.h",
+      "lines": 141,
+      "bytes": 5525,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/opt.h",
+      "lines": 692,
+      "bytes": 16233,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/pbuf.h",
+      "lines": 116,
+      "bytes": 3925,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/raw.h",
+      "lines": 75,
+      "bytes": 2785,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/snmp.h",
+      "lines": 178,
+      "bytes": 6033,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/sockets.h",
+      "lines": 259,
+      "bytes": 9407,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/stats.h",
+      "lines": 153,
+      "bytes": 3781,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/sys.h",
+      "lines": 194,
+      "bytes": 6875,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/tcp.h",
+      "lines": 524,
+      "bytes": 19817,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/tcpip.h",
+      "lines": 91,
+      "bytes": 3051,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/timers.h",
+      "lines": 101,
+      "bytes": 3286,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwip/udp.h",
+      "lines": 105,
+      "bytes": 3534,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/lwipopts.h",
+      "lines": 402,
+      "bytes": 13784,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/netif/etharp.h",
+      "lines": 100,
+      "bytes": 3285,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/netif/loopif.h",
+      "lines": 39,
+      "bytes": 1747,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/include/ps2ip_internal.h",
+      "lines": 38,
+      "bytes": 1140,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/inet.S",
+      "lines": 676,
+      "bytes": 14350,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/ip.c",
+      "lines": 404,
+      "bytes": 11430,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/ip_addr.c",
+      "lines": 38,
+      "bytes": 1814,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/ip_frag.c",
+      "lines": 337,
+      "bytes": 11174,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/loopif.c",
+      "lines": 113,
+      "bytes": 3546,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/mem.c",
+      "lines": 390,
+      "bytes": 11070,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/memp.c",
+      "lines": 270,
+      "bytes": 8337,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/netif.c",
+      "lines": 239,
+      "bytes": 9083,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/pbuf.c",
+      "lines": 802,
+      "bytes": 28651,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/ps2ip.c",
+      "lines": 570,
+      "bytes": 13222,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/sockets.c",
+      "lines": 1415,
+      "bytes": 44355,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/tcp.c",
+      "lines": 1082,
+      "bytes": 32309,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/tcp_in.c",
+      "lines": 1125,
+      "bytes": 45474,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/tcp_out.c",
+      "lines": 570,
+      "bytes": 17603,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/tcpip.c",
+      "lines": 171,
+      "bytes": 4590,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/timers.c",
+      "lines": 290,
+      "bytes": 9161,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSTCPIP/udp.c",
+      "lines": 786,
+      "bytes": 29159,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSUTILS/Makefile",
+      "lines": 8,
+      "bytes": 184,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/SMSUTILS/SMSUTILS.S",
+      "lines": 217,
+      "bytes": 4352,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/httpclient.h",
+      "lines": 152,
+      "bytes": 5630,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/httpstream.inc",
+      "lines": 334,
+      "bytes": 11521,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/ra_client.h",
+      "lines": 53,
+      "bytes": 1643,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/ra_snap.h",
+      "lines": 124,
+      "bytes": 6259,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/ra_watch.h",
+      "lines": 155,
+      "bytes": 6522,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/rapops_cfg.h",
+      "lines": 52,
+      "bytes": 1920,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/smap_tx.h",
+      "lines": 27,
+      "bytes": 1098,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/smstcpip-common.h",
+      "lines": 389,
+      "bytes": 12546,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/common/smstcpip.h",
+      "lines": 160,
+      "bytes": 6840,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/httpclient/Makefile",
+      "lines": 10,
+      "bytes": 294,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/httpclient/httpclient.c",
+      "lines": 402,
+      "bytes": 12313,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/httpclient/imports.lst",
+      "lines": 64,
+      "bytes": 899,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/httpclient/irx_imports.h",
+      "lines": 10,
+      "bytes": 180,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/httpclient/main.c",
+      "lines": 159,
+      "bytes": 6257,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nbns/Makefile",
+      "lines": 8,
+      "bytes": 199,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nbns/imports.lst",
+      "lines": 50,
+      "bytes": 726,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nbns/irx_imports.h",
+      "lines": 9,
+      "bytes": 160,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nbns/main.c",
+      "lines": 76,
+      "bytes": 1925,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nbns/nbns.c",
+      "lines": 371,
+      "bytes": 11655,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/imports.lst",
+      "lines": 61,
+      "bytes": 771,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/irx_imports.h",
+      "lines": 27,
+      "bytes": 653,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/linkfile",
+      "lines": 155,
+      "bytes": 5097,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/nfsman.c",
+      "lines": 1407,
+      "bytes": 38047,
+      "partial": [
+        [
+          80,
+          150
+        ],
+        [
+          420,
+          455
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/nfsman.h",
+      "lines": 33,
+      "bytes": 1569,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/ps2iop-compat.h",
+      "lines": 17,
+      "bytes": 470,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/unfs4/unfs4.c",
+      "lines": 916,
+      "bytes": 28376,
+      "partial": [
+        [
+          455,
+          550
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/nfsman/unfs4/unfs4.h",
+      "lines": 225,
+      "bytes": 9169,
+      "partial": [
+        [
+          68,
+          125
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/ps2ips/Makefile",
+      "lines": 18,
+      "bytes": 803,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/ps2ips/imports.lst",
+      "lines": 59,
+      "bytes": 864,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/ps2ips/irx_imports.h",
+      "lines": 27,
+      "bytes": 716,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/ps2ips/ps2ips.c",
+      "lines": 752,
+      "bytes": 19808,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapops/imports.lst",
+      "lines": 12,
+      "bytes": 194,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapops/irx_imports.h",
+      "lines": 11,
+      "bytes": 214,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapops/rapops.c",
+      "lines": 156,
+      "bytes": 5488,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapull/imports.lst",
+      "lines": 16,
+      "bytes": 253,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapull/irx_imports.h",
+      "lines": 11,
+      "bytes": 211,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/rapull/rapull.c",
+      "lines": 409,
+      "bytes": 13218,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/raudp/Makefile",
+      "lines": 8,
+      "bytes": 211,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/raudp/imports.lst",
+      "lines": 34,
+      "bytes": 539,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/raudp/irx_imports.h",
+      "lines": 19,
+      "bytes": 598,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/raudp/raudp.c",
+      "lines": 1308,
+      "bytes": 43415,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/Makefile",
+      "lines": 18,
+      "bytes": 679,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/imports.lst",
+      "lines": 62,
+      "bytes": 935,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/irx_imports.h",
+      "lines": 21,
+      "bytes": 391,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/main.c",
+      "lines": 218,
+      "bytes": 5473,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/main.h",
+      "lines": 34,
+      "bytes": 877,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/smap.c",
+      "lines": 651,
+      "bytes": 23917,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/xfer.c",
+      "lines": 339,
+      "bytes": 10475,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap-ingame/xfer.h",
+      "lines": 5,
+      "bytes": 232,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/Makefile",
+      "lines": 15,
+      "bytes": 364,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/imports.lst",
+      "lines": 66,
+      "bytes": 962,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/include/irx_imports.h",
+      "lines": 18,
+      "bytes": 350,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/include/main.h",
+      "lines": 41,
+      "bytes": 1024,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/include/mprintf.h",
+      "lines": 22,
+      "bytes": 399,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/include/xfer.h",
+      "lines": 21,
+      "bytes": 408,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/main.c",
+      "lines": 85,
+      "bytes": 3102,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/ministack.c",
+      "lines": 275,
+      "bytes": 8518,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/ministack.h",
+      "lines": 240,
+      "bytes": 5830,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/smap.c",
+      "lines": 641,
+      "bytes": 25187,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/udpbd.c",
+      "lines": 507,
+      "bytes": 15470,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/udpbd.h",
+      "lines": 123,
+      "bytes": 3010,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/udptty.c",
+      "lines": 89,
+      "bytes": 1944,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/udptty.h",
+      "lines": 6,
+      "bytes": 56,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smap_udpbd/src/xfer.c",
+      "lines": 217,
+      "bytes": 6912,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/imports.lst",
+      "lines": 65,
+      "bytes": 850,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/irx_imports.h",
+      "lines": 28,
+      "bytes": 673,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/linkfile",
+      "lines": 155,
+      "bytes": 5097,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/ps2iop-compat.h",
+      "lines": 29,
+      "bytes": 811,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/smb2man.c",
+      "lines": 1780,
+      "bytes": 55113,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/smb2man_devctl.h",
+      "lines": 28,
+      "bytes": 1487,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/hmac-md5.c",
+      "lines": 99,
+      "bytes": 2908,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/hmac-md5.h",
+      "lines": 40,
+      "bytes": 814,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/md4.h",
+      "lines": 43,
+      "bytes": 1509,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/md4c.c",
+      "lines": 240,
+      "bytes": 6849,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/md5.c",
+      "lines": 190,
+      "bytes": 6394,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/md5.h",
+      "lines": 23,
+      "bytes": 615,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/ntlm.c",
+      "lines": 263,
+      "bytes": 12193,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/ntlm.h",
+      "lines": 15,
+      "bytes": 346,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/unicode.c",
+      "lines": 204,
+      "bytes": 7251,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/unicode.h",
+      "lines": 13,
+      "bytes": 322,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/usmb2.c",
+      "lines": 1085,
+      "bytes": 33689,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smb2man/usmb2/usmb2.h",
+      "lines": 130,
+      "bytes": 5391,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/Makefile",
+      "lines": 8,
+      "bytes": 212,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/des.c",
+      "lines": 564,
+      "bytes": 25936,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/des.h",
+      "lines": 15,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/imports.lst",
+      "lines": 11,
+      "bytes": 150,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/irx_imports.h",
+      "lines": 10,
+      "bytes": 192,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/main.c",
+      "lines": 19,
+      "bytes": 386,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/md4.c",
+      "lines": 175,
+      "bytes": 4645,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/md4.h",
+      "lines": 15,
+      "bytes": 389,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/smbauth.c",
+      "lines": 139,
+      "bytes": 4356,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbinit/smbauth.h",
+      "lines": 1,
+      "bytes": 46,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/Makefile",
+      "lines": 24,
+      "bytes": 1225,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/auth.c",
+      "lines": 93,
+      "bytes": 2644,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/auth.h",
+      "lines": 14,
+      "bytes": 463,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/debug.h",
+      "lines": 17,
+      "bytes": 288,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/des.c",
+      "lines": 568,
+      "bytes": 25912,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/des.h",
+      "lines": 7,
+      "bytes": 174,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/imports.lst",
+      "lines": 63,
+      "bytes": 813,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/irx_imports.h",
+      "lines": 27,
+      "bytes": 662,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/md4.c",
+      "lines": 182,
+      "bytes": 4875,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/md4.h",
+      "lines": 7,
+      "bytes": 151,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/poll.c",
+      "lines": 91,
+      "bytes": 2012,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/poll.h",
+      "lines": 25,
+      "bytes": 495,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/smb.c",
+      "lines": 1638,
+      "bytes": 55686,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/smb.h",
+      "lines": 897,
+      "bytes": 24409,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/smb_fio.c",
+      "lines": 1130,
+      "bytes": 25962,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/smb_fio.h",
+      "lines": 30,
+      "bytes": 1341,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/smbman-ra/smbman.c",
+      "lines": 35,
+      "bytes": 676,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/Makefile",
+      "lines": 19,
+      "bytes": 650,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/include/main.h",
+      "lines": 10,
+      "bytes": 87,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/include/mprintf.h",
+      "lines": 23,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/imports.lst",
+      "lines": 66,
+      "bytes": 922,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/irx_imports.h",
+      "lines": 18,
+      "bytes": 349,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/main.c",
+      "lines": 47,
+      "bytes": 900,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udpfs_bd.c",
+      "lines": 193,
+      "bytes": 6422,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udpfs_core.c",
+      "lines": 2,
+      "bytes": 125,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udpfs_core.h",
+      "lines": 81,
+      "bytes": 2474,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udpfs_packet.h",
+      "lines": 262,
+      "bytes": 9812,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udprdma.c",
+      "lines": 2,
+      "bytes": 122,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udprdma.h",
+      "lines": 152,
+      "bytes": 4673,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udprdma_packet.h",
+      "lines": 135,
+      "bytes": 4286,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_bd/src/udprdma_seq.h",
+      "lines": 14,
+      "bytes": 432,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/Makefile",
+      "lines": 19,
+      "bytes": 653,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/include/main.h",
+      "lines": 10,
+      "bytes": 91,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/include/mprintf.h",
+      "lines": 23,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/imports.lst",
+      "lines": 67,
+      "bytes": 937,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/irx_imports.h",
+      "lines": 18,
+      "bytes": 349,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/main.c",
+      "lines": 29,
+      "bytes": 634,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udpfs_core.c",
+      "lines": 2,
+      "bytes": 125,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udpfs_core.h",
+      "lines": 81,
+      "bytes": 2474,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udpfs_fhi.c",
+      "lines": 143,
+      "bytes": 4571,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udpfs_packet.h",
+      "lines": 262,
+      "bytes": 9812,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udprdma.c",
+      "lines": 2,
+      "bytes": 122,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udprdma.h",
+      "lines": 152,
+      "bytes": 4673,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udprdma_packet.h",
+      "lines": 135,
+      "bytes": 4286,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_fhi/src/udprdma_seq.h",
+      "lines": 14,
+      "bytes": 432,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/Makefile",
+      "lines": 19,
+      "bytes": 659,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/include/main.h",
+      "lines": 10,
+      "bytes": 90,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/include/mprintf.h",
+      "lines": 23,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/imports.lst",
+      "lines": 69,
+      "bytes": 973,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/irx_imports.h",
+      "lines": 18,
+      "bytes": 349,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/main.c",
+      "lines": 47,
+      "bytes": 900,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udpfs_core.c",
+      "lines": 2,
+      "bytes": 125,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udpfs_core.h",
+      "lines": 81,
+      "bytes": 2474,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udpfs_ioman.c",
+      "lines": 510,
+      "bytes": 15091,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udpfs_packet.h",
+      "lines": 262,
+      "bytes": 9812,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udprdma.c",
+      "lines": 2,
+      "bytes": 122,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udprdma.h",
+      "lines": 152,
+      "bytes": 4673,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udprdma_packet.h",
+      "lines": 135,
+      "bytes": 4286,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/src/udprdma_seq.h",
+      "lines": 14,
+      "bytes": 432,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ioman/tests/test_ack_sequence.c",
+      "lines": 31,
+      "bytes": 946,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/Makefile",
+      "lines": 26,
+      "bytes": 1227,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/main.h",
+      "lines": 7,
+      "bytes": 101,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/ministack_arp.h",
+      "lines": 37,
+      "bytes": 828,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/ministack_eth.h",
+      "lines": 68,
+      "bytes": 1592,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/ministack_ip.h",
+      "lines": 77,
+      "bytes": 1579,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/ministack_udp.h",
+      "lines": 64,
+      "bytes": 1503,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/mprintf.h",
+      "lines": 23,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/mstack.h",
+      "lines": 17,
+      "bytes": 532,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/mstack_xchg.h",
+      "lines": 42,
+      "bytes": 1422,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/include/udptty.h",
+      "lines": 6,
+      "bytes": 56,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/imports.lst",
+      "lines": 36,
+      "bytes": 504,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/irx_imports.h",
+      "lines": 15,
+      "bytes": 291,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/main.c",
+      "lines": 72,
+      "bytes": 1813,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/ministack_arp.c",
+      "lines": 211,
+      "bytes": 6674,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/ministack_eth.c",
+      "lines": 28,
+      "bytes": 788,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/ministack_ip.c",
+      "lines": 91,
+      "bytes": 2411,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/ministack_udp.c",
+      "lines": 68,
+      "bytes": 2136,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/ministack_xchg.c",
+      "lines": 203,
+      "bytes": 7060,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_ministack/src/udptty.c",
+      "lines": 89,
+      "bytes": 1948,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/src/udpfs_core.c",
+      "lines": 791,
+      "bytes": 22552,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/src/udprdma.c",
+      "lines": 738,
+      "bytes": 25579,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/stubs/iomanX.h",
+      "lines": 62,
+      "bytes": 1210,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/stubs/irx.h",
+      "lines": 4,
+      "bytes": 109,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/stubs/thbase.h",
+      "lines": 18,
+      "bytes": 422,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/stubs/thevent.h",
+      "lines": 27,
+      "bytes": 585,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/test_ministack_announce.c",
+      "lines": 107,
+      "bytes": 3253,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/test_ministack_conflict.c",
+      "lines": 94,
+      "bytes": 2994,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/test_ministack_xchg.c",
+      "lines": 304,
+      "bytes": 10507,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_shared/tests/test_udprdma_session.c",
+      "lines": 446,
+      "bytes": 15473,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/Makefile",
+      "lines": 26,
+      "bytes": 1140,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/include/irx_imports.h",
+      "lines": 16,
+      "bytes": 314,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/include/main.h",
+      "lines": 41,
+      "bytes": 1017,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/include/mprintf.h",
+      "lines": 23,
+      "bytes": 400,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/include/smap.h",
+      "lines": 41,
+      "bytes": 1517,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/include/xfer.h",
+      "lines": 41,
+      "bytes": 1323,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/src/imports.lst",
+      "lines": 49,
+      "bytes": 750,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/src/main.c",
+      "lines": 26,
+      "bytes": 563,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/src/smap.c",
+      "lines": 639,
+      "bytes": 25205,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/network/udpfs_smap/src/xfer.c",
+      "lines": 279,
+      "bytes": 9812,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/Makefile",
+      "lines": 26,
+      "bytes": 509,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/ds34bt.c",
+      "lines": 1425,
+      "bytes": 53401,
+      "partial": [
+        [
+          107,
+          146
+        ],
+        [
+          897,
+          903
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/ds34bt.h",
+      "lines": 240,
+      "bytes": 7951,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/ds34common.c",
+      "lines": 144,
+      "bytes": 4788,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/ds34usb.c",
+      "lines": 616,
+      "bytes": 19384,
+      "partial": [
+        [
+          128,
+          172
+        ],
+        [
+          332,
+          333
+        ]
+      ]
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/ds34usb.h",
+      "lines": 88,
+      "bytes": 2135,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/imports.lst",
+      "lines": 49,
+      "bytes": 784,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/irx_imports.h",
+      "lines": 40,
+      "bytes": 952,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/pademu.c",
+      "lines": 589,
+      "bytes": 16159,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/pademu.h",
+      "lines": 60,
+      "bytes": 1204,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/padmacro.c",
+      "lines": 256,
+      "bytes": 8456,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/padmacro.h",
+      "lines": 27,
+      "bytes": 666,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/sys_utils.c",
+      "lines": 99,
+      "bytes": 2460,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pademu/sys_utils.h",
+      "lines": 35,
+      "bytes": 765,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/Makefile",
+      "lines": 18,
+      "bytes": 589,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/format.inc",
+      "lines": 57,
+      "bytes": 2314,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/imports.lst",
+      "lines": 20,
+      "bytes": 307,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/irx_imports.h",
+      "lines": 8,
+      "bytes": 143,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/main.c",
+      "lines": 154,
+      "bytes": 4209,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_ata.c",
+      "lines": 278,
+      "bytes": 11860,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_ata.h",
+      "lines": 33,
+      "bytes": 1298,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_hw.c",
+      "lines": 313,
+      "bytes": 11491,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_mbr.h",
+      "lines": 26,
+      "bytes": 951,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_pio_bulk.inc",
+      "lines": 30,
+      "bytes": 1392,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pccf_pio_profile.inc",
+      "lines": 28,
+      "bytes": 1457,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcclog.h",
+      "lines": 4,
+      "bytes": 88,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcdiag_ata.h",
+      "lines": 22,
+      "bytes": 826,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcdiag_cf.c",
+      "lines": 72,
+      "bytes": 3986,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcdiag_cf.h",
+      "lines": 19,
+      "bytes": 821,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcdiag_cis.c",
+      "lines": 196,
+      "bytes": 7775,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/pccf/pcdiag_cis.h",
+      "lines": 30,
+      "bytes": 1145,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/Makefile",
+      "lines": 21,
+      "bytes": 1183,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/include/usbd.h",
+      "lines": 361,
+      "bytes": 11878,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/include/usbd_macro.h",
+      "lines": 154,
+      "bytes": 8477,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/driver.c",
+      "lines": 283,
+      "bytes": 6965,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/driver.h",
+      "lines": 31,
+      "bytes": 965,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/hcd.c",
+      "lines": 544,
+      "bytes": 16815,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/hcd.h",
+      "lines": 28,
+      "bytes": 903,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/hub.c",
+      "lines": 737,
+      "bytes": 23511,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/hub.h",
+      "lines": 19,
+      "bytes": 420,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/imports.lst",
+      "lines": 48,
+      "bytes": 694,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/interface.c",
+      "lines": 452,
+      "bytes": 8465,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/irx_imports.h",
+      "lines": 30,
+      "bytes": 780,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/mem.c",
+      "lines": 259,
+      "bytes": 6703,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/mem.h",
+      "lines": 45,
+      "bytes": 1108,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/usbd.c",
+      "lines": 410,
+      "bytes": 11221,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/usbdpriv.h",
+      "lines": 328,
+      "bytes": 8226,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/usbio.c",
+      "lines": 319,
+      "bytes": 9412,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbd-ra/src/usbio.h",
+      "lines": 28,
+      "bytes": 962,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/imports.lst",
+      "lines": 40,
+      "bytes": 622,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/include/module_debug.h",
+      "lines": 36,
+      "bytes": 750,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/include/scsi.h",
+      "lines": 37,
+      "bytes": 952,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/irx_imports.h",
+      "lines": 30,
+      "bytes": 735,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/main.c",
+      "lines": 37,
+      "bytes": 801,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/scsi.c",
+      "lines": 440,
+      "bytes": 13864,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/usb/usbmass_bd/src/usb_mass.c",
+      "lines": 901,
+      "bytes": 27877,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/Makefile",
+      "lines": 10,
+      "bytes": 201,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/genvmc.c",
+      "lines": 947,
+      "bytes": 32526,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/genvmc.h",
+      "lines": 44,
+      "bytes": 1383,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/imports.lst",
+      "lines": 62,
+      "bytes": 794,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/irx_imports.h",
+      "lines": 18,
+      "bytes": 281,
+      "partial": null
+    },
+    {
+      "repo": "RiptOPL",
+      "path": "modules/vmc/genvmc/vmc_alloc.h",
+      "lines": 21,
+      "bytes": 1036,
+      "partial": null
+    }
+  ]
+}

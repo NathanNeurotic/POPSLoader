@@ -1,0 +1,3399 @@
+{
+  "scope": "servers_remaining",
+  "files": [
+    {
+      "repo": "PS2-Servers",
+      "path": ".claude/settings.json",
+      "lines": 7,
+      "bytes": 83,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".coderabbit.yaml",
+      "lines": 196,
+      "bytes": 9084,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".gitattributes",
+      "lines": 42,
+      "bytes": 1730,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/dependabot.yml",
+      "lines": 21,
+      "bytes": 730,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/scripts/check_ai_attribution.py",
+      "lines": 132,
+      "bytes": 5041,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/scripts/release-downloads.sh",
+      "lines": 46,
+      "bytes": 2071,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/attribution-policy.yml",
+      "lines": 70,
+      "bytes": 2692,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/edge-build.yml",
+      "lines": 466,
+      "bytes": 22300,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/edge.yml",
+      "lines": 254,
+      "bytes": 11041,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/release-on-main.yml",
+      "lines": 489,
+      "bytes": 21738,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/release.yml",
+      "lines": 606,
+      "bytes": 27852,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".github/workflows/udpfs-transport-replay.yml",
+      "lines": 49,
+      "bytes": 2297,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": ".gitignore",
+      "lines": 27,
+      "bytes": 515,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "Start-Launcher.bat",
+      "lines": 11,
+      "bytes": 347,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "build/achievements.nuitka-package.config.yml",
+      "lines": 14,
+      "bytes": 355,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "build/build_libchdr.py",
+      "lines": 151,
+      "bytes": 5732,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/fixtures/handshake_cases.json",
+      "lines": 7,
+      "bytes": 401,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/http_probe.py",
+      "lines": 219,
+      "bytes": 8867,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/libsmb2/run.py",
+      "lines": 214,
+      "bytes": 8969,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/neutrino_nfs/probe.c",
+      "lines": 117,
+      "bytes": 4126,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/neutrino_nfs/run.py",
+      "lines": 279,
+      "bytes": 12800,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/neutrino_smb/probe.c.in",
+      "lines": 109,
+      "bytes": 3758,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/neutrino_smb/run.py",
+      "lines": 284,
+      "bytes": 13300,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/opl_http/csv.c.in",
+      "lines": 54,
+      "bytes": 1315,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/opl_http/range.c.in",
+      "lines": 187,
+      "bytes": 7143,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/opl_http/run.py",
+      "lines": 202,
+      "bytes": 9149,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/riptopl_http/catalog.c.in",
+      "lines": 85,
+      "bytes": 2799,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/riptopl_http/run.py",
+      "lines": 221,
+      "bytes": 10484,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/udpbd_probe.py",
+      "lines": 181,
+      "bytes": 7615,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/udpfs_parity.py",
+      "lines": 743,
+      "bytes": 30464,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/integration/udpfs_probe.py",
+      "lines": 176,
+      "bytes": 6787,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/ra_dependency/check_progress_dates.py",
+      "lines": 24,
+      "bytes": 899,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/ra_dependency/check_watchlist.py",
+      "lines": 58,
+      "bytes": 2857,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/ra_dependency/progress_dates.c",
+      "lines": 58,
+      "bytes": 2227,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/ra_dependency/watchlist.c",
+      "lines": 52,
+      "bytes": 2402,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "conformance/ra_dependency/watchlist_owned.c",
+      "lines": 36,
+      "bytes": 1284,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/antivirus.html",
+      "lines": 143,
+      "bytes": 9717,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/assets/app.js",
+      "lines": 479,
+      "bytes": 17657,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/assets/style.css",
+      "lines": 1719,
+      "bytes": 81488,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/cli.html",
+      "lines": 243,
+      "bytes": 10876,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/compression.html",
+      "lines": 169,
+      "bytes": 9151,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/credits.html",
+      "lines": 144,
+      "bytes": 8954,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/data/search-index.json",
+      "lines": 1087,
+      "bytes": 156397,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/edge-builds.html",
+      "lines": 181,
+      "bytes": 9548,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/edge-manual.html",
+      "lines": 296,
+      "bytes": 12209,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/edge.html",
+      "lines": 189,
+      "bytes": 10402,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/editions.html",
+      "lines": 231,
+      "bytes": 12862,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/falsepositives.html",
+      "lines": 23,
+      "bytes": 1057,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/getting-started.html",
+      "lines": 267,
+      "bytes": 19462,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/http.html",
+      "lines": 187,
+      "bytes": 11272,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/index.html",
+      "lines": 232,
+      "bytes": 15356,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/nbd-ps2client.html",
+      "lines": 113,
+      "bytes": 7131,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/nfs.html",
+      "lines": 142,
+      "bytes": 12323,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/openwrt.html",
+      "lines": 163,
+      "bytes": 9000,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/protocol-compatibility.html",
+      "lines": 189,
+      "bytes": 12178,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/releases.html",
+      "lines": 215,
+      "bytes": 10916,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/router-status.html",
+      "lines": 139,
+      "bytes": 7403,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/smb.html",
+      "lines": 192,
+      "bytes": 15690,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/styles.css",
+      "lines": 210,
+      "bytes": 8553,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/udpbd.html",
+      "lines": 181,
+      "bytes": 18299,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/udpfs-diagnostics.html",
+      "lines": 139,
+      "bytes": 9043,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "docs/udpfs.html",
+      "lines": 196,
+      "bytes": 11908,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/__main__.py",
+      "lines": 10,
+      "bytes": 176,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/achievement_loader.py",
+      "lines": 74,
+      "bytes": 3648,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/achievement_viewer.py",
+      "lines": 109,
+      "bytes": 4838,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/app_icon.py",
+      "lines": 246,
+      "bytes": 6910,
+      "partial": []
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/art_fetch.py",
+      "lines": 219,
+      "bytes": 9380,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/caduceus.py",
+      "lines": 411,
+      "bytes": 17875,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/directlink.py",
+      "lines": 1927,
+      "bytes": 85814,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/disc_identity.py",
+      "lines": 239,
+      "bytes": 11415,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/discord_presence.py",
+      "lines": 286,
+      "bytes": 12961,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/elevate.py",
+      "lines": 107,
+      "bytes": 3769,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/gui.py",
+      "lines": 3786,
+      "bytes": 188891,
+      "partial": [
+        [
+          258,
+          270
+        ],
+        [
+          291,
+          295
+        ],
+        [
+          439,
+          550
+        ],
+        [
+          641,
+          648
+        ],
+        [
+          650,
+          668
+        ],
+        [
+          967,
+          967
+        ],
+        [
+          1320,
+          1327
+        ],
+        [
+          1516,
+          1530
+        ],
+        [
+          2603,
+          2615
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/library_catalog.py",
+      "lines": 642,
+      "bytes": 29416,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/posix_firewall.py",
+      "lines": 93,
+      "bytes": 3759,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ps1_index.py",
+      "lines": 147,
+      "bytes": 5886,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ps1_vcd.py",
+      "lines": 153,
+      "bytes": 5948,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_account.py",
+      "lines": 23,
+      "bytes": 1327,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_account_probe.py",
+      "lines": 31,
+      "bytes": 1564,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_account_worker.py",
+      "lines": 416,
+      "bytes": 19984,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_credentials.py",
+      "lines": 168,
+      "bytes": 7307,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_evaluated_receiver.py",
+      "lines": 186,
+      "bytes": 7606,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_notifications.py",
+      "lines": 82,
+      "bytes": 3152,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_overview.py",
+      "lines": 252,
+      "bytes": 11976,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_owned_service.py",
+      "lines": 438,
+      "bytes": 19152,
+      "partial": []
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_protocol.py",
+      "lines": 268,
+      "bytes": 11333,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_receiver.py",
+      "lines": 212,
+      "bytes": 8822,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_resolver_process.py",
+      "lines": 197,
+      "bytes": 8468,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_session.py",
+      "lines": 183,
+      "bytes": 7663,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_session_client.py",
+      "lines": 155,
+      "bytes": 6783,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_setup.py",
+      "lines": 40,
+      "bytes": 1605,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_sounds.py",
+      "lines": 87,
+      "bytes": 3472,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_submissions.py",
+      "lines": 59,
+      "bytes": 2493,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/ra_web.py",
+      "lines": 571,
+      "bytes": 20889,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/raw_storage.py",
+      "lines": 427,
+      "bytes": 20818,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/release_metadata.py",
+      "lines": 79,
+      "bytes": 3289,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/riptopl_export.py",
+      "lines": 109,
+      "bytes": 4338,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/riptopl_profile.py",
+      "lines": 234,
+      "bytes": 10351,
+      "partial": [
+        [
+          214,
+          234
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/servers.py",
+      "lines": 768,
+      "bytes": 35011,
+      "partial": [
+        [
+          137,
+          138
+        ],
+        [
+          149,
+          152
+        ],
+        [
+          169,
+          208
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/session_stats.py",
+      "lines": 131,
+      "bytes": 5050,
+      "partial": []
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/session_view.py",
+      "lines": 177,
+      "bytes": 6687,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/setup_guide.py",
+      "lines": 119,
+      "bytes": 5679,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/status_client.py",
+      "lines": 201,
+      "bytes": 7386,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/status_dot.py",
+      "lines": 86,
+      "bytes": 3013,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/tray.py",
+      "lines": 270,
+      "bytes": 9964,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/tray_linux.py",
+      "lines": 198,
+      "bytes": 7371,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/virtual_exfat.py",
+      "lines": 325,
+      "bytes": 14521,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "launcher/windows_setup.py",
+      "lines": 458,
+      "bytes": 19285,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/cmd/ps2servers-edge/main.go",
+      "lines": 548,
+      "bytes": 22760,
+      "partial": [
+        [
+          156,
+          156
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/cmd/ps2servers-edge/main_test.go",
+      "lines": 42,
+      "bytes": 1394,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/cache_budget_test.go",
+      "lines": 117,
+      "bytes": 3996,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd.go",
+      "lines": 150,
+      "bytes": 3704,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_cuebin.go",
+      "lines": 539,
+      "bytes": 16410,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_cuebin_disabled.go",
+      "lines": 12,
+      "bytes": 206,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_cuebin_enabled.go",
+      "lines": 217,
+      "bytes": 5508,
+      "partial": [
+        [
+          21,
+          21
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_cuebin_test.go",
+      "lines": 126,
+      "bytes": 3952,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_disabled.go",
+      "lines": 13,
+      "bytes": 228,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_disabled_test.go",
+      "lines": 18,
+      "bytes": 396,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_enabled.go",
+      "lines": 87,
+      "bytes": 2189,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_enabled_test.go",
+      "lines": 127,
+      "bytes": 3444,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_libchdr.h",
+      "lines": 23,
+      "bytes": 504,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/chd_test.go",
+      "lines": 180,
+      "bytes": 5182,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/corrupt_index_test.go",
+      "lines": 111,
+      "bytes": 3544,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/image.go",
+      "lines": 489,
+      "bytes": 15584,
+      "partial": [
+        [
+          75,
+          95
+        ],
+        [
+          198,
+          203
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/image_test.go",
+      "lines": 128,
+      "bytes": 3196,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/lz4.go",
+      "lines": 70,
+      "bytes": 1543,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/lz4_test.go",
+      "lines": 19,
+      "bytes": 430,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/compression/sizeof_test.go",
+      "lines": 202,
+      "bytes": 6061,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/filesystem/root.go",
+      "lines": 259,
+      "bytes": 8167,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/filesystem/root_test.go",
+      "lines": 266,
+      "bytes": 9543,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/memory/budget.go",
+      "lines": 135,
+      "bytes": 5219,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/memory/budget_test.go",
+      "lines": 141,
+      "bytes": 5036,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/protocol/packet.go",
+      "lines": 155,
+      "bytes": 4561,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/protocol/packet_test.go",
+      "lines": 30,
+      "bytes": 815,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/protocol/status.go",
+      "lines": 209,
+      "bytes": 7258,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/session/session.go",
+      "lines": 251,
+      "bytes": 7750,
+      "partial": [
+        [
+          55,
+          58
+        ],
+        [
+          150,
+          166
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/sessionstats/sessionstats.go",
+      "lines": 266,
+      "bytes": 7025,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/sessionstats/sessionstats_test.go",
+      "lines": 128,
+      "bytes": 3653,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/handlers.go",
+      "lines": 902,
+      "bytes": 26349,
+      "partial": [
+        [
+          873,
+          883
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/integration_test.go",
+      "lines": 432,
+      "bytes": 13402,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/limits_test.go",
+      "lines": 180,
+      "bytes": 6551,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/server.go",
+      "lines": 745,
+      "bytes": 20908,
+      "partial": [
+        [
+          244,
+          256
+        ],
+        [
+          286,
+          292
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/session_summary_test.go",
+      "lines": 125,
+      "bytes": 3691,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/status_test.go",
+      "lines": 208,
+      "bytes": 6346,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/wire.go",
+      "lines": 263,
+      "bytes": 9993,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/wire_test.go",
+      "lines": 231,
+      "bytes": 8508,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/smb/write_semantics_test.go",
+      "lines": 158,
+      "bytes": 5441,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/statuslistener/listener.go",
+      "lines": 108,
+      "bytes": 3316,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpbd/protocol.go",
+      "lines": 104,
+      "bytes": 3993,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpbd/server.go",
+      "lines": 555,
+      "bytes": 15961,
+      "partial": [
+        [
+          77,
+          85
+        ],
+        [
+          291,
+          325
+        ],
+        [
+          370,
+          384
+        ],
+        [
+          440,
+          486
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpbd/session_summary_test.go",
+      "lines": 126,
+      "bytes": 3414,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpbd/udpbd_test.go",
+      "lines": 489,
+      "bytes": 16689,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/blockdev.go",
+      "lines": 409,
+      "bytes": 14938,
+      "partial": [
+        [
+          21,
+          73
+        ],
+        [
+          303,
+          303
+        ],
+        [
+          392,
+          402
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/blockdev_test.go",
+      "lines": 455,
+      "bytes": 16333,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/blockonly_test.go",
+      "lines": 108,
+      "bytes": 3696,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/chd_operations_test.go",
+      "lines": 76,
+      "bytes": 2506,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/compression_operations_test.go",
+      "lines": 292,
+      "bytes": 10562,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/errno.go",
+      "lines": 91,
+      "bytes": 3381,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/errno_other.go",
+      "lines": 36,
+      "bytes": 988,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/errno_test.go",
+      "lines": 101,
+      "bytes": 3465,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/errno_windows.go",
+      "lines": 35,
+      "bytes": 1046,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/fileid_bwrite_test.go",
+      "lines": 160,
+      "bytes": 5558,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/handoff_write_test.go",
+      "lines": 197,
+      "bytes": 8034,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/integration_test.go",
+      "lines": 309,
+      "bytes": 9916,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/metrics.go",
+      "lines": 205,
+      "bytes": 6646,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/negotiation.go",
+      "lines": 522,
+      "bytes": 17389,
+      "partial": [
+        [
+          27,
+          27
+        ],
+        [
+          496,
+          504
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/negotiation_seq0_test.go",
+      "lines": 314,
+      "bytes": 11685,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/observability_test.go",
+      "lines": 654,
+      "bytes": 20715,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/operations.go",
+      "lines": 820,
+      "bytes": 25208,
+      "partial": [
+        [
+          586,
+          586
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/pathops.go",
+      "lines": 261,
+      "bytes": 8774,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/pathops_test.go",
+      "lines": 616,
+      "bytes": 22255,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/rediscovery_test.go",
+      "lines": 223,
+      "bytes": 7818,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/server.go",
+      "lines": 613,
+      "bytes": 19036,
+      "partial": [
+        [
+          119,
+          119
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/server_test.go",
+      "lines": 49,
+      "bytes": 1308,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/session_summary_test.go",
+      "lines": 165,
+      "bytes": 5079,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/status_test.go",
+      "lines": 173,
+      "bytes": 5518,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/transfer.go",
+      "lines": 251,
+      "bytes": 7044,
+      "partial": [
+        [
+          46,
+          64
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/transfer_test.go",
+      "lines": 182,
+      "bytes": 5825,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/udpwrite_linux.go",
+      "lines": 27,
+      "bytes": 621,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/udpwrite_other.go",
+      "lines": 11,
+      "bytes": 212,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/udpwrite_test.go",
+      "lines": 446,
+      "bytes": 13473,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/udpfs/write_test.go",
+      "lines": 488,
+      "bytes": 17191,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/api.go",
+      "lines": 461,
+      "bytes": 14892,
+      "partial": [
+        [
+          24,
+          26
+        ],
+        [
+          151,
+          201
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/assets/app.js",
+      "lines": 532,
+      "bytes": 18958,
+      "partial": [
+        [
+          193,
+          223
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/assets/index.html",
+      "lines": 463,
+      "bytes": 25992,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/assets/styles.css",
+      "lines": 334,
+      "bytes": 10357,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/config.go",
+      "lines": 264,
+      "bytes": 8137,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/config_uci.go",
+      "lines": 323,
+      "bytes": 10934,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/embed.go",
+      "lines": 6,
+      "bytes": 71,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/logbuffer.go",
+      "lines": 97,
+      "bytes": 1698,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/schema.go",
+      "lines": 194,
+      "bytes": 12244,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/schema_test.go",
+      "lines": 254,
+      "bytes": 7464,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/service.go",
+      "lines": 350,
+      "bytes": 11548,
+      "partial": [
+        [
+          67,
+          100
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "native/ps2servers-edge/internal/webui/webui_test.go",
+      "lines": 718,
+      "bytes": 22232,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/openwrt/Makefile",
+      "lines": 56,
+      "bytes": 1803,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-edge-smb.env",
+      "lines": 20,
+      "bytes": 966,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-edge-udpbd.env",
+      "lines": 19,
+      "bytes": 1027,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-edge-udpfs.env",
+      "lines": 9,
+      "bytes": 437,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-edge-webui.env",
+      "lines": 4,
+      "bytes": 181,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-edge.env",
+      "lines": 8,
+      "bytes": 209,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-smbv1.env",
+      "lines": 17,
+      "bytes": 793,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-udpbd.env",
+      "lines": 21,
+      "bytes": 963,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "packaging/systemd/ps2servers-udpfs.env",
+      "lines": 19,
+      "bytes": 916,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "ps2servers.py",
+      "lines": 38,
+      "bytes": 1116,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_auth.py",
+      "lines": 324,
+      "bytes": 14389,
+      "partial": [
+        [
+          169,
+          177
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_crypto.py",
+      "lines": 431,
+      "bytes": 17278,
+      "partial": [
+        [
+          186,
+          189
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_server.py",
+      "lines": 1848,
+      "bytes": 80825,
+      "partial": [
+        [
+          337,
+          362
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_spnego.py",
+      "lines": 360,
+      "bytes": 14300,
+      "partial": []
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_srvsvc.py",
+      "lines": 289,
+      "bytes": 11497,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smb2_server/smb2_wire.py",
+      "lines": 512,
+      "bytes": 19138,
+      "partial": [
+        [
+          27,
+          34
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smbv1_server/Start-SMB-Server.bat",
+      "lines": 85,
+      "bytes": 3807,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "smbv1_server/build_exe.ps1",
+      "lines": 31,
+      "bytes": 1423,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "start-launcher.sh",
+      "lines": 5,
+      "bytes": 206,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/__init__.py",
+      "lines": 7,
+      "bytes": 330,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/library_fixtures.py",
+      "lines": 105,
+      "bytes": 4709,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_about_page.py",
+      "lines": 152,
+      "bytes": 6133,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_achievement_loader.py",
+      "lines": 48,
+      "bytes": 2376,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_achievement_viewer.py",
+      "lines": 86,
+      "bytes": 4026,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_art_fetch.py",
+      "lines": 216,
+      "bytes": 9077,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_attribution_policy.py",
+      "lines": 43,
+      "bytes": 1822,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_autostart_and_firewall_options.py",
+      "lines": 330,
+      "bytes": 11476,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_caduceus_reference_wire.py",
+      "lines": 60,
+      "bytes": 2924,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_caduceus_setup.py",
+      "lines": 91,
+      "bytes": 4696,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_chd_cd_size.py",
+      "lines": 55,
+      "bytes": 2405,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_chd_cuebin.py",
+      "lines": 454,
+      "bytes": 19920,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_companion_fixtures.py",
+      "lines": 176,
+      "bytes": 8773,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_cooperative_stop.py",
+      "lines": 386,
+      "bytes": 15583,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_desktop_instance.py",
+      "lines": 99,
+      "bytes": 5171,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_directlink.py",
+      "lines": 976,
+      "bytes": 44735,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_directlink_unix.py",
+      "lines": 408,
+      "bytes": 18216,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_disc_identity.py",
+      "lines": 344,
+      "bytes": 16247,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_discord_presence.py",
+      "lines": 204,
+      "bytes": 10485,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_edge_flag_exposure.py",
+      "lines": 296,
+      "bytes": 12610,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_edge_manual.py",
+      "lines": 113,
+      "bytes": 4682,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_edge_service_modes.py",
+      "lines": 424,
+      "bytes": 21841,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_frozen_imports.py",
+      "lines": 156,
+      "bytes": 7074,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_game_library.py",
+      "lines": 299,
+      "bytes": 14742,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_gui_layout.py",
+      "lines": 305,
+      "bytes": 14021,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_gui_smb2_start_needs_login.py",
+      "lines": 55,
+      "bytes": 1980,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_http_direct_link.py",
+      "lines": 238,
+      "bytes": 10451,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_http_path_aware.py",
+      "lines": 302,
+      "bytes": 13636,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_http_server.py",
+      "lines": 589,
+      "bytes": 26759,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_catalog.py",
+      "lines": 212,
+      "bytes": 9884,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_identity.py",
+      "lines": 248,
+      "bytes": 12057,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_index.py",
+      "lines": 241,
+      "bytes": 11370,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_panel.py",
+      "lines": 360,
+      "bytes": 18261,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_preferences.py",
+      "lines": 74,
+      "bytes": 3681,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_library_recursive_scan.py",
+      "lines": 203,
+      "bytes": 8909,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_line_endings.py",
+      "lines": 122,
+      "bytes": 4800,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_linux_parity.py",
+      "lines": 204,
+      "bytes": 9799,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_netinfo_and_smb.py",
+      "lines": 253,
+      "bytes": 12102,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_nfs4_server.py",
+      "lines": 1057,
+      "bytes": 44876,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_opl_http_runner.py",
+      "lines": 79,
+      "bytes": 4040,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_orbit_reference_wire.py",
+      "lines": 69,
+      "bytes": 3570,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_packaging_data_files.py",
+      "lines": 193,
+      "bytes": 8589,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_path_access.py",
+      "lines": 91,
+      "bytes": 4217,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_portable_config.py",
+      "lines": 93,
+      "bytes": 3417,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_protocol_mode_selector.py",
+      "lines": 236,
+      "bytes": 10547,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ps1_vcd.py",
+      "lines": 163,
+      "bytes": 7164,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_account.py",
+      "lines": 77,
+      "bytes": 3606,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_account_worker.py",
+      "lines": 300,
+      "bytes": 15163,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_compressed_hash.py",
+      "lines": 216,
+      "bytes": 8924,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_credentials.py",
+      "lines": 88,
+      "bytes": 3988,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_dependency.py",
+      "lines": 63,
+      "bytes": 3061,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_evaluator.py",
+      "lines": 399,
+      "bytes": 20571,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_notifications.py",
+      "lines": 129,
+      "bytes": 6114,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_overview.py",
+      "lines": 107,
+      "bytes": 5853,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_owned_service.py",
+      "lines": 501,
+      "bytes": 24107,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_protocol.py",
+      "lines": 245,
+      "bytes": 12216,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_receiver.py",
+      "lines": 121,
+      "bytes": 6197,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_resolver_process.py",
+      "lines": 168,
+      "bytes": 7273,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_session.py",
+      "lines": 95,
+      "bytes": 5053,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_session_client.py",
+      "lines": 224,
+      "bytes": 9291,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_sets.py",
+      "lines": 124,
+      "bytes": 6293,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_sounds.py",
+      "lines": 107,
+      "bytes": 5140,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_submissions.py",
+      "lines": 63,
+      "bytes": 2801,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_supervisor.py",
+      "lines": 320,
+      "bytes": 15278,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_watchlist.py",
+      "lines": 82,
+      "bytes": 4226,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_ra_web.py",
+      "lines": 151,
+      "bytes": 6956,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_raw_storage.py",
+      "lines": 327,
+      "bytes": 15882,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_release_downloads.py",
+      "lines": 223,
+      "bytes": 11225,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_reset_settings.py",
+      "lines": 223,
+      "bytes": 8973,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_retroachievements.py",
+      "lines": 492,
+      "bytes": 26827,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_riptopl_profile.py",
+      "lines": 129,
+      "bytes": 6179,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_router_status.py",
+      "lines": 316,
+      "bytes": 14395,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_server_override_contract.py",
+      "lines": 100,
+      "bytes": 4069,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_session_cap.py",
+      "lines": 196,
+      "bytes": 8048,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_session_shutdown.py",
+      "lines": 257,
+      "bytes": 9042,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_session_summary.py",
+      "lines": 477,
+      "bytes": 22037,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_session_view.py",
+      "lines": 117,
+      "bytes": 4901,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_settings_feedback.py",
+      "lines": 141,
+      "bytes": 5187,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_setup_guide.py",
+      "lines": 96,
+      "bytes": 4642,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_auth.py",
+      "lines": 277,
+      "bytes": 12987,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_banner.py",
+      "lines": 134,
+      "bytes": 5107,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_independent_client.py",
+      "lines": 199,
+      "bytes": 8499,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_libsmb2_compat.py",
+      "lines": 358,
+      "bytes": 15565,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_paths.py",
+      "lines": 249,
+      "bytes": 10957,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_server.py",
+      "lines": 944,
+      "bytes": 40833,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_share_name.py",
+      "lines": 61,
+      "bytes": 2088,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_signed_sessions.py",
+      "lines": 358,
+      "bytes": 16856,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_signing.py",
+      "lines": 136,
+      "bytes": 5550,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_take_445.py",
+      "lines": 396,
+      "bytes": 18316,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb2_wire.py",
+      "lines": 208,
+      "bytes": 8733,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smb_wire_parity.py",
+      "lines": 186,
+      "bytes": 8938,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_compressed.py",
+      "lines": 264,
+      "bytes": 12327,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_diagnostics.py",
+      "lines": 145,
+      "bytes": 6343,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_logon_required.py",
+      "lines": 166,
+      "bytes": 7315,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_read_after_write.py",
+      "lines": 95,
+      "bytes": 3452,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_share_and_credentials.py",
+      "lines": 303,
+      "bytes": 12311,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_smbv1_write_semantics.py",
+      "lines": 164,
+      "bytes": 6896,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_status_client.py",
+      "lines": 281,
+      "bytes": 11408,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_status_dot.py",
+      "lines": 84,
+      "bytes": 3213,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_systemd_units.py",
+      "lines": 256,
+      "bytes": 12142,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_theme.py",
+      "lines": 111,
+      "bytes": 4486,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_transfer_limits.py",
+      "lines": 411,
+      "bytes": 16767,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_tray_linux.py",
+      "lines": 188,
+      "bytes": 7859,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpbd_access.py",
+      "lines": 52,
+      "bytes": 2162,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpbd_storage_modes.py",
+      "lines": 300,
+      "bytes": 14513,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_ack_progress.py",
+      "lines": 138,
+      "bytes": 6351,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_bind_control.py",
+      "lines": 63,
+      "bytes": 2448,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_config.py",
+      "lines": 386,
+      "bytes": 16444,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_dread_skip_entry.py",
+      "lines": 84,
+      "bytes": 2997,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_fallback_generation.py",
+      "lines": 78,
+      "bytes": 2791,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_handoff_retried_write.py",
+      "lines": 193,
+      "bytes": 8261,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_inform_telemetry.py",
+      "lines": 88,
+      "bytes": 3163,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_live_discovery_handoff.py",
+      "lines": 596,
+      "bytes": 26498,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_protocol_negotiation.py",
+      "lines": 137,
+      "bytes": 5228,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_resent_request.py",
+      "lines": 180,
+      "bytes": 8492,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_stall_report.py",
+      "lines": 230,
+      "bytes": 8848,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_startup_diagnostics.py",
+      "lines": 74,
+      "bytes": 3033,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_symlink_path_ops.py",
+      "lines": 443,
+      "bytes": 22182,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_udpfs_write_needs_writable_handle.py",
+      "lines": 477,
+      "bytes": 22508,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_verbose_default_and_log_stamps.py",
+      "lines": 75,
+      "bytes": 2874,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_verify_docs.py",
+      "lines": 31,
+      "bytes": 1177,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tests/test_version_consistency.py",
+      "lines": 179,
+      "bytes": 7767,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/build_docs_index.py",
+      "lines": 151,
+      "bytes": 5253,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/check_achievements_package.py",
+      "lines": 123,
+      "bytes": 5743,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/check_desktop_startup.py",
+      "lines": 44,
+      "bytes": 1965,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/check_release_compliance.py",
+      "lines": 205,
+      "bytes": 7672,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/remove-windows-firewall-rules.ps1",
+      "lines": 26,
+      "bytes": 836,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/replay_neutrino_udpfs.py",
+      "lines": 400,
+      "bytes": 14708,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/verify_docs.py",
+      "lines": 59,
+      "bytes": 2097,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "tools/version_source.py",
+      "lines": 158,
+      "bytes": 6690,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpbd_server/selftest.py",
+      "lines": 179,
+      "bytes": 7012,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/compressed_iso/__init__.py",
+      "lines": 12,
+      "bytes": 424,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/compressed_iso/chd_cuebin.py",
+      "lines": 567,
+      "bytes": 21325,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/compression_selftest.py",
+      "lines": 545,
+      "bytes": 25025,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/multiclient_selftest.py",
+      "lines": 643,
+      "bytes": 26678,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/pathguard_selftest.py",
+      "lines": 241,
+      "bytes": 10634,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/ps2servers_core.py",
+      "lines": 690,
+      "bytes": 31195,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/router_status.py",
+      "lines": 179,
+      "bytes": 6292,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "udpfs_server/udpfs_server.py",
+      "lines": 3643,
+      "bytes": 161088,
+      "partial": [
+        [
+          364,
+          385
+        ]
+      ]
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_api_editor.h",
+      "lines": 345,
+      "bytes": 14165,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_api_info.h",
+      "lines": 298,
+      "bytes": 11489,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_api_request.h",
+      "lines": 77,
+      "bytes": 2133,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_api_runtime.h",
+      "lines": 417,
+      "bytes": 16243,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_api_user.h",
+      "lines": 266,
+      "bytes": 10303,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_client.h",
+      "lines": 934,
+      "bytes": 36540,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_client_raintegration.h",
+      "lines": 101,
+      "bytes": 4250,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_consoles.h",
+      "lines": 139,
+      "bytes": 4517,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_error.h",
+      "lines": 60,
+      "bytes": 1610,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_export.h",
+      "lines": 100,
+      "bytes": 3081,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_hash.h",
+      "lines": 200,
+      "bytes": 8794,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_runtime.h",
+      "lines": 148,
+      "bytes": 6003,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_runtime_types.h",
+      "lines": 452,
+      "bytes": 15390,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rc_util.h",
+      "lines": 51,
+      "bytes": 1445,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/include/rcheevos.h",
+      "lines": 8,
+      "bytes": 143,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_common.c",
+      "lines": 1630,
+      "bytes": 46751,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_common.h",
+      "lines": 94,
+      "bytes": 5808,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_editor.c",
+      "lines": 725,
+      "bytes": 27928,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_info.c",
+      "lines": 612,
+      "bytes": 24514,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_runtime.c",
+      "lines": 900,
+      "bytes": 37839,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rapi/rc_api_user.c",
+      "lines": 481,
+      "bytes": 19164,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client.c",
+      "lines": 7152,
+      "bytes": 262761,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_external.c",
+      "lines": 282,
+      "bytes": 11755,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_external.h",
+      "lines": 177,
+      "bytes": 10488,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_external_versions.h",
+      "lines": 171,
+      "bytes": 4136,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_internal.h",
+      "lines": 409,
+      "bytes": 14671,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_raintegration.c",
+      "lines": 566,
+      "bytes": 21824,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_client_raintegration_internal.h",
+      "lines": 61,
+      "bytes": 2932,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_compat.c",
+      "lines": 251,
+      "bytes": 5350,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_compat.h",
+      "lines": 121,
+      "bytes": 2734,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_libretro.c",
+      "lines": 922,
+      "bytes": 31031,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_libretro.h",
+      "lines": 99,
+      "bytes": 4538,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_util.c",
+      "lines": 211,
+      "bytes": 6648,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_version.c",
+      "lines": 11,
+      "bytes": 157,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rc_version.h",
+      "lines": 32,
+      "bytes": 1148,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/alloc.c",
+      "lines": 316,
+      "bytes": 10608,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/condition.c",
+      "lines": 767,
+      "bytes": 27597,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/condset.c",
+      "lines": 778,
+      "bytes": 27484,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/consoleinfo.c",
+      "lines": 1246,
+      "bytes": 61231,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/format.c",
+      "lines": 330,
+      "bytes": 9552,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/lboard.c",
+      "lines": 287,
+      "bytes": 8659,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/memref.c",
+      "lines": 806,
+      "bytes": 26871,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/operand.c",
+      "lines": 623,
+      "bytes": 16941,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/rc_internal.h",
+      "lines": 390,
+      "bytes": 18051,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/rc_validate.c",
+      "lines": 1429,
+      "bytes": 55401,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/rc_validate.h",
+      "lines": 18,
+      "bytes": 650,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/richpresence.c",
+      "lines": 928,
+      "bytes": 28540,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/runtime.c",
+      "lines": 852,
+      "bytes": 27448,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/runtime_progress.c",
+      "lines": 1073,
+      "bytes": 34923,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/trigger.c",
+      "lines": 344,
+      "bytes": 10075,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rcheevos/value.c",
+      "lines": 947,
+      "bytes": 27255,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/aes.c",
+      "lines": 480,
+      "bytes": 16910,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/aes.h",
+      "lines": 49,
+      "bytes": 1695,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/cdreader.c",
+      "lines": 863,
+      "bytes": 25310,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/hash.c",
+      "lines": 1435,
+      "bytes": 48576,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/hash_disc.c",
+      "lines": 1462,
+      "bytes": 52972,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/hash_encrypted.c",
+      "lines": 566,
+      "bytes": 23631,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/hash_rom.c",
+      "lines": 523,
+      "bytes": 18417,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/hash_zip.c",
+      "lines": 459,
+      "bytes": 18565,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/md5.c",
+      "lines": 382,
+      "bytes": 12439,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/md5.h",
+      "lines": 91,
+      "bytes": 3392,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/rcheevos/src/rhash/rc_hash_internal.h",
+      "lines": 118,
+      "bytes": 5429,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/sources.json",
+      "lines": 18,
+      "bytes": 558,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/Makefile",
+      "lines": 109,
+      "bytes": 4155,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/badge_data.c",
+      "lines": 522,
+      "bytes": 51547,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/badge_data.h",
+      "lines": 9,
+      "bytes": 168,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/config.c",
+      "lines": 253,
+      "bytes": 7064,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/config.h",
+      "lines": 41,
+      "bytes": 1439,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/console.c",
+      "lines": 563,
+      "bytes": 20081,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/console.h",
+      "lines": 55,
+      "bytes": 2430,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/discord.c",
+      "lines": 248,
+      "bytes": 6401,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/discord.h",
+      "lines": 22,
+      "bytes": 799,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/follow.c",
+      "lines": 174,
+      "bytes": 5161,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/follow.h",
+      "lines": 63,
+      "bytes": 2115,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/http.h",
+      "lines": 26,
+      "bytes": 792,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/http_curl.c",
+      "lines": 78,
+      "bytes": 2030,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/http_winhttp.c",
+      "lines": 160,
+      "bytes": 4711,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/jsmn.h",
+      "lines": 471,
+      "bytes": 12145,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/log.c",
+      "lines": 135,
+      "bytes": 2494,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/log.h",
+      "lines": 26,
+      "bytes": 813,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/main.c",
+      "lines": 1318,
+      "bytes": 47249,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/platform.c",
+      "lines": 340,
+      "bytes": 7325,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/platform.h",
+      "lines": 70,
+      "bytes": 2287,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/protocol.h",
+      "lines": 57,
+      "bytes": 2381,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ra.c",
+      "lines": 291,
+      "bytes": 9687,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ra.h",
+      "lines": 39,
+      "bytes": 1482,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/raweb.c",
+      "lines": 720,
+      "bytes": 22546,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/raweb.h",
+      "lines": 168,
+      "bytes": 6143,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/snapshot.c",
+      "lines": 200,
+      "bytes": 5532,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/snapshot.h",
+      "lines": 39,
+      "bytes": 1469,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/sound.c",
+      "lines": 177,
+      "bytes": 4641,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/sound.h",
+      "lines": 21,
+      "bytes": 483,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/sounds_data.c",
+      "lines": 5288,
+      "bytes": 527625,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/sounds_data.h",
+      "lines": 12,
+      "bytes": 456,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ui.c",
+      "lines": 251,
+      "bytes": 7543,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ui.h",
+      "lines": 10,
+      "bytes": 182,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ui_page.c",
+      "lines": 2295,
+      "bytes": 152451,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/ui_page.h",
+      "lines": 10,
+      "bytes": 182,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/version.h",
+      "lines": 10,
+      "bytes": 171,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/watchlist.c",
+      "lines": 756,
+      "bytes": 25146,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/watchlist.h",
+      "lines": 66,
+      "bytes": 2651,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/webui.c",
+      "lines": 1586,
+      "bytes": 57025,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/client/src/webui.h",
+      "lines": 109,
+      "bytes": 4653,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/protocol/ra_snap.h",
+      "lines": 69,
+      "bytes": 3137,
+      "partial": null
+    },
+    {
+      "repo": "PS2-Servers",
+      "path": "vendor/retroachievements/xerabora/protocol/ra_watch.h",
+      "lines": 150,
+      "bytes": 6520,
+      "partial": null
+    }
+  ]
+}
