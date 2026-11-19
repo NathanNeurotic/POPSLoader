@@ -1,0 +1,16 @@
+.github/scripts/test_ra_xerabora_browser.py	469
+.github/scripts/test_ripps2_vmc_saves.py	466
+.github/scripts/test_dialog_gui_lock.py	463
+.github/scripts/test_ps1_retrogem_metadata.py	454
+.github/scripts/test_zso_read_errors.py	454
+.github/scripts/test_pad_mode_lock.py	450
+.github/scripts/test_autolaunch_settings.py	448
+.github/scripts/test_igr_vmc_drain.py	429
+.github/scripts/test_pad_missed_read.py	413
+.github/scripts/test_ripps2_all_games.py	407
+.github/scripts/test_ra_disc.py	404
+.github/scripts/test_ps2build_configurations.py	398
+.github/scripts/test_mc_folders.py	397
+.github/scripts/test_vmc_rebuild_fatfs.py	397
+.github/scripts/test_smbman_ra_write_count.py	381
+.github/scripts/test_usbd_pad_pool.py	370

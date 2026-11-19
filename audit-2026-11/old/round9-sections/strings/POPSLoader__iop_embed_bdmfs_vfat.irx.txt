@@ -1,0 +1,78 @@
+&%  
+'%(`
+'%  
+$% @
+'%(@
+dB$%
+'% @
+'% @
+'% @
+<PdB$
+'! D
+B$*(
+b$!@
+B$!@C
+E$!0
+B0@(
+B0@(
+*&%H
+.&%`
+B$! 
+B0@8
+B0@0
+B0@ 
+$!HC
+'% `
+$! B
+$! E
+$%0`
+$* b
+'%(`
+$%( 
+$%0 
+4%( 
+4%( 
+$% @
+B0B(
+'%(@
+$% `
+$% `
+'%( 
+'%  
+'%0 
+bB$|
+cdvdman
+intrman
+ioman
+stdio
+sysclib
+sysmem
+thsemap
+mass
+VFAT driver
+VFAT: unable to allocate drive!
+VFAT: mount ERROR: alread mounted
+VFAT: ERROR: cache already created
+VFAT: Fat type %u Id %s 
+VFAT: Error - scache_init failed
+..      
+VFAT: scache: ERROR writing sector to disk! sector=%d
+VFAT: cache: devId cache not created 
+VFAT: scache: ERROR writing sector to disk! sector=%u
+VFAT: scache: ERROR reading sector from disk! sector=%u
+VFAT: cache: writeSector: ERROR! the sector is not allocated! 
+VFAT: scache init! Sector cache: can't alloate cache!
+VFAT: Sector cache: can't alloate memory of size:%d 
+BDM VFAT driver (FAT12/16/32) v%d.%d
+vfat
+bdmvfat
+.iopmod
+.text
+.rel.text
+.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab
