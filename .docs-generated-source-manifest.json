@@ -1,7 +1,7 @@
 {
   "files": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "assets/app.js": "8bce185119c905d8ccd76281dd48547d3c86f27b12b561fef4f21814d2db427d",
+    "assets/app.js": "ab58b3575f9e446126af33bb15178b608b88fcdabb94f2fde969ed01670f0332",
     "assets/apple-touch-icon.png": "740722480054eac26162c8d489d0c09d2d1705815275ea00e4e3769e3ad9762a",
     "assets/favicon-16x16.png": "16032c240e9a3f2061f9a7a71d81b64cef8f3ebade8939e5863b530d7d07aeb9",
     "assets/favicon-32x32.png": "75857049103f63cc1f94c3b3e723b0e66dc990aed457d217a82c8eeef2a4ed43",
@@ -204,7 +204,7 @@
     "popsloader/state.html": "6960965946a31fbafda4b76b271f60a4359adb9135e5539c6037cd9f5da0bb2c",
     "popsloader/testing.html": "b318fac9ae8b91243c524c62b420d56583b3575637f77f5d3dab11f0c7cb7e85",
     "popsloader/udpfs-bdma.html": "6381ed709d97cf9628c215dec446ce6052d568c1d8cd7707c7fbdd393179af82",
-    "popstarter-docs-archive.zip": "9201a445e56f85cccef37241284c217388488df19cca9a315123591901ce6a87",
+    "popstarter-docs-archive.zip": "acc766a302f10b50dc5654dacdccc701ec47177182c0c7b6c270a1567894b5c6",
     "storage.html": "e06c64c443c110b73d9af0f091576b2d66099b3d4abbe5a21855b7f5df9ce975",
     "thread-study.html": "e7bc69d33bfc4ee78b143bd9cc255083f082a7ddfe755f674a2f0637f9639fd2",
     "troubleshooting.html": "b9f8b5a26b09b34495849849b40c7f598a24e8ef22ca911318d911d1712b60ab",
