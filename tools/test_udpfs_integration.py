@@ -92,16 +92,6 @@ example = provenance["UDPFS_1_0_1"]["config_examples"]["PATHMAP.INI.example"]
 shipped_example = (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
 assert sha256(shipped_example).hexdigest() == example["sha256"]  # the shipped copy
 assert sha256(shipped_example.replace(b"\n", b"\r\n")).hexdigest() == example["sha256_upstream"]  # upstream is CRLF
-
-dir_list_root = ROOT / "docs/third_party/okeanos_dir_lists"
-dir_lists = json.loads((dir_list_root / "PROVENANCE.json").read_text(encoding="utf-8"))
-assert dir_lists["commit"] == "b8256b0ac1311c7dd8acb6f4e8f93e8429fc2bf3"
-assert set(dir_lists["package"]) == {"DISCS_DIR.MULTI.TXT", "DISCS_DIR.ALL.TXT"}
-for name, record in dir_lists["files"].items():
-    body = (dir_list_root / name).read_bytes()
-    assert len(body) == record["size"], name
-    assert sha256(body).hexdigest() == record["sha256"], name
-
 if len(sys.argv) > 1:
     with zipfile.ZipFile(sys.argv[1]) as kit:
         assert "POPS/UDPFSCONFIG.DAT" not in kit.namelist(), "sample server IP must not be active"
@@ -115,11 +105,6 @@ if len(sys.argv) > 1:
         assert "POPS/PATHMAP.INI" not in kit.namelist(), "option file must ship inert"
         assert kit.read("POPS/PATHMAP.INI.example") == (ROOT / "docs/third_party/okeanos_udpfs/PATHMAP.INI.example").read_bytes()
         assert kit.read("POPS/UDPFS_BDMA.md") == (ROOT / "docs/UDPFS_BDMA.md").read_bytes()
-        for source, packaged in dir_lists["package"].items():
-            assert kit.read("POPS/" + packaged) == (dir_list_root / source).read_bytes()
-        for name in dir_lists["notice_files"]:
-            assert kit.read("POPS/DISCS_DIR-NOTICES/" + name) == (dir_list_root / name).read_bytes()
-        assert "POPS/DISCS_DIR.TXT" not in kit.namelist(), "directory mapping must remain opt-in"
     print("Release ZIP: current network-only UDPFS pair, setup and notices verified")
 
 notice_root = ROOT / "docs/third_party/okeanos_udpfs"

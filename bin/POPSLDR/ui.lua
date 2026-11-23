@@ -1375,7 +1375,7 @@ UI = {
       return scene
     end;
     ShowSavingOverlay = function (msg, progress)
-      UI.SavingMessage = tostring(msg or "Saving...")
+      UI.SavingMessage = PLDR.L(tostring(msg or "Saving..."))
       UI.SavingActive = true
       UI.SavingAnimTick = (tonumber(UI.SavingAnimTick) or 0) + 1
       if type(progress) == "number" then
@@ -5487,6 +5487,37 @@ UI = {
           local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
           if ver == "" then return "(unknown)" end
           return ver
+        end)
+        AddAction(PLDR.L("Check for Updates"), function()
+          if UI.SmbDirty == true then
+            UI.Notif_queue.add(PLDR.L("Save the network settings first, then check for updates"), "error")
+            return
+          end
+          local state, info
+          UI.RunBusyTask(PLDR.L("Checking for updates..."), function (report)
+            state, info = PLDR.CheckForUpdate(report)
+          end, PLDR.L("Update check failed"))
+          if state == "available" or state == "newest" then
+            local newer = state == "available"
+            UI.Modal.active = true
+            UI.Modal.title = PLDR.L("Update")
+            UI.Modal.body = newer and PLDR.LFmt("POPSLoader %s is available.\nInstall it now?", tostring(info))
+                                   or PLDR.LFmt("POPSLoader is up to date.\nDownload %s again anyway?", tostring(info))
+            UI.Modal.options = {(newer and PLDR.L("Install") or PLDR.L("Download")), PLDR.L("Cancel")}
+            UI.Modal.confirm_action = function ()
+              UI.Modal.Close()
+              local ok, msg
+              UI.RunBusyTask(PLDR.L("Updating..."), function (report)
+                ok, msg = PLDR.InstallUpdate(report)
+              end, PLDR.L("Update failed"))
+              UI.Notif_queue.add(tostring(msg or PLDR.L("Update failed")), ok and "info" or "error")
+            end
+            UI.Modal.cancel_action = UI.Modal.Close
+            UI.Modal.triangle_action = nil
+            UI.Modal.ignore_until_release = true
+          elseif state == "error" then
+            UI.Notif_queue.add(tostring(info or PLDR.L("The update check failed")), "error")
+          end
         end)
         AddAction("Credits", function()
           UI.CreditsReturnScene = UI.SCENES.MPROFILE
