@@ -20,7 +20,6 @@ for f in POPSTARTER.ELF icon.sys list.icn copy.icn del.icn title.cfg APPINFO.PBT
   test -s "bin/POPSLDR/$f"
   cp "bin/POPSLDR/$f" "dist_root/APPS/PS1_POPSLOADER/$f"
 done
-cp third_party/mbedtls/LICENSE dist_root/LICENSE-MBEDTLS.txt
 cp -a /tmp/riptopl-kit/POPS/. dist_root/POPS/
 cp -a /tmp/riptopl-kit/EMBER/. dist_root/EMBER/
 for f in CHEATS.TXT IGR_BG.TM2 IGR_NO.TM2 IGR_YES.TM2 POPSTARTER.KELF TROJAN_7.BIN; do
@@ -59,6 +58,12 @@ cp docs/UDPFS_BDMA.md dist_root/POPS/UDPFS_BDMA.md
 # Okeanos 1.0.1 option file, shipped inert (the driver reads only a file named PATHMAP.INI
 # in mc?:/POPSTARTER/); every option is off in it, matching the driver defaults.
 cp docs/third_party/okeanos_udpfs/PATHMAP.INI.example dist_root/POPS/PATHMAP.INI.example
+# Okeanos's current directory-list choices stay inert until one is copied to DISCS_DIR.TXT
+# and DISCS_DIR=1 is enabled in PATHMAP.INI.
+cp docs/third_party/okeanos_dir_lists/DISCS_DIR.MULTI.TXT dist_root/POPS/DISCS_DIR.MULTI.TXT.example
+cp docs/third_party/okeanos_dir_lists/DISCS_DIR.ALL.TXT dist_root/POPS/DISCS_DIR.ALL.TXT.example
+mkdir -p dist_root/POPS/DISCS_DIR-NOTICES
+cp docs/third_party/okeanos_dir_lists/LICENSE docs/third_party/okeanos_dir_lists/UPSTREAM-README.md docs/third_party/okeanos_dir_lists/PROVENANCE.json dist_root/POPS/DISCS_DIR-NOTICES/
 # The reference bundle's example server IP must never become active MC config.
 # Preserve it as an explicit opt-in example; unedited kits use discovery.
 mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example
@@ -85,6 +90,6 @@ g++ -std=c++17 -O2 /tmp/riptopl-kit/.github/scripts/verify_psu_with_psumanager.c
 /tmp/popsloader-verify-psu dist_root/PS1_POPSLOADER.psu dist_root/APPS/PS1_POPSLOADER
 cp dist_root/PS1_POPSLOADER.psu PS1_POPSLOADER.psu
 (cd dist_root && find APPS POPS EMBER -type f | LC_ALL=C sort | zip -X -9 ../POPSLOADER.zip -@ >/dev/null)
-(cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu LICENSE-MBEDTLS.txt >/dev/null)
+(cd dist_root && zip -X -9 ../POPSLOADER.zip PS1_POPSLOADER.psu >/dev/null)
 
 python3 tools/test_udpfs_integration.py POPSLOADER.zip

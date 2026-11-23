@@ -53,7 +53,6 @@ class TranslationHandoffTests(unittest.TestCase):
             for target, expected in [
                 ('<c r="B2" t="s"><v>1</v></c>', 'Nastavenia'),
                 ('<c r="B2" t="inlineStr"><is><r><t>Nasta</t></r><r><t>venia</t></r></is></c>', 'Nastavenia'),
-                ('<c r="B2" t="inlineStr"></c>', ''),
                 ('', ''),
                 ('<c r="B2"><f>1+1</f><v>2</v></c>', ValueError),
                 ('<c r="B2"><v>123</v></c>', ValueError),
@@ -68,35 +67,6 @@ class TranslationHandoffTests(unittest.TestCase):
                         read_xlsx(path)
                 else:
                     self.assertEqual(read_xlsx(path), [('Settings', expected)])
-
-    def test_updater_messages_are_active_translation_keys(self):
-        _, required, _ = source_data()
-        expected = {
-            "Check for Updates",
-            "Could not reach GitHub\nCheck the network settings and the cable",
-            "%s %d / %d KB",
-            "POPSLoader %s is available.\nInstall it now?",
-            "POPSLoader is up to date.\nDownload %s again anyway?",
-            "The network is not up (%s)\nSet it up in Settings > Network",
-            "Updated to %s\nRestart POPSLoader to use it",
-        }
-        self.assertEqual([], sorted(expected - required))
-
-    def test_remaining_rows_exclude_completed_and_include_pending(self):
-        from translation_handoff import remaining_slovak_rows
-        keys = {en for en, _, _ in remaining_slovak_rows()}
-        self.assertIn("Check for Updates", keys)
-        self.assertNotIn("Settings", keys)
-        self.assertNotIn("100M Full", keys)
-
-    def test_remaining_workbook_matches_pending_rows(self):
-        from translation_handoff import remaining_slovak_rows
-        repo = Path(__file__).resolve().parent.parent
-        path = repo / "docs/translations/slovak-remaining.xlsx"
-        self.assertTrue(path.exists(), "remaining Slovak workbook is missing")
-        rows = read_xlsx(path)
-        self.assertEqual([en for en, _, _ in remaining_slovak_rows()], [en for en, _ in rows])
-        self.assertTrue(all(not value for _, value in rows))
 
     def test_slovak_keyboard_label_corrections(self):
         # The 54px delete/clear keys clipped the previous verbose translations (#605).
@@ -116,13 +86,10 @@ class TranslationHandoffTests(unittest.TestCase):
         # must not count as required for the other languages.
         others = set().union(*(dict(r) for l, r in dictionaries.items() if l != 'SK'))
         sk_only = set(dict(dictionaries['SK'])) - others
-        repo = Path(__file__).resolve().parent.parent
-        pending = {unescape_handoff(en) for en, value in read_tsv(repo / 'docs/translations/slovak.tsv')
-                   if not value.strip()}
         for language, rows in dictionaries.items():
             with self.subTest(language=language):
                 catalog = dict(rows)
-                need = (required if language == 'SK' else required - sk_only) - pending
+                need = required if language == 'SK' else required - sk_only
                 self.assertEqual([], sorted((need | {'Detecting MMCE device...'}) - set(catalog)))
                 for english, translated in rows:
                     self.assertEqual(FORMAT.findall(english), FORMAT.findall(translated))

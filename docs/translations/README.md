@@ -19,13 +19,9 @@ Two maintainer edits were made on import, pending SVKghost's confirmation:
 - One extra line break in the Games-path hint was removed so it keeps the same
   line count as English.
 
-The full current catalog is [slovak.xlsx](slovak.xlsx?raw=true) (the **Slovak**
-sheet name is what the importer reads). For the November 2026 updater follow-up,
-[slovak-remaining.xlsx](slovak-remaining.xlsx?raw=true) contains only the 33 rows
-whose Slovak cells are still blank. Existing nonblank entries are treated as
-complete, including technical labels intentionally identical to English. Excel
-can trim a leading space from a cell; the importer restores it for keys that
-start with one.
+The empty template for new languages is still [slovak.xlsx](slovak.xlsx?raw=true)
+(the **Slovak** sheet name is what the importer reads). Excel can trim a leading
+space from a cell; the importer restores it for keys that start with one.
 
 ## Translation rules
 
@@ -75,19 +71,10 @@ python tools/docs_verify.py
 
 The checker compares live source keys with the handoffs, detects runtime duplicate
 keys, and validates placeholders, line breaks, duplicate/edited English keys and
-the Excel/TSV key sets. It also requires the remaining workbook to match exactly
-the current blank Slovak rows. It is called by the existing CI documentation gate.
+the Excel/TSV key sets. It is called by the existing CI documentation gate.
 When source text changes, review new UI literals as well as dictionary keys and
 explicit `PLDR.L` / `PLDR.LFmt` calls; static string scanning cannot prove every
 indirect display path is translated.
-
-Regeneration preserves existing TSV rows/order, appends new blank keys, and rebuilds
-both workbooks. This optional export step requires `openpyxl`; normal validation
-above remains standard-library-only:
-
-```sh
-python tools/translation_handoff.py --export-remaining-xlsx docs/translations/slovak-remaining.xlsx
-```
 
 Convert a returned workbook or TSV to a **reviewable Lua table**, without editing
 the application automatically:

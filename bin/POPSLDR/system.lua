@@ -5259,11 +5259,12 @@ local function PromoteTmpToDest(tmp, dest)
   return true
 end
 
--- Write dest in place: opened with O_TRUNC and written straight through, as Launchstation does. No
--- temporary file, rename or backup, so a memory card needs no room for a second copy (a rename on a
--- card is copy-then-delete). Returns true only when every byte was written.
 local function WriteAtomic(dest, data)
-  local ok_open, fd = pcall(System.openFile, dest, FCREATE_TRUNC)
+  local tmp = dest..".tmp"
+  if doesFileExist(tmp) then
+    pcall(System.removeFile, tmp)
+  end
+  local ok_open, fd = pcall(System.openFile, tmp, FCREATE)
   if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
     return false
   end
@@ -5272,16 +5273,21 @@ local function WriteAtomic(dest, data)
   while offset <= total do
     local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, total))
     local chunk_len = string.len(chunk)
-    -- System.writeFile is a raw POSIX write(): it returns the bytes ACTUALLY written (short on a
-    -- full/flaky device, -1 on error) and does NOT throw.
+    -- System.writeFile is a raw POSIX write(): it returns the bytes ACTUALLY written
+    -- (short on a full/flaky device, -1 on error) and does NOT throw. Require the full
+    -- count, else a truncated temp file gets promoted as a valid save/cache. (Codex F1)
     local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
     if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
       pcall(System.closeFile, fd)
+      pcall(System.removeFile, tmp)
       return false
     end
     offset = offset + chunk_len
   end
   pcall(System.closeFile, fd)
+  if not PromoteTmpToDest(tmp, dest) then
+    return false
+  end
   return true
 end
 
@@ -9372,110 +9378,6 @@ function PLDR.PrepareUdpfsConfig()
     end
   end
   return true
-end
-
--- ===== Check for Updates (src/updater.cpp) =====
--- Official releases only: the latest GitHub release's POPSLOADER.ELF, fetched over verified HTTPS on a worker
--- thread (System.updateStart / updateStatus) into RAM, checked against the release's SHA256SUMS.txt, then written
--- straight over the running ELF (no second file, rename, delete or backup). Memory card and USB / MX4SIO / MMCE boots only.
-PLDR._U = {}
-PLDR._U.ERR = {
-  [2] = "Could not reach GitHub\nCheck the network settings and the cable",
-  [3] = "The console clock is not set\nSet the date and time first",
-  [4] = "Could not make a secure connection to GitHub",
-  [5] = "GitHub sent something unexpected",
-  [6] = "Could not replace POPSLOADER.ELF",
-  [7] = "The download did not verify\nNothing was changed",
-  [8] = "Out of memory",
-  [9] = "An update is already running",
-}
-PLDR._U.state = { remote = nil, target = nil }
-
-function PLDR._U.error(code, fallback)
-  return PLDR.L(PLDR._U.ERR[code] or fallback)
-end
-
-function PLDR.UpdateTarget()
-  local p = BOOT_ARGV0_RAW
-  if type(p) ~= "string" or p == "" then return nil end
-  if not (string.find(p, "^mc[01]:") or string.find(p, "^mass%d*:") or string.find(p, "^usb%d*:")
-          or string.find(p, "^mx4sio%d*:") or string.find(p, "^mmce%d*:")) then
-    return nil
-  end
-  return PLDR.ResolveDeviceLabelRoot(p)
-end
-
-function PLDR._U.wait(report, label, lo, hi)
-  while true do
-    local running, result, done, total, remote, phase, step, err = System.updateStatus()
-    if not running then return result, remote, step, err end
-    local text, frac = PLDR.L(label), lo
-    if phase == 1 then text = PLDR.L("Writing...") end
-    if (tonumber(total) or 0) > 0 then
-      frac = lo + (hi - lo) * (done / total)
-      text = PLDR.LFmt("%s %d / %d KB", text:gsub("%.%.%.$", ""), math.floor(done / 1024), math.floor(total / 1024))
-    end
-    report(text, frac)
-  end
-end
-
-function PLDR._U.net(report)
-  if type(System) ~= "table" or type(System.updateStart) ~= "function" then
-    return false, PLDR.L("Updates are not available in this build")
-  end
-  report(PLDR.L("Loading network modules..."), 0.05)
-  if type(System.initSMB) == "function" and not System.initSMB() then
-    return false, PLDR.L("Could not start the network")
-  end
-  report((type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true) and PLDR.L("Waiting for link + DHCP lease...") or PLDR.L("Waiting for network link..."), 0.1)
-  local ok, err = System.smbNetUp(PLDR.SMB)
-  if not ok then
-    return false, PLDR.LFmt("The network is not up (%s)\nSet it up in Settings > Network", tostring(err or "NO_LINK"))
-  end
-  return true
-end
-
--- Returns "available", <version> | "newest", <version> | "error", <message>.
-function PLDR.CheckForUpdate(report)
-  local target = PLDR.UpdateTarget()
-  if target == nil then
-    return "error", PLDR.L("Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive")
-  end
-  local ok, msg = PLDR._U.net(report)
-  if not ok then return "error", msg end
-  report(PLDR.L("Checking GitHub..."), 0.3)
-  local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
-  if not System.updateStart("check", ver) then return "error", PLDR._U.error(9) end
-  local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
-  if result == 1 then
-    -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
-    PLDR._U.state.remote = remote
-    PLDR._U.state.target = target
-    return "newest", remote
-  end
-  if result ~= 0 then return "error", PLDR._U.error(result, PLDR.L("The update check failed")) end
-  PLDR._U.state.remote = remote
-  PLDR._U.state.target = target
-  return "available", remote
-end
-
--- Needs a CheckForUpdate that found a newer release. Returns true, <message> | false, <message>.
-function PLDR.InstallUpdate(report)
-  local target = PLDR._U.state.target
-  if target == nil or PLDR._U.state.remote == nil then return false, PLDR.L("Check for updates first") end
-  report(PLDR.L("Downloading..."), 0.05)
-  if not System.updateStart("install", target) then return false, PLDR._U.error(9) end
-  local result, _, step, err = PLDR._U.wait(report, "Downloading...", 0.05, 0.98)
-  if result == 6 and step == 1 then
-    return false, PLDR.LFmt("Could not open POPSLOADER.ELF for writing (error %s)\nIt was not changed", tostring(err))
-  elseif result == 6 then
-    return false, PLDR.LFmt("Could not finish replacing POPSLOADER.ELF\n(step %s of 3, error %s)\nIt may be damaged: copy it to the device again", tostring(step), tostring(err))
-  elseif result ~= 0 then
-    return false, PLDR._U.error(result, PLDR.L("The download failed"))
-  end
-  local version = PLDR._U.state.remote
-  PLDR._U.state.remote = nil
-  return true, PLDR.LFmt("Updated to %s\nRestart POPSLoader to use it", tostring(version))
 end
 
 function PLDR.InitSMBPopsRoot(report)

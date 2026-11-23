@@ -408,36 +408,3 @@ if not confirmed	ak nebude potvrdené
 re-select it under Settings > Storage to restage	vyber ho znovu v časti Nastavenia > Úložisko, aby sa znovu načítal
 return code:	návratový kód:
 status:	stav:
-%s %d / %d KB	
-An update is already running	
-Check for Updates	
-Check for updates first	
-Checking for updates...	
-Checking GitHub...	
-Could not finish replacing POPSLOADER.ELF\n(step %s of 3, error %s)\nIt may be damaged: copy it to the device again	
-Could not make a secure connection to GitHub	
-Could not open POPSLOADER.ELF for writing (error %s)\nIt was not changed	
-Could not reach GitHub\nCheck the network settings and the cable	
-Could not replace POPSLOADER.ELF	
-Could not start the network	
-Download	
-Downloading...	
-GitHub sent something unexpected	
-Install	
-Out of memory	
-POPSLoader %s is available.\nInstall it now?	
-POPSLoader is up to date.\nDownload %s again anyway?	
-Save the network settings first, then check for updates	
-The console clock is not set\nSet the date and time first	
-The download did not verify\nNothing was changed	
-The download failed	
-The network is not up (%s)\nSet it up in Settings > Network	
-The update check failed	
-Update	
-Update check failed	
-Update failed	
-Updated to %s\nRestart POPSLoader to use it	
-Updates are not available in this build	
-Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive	
-Updating...	
-Writing...	
