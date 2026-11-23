@@ -501,7 +501,7 @@
   }
 })();
 
-/* project-links:start (generated, see add_langbar.py) */
+/* project-links:start (generated, see https://github.com/NathanNeurotic/NathanNeurotic/tree/main/project-links) */
 /* Small bar at the top of every page: links to the six project sites and a
    language picker that reopens THIS page through Google Translate. */
 (function () {
