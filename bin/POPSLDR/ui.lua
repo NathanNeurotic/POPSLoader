@@ -5491,7 +5491,7 @@ UI = {
         end
 
         AddSpacer()
-        -- Date and Time: the console's own clock, in the console's time zone. The rows edit a draft;
+        -- Date and Time: the console's own clock, in the chosen time zone (the console's by default). The rows edit a draft;
         -- nothing is written until "Set the clock". Not part of the saved settings.
         if type(System.clockGet) == "function" then
           local function Clk()
@@ -5516,6 +5516,63 @@ UI = {
               function() step(-1) end, function() step(1) end, function() return false end)
           end
           AddSection("Date and Time")
+          -- Time zone: how the clock is shown and typed, never the clock itself. "Console" follows the
+          -- zone and summer time set in the console's own System Configuration, and shows which zone
+          -- that is. A change applies at once; "Save the time zone" keeps it for the next start.
+          if type(System.clockZone) == "function" and type(System.clockZoneSet) == "function" then
+            local function ZoneText(m)
+              local a = math.abs(m)
+              return string.format("UTC%s%02d:%02d", (m < 0) and "-" or "+", math.floor(a / 60), a % 60)
+            end
+            local function ZoneStep(dir)
+              local zone, summer, _, list = System.clockZone()
+              local at = 0
+              for i = 1, #list do
+                if list[i] == zone then at = i end
+              end
+              at = (at + dir) % (#list + 1)
+              System.clockZoneSet(list[at], summer)   -- list[0] is nil: the console's own
+              UI.ClockDraft = nil                     -- the rows below show the new local time
+              UI.ClockZoneDirty = true
+            end
+            AddCycle("Time zone", function()
+                local zone, _, console = System.clockZone()
+                if zone == nil then return "Console ("..ZoneText(console)..")" end
+                return ZoneText(zone)
+              end,
+              function() ZoneStep(-1) end, function() ZoneStep(1) end, function() return UI.ClockZoneDirty == true end)
+            local function SummerFlip()
+              local zone, summer = System.clockZone()
+              if zone == nil then
+                UI.Notif_queue.add("Summer time follows the console while Time zone is Console", "info")
+                return
+              end
+              System.clockZoneSet(zone, not summer)
+              UI.ClockDraft = nil
+              UI.ClockZoneDirty = true
+            end
+            AddCycle("Summer time", function()
+                local zone, summer = System.clockZone()
+                if zone == nil then return "Console" end
+                return summer and "On" or "Off"
+              end,
+              SummerFlip, SummerFlip, function() return UI.ClockZoneDirty == true end)
+            AddAction("Save the time zone", function()
+              local zone, summer = System.clockZone()
+              local old_zone, old_summer = PLDR.CLOCK_ZONE, PLDR.CLOCK_SUMMER
+              PLDR.CLOCK_ZONE = zone
+              PLDR.CLOCK_SUMMER = (zone ~= nil) and (summer == true)
+              local saved = false
+              pcall(function() saved = (PLDR.SaveSettingsAtomic() == true) end)
+              if saved then
+                UI.ClockZoneDirty = false
+                UI.Notif_queue.add("The time zone is saved", "info")
+              else
+                PLDR.CLOCK_ZONE, PLDR.CLOCK_SUMMER = old_zone, old_summer
+                UI.Notif_queue.add("Couldn't save settings -- the time zone lasts until POPSLoader closes", "error")
+              end
+            end)
+          end
           ClkRow("Year", 1, 2000, 2099, "%d")
           ClkRow("Month", 2, 1, 12, "%02d")
           ClkRow("Day", 3, 1, 31, "%02d")

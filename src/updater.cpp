@@ -655,9 +655,61 @@ static int clockShift(int *t, int minutes)
     return t[0] >= 2000 && t[0] <= 2099;
 }
 
+/* Settings > Date and Time > Time zone, in minutes east of UTC. CLOCK_ZONE_CONSOLE (the default)
+   follows the console's own time zone and summer time; a listed zone replaces both, and
+   gClockSummer then adds the hour. As RiptOPL's Date and Time. */
+#define CLOCK_ZONE_CONSOLE 0x7FFF
+static const short kClockZones[] = {-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60, 0,
+                                    60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570, 600,
+                                    630, 660, 720, 765, 780, 840};
+#define CLOCK_ZONES (static_cast<int>(sizeof(kClockZones) / sizeof(kClockZones[0])))
+static int gClockZone = CLOCK_ZONE_CONSOLE, gClockSummer = 0;
+
+/* Minutes from the clock's Japan time to local time. A zone that is not on the list is the console's. */
+static int zoneOffset(int zone, int summer, int consoleZone, int consoleSummer)
+{
+    for (int i = 0; i < CLOCK_ZONES; i++)
+        if (kClockZones[i] == zone)
+            return zone - 540 + (summer ? 60 : 0);
+    return consoleZone - 540 + (consoleSummer ? 60 : 0);
+}
+
 static int localOffset(void)
 {
-    return configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0);
+    return zoneOffset(gClockZone, gClockSummer, configGetTimezone(), configIsDaylightSavingEnabled());
+}
+
+/* System.clockZone() -> the chosen zone in minutes east of UTC (nil = the console's own), summer
+   time (boolean), the console's own zone in minutes with its summer time added, and the list of
+   zones that can be chosen. */
+extern "C" int lua_clockZone(lua_State *L)
+{
+    if (gClockZone == CLOCK_ZONE_CONSOLE)
+        lua_pushnil(L);
+    else
+        lua_pushinteger(L, gClockZone);
+    lua_pushboolean(L, gClockSummer);
+    lua_pushinteger(L, configGetTimezone() + (configIsDaylightSavingEnabled() ? 60 : 0));
+    lua_createtable(L, CLOCK_ZONES, 0);
+    for (int i = 0; i < CLOCK_ZONES; i++) {
+        lua_pushinteger(L, kClockZones[i]);
+        lua_rawseti(L, -2, i + 1);
+    }
+    return 4;
+}
+
+/* System.clockZoneSet(minutes or nil, summer). nil, or a zone that is not on the list, follows the
+   console. Changes how the clock is shown and entered, never the clock. */
+extern "C" int lua_clockZoneSet(lua_State *L)
+{
+    int zone = lua_isnumber(L, 1) ? static_cast<int>(lua_tointeger(L, 1)) : CLOCK_ZONE_CONSOLE;
+
+    gClockZone = CLOCK_ZONE_CONSOLE;
+    for (int i = 0; i < CLOCK_ZONES; i++)
+        if (kClockZones[i] == zone)
+            gClockZone = zone;
+    gClockSummer = gClockZone != CLOCK_ZONE_CONSOLE && lua_toboolean(L, 2);
+    return 0;
 }
 
 static unsigned char toBcd(int v)
