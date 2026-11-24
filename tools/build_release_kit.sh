@@ -6,7 +6,7 @@ set -eu
 # dfa28822 = Open-PS2-Loader #1241: ships the current i.LINK driver (usbhdfsd.irx.ilink,
 # 27,769 B); the previous pin (ebb62e1d) shipped the older 21,609 B build.
 RIPTOPL_SHA=dfa28822d324ae23b653a2a7585815eaac0cb671
-RIPTOPL_EMBER_SHA=ebb62e1d5db8099bb5b51b4b430a4d1914529bd2
+RIPTOPL_EMBER_SHA=61f70b5320dfaed7c4c15a094311f03ad7a78ca8
 git clone --quiet --filter=blob:none --no-checkout \
   https://github.com/NathanNeurotic/Open-PS2-Loader.git /tmp/riptopl-kit
 git -C /tmp/riptopl-kit checkout --quiet "$RIPTOPL_SHA" -- POPS Example/APP_RIPTOPL-OFFICIALROLLING-VERSION.ZIP/POPS .github/scripts/verify_psu_with_psumanager.cpp third_party/PSUManager/src/core
@@ -70,7 +70,8 @@ cp docs/third_party/okeanos_dir_lists/LICENSE docs/third_party/okeanos_dir_lists
 mv dist_root/POPS/UDPFSCONFIG.DAT dist_root/POPS/UDPFSCONFIG.DAT.example
 
 test -s dist_root/EMBER/ember.elf
-test -s dist_root/EMBER/LICENSE-BETA.txt
+test -s dist_root/EMBER/LICENSE.txt
+test ! -e dist_root/EMBER/LICENSE-BETA.txt
 test ! -e dist_root/EMBER/bios.bin
 # Never accidentally distribute user-owned BIOS dumps anywhere in the kit.
 if find dist_root -type f -iname 'bios.bin' | grep -q .; then

@@ -228,7 +228,7 @@ jobs:
               assert z.read("PS1_POPSLOADER.psu") == pathlib.Path("PS1_POPSLOADER.psu").read_bytes()
               for n in expected:
                   assert z.read("APPS/PS1_POPSLOADER/" + n) == pathlib.Path("dist_root/APPS/PS1_POPSLOADER", n).read_bytes()
-              for name in ("EMBER/ember.elf", "EMBER/LICENSE-BETA.txt",
+              for name in ("EMBER/ember.elf", "EMBER/LICENSE.txt",
                            "EMBER/games/ExampleGame/ExampleGame.cue",
                            "EMBER/games/ExampleGame/ExampleGame.bin",
                            "POPS/POPSTARTER.ELF", "POPS/PATCH_5.BIN",

@@ -42,8 +42,8 @@ APPS/
 POPS/                      POPStarter and RiptOPL-matched support assets
 
 EMBER/
-  ember.elf                 Unmodified Ember core; beta licence included
-  LICENSE-BETA.txt
+  ember.elf                 Unmodified Ember core; licence included
+  LICENSE.txt
   games/
     ExampleGame/
       ExampleGame.cue
@@ -76,7 +76,7 @@ HDD/PFS artwork belongs under `__common/POPS/ART/`. The UDPFS mode uses Okeanos'
 
 Set the bundled **Ember Beta-2** core's global options under **Settings → Ember PS1 Core**. On an `[Ember]` game row, press **L2** for timing, dither, shading and controller overrides; `Default` inherits the global option. Ember may create virtual memory cards in each game folder on writable media. **Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.** POPStarter VCD success does not establish Ember success.
 
-Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE-BETA.txt`), [RiptOPL](https://github.com/NathanNeurotic/RiptOPL) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
+Credits and redistribution: [Gageformer's Ember](https://github.com/Gageformer/Ember) (unmodified core with `EMBER/LICENSE.txt`), [RiptOPL](https://github.com/NathanNeurotic/RiptOPL) (device/backend reference), [Okeanos's BDM-UDPFS Assault](https://github.com/Okeanos86/BDMAssault) and [israpps BDM Assault](https://github.com/israpps/BDMAssault). The [weekly Ember Watch](.github/workflows/ember-watch.yml) verifies upstream asset digests, **not** hardware gameplay.
 
 ## Main features
 
