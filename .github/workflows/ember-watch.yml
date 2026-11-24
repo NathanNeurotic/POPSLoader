@@ -62,6 +62,7 @@ jobs:
           git -C "$root" checkout --quiet "$upstream_commit" -- EMBER
           test -s "$root/EMBER/ember.elf"
           test -s "$root/EMBER/LICENSE.txt"
+          test ! -e "$root/EMBER/LICENSE-BETA.txt"
           test -s "$root/EMBER/Ember Official Webpage.url"
           actual=$(sha256sum "$root/EMBER/ember.elf" | cut -d' ' -f1)
           if [ "$actual" != "$expected" ]; then
