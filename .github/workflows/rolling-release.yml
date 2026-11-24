@@ -159,6 +159,17 @@ jobs:
           python3 -c "import lupa" 2>/dev/null || { echo "lupa import failed post-install; skipping host harness"; exit 0; }
           python3 tools/host_harness.py
 
+      - name: Stamp the rolling build number
+        shell: sh
+        run: |
+          set -eu
+          # Check for Updates compares this number with the rolling release's (the same
+          # commit count that ends the ZIP names) and reads that release, not the latest
+          # official one. Official builds carry neither line.
+          printf 'POPSLDR_BUILD = %s\nPOPSLDR_CHANNEL = "rolling-release"\n' "$(git rev-list --count HEAD)" >> etc/boot.lua
+          tail -n 2 etc/boot.lua
+          luac5.4 -p etc/boot.lua
+
       - name: Compile project
         shell: sh
         run: |
@@ -321,6 +332,10 @@ jobs:
             echo "BUNDLE_ZIP=$BUNDLE_ZIP"
             echo "KIT_ZIP=$KIT_ZIP"
           } >> "$GITHUB_ENV"
+          # What Check for Updates reads: the ELF's hash and, from the kit ZIP's name, the version.
+          sha256sum "$KIT_ZIP" PS1_POPSLOADER.psu > SHA256SUMS.txt
+          (cd bin && sha256sum POPSLOADER.ELF) >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
           ls -la "$BUNDLE_ZIP" "$KIT_ZIP"
 
       - name: Upload workflow artifact
@@ -376,6 +391,7 @@ jobs:
               (pathlib.Path("bin/POPSLOADER.ELF"), "POPSLOADER.ELF"),
               (pathlib.Path(os.environ["KIT_ZIP"]), os.environ["KIT_ZIP"]),
               (pathlib.Path("PS1_POPSLOADER.psu"), "PS1_POPSLOADER.psu"),
+              (pathlib.Path("SHA256SUMS.txt"), "SHA256SUMS.txt"),
           ]
           run_url = f"https://github.com/{repo}/actions/runs/{os.environ['RUN_ID']}/attempts/{os.environ['RUN_ATTEMPT']}"
 
