@@ -25,11 +25,15 @@ No other files are put into that eight-file application directory.
 
 CI verifies the PSU files against `APPS/PS1_POPSLOADER/` **byte-for-byte**, using both the Python parser and RiptOPL's preserved PSUManager C++ reader. It also checks the full ZIP, required Ember licence, pinned POPS/Ember source files, and accidental BIOS inclusion. Passing those checks does not prove the games launch or saves work on hardware.
 
+## Other release assets
+
+Official and rolling releases also publish the bare `POPSLOADER.ELF` and a `SHA256SUMS.txt` listing the SHA-256 of the ZIP, the PSU and the ELF. **Settings → About → Check for Updates** (1.4.5 and later) downloads exactly these two: it fetches `POPSLOADER.ELF` and refuses it unless it matches `SHA256SUMS.txt`. Official releases add `BUILD-MANIFEST.txt` (source commit, CI run, build image and the bundled Ember digest).
+
 ## Channels and compatibility
 
 - **Stable 1.4.4:** the current official release adds a warning when a disc icon cannot be loaded and SVKghost's Slovak corrections, on top of 1.4.3's Slovak translation, long text that fits in every language and finished Brazilian Portuguese, and includes Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested) and localization fixes. Console UDPFS/Ember/i.Link acceptance remains pending.
 - **Stable 1.2.3 (historical):** that official package remains unchanged. New eight-file directory / PSU expectations must **not** be retroactively applied to it.
-- **Rolling development:** PR #600 is merged into `dev`; `PS1_POPSLOADER-<version>.zip` and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets on the [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release), alongside the traditional combined bundle `POPSLOADER-rolling-release-<version>.zip`. Every ZIP name ends with the build version (`POPSLDR_VER` plus the commit count, for example `v1.4.0-928`), which the release notes also state at the top; the ELF and PSU keep fixed names.
+- **Rolling development:** PR #600 is merged into `dev`; `PS1_POPSLOADER-<version>.zip` and [PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu) are published as separate assets on the [rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release), alongside the traditional combined bundle `POPSLOADER-rolling-release-<version>.zip`. Every ZIP name ends with the build version (`POPSLDR_VER` plus the commit count, for example `v1.4.5-1250`), which the release notes also state at the top; the ELF, PSU and `SHA256SUMS.txt` keep fixed names.
 - **Experimental:** isolated prerelease channel, built independently from `experimental`. The PR alone does not add these features to that branch; they must be explicitly integrated before advertising the experimental packages.
 - **Official future release:** publish only from a separately reviewed, version-stamped source after compatibility disclosures and release gates are satisfied.
 

@@ -6,7 +6,7 @@ The maintained project guide for **POPSLoader**, alongside the preserved histori
 
 ## Start here
 
-- [Installation Guide](Installation-Guide.md) — prerequisites, device-root directories, launcher installation.
+- [Installation Guide](Installation-Guide.md) — prerequisites, device-root directories, launcher installation, and updating.
 - [Release Formats](Release-Formats.md) — the eight-file `APPS/PS1_POPSLOADER/` directory, flat memory-card `.psu`, full ZIP, development and stable channels.
 - [Ember Core](Ember-Core.md) — Ember versus POPStarter, configuration, game format, licensing, test status and i.Link policy.
 - [Device Support](Device-Support.md) — storage devices, which features are implemented, and what still needs testing.
@@ -18,6 +18,6 @@ The maintained project guide for **POPSLoader**, alongside the preserved histori
 
 ## Preserve the distinctions
 
-**POPS** is Sony's PS1 emulation software and is not supplied. **POPStarter** is the original PS1 game launcher. **POPSLoader** is the modern front-end, which can browse VCD games for POPStarter and now includes a separate **Ember** PS1 emulator pathway on the rolling/development channel. The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.
+**POPS** is Sony's PS1 emulation software and is not supplied. **POPStarter** is the original PS1 game launcher. **POPSLoader** is the modern front-end, which can browse VCD games for POPStarter and includes a separate **Ember** PS1 emulator pathway (in every official release since 1.3.0, and on the rolling channel). The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.
 
 **Hardware testing is separate from CI.** Ember game launch, controller availability after handoff and VMC saves still require actual PS2 confirmation. The experimental i.Link page is hidden by default and has not been tested on hardware; it does not block other Ember work.
