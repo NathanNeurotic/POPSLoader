@@ -1,4 +1,6 @@
 [Unreleased]
+
+[1.4.5] - November 23rd, 2026
 - New: Settings > Date and Time. Shows the console clock, sets it by hand, or sets it from the Internet (needs the network adapter). Not tested on a PS2.
 - New: when UDPFS is holding the network adapter, Check for Updates and Set from Internet offer to relaunch POPSLoader (which frees the adapter) instead of only asking for a restart. Offered when POPSLOADER.ELF is on a memory card or a USB / MX4SIO / MMCE drive. Not tested on a PS2.
 - Updater: rolling builds now follow the rolling release instead of the last official release; the rolling release publishes SHA256SUMS.txt. Not tested on a PS2.
@@ -6,6 +8,7 @@
 - Fix: an update to a memory card is refused before anything is written when the card lacks free space. Not tested on a PS2.
 - Fix: launches on devices that require BDMA stage the correct embedded driver pair even when Adaptive BDMA is off and the saved manual mode differs (#605). Both driver files plus a matching `bdma_mode.txt` still skip writes; staging marks `STAGING` before replacement so mixed drivers cannot look equipped, then writes the target marker last. Manual FAT32 USB remains available. Host-tested; PS2 retest pending.
 - Translations: make updater and busy-overlay text translatable before formatting, including existing ATA/network progress messages. Add a 33-row remaining Slovak Excel handoff (#605); new rows stay blank until SVKghost translates them.
+- Kit: ship Okeanos's current multi-disc-only and all-games directory lists as opt-in DISCS_DIR examples, with pinned provenance and license notices. Neither list changes folder behavior until copied to DISCS_DIR.TXT and enabled in PATHMAP.INI. Host-tested; PS2 retest pending.
 
 [1.4.4] - November 12th, 2026
 - New: a one-time warning toast when a disc icon (_ICO.png) exists but cannot be loaded (over 1024 px a side, or over the loader's size budget, about 607x607 in full colour) instead of skipping it silently (#568). Host-tested only; the toast has not been seen on screen.

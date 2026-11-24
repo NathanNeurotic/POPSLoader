@@ -2,11 +2,11 @@
 
 The maintained project guide for **POPSLoader**, alongside the preserved historical POPStarter reference. The [native GitHub Wiki](https://github.com/NathanNeurotic/POPSLoader/wiki) is synchronized from this repository's maintained Markdown and mirrored in the [GitHub Pages project section](https://nathanneurotic.github.io/POPSLoader/popsloader/project-wiki.html); the historical `.research/wiki/` pages are archival and remain unchanged.
 
-**Release status (November 12, 2026):** official **[1.4.4](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.4)** adds a warning when a disc icon cannot be loaded and SVKghost's Slovak corrections (1.4.3 added the Slovak translation and long text that fits in every language), and includes network-only [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), configuration recovery and localization fixes, alongside the existing [Ember](https://github.com/Gageformer/Ember) Beta-2 option and full ZIP/PSU kits. UDPFS and Ember remain experimental and not hardware-certified. The UDPFS driver also lists and plays server `POPS/*.cue` + `.bin` games without conversion (NOT TESTED on hardware; see [UDPFS_BDMA.md](../UDPFS_BDMA.md)). See STATE.md for current status.
+**Release status (November 23, 2026):** official **[1.4.5](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.5)** adds Check for Updates, a Date and Time setting with Set from Internet and a fix for BDMA drivers not being copied on devices that need them (none of it tested on a PS2 yet; 1.4.4 added the disc icon warning and SVKghost's Slovak corrections), and includes network-only [UDPFS Assault](https://github.com/Okeanos86/BDMAssault/releases) 1.0.1 (not yet confirmed on a real PS2), an experimental i.Link page (hidden by default, hardware-untested), configuration recovery and localization fixes, alongside the existing [Ember](https://github.com/Gageformer/Ember) Beta-2 option and full ZIP/PSU kits. UDPFS and Ember remain experimental and not hardware-certified. The UDPFS driver also lists and plays server `POPS/*.cue` + `.bin` games without conversion (NOT TESTED on hardware; see [UDPFS_BDMA.md](../UDPFS_BDMA.md)). See STATE.md for current status.
 
 ## Start here
 
-- [Installation Guide](Installation-Guide.md) — prerequisites, device-root directories, launcher installation.
+- [Installation Guide](Installation-Guide.md) — prerequisites, device-root directories, launcher installation, and updating.
 - [Release Formats](Release-Formats.md) — the eight-file `APPS/PS1_POPSLOADER/` directory, flat memory-card `.psu`, full ZIP, development and stable channels.
 - [Ember Core](Ember-Core.md) — Ember versus POPStarter, configuration, game format, licensing, test status and i.Link policy.
 - [Device Support](Device-Support.md) — storage devices, which features are implemented, and what still needs testing.
@@ -18,6 +18,6 @@ The maintained project guide for **POPSLoader**, alongside the preserved histori
 
 ## Preserve the distinctions
 
-**POPS** is Sony's PS1 emulation software and is not supplied. **POPStarter** is the original PS1 game launcher. **POPSLoader** is the modern front-end, which can browse VCD games for POPStarter and now includes a separate **Ember** PS1 emulator pathway on the rolling/development channel. The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.
+**POPS** is Sony's PS1 emulation software and is not supplied. **POPStarter** is the original PS1 game launcher. **POPSLoader** is the modern front-end, which can browse VCD games for POPStarter and includes a separate **Ember** PS1 emulator pathway (in every official release since 1.3.0, and on the rolling channel). The recovered POPStarter historical wiki is preservation material and should never be rewritten as if it documented the current POPSLoader project.
 
 **Hardware testing is separate from CI.** Ember game launch, controller availability after handoff and VMC saves still require actual PS2 confirmation. The experimental i.Link page is hidden by default and has not been tested on hardware; it does not block other Ember work.
