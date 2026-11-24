@@ -1,4 +1,6 @@
 [Unreleased]
+
+[1.4.5] - November 23rd, 2026
 - New: Settings > Date and Time. Shows the console clock, sets it by hand, or sets it from the Internet (needs the network adapter). Not tested on a PS2.
 - New: when UDPFS is holding the network adapter, Check for Updates and Set from Internet offer to relaunch POPSLoader (which frees the adapter) instead of only asking for a restart. Offered when POPSLOADER.ELF is on a memory card or a USB / MX4SIO / MMCE drive. Not tested on a PS2.
 - Updater: rolling builds now follow the rolling release instead of the last official release; the rolling release publishes SHA256SUMS.txt. Not tested on a PS2.
