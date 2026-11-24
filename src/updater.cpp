@@ -802,19 +802,21 @@ extern "C" int lua_clockSet(lua_State *L)
 
 static void worker(void *)
 {
-    Buffers *b = static_cast<Buffers *>(malloc(sizeof(Buffers)));
-
     gDone = gTotal = 0;
     if (gInstall == 2) {
         jobTime();
-    } else if (b == NULL) {
-        gResult = UP_MEMORY;
     } else {
-        if (gInstall)
-            jobInstall(b);
-        else
-            jobCheck(b);
-        free(b);
+        Buffers *b = static_cast<Buffers *>(malloc(sizeof(Buffers)));
+
+        if (b == NULL) {
+            gResult = UP_MEMORY;
+        } else {
+            if (gInstall)
+                jobInstall(b);
+            else
+                jobCheck(b);
+            free(b);
+        }
     }
     __sync_synchronize(); /* publish the results before the done flag */
     gState = 2;

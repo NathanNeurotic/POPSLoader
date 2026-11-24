@@ -165,9 +165,14 @@ jobs:
           set -eu
           # Check for Updates compares this number with the rolling release's (the same
           # commit count that ends the ZIP names) and reads that release, not the latest
-          # official one. Official builds carry neither line.
-          printf 'POPSLDR_BUILD = %s\nPOPSLDR_CHANNEL = "rolling-release"\n' "$(git rev-list --count HEAD)" >> etc/boot.lua
+          # official one. Official builds carry neither line. The lines go in front of
+          # require("system"): that call runs the whole program and does not come back.
+          test "$(grep -c '^require("system")$' etc/boot.lua)" = 1
+          STAMP="POPSLDR_BUILD = $(git rev-list --count HEAD); POPSLDR_CHANNEL = \"rolling-release\""
+          sed -i "s/^require(\"system\")\$/$STAMP\n&/" etc/boot.lua
           tail -n 2 etc/boot.lua
+          test "$(tail -n 1 etc/boot.lua)" = 'require("system")'
+          grep -q '^POPSLDR_BUILD = [0-9][0-9]*; POPSLDR_CHANNEL = "rolling-release"$' etc/boot.lua
           luac5.4 -p etc/boot.lua
 
       - name: Compile project
