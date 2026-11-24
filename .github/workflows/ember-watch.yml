@@ -61,7 +61,8 @@ jobs:
           upstream_commit=$(git -C "$root" rev-parse HEAD)
           git -C "$root" checkout --quiet "$upstream_commit" -- EMBER
           test -s "$root/EMBER/ember.elf"
-          test -s "$root/EMBER/LICENSE-BETA.txt"
+          test -s "$root/EMBER/LICENSE.txt"
+          test ! -e "$root/EMBER/LICENSE-BETA.txt"
           test -s "$root/EMBER/Ember Official Webpage.url"
           actual=$(sha256sum "$root/EMBER/ember.elf" | cut -d' ' -f1)
           if [ "$actual" != "$expected" ]; then
@@ -84,8 +85,9 @@ jobs:
             git -C "$root" fetch --quiet origin "$pinned"
           fi
           old_digest=$(git -C "$root" show "$pinned:EMBER/ember.elf" | sha256sum | cut -d' ' -f1)
-          old_license=$(git -C "$root" show "$pinned:EMBER/LICENSE-BETA.txt" | sha256sum | cut -d' ' -f1)
-          new_license=$(sha256sum "$root/EMBER/LICENSE-BETA.txt" | cut -d' ' -f1)
+          # Pins before Ember 0.8 carry LICENSE-BETA.txt; 0.8 renamed it LICENSE.txt.
+          old_license=$( (git -C "$root" show "$pinned:EMBER/LICENSE.txt" 2>/dev/null || git -C "$root" show "$pinned:EMBER/LICENSE-BETA.txt") | sha256sum | cut -d' ' -f1)
+          new_license=$(sha256sum "$root/EMBER/LICENSE.txt" | cut -d' ' -f1)
           {
             echo "## Ember watch"
             echo "Latest release: [$tag]($url)"

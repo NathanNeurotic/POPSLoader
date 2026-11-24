@@ -1,5 +1,8 @@
 [Unreleased]
 
+[1.4.6] - November 24th, 2026
+- Ember: the bundled core is now Gageformer's Ember v0.8 (was Beta-2). Its licence file is now `EMBER/LICENSE.txt` (Ember Licence 1.0); `LICENSE-BETA.txt` is gone. POPSLoader's launch of Ember is unchanged. Not tested on a PS2.
+
 [1.4.5] - November 23rd, 2026
 - New: Settings > Date and Time. Shows the console clock, sets it by hand, or sets it from the Internet (needs the network adapter). Not tested on a PS2.
 - New: when UDPFS is holding the network adapter, Check for Updates and Set from Internet offer to relaunch POPSLoader (which frees the adapter) instead of only asking for a restart. Offered when POPSLOADER.ELF is on a memory card or a USB / MX4SIO / MMCE drive. Not tested on a PS2.

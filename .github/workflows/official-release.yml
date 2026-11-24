@@ -1,7 +1,7 @@
-name: POPSLoader 1.4.5 Release
+name: POPSLoader 1.4.6 Release
 
 # RiptOPL-style reproducible release: publish the exact passing CI artifact.
-# Ember is upstream Beta-2, not a newly named Ember beta.
+# Ember is upstream v0.8, unmodified.
 # Official launcher release; Ember and UDPFS remain experimental features.
 on:
   workflow_run:
@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: popsloader-1.4.5-release
+  group: popsloader-1.4.6-release
   cancel-in-progress: false
 
 jobs:
@@ -35,7 +35,7 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify 1.4.5 ZIP, flat PSU and official Ember Beta-2
+      - name: Verify 1.4.6 ZIP, flat PSU and official Ember v0.8
         shell: bash
         env:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -44,18 +44,17 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "$VERIFIED_SHA"
-          grep -Fxq 'POPSLDR_VER = "v1.4.5"' etc/boot.lua
-          grep -Fxq 'Version=1.4.5' bin/POPSLDR/title.cfg
-          test -s RELEASE_1.4.5.md
+          grep -Fxq 'POPSLDR_VER = "v1.4.6"' etc/boot.lua
+          grep -Fxq 'Version=1.4.6' bin/POPSLDR/title.cfg
+          test -s RELEASE_1.4.6.md
           test -s POPSLOADER.zip
           test -s PS1_POPSLOADER.psu
           unzip -tq POPSLOADER.zip
           mv POPSLOADER.zip PS1_POPSLOADER.zip
           python3 tools/test_udpfs_integration.py PS1_POPSLOADER.zip
-          # Ensure the unmodified bundled binary IS Gageformer's latest Beta-2,
-          # including their 2026-09-28 asset replacement.
+          # Ensure the unmodified bundled binary IS Gageformer's latest release (v0.8).
           REMOTE_TAG="$(gh api repos/Gageformer/Ember/releases/latest --jq .tag_name)"
-          test "$REMOTE_TAG" = Beta-2
+          test "$REMOTE_TAG" = v0.8
           REMOTE_DIGEST="$(gh api repos/Gageformer/Ember/releases/latest \
             --jq '[.assets[] | select(.name=="ember.elf")][0].digest')"
           case "$REMOTE_DIGEST" in sha256:????????????????????????????????????????????????????????????????) ;; *) echo "No valid official Ember digest" >&2; exit 1 ;; esac
@@ -71,18 +70,18 @@ jobs:
                 "APPS/PS1_POPSLOADER/" + n for n in expected}
               assert z.read("PS1_POPSLOADER.psu") == pathlib.Path("PS1_POPSLOADER.psu").read_bytes()
               for required in ("POPS/POPSTARTER.ELF", "POPS/PATCH_5.BIN", "EMBER/ember.elf",
-                               "EMBER/LICENSE-BETA.txt", "EMBER/games/ExampleGame/ExampleGame.cue",
+                               "EMBER/LICENSE.txt", "EMBER/games/ExampleGame/ExampleGame.cue",
                                "EMBER/games/ExampleGame/ExampleGame.bin"):
                   assert required in entries, required
               assert not any(p.lower().endswith("/bios.bin") for p in entries)
               assert not z.read("EMBER/games/ExampleGame/ExampleGame.bin")
-              assert b"Version=1.4.5" in z.read("APPS/PS1_POPSLOADER/title.cfg")
-              assert b'SET "VERSION" "1.4.5"' in z.read("APPS/PS1_POPSLOADER/APPINFO.PBT")
+              assert b"Version=1.4.6" in z.read("APPS/PS1_POPSLOADER/title.cfg")
+              assert b'SET "VERSION" "1.4.6"' in z.read("APPS/PS1_POPSLOADER/APPINFO.PBT")
               elf = z.read("EMBER/ember.elf")
               assert elf[:6] == b"\x7fELF\x01\x01" and struct.unpack_from("<H", elf, 18)[0] == 8
               digest = hashlib.sha256(elf).hexdigest()
               assert "sha256:"+digest == os.environ["REMOTE_DIGEST"], (
-                  "Bundled Ember does NOT match official Beta-2. Update source pin before releasing.",
+                  "Bundled Ember does NOT match official v0.8. Update source pin before releasing.",
                   digest, os.environ["REMOTE_DIGEST"])
               with tempfile.TemporaryDirectory() as d:
                   for name in expected:
@@ -90,19 +89,19 @@ jobs:
                   subprocess.run(["python3", "tools/package_psu.py", "verify", d,
                                   "PS1_POPSLOADER.psu"], check=True)
               pathlib.Path("POPSLOADER.ELF").write_bytes(z.read("APPS/PS1_POPSLOADER/POPSLOADER.ELF"))
-          print("PASS: POPSLoader 1.4.5, unmodified official Ember Beta-2, exact 8-file PSU")
+          print("PASS: POPSLoader 1.4.6, unmodified official Ember v0.8, exact 8-file PSU")
           PY
           # Every release ZIP name ends with the version.
-          mv PS1_POPSLOADER.zip PS1_POPSLOADER-1.4.5.zip
+          mv PS1_POPSLOADER.zip PS1_POPSLOADER-1.4.6.zip
           {
-            echo "POPSLoader 1.4.5 (upstream Ember Beta-2)"
+            echo "POPSLoader 1.4.6 (upstream Ember v0.8)"
             echo "Source: $VERIFIED_SHA"
             echo "CI: https://github.com/$GITHUB_REPOSITORY/actions/runs/$CI_RUN"
             echo "Build image: ps2dev/ps2dev:v2.0.0"
             echo "Ember SHA256: ${REMOTE_DIGEST#sha256:}"
             echo "Not hardware certified; Ember and UDPFS remain experimental"
           } > BUILD-MANIFEST.txt
-          sha256sum PS1_POPSLOADER-1.4.5.zip PS1_POPSLOADER.psu POPSLOADER.ELF BUILD-MANIFEST.txt > SHA256SUMS.txt
+          sha256sum PS1_POPSLOADER-1.4.6.zip PS1_POPSLOADER.psu POPSLOADER.ELF BUILD-MANIFEST.txt > SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
 
       - name: Publish one versioned POPSLoader release
@@ -112,20 +111,20 @@ jobs:
           VERIFIED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-          if gh release view 1.4.5 >/dev/null 2>&1; then
-            echo "1.4.5 already published. Preserving immutable versioned assets."
+          if gh release view 1.4.6 >/dev/null 2>&1; then
+            echo "1.4.6 already published. Preserving immutable versioned assets."
             exit 0
           fi
-          if git ls-remote --exit-code --tags origin refs/tags/1.4.5 >/dev/null 2>&1; then
-            echo "::error::Tag 1.4.5 already exists; refusing unexpected retag."
+          if git ls-remote --exit-code --tags origin refs/tags/1.4.6 >/dev/null 2>&1; then
+            echo "::error::Tag 1.4.6 already exists; refusing unexpected retag."
             exit 1
           fi
-          gh release create 1.4.5 \
-            PS1_POPSLOADER-1.4.5.zip PS1_POPSLOADER.psu POPSLOADER.ELF \
+          gh release create 1.4.6 \
+            PS1_POPSLOADER-1.4.6.zip PS1_POPSLOADER.psu POPSLOADER.ELF \
             BUILD-MANIFEST.txt SHA256SUMS.txt \
             --target "$VERIFIED_SHA" \
-            --title "POPSLoader 1.4.5" \
-            --notes-file RELEASE_1.4.5.md \
+            --title "POPSLoader 1.4.6" \
+            --notes-file RELEASE_1.4.6.md \
             --latest
-          gh release view 1.4.5 --json url,tagName,isPrerelease,assets \
+          gh release view 1.4.6 --json url,tagName,isPrerelease,assets \
             --jq '{url:.url,tag:.tagName,prerelease:.isPrerelease,assets:[.assets[].name]}'

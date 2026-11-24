@@ -1,6 +1,6 @@
 # Ember PS1 Core in POPSLoader
 
-**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Included in every official 1.4.x release, 1.4.5 being current (unmodified Ember Beta-2), and **not yet console-certified**.
+**Rolling prerelease status:** merged into `dev` through [PR #600](https://github.com/NathanNeurotic/POPSLoader/pull/600) and [available on Rolling Release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). Included in every official 1.4.x release, 1.4.6 being current (unmodified Ember v0.8), and **not yet console-certified**.
 
 Ember by [Gageformer](https://github.com/Gageformer/Ember) is a separate PS1 emulator; it is **not** POPStarter and it does not run POPStarter VCD images through the POPStarter launch path. POPSLoader discovers compatible Ember game folders on the selected storage device, labels their list rows `[Ember]`, and provides Ember's Beta 2 global and per-game settings.
 
@@ -8,8 +8,8 @@ Ember by [Gageformer](https://github.com/Gageformer/Ember) is a separate PS1 emu
 
 ```text
 <device-root>/EMBER/
-  ember.elf                bundled, unmodified, with LICENSE-BETA.txt
-  LICENSE-BETA.txt
+  ember.elf                bundled, unmodified, with LICENSE.txt
+  LICENSE.txt
   bios.bin                 user-supplied 512 KiB PS1 BIOS (NOT bundled)
   settings.txt             native Ember global options (optional)
   games/
@@ -33,7 +33,7 @@ Host-tested scanning includes USB/multiple USB, MX4SIO, MMCE, internal exFAT, SM
 
 ## Licensing and upstream monitoring
 
-The binary must remain **unmodified** and accompanied by `LICENSE-BETA.txt` and attribution to [Gageformer](https://github.com/Gageformer) with a link to their [official release page](https://github.com/Gageformer/Ember/releases). The licence does not permit commercial redistribution without permission. No BIOS or game image is included.
+The binary must remain **unmodified** and accompanied by `LICENSE.txt` and attribution to [Gageformer](https://github.com/Gageformer) with a link to their [official release page](https://github.com/Gageformer/Ember/releases). The licence does not permit commercial redistribution without permission. No BIOS or game image is included.
 
 The weekly [Ember Watch workflow](../../.github/workflows/ember-watch.yml) compares the published Ember asset's SHA-256 against RiptOPL's verified bundled version, supports same-tag asset changes, and updates only POPSLoader's Ember revision pin on `dev`; the original POPS support-file revision remains fixed. The workflow is present on the default `master` branch and scheduled weekly; the first scheduled update has not yet been verified. This does not certify hardware compatibility.
 
