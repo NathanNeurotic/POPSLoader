@@ -449,3 +449,6 @@ The console clock is set
 The console did not accept the new time	
 UDPFS is using the network adapter\nRestart POPSLoader and try again before opening UDPFS	
 The console clock is not set\nSet the date and time first	
+POPSLoader could not be relaunched	
+Relaunch	
+UDPFS is using the network adapter.\nRelaunch POPSLoader now to free it?	

@@ -2946,8 +2946,20 @@ t66 = E('''function()
   ok = PLDR.SetClockFromInternet(report)
   if ok ~= false then restore(); return false, "a refused clock write must be reported" end
   state, started = "ready", nil
-  ok, msg = PLDR.SetClockFromInternet(report)
-  if ok ~= false or started ~= nil or not string.find(msg, "UDPFS", 1, true) then restore(); return false, "UDPFS holding the adapter must be named" end
+  local why
+  ok, msg, why = PLDR.SetClockFromInternet(report)
+  if ok ~= false or started ~= nil or not string.find(msg, "UDPFS", 1, true) or why ~= "udpfs" then restore(); return false, "UDPFS holding the adapter must be named" end
+  st, info, why = PLDR.CheckForUpdate(report)
+  if st ~= "error" or why ~= "udpfs" then restore(); return false, "the update check must say UDPFS holds the adapter" end
+  -- The relaunch offer needs this program's own file where the loader can read it back.
+  local keep = System.loadELFKeepIOP
+  System.loadELFKeepIOP = function() end
+  PLDR.UpdateTarget = function() return "mc0:/NO_SUCH_FOLDER/POPSLOADER.ELF" end
+  local missing = PLDR.RelaunchTarget()
+  PLDR.UpdateTarget = function() return nil end
+  local nowhere = PLDR.RelaunchTarget()
+  System.loadELFKeepIOP = keep
+  if missing ~= nil or nowhere ~= nil then restore(); return false, "no relaunch offer without a readable POPSLOADER.ELF" end
   restore()
   return true
 end''')()

@@ -9423,6 +9423,15 @@ function PLDR.UpdateTarget()
   return PLDR.ResolveDeviceLabelRoot(p)
 end
 
+-- POPSLOADER.ELF where the loader can read it back to start it again (the same places an update
+-- can be written), or nil. Starting again is what frees the network adapter from UDPFS.
+function PLDR.RelaunchTarget()
+  local t = PLDR.UpdateTarget()
+  if t == nil or type(System.loadELFKeepIOP) ~= "function" then return nil end
+  local ok, there = pcall(doesFileExist, t)
+  return (ok and there == true) and t or nil
+end
+
 function PLDR._U.wait(report, label, lo, hi)
   while true do
     local running, result, done, total, remote, phase, step, err = System.updateStatus()
@@ -9444,7 +9453,7 @@ function PLDR._U.net(report)
   -- UDPFS holds the network adapter until POPSLoader restarts (the two stacks cannot share it).
   local udpfs = type(System.udpfsState) == "function" and System.udpfsState() or "idle"
   if udpfs == "ready" or udpfs == "partial" then
-    return false, PLDR.L("UDPFS is using the network adapter\nRestart POPSLoader and try again before opening UDPFS")
+    return false, PLDR.L("UDPFS is using the network adapter\nRestart POPSLoader and try again before opening UDPFS"), "udpfs"
   end
   report(PLDR.L("Loading network modules..."), 0.05)
   if type(System.initSMB) == "function" and not System.initSMB() then
@@ -9465,8 +9474,8 @@ function PLDR.CheckForUpdate(report)
   if target == nil then
     return "error", PLDR.L("Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive")
   end
-  local ok, msg = PLDR._U.net(report)
-  if not ok then return "error", msg end
+  local ok, msg, why = PLDR._U.net(report)
+  if not ok then return "error", msg, why end
   report(PLDR.L("Checking GitHub..."), 0.3)
   -- A rolling build (stamped by its workflow with a build number and its release tag) follows the
   -- rolling release; an official build follows the latest official release.
@@ -9509,8 +9518,8 @@ end
 -- Settings > Date and Time > Set from Internet: the time from a web server's reply, written to the
 -- console clock by the worker (src/updater.cpp, the "time" job). Returns true|false, <message>.
 function PLDR.SetClockFromInternet(report)
-  local ok, msg = PLDR._U.net(report)
-  if not ok then return false, msg end
+  local ok, msg, why = PLDR._U.net(report)
+  if not ok then return false, msg, why end
   report(PLDR.L("Asking for the time..."), 0.5)
   if not System.updateStart("time") then return false, PLDR._U.error(9) end
   local result, _, step = PLDR._U.wait(report, "Asking for the time...", 0.5, 0.9)

@@ -2399,6 +2399,35 @@ UI = {
         UI.Notify(PLDR.L("BOOT.ELF failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
         return
       end;
+      -- A network action stopped (msg). When UDPFS holds the adapter (why == "udpfs") and this
+      -- program can be started again from its own file, offer that: starting again resets the
+      -- IOP, which is the only thing that frees the adapter. Same handoff as BOOT.ELF above.
+      NetFailed = function (msg, why)
+        local elf = (why == "udpfs") and PLDR.RelaunchTarget() or nil
+        if elf == nil then
+          UI.Notif_queue.add(tostring(msg), "error")
+          return
+        end
+        UI.Modal.active = true
+        UI.Modal.title = "UDPFS"
+        UI.Modal.body = PLDR.L("UDPFS is using the network adapter.\nRelaunch POPSLoader now to free it?")
+        UI.Modal.options = {PLDR.L("Relaunch"), PLDR.L("Cancel")}
+        UI.Modal.confirm_action = function ()
+          UI.LAUNCHING = true
+          UI.Modal.Close()
+          if tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0 then
+            pcall(PLDR.PrepareForColdExternalELFLaunch)
+          else
+            pcall(PLDR.PrepareForExternalELFLaunch, elf)
+          end
+          local ok, rc = pcall(System.loadELFKeepIOP, elf, elf)
+          UI.LAUNCHING = false
+          UI.Notify(PLDR.L("POPSLoader could not be relaunched").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
+        end
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       HandleInput = function ()
         if not UI.Modal.active then return end
         if UI.Modal.ignore_until_release then
@@ -5503,12 +5532,16 @@ UI = {
               UI.Notif_queue.add(PLDR.L("Save the network settings first, then set the clock"), "error")
               return
             end
-            local ok, msg
+            local ok, msg, why
             UI.RunBusyTask(PLDR.L("Setting the clock..."), function (report)
-              ok, msg = PLDR.SetClockFromInternet(report)
+              ok, msg, why = PLDR.SetClockFromInternet(report)
             end, PLDR.L("Could not set the clock"))
             UI.ClockDraft = nil
-            UI.Notif_queue.add(tostring(msg or PLDR.L("Could not set the clock")), ok and "info" or "error")
+            if ok then
+              UI.Notif_queue.add(tostring(msg), "info")
+            else
+              UI.Modal.NetFailed(msg or PLDR.L("Could not set the clock"), why)
+            end
           end)
         end
 
@@ -5544,9 +5577,9 @@ UI = {
             UI.Notif_queue.add(PLDR.L("Save the network settings first, then check for updates"), "error")
             return
           end
-          local state, info
+          local state, info, why
           UI.RunBusyTask(PLDR.L("Checking for updates..."), function (report)
-            state, info = PLDR.CheckForUpdate(report)
+            state, info, why = PLDR.CheckForUpdate(report)
           end, PLDR.L("Update check failed"))
           if state == "available" or state == "newest" then
             local newer = state == "available"
@@ -5567,7 +5600,7 @@ UI = {
             UI.Modal.triangle_action = nil
             UI.Modal.ignore_until_release = true
           elseif state == "error" then
-            UI.Notif_queue.add(tostring(info or PLDR.L("The update check failed")), "error")
+            UI.Modal.NetFailed(info or PLDR.L("The update check failed"), why)
           end
         end)
         AddAction("Credits", function()
