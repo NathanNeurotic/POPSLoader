@@ -2399,6 +2399,35 @@ UI = {
         UI.Notify(PLDR.L("BOOT.ELF failed to launch").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
         return
       end;
+      -- A network action stopped (msg). When UDPFS holds the adapter (why == "udpfs") and this
+      -- program can be started again from its own file, offer that: starting again resets the
+      -- IOP, which is the only thing that frees the adapter. Same handoff as BOOT.ELF above.
+      NetFailed = function (msg, why)
+        local elf = (why == "udpfs") and PLDR.RelaunchTarget() or nil
+        if elf == nil then
+          UI.Notif_queue.add(tostring(msg), "error")
+          return
+        end
+        UI.Modal.active = true
+        UI.Modal.title = "UDPFS"
+        UI.Modal.body = PLDR.L("UDPFS is using the network adapter.\nRelaunch POPSLoader now to free it?")
+        UI.Modal.options = {PLDR.L("Relaunch"), PLDR.L("Cancel")}
+        UI.Modal.confirm_action = function ()
+          UI.LAUNCHING = true
+          UI.Modal.Close()
+          if tonumber(PLDR.HDD.LOADSTATE or 0) ~= 0 then
+            pcall(PLDR.PrepareForColdExternalELFLaunch)
+          else
+            pcall(PLDR.PrepareForExternalELFLaunch, elf)
+          end
+          local ok, rc = pcall(System.loadELFKeepIOP, elf, elf)
+          UI.LAUNCHING = false
+          UI.Notify(PLDR.L("POPSLoader could not be relaunched").."\n"..PLDR.L("return code:").." "..tostring(rc), 150, "error")
+        end
+        UI.Modal.cancel_action = UI.Modal.Close
+        UI.Modal.triangle_action = nil
+        UI.Modal.ignore_until_release = true
+      end;
       HandleInput = function ()
         if not UI.Modal.active then return end
         if UI.Modal.ignore_until_release then
@@ -5462,6 +5491,60 @@ UI = {
         end
 
         AddSpacer()
+        -- Date and Time: the console's own clock, in the console's time zone. The rows edit a draft;
+        -- nothing is written until "Set the clock". Not part of the saved settings.
+        if type(System.clockGet) == "function" then
+          local function Clk()
+            if UI.ClockDraft == nil then
+              local y, mo, d, h, mi = System.clockGet()
+              UI.ClockDraft = { y or 2026, mo or 1, d or 1, h or 0, mi or 0 }
+            end
+            return UI.ClockDraft
+          end
+          local function DaysIn(y, mo)
+            return (mo == 2) and ((y % 4 == 0) and 29 or 28) or ((mo == 4 or mo == 6 or mo == 9 or mo == 11) and 30 or 31)
+          end
+          local function ClkRow(label, i, lo, hi, fmt)
+            local function step(dir)
+              local c = Clk()
+              local top = (i == 3) and DaysIn(c[1], c[2]) or hi
+              c[i] = c[i] + dir
+              if c[i] > top then c[i] = lo elseif c[i] < lo then c[i] = top end
+              c[3] = math.min(c[3], DaysIn(c[1], c[2]))
+            end
+            AddCycle(label, function() return string.format(fmt, Clk()[i]) end,
+              function() step(-1) end, function() step(1) end, function() return false end)
+          end
+          AddSection("Date and Time")
+          ClkRow("Year", 1, 2000, 2099, "%d")
+          ClkRow("Month", 2, 1, 12, "%02d")
+          ClkRow("Day", 3, 1, 31, "%02d")
+          ClkRow("Hour", 4, 0, 23, "%02d")
+          ClkRow("Minute", 5, 0, 59, "%02d")
+          AddAction("Set the clock", function()
+            local c = Clk()
+            local ok = System.clockSet(c[1], c[2], c[3], c[4], c[5]) == true
+            UI.ClockDraft = nil
+            UI.Notif_queue.add(ok and "The console clock is set" or "The console did not accept the new time", ok and "info" or "error")
+          end)
+          AddAction("Set from Internet", function()
+            if UI.SmbDirty == true then
+              UI.Notif_queue.add(PLDR.L("Save the network settings first, then set the clock"), "error")
+              return
+            end
+            local ok, msg, why
+            UI.RunBusyTask(PLDR.L("Setting the clock..."), function (report)
+              ok, msg, why = PLDR.SetClockFromInternet(report)
+            end, PLDR.L("Could not set the clock"))
+            UI.ClockDraft = nil
+            if ok then
+              UI.Notif_queue.add(tostring(msg), "info")
+            else
+              UI.Modal.NetFailed(msg or PLDR.L("Could not set the clock"), why)
+            end
+          end)
+        end
+
         AddSection("Memory Card")
         AddCycle(
           "POPSTARTER Folder",
@@ -5486,16 +5569,17 @@ UI = {
         AddInfo("Version", function()
           local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
           if ver == "" then return "(unknown)" end
-          return ver
+          local build = rawget(_G, "POPSLDR_BUILD") -- a rolling build's number
+          return build ~= nil and (ver.."-"..tostring(build)) or ver
         end)
         AddAction(PLDR.L("Check for Updates"), function()
           if UI.SmbDirty == true then
             UI.Notif_queue.add(PLDR.L("Save the network settings first, then check for updates"), "error")
             return
           end
-          local state, info
+          local state, info, why
           UI.RunBusyTask(PLDR.L("Checking for updates..."), function (report)
-            state, info = PLDR.CheckForUpdate(report)
+            state, info, why = PLDR.CheckForUpdate(report)
           end, PLDR.L("Update check failed"))
           if state == "available" or state == "newest" then
             local newer = state == "available"
@@ -5516,7 +5600,7 @@ UI = {
             UI.Modal.triangle_action = nil
             UI.Modal.ignore_until_release = true
           elseif state == "error" then
-            UI.Notif_queue.add(tostring(info or PLDR.L("The update check failed")), "error")
+            UI.Modal.NetFailed(info or PLDR.L("The update check failed"), why)
           end
         end)
         AddAction("Credits", function()
@@ -7528,6 +7612,7 @@ function UI.ToggleSmbModulesDraft()
 end
 
 function UI.SyncSettingsDraftFromRuntime()
+  UI.ClockDraft = nil -- Date and Time rows re-read the console clock on each visit
   UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
