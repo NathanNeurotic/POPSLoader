@@ -2900,6 +2900,59 @@ t65 = E('''function()
 end''')()
 check("T65 incomplete staging invalidates mixed drivers and recovers (#605)", t65)
 
+# T66 Check for Updates and Set from Internet reach the network with usable settings.
+# A manual address had no name server (the DNS field is hidden), a blank configuration
+# had no address at all, and a rolling build asked the official release instead of its own.
+t66 = E('''function()
+  local saved = { smb = PLDR.SMB, target = PLDR.UpdateTarget, build = rawget(_G, "POPSLDR_BUILD"), chan = rawget(_G, "POPSLDR_CHANNEL"),
+                  ver = POPSLDR_VER, up = System.smbNetUp, start = System.updateStart, status = System.updateStatus, udpfs = System.udpfsState }
+  local function restore()
+    PLDR.SMB, PLDR.UpdateTarget, POPSLDR_BUILD, POPSLDR_CHANNEL, POPSLDR_VER = saved.smb, saved.target, saved.build, saved.chan, saved.ver
+    System.smbNetUp, System.updateStart, System.updateStatus, System.udpfsState = saved.up, saved.start, saved.status, saved.udpfs
+  end
+  local seen, started, result, step, state = nil, nil, 0, 0, "idle"
+  System.smbNetUp = function(cfg) seen = cfg; return true end
+  System.updateStart = function(...) started = {...}; return true end
+  System.updateStatus = function() return false, result, 0, 0, "1.4.4-1240", 0, step, 0 end
+  System.udpfsState = function() return state end
+  local function report() end
+
+  PLDR.SMB = { DHCP = false, PS2_IP = "", NETMASK = "", GATEWAY = "", DNS = "" }
+  local c = PLDR._U.cfg()
+  if c.DHCP ~= true or PLDR.SMB.DHCP ~= false then restore(); return false, "a blank address must ask for DHCP without changing the saved settings" end
+  PLDR.SMB = { DHCP = false, PS2_IP = "192.168.1.50", NETMASK = "255.255.255.0", GATEWAY = "192.168.1.1", DNS = "" }
+  c = PLDR._U.cfg()
+  if c.DHCP ~= false or c.DNS ~= "192.168.1.1" or c.PS2_IP ~= "192.168.1.50" then restore(); return false, "a manual address must use the gateway as name server" end
+
+  PLDR.UpdateTarget = function() return "mc0:/APPS/PS1_POPSLOADER/POPSLOADER.ELF" end
+  POPSLDR_VER, POPSLDR_BUILD, POPSLDR_CHANNEL = "v1.4.4", 1234, "rolling-release"
+  local st, info = PLDR.CheckForUpdate(report)
+  if st ~= "available" or info ~= "1.4.4-1240" or seen == nil or seen.DNS ~= "192.168.1.1"
+     or started[1] ~= "check" or started[2] ~= "1.4.4-1234" or started[3] ~= "rolling-release" then
+    restore(); return false, "a rolling build must check its own channel with its build number: "..tostring(st).." "..tostring(info).." "..tostring(started and started[2]).." "..tostring(started and started[3])
+  end
+  POPSLDR_BUILD, POPSLDR_CHANNEL = nil, nil
+  PLDR.CheckForUpdate(report)
+  if started[2] ~= "1.4.4" or started[3] ~= "" then restore(); return false, "an official build must check the latest release" end
+
+  result, step = 2, 1
+  st, info = PLDR.CheckForUpdate(report)
+  if st ~= "error" or not string.find(info, "name", 1, true) then restore(); return false, "a failed name lookup must say so: "..tostring(info) end
+
+  result, step = 0, 0
+  local ok, msg = PLDR.SetClockFromInternet(report)
+  if ok ~= true or started[1] ~= "time" then restore(); return false, "Set from Internet must run the time job" end
+  result = 11
+  ok = PLDR.SetClockFromInternet(report)
+  if ok ~= false then restore(); return false, "a refused clock write must be reported" end
+  state, started = "ready", nil
+  ok, msg = PLDR.SetClockFromInternet(report)
+  if ok ~= false or started ~= nil or not string.find(msg, "UDPFS", 1, true) then restore(); return false, "UDPFS holding the adapter must be named" end
+  restore()
+  return true
+end''')()
+check("T66 updater and clock sync: usable network settings, rolling channel, named failures", t66)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

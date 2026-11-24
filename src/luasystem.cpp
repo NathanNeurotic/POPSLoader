@@ -879,6 +879,8 @@ static int lua_rename(lua_State *L)
 // Check for Updates (src/updater/updater.cpp): worker-thread HTTPS to GitHub, polled from Lua.
 extern "C" int lua_updateStart(lua_State *L);
 extern "C" int lua_updateStatus(lua_State *L);
+extern "C" int lua_clockGet(lua_State *L);
+extern "C" int lua_clockSet(lua_State *L);
 
 static int lua_sleep(lua_State *L)
 {
@@ -2543,6 +2545,8 @@ static const luaL_Reg System_functions[] = {
 	{"removeFile",               lua_removeFile},
 	{"updateStart",              lua_updateStart},
 	{"updateStatus",             lua_updateStatus},
+	{"clockGet",                 lua_clockGet},
+	{"clockSet",                 lua_clockSet},
 	{"rename",                       lua_rename},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},

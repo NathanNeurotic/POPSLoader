@@ -9388,11 +9388,29 @@ PLDR._U.ERR = {
   [7] = "The download did not verify\nNothing was changed",
   [8] = "Out of memory",
   [9] = "An update is already running",
+  [10] = "Not enough free space on the memory card\nNothing was changed",
+}
+-- Where a failed connection stopped (System.updateStatus's step).
+PLDR._U.NET = {
+  [1] = "Could not look up the server's name\nCheck the gateway in Settings > SMB / Network",
+  [2] = "Could not connect to the server",
+  [3] = "The server did not answer in time",
 }
 PLDR._U.state = { remote = nil, target = nil }
 
-function PLDR._U.error(code, fallback)
-  return PLDR.L(PLDR._U.ERR[code] or fallback)
+function PLDR._U.error(code, fallback, step)
+  return PLDR.L((code == 2 and PLDR._U.NET[step]) or PLDR._U.ERR[code] or fallback)
+end
+
+-- The saved network settings, made usable for the Internet: with no address entered the router is
+-- asked for one (DHCP), and the hidden DNS field falls back to the gateway, which answers names on
+-- a home network. Without this a manual address had no name server at all.
+function PLDR._U.cfg()
+  local c = {}
+  for k, v in pairs(type(PLDR.SMB) == "table" and PLDR.SMB or {}) do c[k] = v end
+  if c.DHCP ~= true and tostring(c.PS2_IP or "") == "" then c.DHCP = true end
+  if tostring(c.DNS or "") == "" then c.DNS = c.GATEWAY end
+  return c
 end
 
 function PLDR.UpdateTarget()
@@ -9423,12 +9441,18 @@ function PLDR._U.net(report)
   if type(System) ~= "table" or type(System.updateStart) ~= "function" then
     return false, PLDR.L("Updates are not available in this build")
   end
+  -- UDPFS holds the network adapter until POPSLoader restarts (the two stacks cannot share it).
+  local udpfs = type(System.udpfsState) == "function" and System.udpfsState() or "idle"
+  if udpfs == "ready" or udpfs == "partial" then
+    return false, PLDR.L("UDPFS is using the network adapter\nRestart POPSLoader and try again before opening UDPFS")
+  end
   report(PLDR.L("Loading network modules..."), 0.05)
   if type(System.initSMB) == "function" and not System.initSMB() then
     return false, PLDR.L("Could not start the network")
   end
-  report((type(PLDR.SMB) == "table" and PLDR.SMB.DHCP == true) and PLDR.L("Waiting for link + DHCP lease...") or PLDR.L("Waiting for network link..."), 0.1)
-  local ok, err = System.smbNetUp(PLDR.SMB)
+  local cfg = PLDR._U.cfg()
+  report((cfg.DHCP == true) and PLDR.L("Waiting for link + DHCP lease...") or PLDR.L("Waiting for network link..."), 0.1)
+  local ok, err = System.smbNetUp(cfg)
   if not ok then
     return false, PLDR.LFmt("The network is not up (%s)\nSet it up in Settings > Network", tostring(err or "NO_LINK"))
   end
@@ -9444,16 +9468,20 @@ function PLDR.CheckForUpdate(report)
   local ok, msg = PLDR._U.net(report)
   if not ok then return "error", msg end
   report(PLDR.L("Checking GitHub..."), 0.3)
+  -- A rolling build (stamped by its workflow with a build number and its release tag) follows the
+  -- rolling release; an official build follows the latest official release.
   local ver = string.gsub(tostring(rawget(_G, "POPSLDR_VER") or ""), "^[vV]", "")
-  if not System.updateStart("check", ver) then return "error", PLDR._U.error(9) end
-  local result, remote = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
+  local build, tag = rawget(_G, "POPSLDR_BUILD"), rawget(_G, "POPSLDR_CHANNEL")
+  if build ~= nil and type(tag) == "string" then ver = ver.."-"..tostring(build) else tag = "" end
+  if not System.updateStart("check", ver, tag) then return "error", PLDR._U.error(9) end
+  local result, remote, step = PLDR._U.wait(report, "Checking GitHub...", 0.3, 0.9)
   if result == 1 then
     -- Nothing newer, but the checksum is cached: keep the target so "Download anyway" can reinstall it.
     PLDR._U.state.remote = remote
     PLDR._U.state.target = target
     return "newest", remote
   end
-  if result ~= 0 then return "error", PLDR._U.error(result, PLDR.L("The update check failed")) end
+  if result ~= 0 then return "error", PLDR._U.error(result, PLDR.L("The update check failed"), step) end
   PLDR._U.state.remote = remote
   PLDR._U.state.target = target
   return "available", remote
@@ -9471,11 +9499,24 @@ function PLDR.InstallUpdate(report)
   elseif result == 6 then
     return false, PLDR.LFmt("Could not finish replacing POPSLOADER.ELF\n(step %s of 3, error %s)\nIt may be damaged: copy it to the device again", tostring(step), tostring(err))
   elseif result ~= 0 then
-    return false, PLDR._U.error(result, PLDR.L("The download failed"))
+    return false, PLDR._U.error(result, PLDR.L("The download failed"), step)
   end
   local version = PLDR._U.state.remote
   PLDR._U.state.remote = nil
   return true, PLDR.LFmt("Updated to %s\nRestart POPSLoader to use it", tostring(version))
+end
+
+-- Settings > Date and Time > Set from Internet: the time from a web server's reply, written to the
+-- console clock by the worker (src/updater.cpp, the "time" job). Returns true|false, <message>.
+function PLDR.SetClockFromInternet(report)
+  local ok, msg = PLDR._U.net(report)
+  if not ok then return false, msg end
+  report(PLDR.L("Asking for the time..."), 0.5)
+  if not System.updateStart("time") then return false, PLDR._U.error(9) end
+  local result, _, step = PLDR._U.wait(report, "Asking for the time...", 0.5, 0.9)
+  if result == 0 then return true, PLDR.L("The console clock is set") end
+  if result == 11 then return false, PLDR.L("The console did not accept the new time") end
+  return false, PLDR._U.error(2, "No time server answered", step)
 end
 
 function PLDR.InitSMBPopsRoot(report)

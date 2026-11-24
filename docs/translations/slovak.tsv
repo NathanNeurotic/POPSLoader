@@ -428,7 +428,6 @@ Out of memory
 POPSLoader %s is available.\nInstall it now?	
 POPSLoader is up to date.\nDownload %s again anyway?	
 Save the network settings first, then check for updates	
-The console clock is not set\nSet the date and time first	
 The download did not verify\nNothing was changed	
 The download failed	
 The network is not up (%s)\nSet it up in Settings > Network	
@@ -441,3 +440,12 @@ Updates are not available in this build
 Updates need POPSLOADER.ELF on a memory card or a USB / MX4SIO / MMCE drive	
 Updating...	
 Writing...	
+Asking for the time...	
+Could not set the clock	
+Not enough free space on the memory card\nNothing was changed	
+Save the network settings first, then set the clock	
+Setting the clock...	
+The console clock is set	
+The console did not accept the new time	
+UDPFS is using the network adapter\nRestart POPSLoader and try again before opening UDPFS	
+The console clock is not set\nSet the date and time first	

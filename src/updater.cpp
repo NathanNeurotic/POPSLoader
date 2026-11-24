@@ -12,6 +12,10 @@
   the SHA-256 from the check, and only then opens the caller's path (the running ELF) with
   O_TRUNC and writes it straight over it: no second file, rename, delete or backup. A failed
   download or check never touches the running ELF.
+
+  A third job, "time", sets the console clock from a web server's HTTP Date header (plain HTTP, as
+  RiptOPL's nettime.cpp: TLS needs a clock that is already right). System.clockGet and
+  System.clockSet read and write the clock by hand.
 */
 
 #include "ratls.h"
@@ -22,6 +26,8 @@
 #include <kernel.h>
 #include <delaythread.h>
 #include <libcdvd.h>
+#include <libmc.h>
+#include <osd_config.h>
 #include <errno.h>
 #define NEWLIB_PORT_AWARE // fileXioOpen/Write/Close, as Launchstation overwrites its ELF
 #include <fileXio_rpc.h>
@@ -30,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 
 extern "C" {
@@ -70,7 +77,9 @@ enum {
     UP_WRITE = 6,    /* the running ELF could not be overwritten: see gStep and gErrno */
     UP_VERIFY = 7,   /* not an ELF, or the SHA-256 differs */
     UP_MEMORY = 8,
-    UP_BUSY = 9
+    UP_BUSY = 9,
+    UP_SPACE = 10,   /* the memory card cannot hold the new ELF: nothing was changed */
+    UP_CLOCKSET = 11 /* the console refused the new time */
 };
 
 static volatile int gState; /* 0 idle, 1 running, 2 done */
@@ -80,9 +89,12 @@ static char gRemote[32];
 static unsigned char gSha[32];
 static char gLocal[32];
 static char gDest[256];
-static int gInstall;
+static char gBase[96]; /* the release's download path, set by the check: the latest release or a channel's tag */
+static int gInstall;  /* 0 check, 1 install, 2 time */
 static volatile int gPhase; /* install: 0 downloading, 1 writing the ELF */
-static volatile int gStep, gErrno; /* a failed write: 1 open, 2 write, 3 close, and its errno */
+/* A failed write: 1 open, 2 write, 3 close, and its errno. A failed connection (UP_NET): 1 the
+   name lookup, 2 the connection, 3 no answer in time. */
+static volatile int gStep, gErrno;
 
 static int bcd(unsigned char v)
 {
@@ -213,9 +225,11 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
     if (!raTlsClockOk(now)) /* before any DNS lookup or connection */
         return RATLS_ERR_CLOCK;
 
+    gStep = 1;
     struct hostent *he = gethostbyname(host);
     if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL)
         return RATLS_ERR_NET;
+    gStep = 2;
     memset(&to, 0, sizeof(to));
     to.sin_family = AF_INET;
     to.sin_port = 0xBB01; /* htons(443) on this little-endian EE */
@@ -232,6 +246,7 @@ static int httpsDownload(const char *host, const char *path, char *buf, int max,
         disconnect(bio.sock);
         return RATLS_ERR_TIMEOUT;
     }
+    gStep = 3;
     bio.idle = 1; /* from here, only a stall ends it */
     bio.start = clock();
     const ratls_io_t io = {bioSend, bioRecv, &bio, now};
@@ -337,7 +352,8 @@ static int hexVal(char c)
 }
 
 /* "<64 hex>  <name>" lines (sha256sum's; a '*' before the name marks binary mode). ELF's hash into
-   sha, and the version out of the zip's name "PS1_POPSLOADER-<version>.zip". 0 when both are found. */
+   sha, and the version out of the zip's name "PS1_POPSLOADER-<version>.zip" ("1.4.4", or a rolling
+   build's "v1.4.4-1234", kept without the v). 0 when both are found. */
 static int parseSums(const char *text, unsigned char sha[32], char *version, int version_max)
 {
     int haveSha = 0, haveVer = 0;
@@ -366,10 +382,14 @@ static int parseSums(const char *text, unsigned char sha[32], char *version, int
                 haveSha = 1;
             } else if (ok && n > 19 && !strncmp(name, "PS1_POPSLOADER-", 15) && !strncmp(name + n - 4, ".zip", 4)) {
                 int v = n - 19;
+                if (v > 1 && name[15] == 'v') {
+                    name++;
+                    v--;
+                }
                 if (v < version_max) {
                     int digits = 1;
                     for (int i = 0; i < v; i++)
-                        if (!((name[15 + i] >= '0' && name[15 + i] <= '9') || name[15 + i] == '.'))
+                        if (!((name[15 + i] >= '0' && name[15 + i] <= '9') || name[15 + i] == '.' || name[15 + i] == '-'))
                             digits = 0;
                     if (digits) {
                         memcpy(version, name + 15, v);
@@ -386,7 +406,8 @@ static int parseSums(const char *text, unsigned char sha[32], char *version, int
     return haveSha && haveVer ? 0 : -1;
 }
 
-/* Dotted numbers, compared part by part: 1.4.10 > 1.4.9. */
+/* Dotted numbers, compared part by part: 1.4.10 > 1.4.9. A rolling build's number follows a dash:
+   1.4.4-1240 > 1.4.4-1234. */
 static int versionNewer(const char *remote, const char *local)
 {
     while (*remote || *local) {
@@ -397,11 +418,11 @@ static int versionNewer(const char *remote, const char *local)
             l = l * 10 + (*local++ - '0');
         if (r != l)
             return r > l;
-        if (*remote == '.')
+        if (*remote == '.' || *remote == '-')
             remote++;
         else if (*remote)
             return 0;
-        if (*local == '.')
+        if (*local == '.' || *local == '-')
             local++;
         else if (*local)
             return 0;
@@ -471,7 +492,9 @@ static void jobCheck(Buffers *b)
     }
     sums->len = 0;
     sums->text[0] = '\0';
-    int rc = fetch(b, "/NathanNeurotic/POPSLoader/releases/latest/download/SHA256SUMS.txt", SUMS_MAX, sumsSink, sums);
+    char path[sizeof(gBase) + 16];
+    snprintf(path, sizeof(path), "%sSHA256SUMS.txt", gBase);
+    int rc = fetch(b, path, SUMS_MAX, sumsSink, sums);
     if (rc < 0)
         gResult = toResult(rc);
     else if (parseSums(sums->text, gSha, gRemote, sizeof(gRemote)) != 0)
@@ -539,17 +562,41 @@ static int overwrite(const unsigned char *data, int size)
     return 0;
 }
 
+/* A memory card that cannot hold the new ELF would leave a cut-off one behind: O_TRUNC frees the old
+   file's clusters, so the card needs the new size less the old one (and a little for rounding). Asked
+   before the ELF is touched, as Launchstation does. Other devices, or a card that does not answer, pass. */
+static int cardHasRoom(int size)
+{
+    int type = 0, free_kb = 0, format = 0, rc = 0;
+
+    if (strncmp(gDest, "mc", 2) != 0 || (gDest[2] != '0' && gDest[2] != '1'))
+        return 1;
+    if (mcGetInfo(gDest[2] - '0', 0, &type, &free_kb, &format) < 0)
+        return 1;
+    mcSync(0, NULL, &rc);
+    if (rc < -1) /* 0, or -1 for a card swapped since the last look: the free space is good */
+        return 1;
+    int old = 0, fd = fileXioOpen(gDest, 0x0001, 0); /* iomanX FIO_O_RDONLY */
+    if (fd >= 0) {
+        old = fileXioLseek(fd, 0, SEEK_END);
+        fileXioClose(fd);
+    }
+    return free_kb + (old > 0 ? old / 1024 : 0) >= (size + 1023) / 1024 + 16;
+}
+
 static void jobInstall(Buffers *b)
 {
     RamSink f;
     unsigned char sha[32];
+    char path[sizeof(gBase) + 16];
 
     gStep = gErrno = gPhase = 0;
     f.data = NULL;
     f.cap = f.written = f.fail = 0;
     mbedtls_sha256_init(&f.sha);
     mbedtls_sha256_starts(&f.sha, 0);
-    int rc = fetch(b, "/NathanNeurotic/POPSLoader/releases/latest/download/POPSLOADER.ELF", ELF_MAX, ramSink, &f);
+    snprintf(path, sizeof(path), "%sPOPSLOADER.ELF", gBase);
+    int rc = fetch(b, path, ELF_MAX, ramSink, &f);
     mbedtls_sha256_finish(&f.sha, sha);
     mbedtls_sha256_free(&f.sha);
     if (rc >= 0 && (f.data == NULL || f.written != f.cap)) { /* shorter than it announced */
@@ -560,20 +607,209 @@ static void jobInstall(Buffers *b)
         gResult = rc == RATLS_ERR_SINK ? (f.fail == 1 ? UP_MEMORY : UP_VERIFY) : toResult(rc);
     } else if (!looksLikeElf(f.data, f.written) || memcmp(sha, gSha, sizeof(sha)) != 0) {
         gResult = UP_VERIFY;
+    } else if (!cardHasRoom(f.written)) {
+        gResult = UP_SPACE;
     } else {
         gResult = overwrite(f.data, f.written) == 0 ? UP_OK : UP_WRITE;
     }
     free(f.data);
 }
 
+/* ---- the console clock ---- */
+
+/* The clock keeps Japan time (UTC+9); the console's own time zone and daylight saving give
+   local time = clock + zone - 9 h (+1 h). As RiptOPL's Date and Time. */
+static int daysIn(int year, int month)
+{
+    static const unsigned char days[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    return days[month - 1] + (month == 2 && !(year & 3)); /* 2000-2099: every fourth year is a leap year */
+}
+
+/* Moves t = {year, month, day, hour, minute} by minutes (less than a day either way).
+   0 when the result leaves 2000-2099, which the clock's two-digit year cannot hold. */
+static int clockShift(int *t, int minutes)
+{
+    int m = t[3] * 60 + t[4] + minutes;
+
+    if (m < 0) {
+        m += 1440;
+        if (--t[2] < 1) {
+            if (--t[1] < 1) {
+                t[1] = 12;
+                t[0]--;
+            }
+            t[2] = daysIn(t[0], t[1]);
+        }
+    } else if (m >= 1440) {
+        m -= 1440;
+        if (++t[2] > daysIn(t[0], t[1])) {
+            t[2] = 1;
+            if (++t[1] > 12) {
+                t[1] = 1;
+                t[0]++;
+            }
+        }
+    }
+    t[3] = m / 60;
+    t[4] = m % 60;
+    return t[0] >= 2000 && t[0] <= 2099;
+}
+
+static int localOffset(void)
+{
+    return configGetTimezone() - 540 + (configIsDaylightSavingEnabled() ? 60 : 0);
+}
+
+static unsigned char toBcd(int v)
+{
+    return static_cast<unsigned char>((v / 10) << 4 | v % 10);
+}
+
+/* The CD/DVD controller refuses a command while busy: one retry. The reply overwrites clk. */
+static int clockWrite(const int t[5], int second)
+{
+    sceCdCLOCK clk;
+
+    for (int i = 0; i < 2; i++) {
+        memset(&clk, 0, sizeof(clk));
+        clk.year = toBcd(t[0] - 2000);
+        clk.month = toBcd(t[1]);
+        clk.day = toBcd(t[2]);
+        clk.hour = toBcd(t[3]);
+        clk.minute = toBcd(t[4]);
+        clk.second = toBcd(second);
+        if (sceCdWriteClock(&clk) && !(clk.stat & 0x80))
+            return 1;
+    }
+    return 0;
+}
+
+/* The Date header of a reply ("Date: Fri, 13 Nov 2026 03:37:42 GMT", RFC 9110) into
+   t = {year, month, day, hour, minute, second}, UTC. 0 unless the whole field is there and sane. */
+static int parseDate(const char *headers, int t[6])
+{
+    static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+    const char *p;
+    char mon[4];
+    int sec = 0, end = 0;
+
+    for (p = headers; (p = strchr(p, '\n')) != NULL; p++)
+        if (strncasecmp(p + 1, "date:", 5) == 0)
+            break;
+    if (p == NULL)
+        return 0;
+    const char *q = p + 6;
+    if (sscanf(q, " %*[^,], %d %3s %d %d:%d:%2d%n GMT%n", &t[2], mon, &t[0], &t[3], &t[4], &t[5], &sec, &end) != 6 || end == 0 ||
+        q[sec - 3] != ':' || (unsigned)(q[sec - 2] - '0') > 9 || (unsigned)(q[sec - 1] - '0') > 9 || (q[end] != '\r' && q[end] != '\n'))
+        return 0;
+    const char *m = strstr(months, mon);
+    if (strlen(mon) != 3 || m == NULL || (m - months) % 3)
+        return 0;
+    t[1] = static_cast<int>(m - months) / 3 + 1;
+    return t[0] >= 2000 && t[0] <= 2099 && t[2] >= 1 && t[2] <= daysIn(t[0], t[1]) && t[3] >= 0 && t[3] < 24 && t[4] >= 0 &&
+           t[4] < 60 && t[5] >= 0 && t[5] < 61;
+}
+
+/* One plain HTTP HEAD request to port 80, bounded by DEADLINE_MS. Not NTP: ps2ips hands back a
+   packet of 64 bytes or less through a path that returned zeros on real hardware (RiptOPL). */
+static int timeAsk(const char *host, int t[6])
+{
+    static unsigned char rx[960] __attribute__((aligned(64)));
+    char headers[1024], req[128];
+    struct sockaddr_in to;
+    clock_t start = clock();
+    int have = 0;
+
+    gStep = 1;
+    struct hostent *he = gethostbyname(host);
+    if (he == NULL || he->h_addr_list == NULL || he->h_addr_list[0] == NULL)
+        return 0;
+    gStep = 2;
+    memset(&to, 0, sizeof(to));
+    to.sin_family = AF_INET;
+    to.sin_port = 0x5000; /* htons(80) on this little-endian EE */
+    memcpy(&to.sin_addr, he->h_addr_list[0], sizeof(to.sin_addr));
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0)
+        return 0;
+    int len = snprintf(req, sizeof(req), "HEAD / HTTP/1.1\r\nHost: %s\r\nUser-Agent: POPSLoader\r\nConnection: close\r\n\r\n", host);
+    if (connect(sock, reinterpret_cast<struct sockaddr *>(&to), sizeof(to)) < 0 || send(sock, req, len, 0) != len) {
+        disconnect(sock);
+        return 0;
+    }
+    gStep = 3;
+    headers[0] = '\0';
+    while (!expired(start, DEADLINE_MS) && have < static_cast<int>(sizeof(headers)) - 1) {
+        int got = tcpRecv(sock, rx, static_cast<int>(sizeof(headers)) - 1 - have < static_cast<int>(sizeof(rx)) ? static_cast<int>(sizeof(headers)) - 1 - have : static_cast<int>(sizeof(rx)));
+        if (got == 0)
+            break; /* closed */
+        if (got < 0) {
+            DelayThread(POLL_MS * 1000);
+            continue;
+        }
+        memcpy(headers + have, rx, got);
+        have += got;
+        headers[have] = '\0';
+        if (strstr(headers, "\r\n\r\n") != NULL)
+            break;
+    }
+    disconnect(sock);
+    return parseDate(headers, t);
+}
+
+static void jobTime(void)
+{
+    static const char *const hosts[] = {"github.com", "www.google.com"};
+    int t[6];
+
+    gStep = 0;
+    gResult = UP_NET;
+    for (unsigned i = 0; i < sizeof(hosts) / sizeof(hosts[0]); i++)
+        if (timeAsk(hosts[i], t)) {
+            /* UTC to the clock's Japan time. */
+            gResult = clockShift(t, 540) && clockWrite(t, t[5] > 59 ? 59 : t[5]) ? UP_OK : UP_CLOCKSET;
+            return;
+        }
+}
+
+/* System.clockGet() -> year, month, day, hour, minute in local time, or nothing when the clock
+   cannot be read or holds no valid date. */
+extern "C" int lua_clockGet(lua_State *L)
+{
+    sceCdCLOCK clk;
+
+    if (!sceCdReadClock(&clk) || clk.stat)
+        return 0;
+    int t[5] = {2000 + bcd(clk.year), bcd(clk.month & 0x1F), bcd(clk.day), bcd(clk.hour), bcd(clk.minute)};
+    if (t[1] < 1 || t[1] > 12 || t[2] < 1 || t[2] > daysIn(t[0], t[1]) || t[3] > 23 || t[4] > 59 || !clockShift(t, localOffset()))
+        return 0;
+    for (int i = 0; i < 5; i++)
+        lua_pushinteger(L, t[i]);
+    return 5;
+}
+
+/* System.clockSet(year, month, day, hour, minute) in local time -> true when the console took it. */
+extern "C" int lua_clockSet(lua_State *L)
+{
+    int t[5];
+
+    for (int i = 0; i < 5; i++)
+        t[i] = static_cast<int>(luaL_checkinteger(L, i + 1));
+    lua_pushboolean(L, gState != 1 && t[0] >= 2000 && t[0] <= 2099 && t[1] >= 1 && t[1] <= 12 && t[2] >= 1 && t[2] <= daysIn(t[0], t[1]) &&
+                           t[3] >= 0 && t[3] < 24 && t[4] >= 0 && t[4] < 60 && clockShift(t, -localOffset()) && clockWrite(t, 0));
+    return 1;
+}
+
 static void worker(void *)
 {
     Buffers *b = static_cast<Buffers *>(malloc(sizeof(Buffers)));
 
-    if (b == NULL) {
+    gDone = gTotal = 0;
+    if (gInstall == 2) {
+        jobTime();
+    } else if (b == NULL) {
         gResult = UP_MEMORY;
     } else {
-        gDone = gTotal = 0;
         if (gInstall)
             jobInstall(b);
         else
@@ -587,28 +823,35 @@ static void worker(void *)
 
 static unsigned char gStack[STACK] __attribute__((aligned(16)));
 
-/* System.updateStart("check", localVersion) or System.updateStart("install", destFile). The
-   "install" job needs a "check" that found a newer release (it uses that check's SHA-256). */
+/* System.updateStart("check", localVersion [, tag]), System.updateStart("install", destFile) or
+   System.updateStart("time"). The check reads the latest release, or the release of the given tag
+   (a rolling build's channel). The "install" job needs a "check" that read a release (it uses that
+   check's SHA-256 and release). */
 extern "C" int lua_updateStart(lua_State *L)
 {
     const char *job = luaL_checkstring(L, 1);
-    const char *arg = luaL_checkstring(L, 2);
+    const char *arg = luaL_optstring(L, 2, "");
+    const char *tag = luaL_optstring(L, 3, "");
 
     if (gState == 1) {
         lua_pushboolean(L, 0);
         return 1;
     }
-    gInstall = !strcmp(job, "install");
+    gInstall = !strcmp(job, "install") ? 1 : !strcmp(job, "time") ? 2 : 0;
     gPhase = 0;
-    if (gInstall) {
+    if (gInstall == 2) {
+    } else if (gInstall) {
         if (strlen(arg) >= sizeof(gDest) || gRemote[0] == '\0')
             return luaL_error(L, "System.updateStart: no check result or path too long");
         strcpy(gDest, arg);
     } else {
         if (strlen(arg) >= sizeof(gLocal))
             return luaL_error(L, "System.updateStart: version too long");
+        if (strspn(tag, "abcdefghijklmnopqrstuvwxyz-") != strlen(tag) || strlen(tag) > 32)
+            return luaL_error(L, "System.updateStart: bad tag");
         strcpy(gLocal, arg);
         gRemote[0] = '\0';
+        snprintf(gBase, sizeof(gBase), "/NathanNeurotic/POPSLoader/releases/%s%s/", tag[0] ? "download/" : "latest/download", tag);
     }
     gState = 1;
     gResult = UP_BUSY;

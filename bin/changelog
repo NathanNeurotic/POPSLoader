@@ -1,4 +1,8 @@
 [Unreleased]
+- New: Settings > Date and Time. Shows the console clock, sets it by hand, or sets it from the Internet (needs the network adapter). Not tested on a PS2.
+- Updater: rolling builds now follow the rolling release instead of the last official release; the rolling release publishes SHA256SUMS.txt. Not tested on a PS2.
+- Fix: Check for Updates works with a manual IP address and no name server saved (uses the gateway), and with no address saved (asks the router). Network failures name the step that failed. Not tested on a PS2.
+- Fix: an update to a memory card is refused before anything is written when the card lacks free space. Not tested on a PS2.
 - Fix: launches on devices that require BDMA stage the correct embedded driver pair even when Adaptive BDMA is off and the saved manual mode differs (#605). Both driver files plus a matching `bdma_mode.txt` still skip writes; staging marks `STAGING` before replacement so mixed drivers cannot look equipped, then writes the target marker last. Manual FAT32 USB remains available. Host-tested; PS2 retest pending.
 - Translations: make updater and busy-overlay text translatable before formatting, including existing ATA/network progress messages. Add a 33-row remaining Slovak Excel handoff (#605); new rows stay blank until SVKghost translates them.
 

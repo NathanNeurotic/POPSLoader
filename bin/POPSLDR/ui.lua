@@ -5462,6 +5462,56 @@ UI = {
         end
 
         AddSpacer()
+        -- Date and Time: the console's own clock, in the console's time zone. The rows edit a draft;
+        -- nothing is written until "Set the clock". Not part of the saved settings.
+        if type(System.clockGet) == "function" then
+          local function Clk()
+            if UI.ClockDraft == nil then
+              local y, mo, d, h, mi = System.clockGet()
+              UI.ClockDraft = { y or 2026, mo or 1, d or 1, h or 0, mi or 0 }
+            end
+            return UI.ClockDraft
+          end
+          local function DaysIn(y, mo)
+            return (mo == 2) and ((y % 4 == 0) and 29 or 28) or ((mo == 4 or mo == 6 or mo == 9 or mo == 11) and 30 or 31)
+          end
+          local function ClkRow(label, i, lo, hi, fmt)
+            local function step(dir)
+              local c = Clk()
+              local top = (i == 3) and DaysIn(c[1], c[2]) or hi
+              c[i] = c[i] + dir
+              if c[i] > top then c[i] = lo elseif c[i] < lo then c[i] = top end
+              c[3] = math.min(c[3], DaysIn(c[1], c[2]))
+            end
+            AddCycle(label, function() return string.format(fmt, Clk()[i]) end,
+              function() step(-1) end, function() step(1) end, function() return false end)
+          end
+          AddSection("Date and Time")
+          ClkRow("Year", 1, 2000, 2099, "%d")
+          ClkRow("Month", 2, 1, 12, "%02d")
+          ClkRow("Day", 3, 1, 31, "%02d")
+          ClkRow("Hour", 4, 0, 23, "%02d")
+          ClkRow("Minute", 5, 0, 59, "%02d")
+          AddAction("Set the clock", function()
+            local c = Clk()
+            local ok = System.clockSet(c[1], c[2], c[3], c[4], c[5]) == true
+            UI.ClockDraft = nil
+            UI.Notif_queue.add(ok and "The console clock is set" or "The console did not accept the new time", ok and "info" or "error")
+          end)
+          AddAction("Set from Internet", function()
+            if UI.SmbDirty == true then
+              UI.Notif_queue.add(PLDR.L("Save the network settings first, then set the clock"), "error")
+              return
+            end
+            local ok, msg
+            UI.RunBusyTask(PLDR.L("Setting the clock..."), function (report)
+              ok, msg = PLDR.SetClockFromInternet(report)
+            end, PLDR.L("Could not set the clock"))
+            UI.ClockDraft = nil
+            UI.Notif_queue.add(tostring(msg or PLDR.L("Could not set the clock")), ok and "info" or "error")
+          end)
+        end
+
         AddSection("Memory Card")
         AddCycle(
           "POPSTARTER Folder",
@@ -5486,7 +5536,8 @@ UI = {
         AddInfo("Version", function()
           local ver = tostring(rawget(_G, "POPSLDR_VER") or "")
           if ver == "" then return "(unknown)" end
-          return ver
+          local build = rawget(_G, "POPSLDR_BUILD") -- a rolling build's number
+          return build ~= nil and (ver.."-"..tostring(build)) or ver
         end)
         AddAction(PLDR.L("Check for Updates"), function()
           if UI.SmbDirty == true then
@@ -7528,6 +7579,7 @@ function UI.ToggleSmbModulesDraft()
 end
 
 function UI.SyncSettingsDraftFromRuntime()
+  UI.ClockDraft = nil -- Date and Time rows re-read the console clock on each visit
   UI.PopstarterPathDraft = tostring(PLDR.POPSTARTER_PATH or "")
   UI.DkwdrvPathDraft = tostring(PLDR.DKWDRV_PATH or PLDR.DKWDRV_DEFAULT_PATH or "mc0:/PS1_DKWDRV/DKWDRV.ELF")
   if type(PLDR) == "table" and type(PLDR.NormalizeKeyboardLayout) == "function" then
