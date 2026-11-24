@@ -71,7 +71,7 @@ jobs:
                 "APPS/PS1_POPSLOADER/" + n for n in expected}
               assert z.read("PS1_POPSLOADER.psu") == pathlib.Path("PS1_POPSLOADER.psu").read_bytes()
               for required in ("POPS/POPSTARTER.ELF", "POPS/PATCH_5.BIN", "EMBER/ember.elf",
-                               "EMBER/LICENSE-BETA.txt", "EMBER/games/ExampleGame/ExampleGame.cue",
+                               "EMBER/LICENSE.txt", "EMBER/games/ExampleGame/ExampleGame.cue",
                                "EMBER/games/ExampleGame/ExampleGame.bin"):
                   assert required in entries, required
               assert not any(p.lower().endswith("/bios.bin") for p in entries)

@@ -24,7 +24,7 @@ APPS/
 POPS/                   RiptOPL-matched POPStarter files and device support
 EMBER/
   ember.elf
-  LICENSE-BETA.txt
+  LICENSE.txt
   games/
     ExampleGame/
       ExampleGame.cue
