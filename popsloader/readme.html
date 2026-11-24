@@ -72,8 +72,8 @@
 </thead>
 <tbody>
 <tr>
-<td><strong>Official 1.4.5</strong></td>
-<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.5">Official 1.4.5 release</a></td>
+<td><strong>Official 1.4.6</strong></td>
+<td><a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.6">Official 1.4.6 release</a></td>
 <td>Check for Updates (in Settings, About), a Date and Time setting with Set from Internet, and a fix for BDMA drivers not being copied on devices that need them (#605), on top of 1.4.4's disc icon warning and Slovak corrections, 1.4.3's Slovak translation and 1.4.2's Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2) and experimental i.Link page (hidden by default, hardware-untested). The updater and the clock setting are not yet tested on a PS2. Console acceptance remains pending.</td>
 </tr>
 <tr>
@@ -99,8 +99,8 @@
 </tbody>
 </table>
 <p>Passing CI proves builds and packages passed automated checks; <strong>it does not prove that a game, device, controller or VMC works on a physical PS2</strong>. Consult the <a href="qa-regression-matrix.html">hardware QA matrix</a>.</p>
-<h2 id="install-popsloader-with-ember-beta-2">Install POPSLoader with Ember Beta-2</h2>
-<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.5/PS1_POPSLOADER-1.4.5.zip">POPSLoader 1.4.5 PS1_POPSLOADER-1.4.5.zip</a> or select <code>PS1_POPSLOADER-&lt;version&gt;.zip</code> from the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">latest rolling release</a>. The package's device-root layout is:</p>
+<h2 id="install-popsloader-with-ember-v08">Install POPSLoader with Ember v0.8</h2>
+<p>Download the full <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.6/PS1_POPSLOADER-1.4.6.zip">POPSLoader 1.4.6 PS1_POPSLOADER-1.4.6.zip</a> or select <code>PS1_POPSLOADER-&lt;version&gt;.zip</code> from the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">latest rolling release</a>. The package's device-root layout is:</p>
 <pre><code class="language-text">APPS/
   PS1_POPSLOADER/
     POPSLOADER.ELF
@@ -175,7 +175,7 @@ PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 </table>
 <p>HDD/PFS artwork belongs under <code>__common/POPS/ART/</code>. The UDPFS mode uses Okeanos' UDPFS Assault 1.0.1 (since 1.4.2) with no USB requirement; it also plays <code>POPS/*.cue</code> games without conversion; end-to-end console UDPFS behavior is not hardware-certified. SMBv1 and UDPFS use mutually exclusive network stacks: restart before switching between them. See <a href="device-support.html">device details</a> and <a href="udpfs-bdma.html">UDPFS setup</a>.</p>
 <h3 id="ember-options-and-safety">Ember options and safety</h3>
-<p>Set the bundled <strong>Ember Beta-2</strong> core's global options under <strong>Settings → Ember PS1 Core</strong>. On an <code>[Ember]</code> game row, press <strong>L2</strong> for timing, dither, shading and controller overrides; <code>Default</code> inherits the global option. Ember may create virtual memory cards in each game folder on writable media. <strong>Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.</strong> POPStarter VCD success does not establish Ember success.</p>
+<p>Set the bundled <strong>Ember v0.8</strong> core's global options under <strong>Settings → Ember PS1 Core</strong>. On an <code>[Ember]</code> game row, press <strong>L2</strong> for timing, dither, shading and controller overrides; <code>Default</code> inherits the global option. Ember may create virtual memory cards in each game folder on writable media. <strong>Game launch, controller operation after the keep-IOP handoff and VMC persistence remain unverified on real hardware.</strong> POPStarter VCD success does not establish Ember success.</p>
 <p>Credits and redistribution: <a href="https://github.com/Gageformer/Ember">Gageformer's Ember</a> (unmodified core with <code>EMBER/LICENSE.txt</code>), <a href="https://github.com/NathanNeurotic/RiptOPL">RiptOPL</a> (device/backend reference), <a href="https://github.com/Okeanos86/BDMAssault">Okeanos's BDM-UDPFS Assault</a> and <a href="https://github.com/israpps/BDMAssault">israpps BDM Assault</a>. The <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/github/workflows/ember-watch.yml">weekly Ember Watch</a> verifies upstream asset digests, <strong>not</strong> hardware gameplay.</p>
 <h2 id="main-features">Main features</h2>
 <ul>
