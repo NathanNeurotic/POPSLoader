@@ -881,6 +881,8 @@ extern "C" int lua_updateStart(lua_State *L);
 extern "C" int lua_updateStatus(lua_State *L);
 extern "C" int lua_clockGet(lua_State *L);
 extern "C" int lua_clockSet(lua_State *L);
+extern "C" int lua_clockZone(lua_State *L);
+extern "C" int lua_clockZoneSet(lua_State *L);
 
 static int lua_sleep(lua_State *L)
 {
@@ -2547,6 +2549,8 @@ static const luaL_Reg System_functions[] = {
 	{"updateStatus",             lua_updateStatus},
 	{"clockGet",                 lua_clockGet},
 	{"clockSet",                 lua_clockSet},
+	{"clockZone",                lua_clockZone},
+	{"clockZoneSet",             lua_clockZoneSet},
 	{"rename",                       lua_rename},
 	{"sleep",                         lua_sleep},
 	{"getFreeMemory",         lua_getFreeMemory},
