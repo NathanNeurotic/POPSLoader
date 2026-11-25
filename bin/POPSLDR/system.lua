@@ -5910,6 +5910,9 @@ local function EncodeSettings()
     "COVER_ART="..((PLDR.COVER_ART ~= false) and "1" or "0"),
     "GAMELIST_CACHE="..((PLDR.GAMELIST_CACHE == true) and "1" or "0"),
     "BOOT_SOUND="..((PLDR.BOOT_SOUND ~= false) and "1" or "0"),
+    -- Date and Time > Time zone: minutes east of UTC, or CONSOLE to follow the console's own zone.
+    "CLOCK_ZONE="..((type(PLDR.CLOCK_ZONE) == "number") and tostring(math.floor(PLDR.CLOCK_ZONE)) or "CONSOLE"),
+    "CLOCK_SUMMER="..((PLDR.CLOCK_SUMMER == true) and "1" or "0"),
     "RETROGEM_GAMEID="..((PLDR.RETROGEM_GAMEID ~= false) and "1" or "0"),
     "OVERSCAN="..tostring(math.floor(tonumber(PLDR.OVERSCAN) or 0)),
     "SMB_MODULES="..((PLDR.SMB_MODULES == true) and "1" or "0"),
@@ -6214,7 +6217,17 @@ local LEGACY_PROFILE_PRESET_PATHS = {
   [16] = "mc0:/POPSTARTER/POPSTARTER.ELF",
 }
 
+-- Hands the saved time zone to the clock code. nil follows the console's own zone and summer time.
+function PLDR.ApplyClockZone()
+  if type(System) == "table" and type(System.clockZoneSet) == "function" then
+    pcall(System.clockZoneSet, PLDR.CLOCK_ZONE, PLDR.CLOCK_SUMMER == true)
+  end
+end
+
 function PLDR.LoadSettingsNonFatal()
+  PLDR.CLOCK_ZONE = nil      -- the console's own zone, as before the setting existed
+  PLDR.CLOCK_SUMMER = false
+  PLDR.ApplyClockZone()
   -- NOTE: do NOT EnsurePopstarterDir() here. This runs while applying DEFAULTS, before the
   -- saved POPSTARTER_MC_FOLDER is parsed from the sidecar -- so the OFF guard couldn't see
   -- the user's choice and the folder (+ its OSD icons) was rebuilt on EVERY boot even when
@@ -6494,6 +6507,14 @@ function PLDR.LoadSettingsNonFatal()
   if bs ~= nil then
     PLDR.BOOT_SOUND = bs == true
   end
+  local clock_zone = string.match(data, "\nCLOCK_ZONE=([^\n]+)") or string.match(data, "^CLOCK_ZONE=([^\n]+)")
+  local clock_summer = string.match(data, "\nCLOCK_SUMMER=([^\n]+)") or string.match(data, "^CLOCK_SUMMER=([^\n]+)")
+  local cz = tonumber((tostring(clock_zone or ""):gsub("%s+$", "")))
+  if cz ~= nil and cz == math.floor(cz) and cz >= -720 and cz <= 840 then
+    PLDR.CLOCK_ZONE = cz
+    PLDR.CLOCK_SUMMER = ParseBooleanSetting(clock_summer) == true
+  end
+  PLDR.ApplyClockZone()
   -- Parsed BEFORE the BDMA reconcile below: the reconcile's marker-override is
   -- gated on this flag, so it must reflect the sidecar by the time it runs.
   local ba = ParseBooleanSetting(bdma_adaptive)
