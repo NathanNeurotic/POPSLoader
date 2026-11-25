@@ -1,0 +1,1204 @@
+{
+  "exact_functions": [
+    [
+      {
+        "path": ".github/scripts/test_config_missing_open_once.py",
+        "start": 31,
+        "end": 42,
+        "name": "function_text",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_hires_line_blend.py",
+        "start": 27,
+        "end": 38,
+        "name": "function_text",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_hires_thread_priority.py",
+        "start": 28,
+        "end": 39,
+        "name": "function_text",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_vmode_safe_area.py",
+        "start": 27,
+        "end": 38,
+        "name": "function_text",
+        "lines": 12
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ripps2_art_port.py",
+        "start": 20,
+        "end": 31,
+        "name": "function",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_ripps2_drive_status.py",
+        "start": 22,
+        "end": 33,
+        "name": "function",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_ripps2_gui_port.py",
+        "start": 42,
+        "end": 53,
+        "name": "function",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_ripps2_text_port.py",
+        "start": 20,
+        "end": 31,
+        "name": "function",
+        "lines": 12
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_art_queue_order.py",
+        "start": 31,
+        "end": 37,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_confirm_button.py",
+        "start": 27,
+        "end": 33,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_ember_scan_missing_core.py",
+        "start": 36,
+        "end": 42,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_ember_settings.py",
+        "start": 23,
+        "end": 29,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_settings_back_keeps_edits.py",
+        "start": 39,
+        "end": 45,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_settings_fit.py",
+        "start": 26,
+        "end": 32,
+        "name": "function_text",
+        "lines": 7
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_accurate_read_rate.py",
+        "start": 21,
+        "end": 22,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_art_queue_order.py",
+        "start": 27,
+        "end": 28,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_confirm_button.py",
+        "start": 23,
+        "end": 24,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_date_time_setting.py",
+        "start": 22,
+        "end": 23,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_dia_text_room.py",
+        "start": 28,
+        "end": 29,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_dialog_gui_lock.py",
+        "start": 46,
+        "end": 47,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ember_scan_missing_core.py",
+        "start": 32,
+        "end": 33,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ember_settings.py",
+        "start": 19,
+        "end": 20,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_igr_menu_no_room.py",
+        "start": 44,
+        "end": 45,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_igr_vmc_drain.py",
+        "start": 26,
+        "end": 27,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_io_queue_trims.py",
+        "start": 30,
+        "end": 31,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_iop_pad.py",
+        "start": 20,
+        "end": 21,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_menu_text_fit.py",
+        "start": 56,
+        "end": 57,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_netblock_oplcore.py",
+        "start": 18,
+        "end": 19,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_settings_back_keeps_edits.py",
+        "start": 35,
+        "end": 36,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_settings_fit.py",
+        "start": 22,
+        "end": 23,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_udpfs_files_oplcore.py",
+        "start": 21,
+        "end": 22,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_game_size_fallback.py",
+        "start": 27,
+        "end": 34,
+        "name": "function",
+        "lines": 8
+      },
+      {
+        "path": ".github/scripts/test_info_size_ps1.py",
+        "start": 19,
+        "end": 26,
+        "name": "function",
+        "lines": 8
+      },
+      {
+        "path": ".github/scripts/test_menu_crash_catcher.py",
+        "start": 17,
+        "end": 24,
+        "name": "function",
+        "lines": 8
+      },
+      {
+        "path": ".github/scripts/test_ps1_duplicates.py",
+        "start": 20,
+        "end": 27,
+        "name": "function",
+        "lines": 8
+      },
+      {
+        "path": ".github/scripts/test_ra_module_startup.py",
+        "start": 18,
+        "end": 25,
+        "name": "function",
+        "lines": 8
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ilink_bd_assault_reset.py",
+        "start": 34,
+        "end": 60,
+        "name": "extract_function",
+        "lines": 27
+      },
+      {
+        "path": ".github/scripts/test_ilink_bd_reset.py",
+        "start": 29,
+        "end": 55,
+        "name": "extract_function",
+        "lines": 27
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_bdm_transport_binding.py",
+        "start": 17,
+        "end": 19,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_legacy_parity_885_898.py",
+        "start": 16,
+        "end": 18,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_pccf.py",
+        "start": 22,
+        "end": 24,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ps1_retrogem_metadata.py",
+        "start": 27,
+        "end": 29,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ps1_scan_recovery.py",
+        "start": 18,
+        "end": 20,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_psbbn_flow.py",
+        "start": 25,
+        "end": 27,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ra_badge_rows.py",
+        "start": 19,
+        "end": 21,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_retrogem_ember.py",
+        "start": 20,
+        "end": 22,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_bdm_index.py",
+        "start": 23,
+        "end": 31,
+        "name": "function",
+        "lines": 9
+      },
+      {
+        "path": ".github/scripts/test_iso9660_records.py",
+        "start": 27,
+        "end": 35,
+        "name": "function",
+        "lines": 9
+      },
+      {
+        "path": ".github/scripts/test_pad_handoff.py",
+        "start": 27,
+        "end": 35,
+        "name": "function",
+        "lines": 9
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_bdma_stale_pair.py",
+        "start": 22,
+        "end": 24,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_config_escape_roundtrip.py",
+        "start": 7,
+        "end": 9,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_dvr_scan_lifecycle.py",
+        "start": 14,
+        "end": 16,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_menu_selection_snapshot.py",
+        "start": 14,
+        "end": 16,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_pops_udpfs.py",
+        "start": 17,
+        "end": 19,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_udpfs_languages.py",
+        "start": 11,
+        "end": 13,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_zso_probe_fd.py",
+        "start": 12,
+        "end": 14,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_dia_text_room.py",
+        "start": 32,
+        "end": 46,
+        "name": "function",
+        "lines": 15
+      },
+      {
+        "path": ".github/scripts/test_menu_text_fit.py",
+        "start": 60,
+        "end": 74,
+        "name": "function",
+        "lines": 15
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_mc_folders.py",
+        "start": 29,
+        "end": 33,
+        "name": "function",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_mcemu_slots.py",
+        "start": 29,
+        "end": 33,
+        "name": "function",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_neutrino_cheats.py",
+        "start": 33,
+        "end": 37,
+        "name": "function",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_patch_zone_restore.py",
+        "start": 36,
+        "end": 40,
+        "name": "function",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_audio_threads.py",
+        "start": 36,
+        "end": 42,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_autolaunch_settings.py",
+        "start": 38,
+        "end": 44,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_bgm_source.py",
+        "start": 38,
+        "end": 44,
+        "name": "function_text",
+        "lines": 7
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_mc_folders.py",
+        "start": 25,
+        "end": 26,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_mcemu_slots.py",
+        "start": 25,
+        "end": 26,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_neutrino_cheats.py",
+        "start": 29,
+        "end": 30,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_patch_zone_restore.py",
+        "start": 32,
+        "end": 33,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_save_icons.py",
+        "start": 20,
+        "end": 21,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_smb_read_closed.py",
+        "start": 34,
+        "end": 35,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_smb_vmc_io_result.py",
+        "start": 37,
+        "end": 38,
+        "name": "text",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_smbman_ra_write_count.py",
+        "start": 29,
+        "end": 30,
+        "name": "text",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_net_protocol_pick.py",
+        "start": 29,
+        "end": 35,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_theme_text_room.py",
+        "start": 31,
+        "end": 37,
+        "name": "function_text",
+        "lines": 7
+      },
+      {
+        "path": ".github/scripts/test_vmode_confirm.py",
+        "start": 40,
+        "end": 46,
+        "name": "function_text",
+        "lines": 7
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_neutrino_ra.py",
+        "start": 21,
+        "end": 23,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_pad_hook_cache.py",
+        "start": 10,
+        "end": 12,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_reset_failure_lifecycle.py",
+        "start": 18,
+        "end": 20,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_udpfs_library_launch.py",
+        "start": 17,
+        "end": 19,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_past_2tb_ata.py",
+        "start": 29,
+        "end": 31,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_smb_vmc_io_result.py",
+        "start": 647,
+        "end": 658,
+        "name": "run",
+        "lines": 12
+      },
+      {
+        "path": ".github/scripts/test_smbman_ra_write_count.py",
+        "start": 353,
+        "end": 364,
+        "name": "run",
+        "lines": 12
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_smb_read_closed.py",
+        "start": 45,
+        "end": 49,
+        "name": "define",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_smb_vmc_io_result.py",
+        "start": 48,
+        "end": 52,
+        "name": "define",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_smbman_ra_write_count.py",
+        "start": 40,
+        "end": 44,
+        "name": "define",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_apa_recover.py",
+        "start": 31,
+        "end": 33,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_apa_table_safety.py",
+        "start": 21,
+        "end": 23,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_autolaunch_settings.py",
+        "start": 28,
+        "end": 30,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_cdvdman_own_stack.py",
+        "start": 41,
+        "end": 43,
+        "name": "check",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_config_prefetch_generation.py",
+        "start": 9,
+        "end": 11,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_hdd_mini_autolaunch.py",
+        "start": 15,
+        "end": 17,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_igr_pad_lifetime.py",
+        "start": 11,
+        "end": 13,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_neutrino_toml_sync.py",
+        "start": 17,
+        "end": 19,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ember_scan_missing_core.py",
+        "start": 45,
+        "end": 53,
+        "name": "defines",
+        "lines": 9
+      },
+      {
+        "path": ".github/scripts/test_ember_settings.py",
+        "start": 32,
+        "end": 40,
+        "name": "defines",
+        "lines": 9
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_igr_vmc_drain.py",
+        "start": 30,
+        "end": 32,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_smb2_auth.py",
+        "start": 43,
+        "end": 45,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_smb2_logon_parity.py",
+        "start": 51,
+        "end": 53,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_smb_launch_name.py",
+        "start": 33,
+        "end": 35,
+        "name": "check",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ripps2_all_games.py",
+        "start": 22,
+        "end": 24,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ripps2_library_port.py",
+        "start": 17,
+        "end": 19,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_rebuild.py",
+        "start": 20,
+        "end": 22,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_rebuild_fatfs.py",
+        "start": 22,
+        "end": 24,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_pad_missed_read.py",
+        "start": 55,
+        "end": 62,
+        "name": "function_text",
+        "lines": 8
+      },
+      {
+        "path": ".github/scripts/test_pad_mode_lock.py",
+        "start": 55,
+        "end": 62,
+        "name": "function_text",
+        "lines": 8
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_bdmfs_frag_walk.py",
+        "start": 10,
+        "end": 12,
+        "name": "driver_function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_contiguous_create.py",
+        "start": 10,
+        "end": 12,
+        "name": "driver_function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_fatfs_images.py",
+        "start": 236,
+        "end": 238,
+        "name": "driver_function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_config_null_allocation.py",
+        "start": 17,
+        "end": 19,
+        "name": "body",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ra_support_check.py",
+        "start": 15,
+        "end": 17,
+        "name": "body",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_udpfs_network_hardening.py",
+        "start": 21,
+        "end": 23,
+        "name": "body",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_favorites_parity.py",
+        "start": 12,
+        "end": 13,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_network_parity_922.py",
+        "start": 12,
+        "end": 13,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_udpfs_library_launch.py",
+        "start": 13,
+        "end": 14,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_udpfs_network_hardening.py",
+        "start": 17,
+        "end": 18,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ilink_bd_assault_reset.py",
+        "start": 30,
+        "end": 31,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ilink_bd_reset.py",
+        "start": 25,
+        "end": 26,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_screen_pos_per_mode.py",
+        "start": 34,
+        "end": 35,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_udpfs_smap_fifo_tail.py",
+        "start": 26,
+        "end": 27,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_netblock_oplcore.py",
+        "start": 27,
+        "end": 32,
+        "name": "function",
+        "lines": 6
+      },
+      {
+        "path": ".github/scripts/test_udpfs_files_oplcore.py",
+        "start": 30,
+        "end": 35,
+        "name": "function",
+        "lines": 6
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_accurate_read_rate.py",
+        "start": 25,
+        "end": 29,
+        "name": "function",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_iop_pad.py",
+        "start": 24,
+        "end": 28,
+        "name": "function",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_audio_threads.py",
+        "start": 25,
+        "end": 29,
+        "name": "as_macros",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_bgm_source.py",
+        "start": 27,
+        "end": 31,
+        "name": "as_macros",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ilink_bd_assault_reset.py",
+        "start": 63,
+        "end": 67,
+        "name": "define",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_ilink_bd_reset.py",
+        "start": 58,
+        "end": 62,
+        "name": "define",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_pad_missed_read.py",
+        "start": 44,
+        "end": 48,
+        "name": "read_source",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_pad_mode_lock.py",
+        "start": 44,
+        "end": 48,
+        "name": "read_source",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_smb_vmc_io_result.py",
+        "start": 41,
+        "end": 45,
+        "name": "function",
+        "lines": 5
+      },
+      {
+        "path": ".github/scripts/test_smbman_ra_write_count.py",
+        "start": 33,
+        "end": 37,
+        "name": "function",
+        "lines": 5
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ilink_manager_irq.py",
+        "start": 17,
+        "end": 20,
+        "name": "function",
+        "lines": 4
+      },
+      {
+        "path": ".github/scripts/test_ilink_manager_recovery.py",
+        "start": 23,
+        "end": 26,
+        "name": "function",
+        "lines": 4
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_auto_vmc.py",
+        "start": 13,
+        "end": 15,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ra_runtime_budget.py",
+        "start": 13,
+        "end": 15,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ds34usb_report_transfer.py",
+        "start": 21,
+        "end": 23,
+        "name": "strip_comments",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_pad_handoff.py",
+        "start": 22,
+        "end": 24,
+        "name": "strip_comments",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_favorites_parity.py",
+        "start": 16,
+        "end": 18,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_network_parity_922.py",
+        "start": 16,
+        "end": 18,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ilink_discovery.py",
+        "start": 257,
+        "end": 259,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_ilink_sbp2_completion.py",
+        "start": 20,
+        "end": 22,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ingame_freeze_diag.py",
+        "start": 27,
+        "end": 29,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_write_result.py",
+        "start": 30,
+        "end": 32,
+        "name": "check",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_netblock_oplcore.py",
+        "start": 22,
+        "end": 24,
+        "name": "check",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_udpfs_files_oplcore.py",
+        "start": 25,
+        "end": 27,
+        "name": "check",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_vmc_fatfs_images.py",
+        "start": 130,
+        "end": 132,
+        "name": "function",
+        "lines": 3
+      },
+      {
+        "path": ".github/scripts/test_vmc_pfs_reserve.py",
+        "start": 19,
+        "end": 21,
+        "name": "function",
+        "lines": 3
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_auto_vmc.py",
+        "start": 11,
+        "end": 12,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_pccf.py",
+        "start": 18,
+        "end": 19,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_info_size_ps1.py",
+        "start": 15,
+        "end": 16,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ra_module_startup.py",
+        "start": 14,
+        "end": 15,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_list_cfg_text.py",
+        "start": 22,
+        "end": 23,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ps1_duplicates.py",
+        "start": 16,
+        "end": 17,
+        "name": "read",
+        "lines": 2
+      }
+    ],
+    [
+      {
+        "path": ".github/scripts/test_ripps2_drive_status.py",
+        "start": 18,
+        "end": 19,
+        "name": "read",
+        "lines": 2
+      },
+      {
+        "path": ".github/scripts/test_ripps2_gui_port.py",
+        "start": 38,
+        "end": 39,
+        "name": "read",
+        "lines": 2
+      }
+    ]
+  ],
+  "exact_large_string_literals": [
+    [
+      {
+        "path": ".github/scripts/test_vmc_rebuild.py",
+        "start": 32,
+        "end": 37,
+        "lines": 6
+      },
+      {
+        "path": ".github/scripts/test_vmc_rebuild_fatfs.py",
+        "start": 34,
+        "end": 39,
+        "lines": 6
+      }
+    ]
+  ],
+  "syntax_failures": [],
+  "reviewed_canonical_blocks": []
+}
