@@ -1,5 +1,8 @@
 [Unreleased]
 
+[1.4.7] - November 24th, 2026
+- New: Time zone and Summer time rows in Settings > Date and Time. Console, the default, follows the zone and summer time set in the console's own System Configuration and shows which zone that is; 38 other zones can be picked instead. The console clock itself is never changed by the choice. If the time is hours off after Set from Internet, the zone is wrong, not the sync. Not tested on a PS2.
+
 [1.4.6] - November 24th, 2026
 - Ember: the bundled core is now Gageformer's Ember v0.8 (was Beta-2). Its licence file is now `EMBER/LICENSE.txt` (Ember Licence 1.0); `LICENSE-BETA.txt` is gone. POPSLoader's launch of Ember is unchanged. Not tested on a PS2.
 
