@@ -5563,7 +5563,12 @@ UI = {
               PLDR.CLOCK_ZONE = zone
               PLDR.CLOCK_SUMMER = (zone ~= nil) and (summer == true)
               local saved = false
+              -- The Language row previews live; write the language this Settings visit
+              -- started with, so a preview that is later discarded is not saved here.
+              local shown_language = PLDR.LANGUAGE
+              if UI.SettingsEntryLanguage ~= nil then PLDR.LANGUAGE = tostring(UI.SettingsEntryLanguage) end
               pcall(function() saved = (PLDR.SaveSettingsAtomic() == true) end)
+              PLDR.LANGUAGE = shown_language
               if saved then
                 UI.ClockZoneDirty = false
                 UI.Notif_queue.add("The time zone is saved", "info")
