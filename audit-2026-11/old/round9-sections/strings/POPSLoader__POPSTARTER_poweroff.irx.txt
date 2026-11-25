@@ -1,0 +1,24 @@
+Poweroff_Handler
+!$! $
+&!(@
+intrman
+loadcore
+sifcmd
+stdio
+sysclib
+thbase
+poweroff
+Poweroff_Handler
+Could not add poweroff callback
+Poweroff already registered
+Cannot chain to non-C handler
+StartThread failed (%d)
+Poweroff installed
+CreateThread failed (%d)
+No CDROM handler. Run CDVDMAN first
+.shstrtab
+.iopmod
+.rel.text
+.rodata
+.rel.data
+.bss

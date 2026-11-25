@@ -1,0 +1,100 @@
+smbman
+c$!(
+$!0@
+$&!(`
+&!0@
+B.!8
+4!(`
+V0!(
+s6+8V
+R0@ 
+$# C
+v0! 
+$! @
+d&!(
+$! @
+$!(@
+$!(@
+$!0@
+&L@B0
+!$!(%
+$! `
+$! `
+Sc4s
+C$!8@
+Sc4u
+&!8@
+Ss6%
+Sc42
+SB4B
+$! `
+Sc4-
+$! `
+4! `
+Sc42
+$!8h
+12MB
+0!  
+SR6)
+2!  
+$!(@
+<0nB$
+'!  
+'! @
+$!  
+f&! @
+1&!( 
+R&!0
+c4$hC
+4$hE
+c4$hC
+B4% 
+R&%x
+B0BK
+'%pe
+4$@d
+4$@d
+4$@d
+4$@d
+<Pnk%
+UUB4$@b
+c4$@C
+33c4$@C
+c4$@C
+y!4!
+$! @
+$!  
+$! @
+4vTc4
+$!( 
+'!( 
+loadcore
+ioman
+ps2ip
+intrman
+sifman
+thbase
+thsemap
+sysclib
+stdio
+smbman
+smbman
+PS2 KEEPALIVE ECHO
+\\%s\IPC$
+IPC$
+\\%s\%s
+NT LM 0.12
+?????
+\PIPE\LANMAN
+WrLeh
+B13BWz
+KGS!@#$%
+SMB.
+SMB/
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.data
+.bss
+.rel.eh_frame

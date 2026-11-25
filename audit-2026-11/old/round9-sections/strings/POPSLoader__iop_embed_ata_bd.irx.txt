@@ -1,0 +1,74 @@
+atad
+@B$&
+B$@0
+B8@ 
+4%(@
+b$%(`
+B0% 
+%B$!
+B0% 
+#1% 
+%1&!
+%B$!
+"B$%P
+<8#"
+<0#$
+<D#"
+<x#"
+<p#$
+< #*
+<$#+
+<(#&
+<,#%
+<4##
+<@#(
+<T#'
+<X#*
+<\#+
+<`#*
+<d#+
+<h#&
+<l#%
+<t##
+<H#"
+<L# 
+<P# 
+loadcore
+thbase
+thevent
+stdio
+sysclib
+dev9
+atad: Timeout while waiting on busy (0x%02x).
+atad: Error: Device %d is not ready.
+atad: Error: ATA timeout on a non-data command.
+atad: Error: DMA timeout.
+atad: Error: Command error while doing DMA.
+atad: Error: Command error status 0x%02x, error 0x%02x.
+atad: Warning: Got command interrupt, but not an error.
+atad: Error: ATA timeout on DMA completion, buffer stat %04x
+atad: Error: istat %x, ienable %x
+atad: Error: PIO cmd error: status 0x%02x, error 0x%02x.
+atad: Error: Command error: status 0x%02x, error 0x%02x.
+atad: error: ATA failed, %d
+atad: Error: SMART report exceeded threshold.
+atad: Error: Unable to detect HDD 0.
+v1.2
+ATA device driver %s - Copyright (c) 2003 Marcus R. Brown
+atad: HDD is not connected, exiting.
+atad: Compatible adaptor detected.
+atad: Couldn't create event flag, exiting.
+atad: Library is already registered, exiting.
+atad: Driver loaded.
+atad
+.iopmod
+.text
+.rel.text
+.rodata
+.rel.rodata
+.data
+.rel.data
+.bss
+.shstrtab
+.symtab
+.strtab

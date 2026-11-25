@@ -1,0 +1,102 @@
+=== IDENTICAL normalised function bodies in 2+ files (body >= 4 lines) ===
+[ba7d871f7867] ~12 body lines x4 occurrences (function_text)
+   test_config_missing_open_once.py :: function_text (12)
+   test_hires_line_blend.py :: function_text (12)
+   test_hires_thread_priority.py :: function_text (12)
+   test_vmode_safe_area.py :: function_text (12)
+[2eec89692e1a] ~12 body lines x4 occurrences (function)
+   test_ripps2_art_port.py :: function (12)
+   test_ripps2_drive_status.py :: function (12)
+   test_ripps2_gui_port.py :: function (12)
+   test_ripps2_text_port.py :: function (12)
+[50a4dd55c67f] ~7 body lines x6 occurrences (function_text)
+   test_art_queue_order.py :: function_text (7)
+   test_confirm_button.py :: function_text (7)
+   test_ember_scan_missing_core.py :: function_text (7)
+   test_ember_settings.py :: function_text (7)
+   test_settings_back_keeps_edits.py :: function_text (7)
+   test_settings_fit.py :: function_text (7)
+[bff32cf9fd27] ~8 body lines x5 occurrences (function)
+   test_game_size_fallback.py :: function (8)
+   test_info_size_ps1.py :: function (8)
+   test_menu_crash_catcher.py :: function (8)
+   test_ps1_duplicates.py :: function (8)
+   test_ra_module_startup.py :: function (8)
+[8e7c2e48cb60] ~27 body lines x2 occurrences (extract_function)
+   test_ilink_bd_assault_reset.py :: extract_function (27)
+   test_ilink_bd_reset.py :: extract_function (27)
+[612a2065a489] ~9 body lines x3 occurrences (function)
+   test_bdm_index.py :: function (9)
+   test_iso9660_records.py :: function (9)
+   test_pad_handoff.py :: function (9)
+[56bb01c1ec2a] ~15 body lines x2 occurrences (function)
+   test_dia_text_room.py :: function (15)
+   test_menu_text_fit.py :: function (15)
+[3db3ae580a63] ~5 body lines x4 occurrences (function)
+   test_mc_folders.py :: function (5)
+   test_mcemu_slots.py :: function (5)
+   test_neutrino_cheats.py :: function (5)
+   test_patch_zone_restore.py :: function (5)
+[f4008c1dfd83] ~7 body lines x3 occurrences (function_text)
+   test_audio_threads.py :: function_text (7)
+   test_autolaunch_settings.py :: function_text (7)
+   test_bgm_source.py :: function_text (7)
+[2b5369376609] ~7 body lines x3 occurrences (function_text)
+   test_net_protocol_pick.py :: function_text (7)
+   test_theme_text_room.py :: function_text (7)
+   test_vmode_confirm.py :: function_text (7)
+[01acec3acc6e] ~12 body lines x2 occurrences (run)
+   test_smb_vmc_io_result.py :: run (12)
+   test_smbman_ra_write_count.py :: run (12)
+[71491c43d9e7] ~5 body lines x3 occurrences (define)
+   test_smb_read_closed.py :: define (5)
+   test_smb_vmc_io_result.py :: define (5)
+   test_smbman_ra_write_count.py :: define (5)
+[cfe1526c0b99] ~9 body lines x2 occurrences (defines)
+   test_ember_scan_missing_core.py :: defines (9)
+   test_ember_settings.py :: defines (9)
+[55069f830f91] ~8 body lines x2 occurrences (function_text)
+   test_pad_missed_read.py :: function_text (8)
+   test_pad_mode_lock.py :: function_text (8)
+[20be9301cb56] ~6 body lines x2 occurrences (function)
+   test_netblock_oplcore.py :: function (6)
+   test_udpfs_files_oplcore.py :: function (6)
+[ebaee32867ae] ~5 body lines x2 occurrences (read_source)
+   test_pad_missed_read.py :: read_source (5)
+   test_pad_mode_lock.py :: read_source (5)
+[d1db267db5c4] ~5 body lines x2 occurrences (function)
+   test_smb_vmc_io_result.py :: function (5)
+   test_smbman_ra_write_count.py :: function (5)
+[aab5d6d28291] ~5 body lines x2 occurrences (function)
+   test_accurate_read_rate.py :: function (5)
+   test_iop_pad.py :: function (5)
+[69910c138968] ~5 body lines x2 occurrences (as_macros)
+   test_audio_threads.py :: as_macros (5)
+   test_bgm_source.py :: as_macros (5)
+[3a0e9187d125] ~5 body lines x2 occurrences (define)
+   test_ilink_bd_assault_reset.py :: define (5)
+   test_ilink_bd_reset.py :: define (5)
+[1e689cd0d58d] ~4 body lines x2 occurrences (function)
+   test_ilink_manager_irq.py :: function (4)
+   test_ilink_manager_recovery.py :: function (4)
+groups: 21; duplicated extra body lines (beyond first copy): ~316
+
+=== Same test-function NAME in 3+ files ===
+
+files parsed OK: 278/278
+=== most-defined function names across corpus ===
+function: 107 definitions
+read: 43 definitions
+run: 37 definitions
+function_text: 32 definitions
+check: 19 definitions
+main: 19 definitions
+text: 12 definitions
+define: 12 definitions
+fake: 10 definitions
+compile_and_run: 9 definitions
+setUp: 7 definitions
+body: 7 definitions
+function_body: 5 definitions
+strip_comments: 5 definitions
+__init__: 5 definitions

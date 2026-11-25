@@ -1,0 +1,114 @@
+c$% `
+c$+0e
+$!(d
+B$!X
+$%0 
+1&%8`
+<$(E
+&%@@
+<RRc$i
+<rrc$d
+	$! 
+&%P@
+&!`E
+C&+ r
+c,#(
+$!(#
+$%( 
+B$%0`
+12%(
+Q0%(
+l%@X
+$! B
+k1% 
+0!0F
+$%  
+,%(@
+D$!0$
+t&%(
+$%(@
+$!(e
+B0%(`
+$%(@
+$&%0
+$%(`
+$%(@
+$%(@
+B$B1
+$%( 
+$%( 
+c$@ 
+P,%0@
+$%  
+$%0 
+B$% 
+B0@ 
+B0@(
+B0@0
+B0@8
+loadcore
+stdio
+sysclib
+sysmem
+thbase
+thevent
+cdvdman
+intrman
+ioman
+thsemap
+e$+@
+'!H&
+f$+0c
+f$+8
+k%!8
+K$+0
+	$!@
+L$+0
+l%+(D
+	$!@
+N$+8
+B$!(
+J$+(f
+$+(e
+K$+ 
+k$+(D
+M$+`e
+$+@j
+EFI PART
+2!p!
+c%Q%W%]%
+%4%,%
+%<%0
+Z%T%i%f%`%P%l%
+Block Device Manager (BDM) v%d.%d
+BDM: ERROR: Already registered!
+BDM: ERROR: BDM init failed!
+BDM: BDM event thread running
+BDM: %s%dp%d mounted to %s
+BDM: connecting device %s%dp%d id=0x%x
+BDM: disconnecting device %s%dp%d id=0x%x
+BDM: %s%dp%d unmounted from %s
+BDM: connecting fs %s
+BDM: disconnecting fs %s
+Found MBR disk
+Found partition type 0x%02x
+Can't mount partition, no more free partition slots!
+Found GPT disk '%08x...'
+Found partition '%s' type=%08x unique=%08x start=0x%08x%08x end=0x%08x%08x attr=0x%08x%08x
+EXFAT   
+FAT32   
+*:<>|"?
++,;=[]
+mass
+FATFS driver
+BDM_ASSAULT: starting Fatfs side
+fatfs
+.symtab
+.strtab
+.shstrtab
+.iopmod
+.rel.text
+.rel.rodata
+.rel.eh_frame
+.rel.data
+.bss
