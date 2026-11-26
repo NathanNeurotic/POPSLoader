@@ -1,5 +1,7 @@
 # POPSLoader ? Rolling channel
 
+> History only. The rolling release page is no longer copied from this file: `tools/release_notes.py` writes it on every build (full kit first, other files in a collapsed table, then the last changes).
+
 ## 1.4.5 channel cut (November 23, 2026)
 
 **Rolling is a prerelease channel.** At this cut, master and dev carry the **v1.4.5** stamp;

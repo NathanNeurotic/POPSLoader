@@ -1113,9 +1113,7 @@ and
 <a href="https://github.com/NathanNeurotic/POPSLoader/releases/download/rolling-release/PS1_POPSLOADER.psu">PS1_POPSLOADER.psu</a>
 as standalone release assets, following the merged PR #600.
 The ZIP includes <code>APPS/</code>, <code>POPS/</code> and <code>EMBER/</code>;
-the PSU has only eight direct app files, no nested folder. The separate
-<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental">Experimental Release</a>
-follows its own branch and is not automatically updated by merging dev.
+the PSU has only eight direct app files, no nested folder.
 <a href="popsloader/installation-guide.html">Installation guide</a> ·
 <a href="popsloader/release-formats.html">Packaging specification</a>.</div>
 <div class="callout info"><div class="h">Which historical POPStarter file do I need?</div>{html.escape(DL_INTRO)}</div>
