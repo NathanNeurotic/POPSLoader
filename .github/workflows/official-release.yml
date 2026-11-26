@@ -119,12 +119,16 @@ jobs:
             echo "::error::Tag 1.4.7 already exists; refusing unexpected retag."
             exit 1
           fi
+          # Short page, laid out like RiptOPL's: the full kit first, the other files in a
+          # collapsed table, then the changes from RELEASE_1.4.7.md.
+          python3 tools/release_notes.py official --version 1.4.7 --sha "$VERIFIED_SHA" \
+            --built "$(date -u '+%Y-%m-%d %H:%M UTC')" --notes RELEASE_1.4.7.md --out release-notes.md
           gh release create 1.4.7 \
             PS1_POPSLOADER-1.4.7.zip PS1_POPSLOADER.psu POPSLOADER.ELF \
             BUILD-MANIFEST.txt SHA256SUMS.txt \
             --target "$VERIFIED_SHA" \
             --title "POPSLoader 1.4.7" \
-            --notes-file RELEASE_1.4.7.md \
+            --notes-file release-notes.md \
             --latest
           gh release view 1.4.7 --json url,tagName,isPrerelease,assets \
             --jq '{url:.url,tag:.tagName,prerelease:.isPrerelease,assets:[.assets[].name]}'

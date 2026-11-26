@@ -97,6 +97,8 @@ jobs:
           BUILD_UTC="$(date -u '+%Y-%m-%d %H:%MZ')"
           printf "%s\n%s\n" "$COMMIT_SHORT" "$BUILD_UTC" > bin/POPSLDR/BUILD_INFO.txt
           cat bin/POPSLDR/BUILD_INFO.txt
+          # The release page and its title show this same build time.
+          echo "BUILD_UTC=$BUILD_UTC" >> "$GITHUB_ENV"
 
       - name: Validate bundled Lua sources (syntax/newline)
         shell: bash
@@ -343,6 +345,17 @@ jobs:
           cat SHA256SUMS.txt
           ls -la "$BUNDLE_ZIP" "$KIT_ZIP"
 
+      - name: Write the release page
+        shell: sh
+        run: |
+          set -eu
+          # Short page, laid out like RiptOPL's: the full kit first, the other files in a
+          # collapsed table, then the last changes. Runs on pull requests too, so a broken
+          # page fails the PR instead of the next dev push.
+          python3 tools/release_notes.py rolling \
+            --version "$RELEASE_VERSION" --sha "$GITHUB_SHA" \
+            --built "$(echo "$BUILD_UTC" | sed 's/Z$/ UTC/')" --out release-notes.md
+
       - name: Upload workflow artifact
         if: success()
         uses: actions/upload-artifact@v6
@@ -444,29 +457,15 @@ jobs:
                   "sha": sha,
               })
 
-          notes_path = pathlib.Path("ROLLING_NOTES.md")
-          try:
-              notes = notes_path.read_text(encoding="utf-8").rstrip()
-          except OSError:
-              notes = "Rolling test build."
           version = os.environ["RELEASE_VERSION"]
-          body = "\n".join([
-              f"**POPSLoader `{version}`** - Rolling build. Every ZIP name ends with this version.",
-              "",
-              notes,
-              "",
-              "---",
-              "_Automatic rolling build:_",
-              f"- Event: {os.environ['EVENT_NAME']}",
-              f"- Ref: {os.environ['REF_NAME']}",
-              f"- Version: {version}",
-              f"- Commit: {sha}",
-              f"- Run: {run_url}",
-          ])
+          body = pathlib.Path("release-notes.md").read_text(encoding="utf-8")
+          # Launchstation-style title: the version and the build date change every run, so
+          # the title never shows an old build.
+          title = f"POPSLoader Rolling {version} - {os.environ['BUILD_UTC'][:10]} ({sha[:7]})"
           release_payload = {
               "tag_name": tag,
               "target_commitish": sha,
-              "name": "Rolling Release",
+              "name": title,
               "body": body,
               "draft": False,
               "prerelease": True,
@@ -512,6 +511,28 @@ jobs:
           print(f"Updated {tag}: {release['html_url']}")
           for path, name in asset_specs:
               upload_asset(path, name)
+
+          # REFRESH THE RELEASE DATE. Updating a release (PATCH) changes its text and files
+          # but never its published_at, which is the date GitHub shows: the page kept saying
+          # May 2026 while every dev push rebuilt it. Sending published_at is silently
+          # ignored; the one way to move it is a draft -> published flip (RiptOPL does the
+          # same, measured 2026-09-02). Recreating the release would also work but resets
+          # the download counts. A hidden release is worse than an old date, so the flip
+          # is retried and checked, and a release left as a draft fails the job.
+          was = release.get("published_at")
+          visible = {"draft": False, "prerelease": True, "make_latest": "false"}
+          try:
+              request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", {"draft": True})
+          finally:
+              for attempt in range(3):
+                  try:
+                      release = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
+                      break
+                  except RuntimeError as exc:
+                      print(f"::warning::republish attempt {attempt + 1} failed: {exc}")
+          if release.get("draft"):
+              raise SystemExit("rolling-release is still a draft: it is hidden from users")
+          print(f"Release date: {was} -> {release.get('published_at')}")
 
           # Versioned ZIP names change with every build, so the previous build's ZIPs (and the
           # old fixed-name ones) would otherwise pile up beside the new ones. Only ZIPs of this
