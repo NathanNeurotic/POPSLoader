@@ -2232,6 +2232,9 @@ static int lua_smb_getipconfig(lua_State *L)
  // UDPFS directory browse uses the RiptOPL/Neutrino smap -> ministack ->
  // udpfs_ioman chain. This is *not* Okeanos's POPSTARTER runtime pair: those
  // two modules are staged separately at launch, before the inevitable IOP reset.
+ // The embedded udpfs_ioman (iop/embed/UDPFS_MENU_MODULES.md) registers 'udpfs:'
+ // even when the server does not answer at load, and keeps looking for it in the
+ // background, so a loaded module is never a dead end; Lua waits for the answer.
  // Do not try to tear down and reload the ministack; its UDP socket is load-once.
  static bool ValidUDPFSStaticIp(const char *s)
  {

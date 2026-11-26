@@ -13,9 +13,9 @@ ROOT = Path(__file__).resolve().parents[1]
 BLOBS = {
     "bin/POPSLDR/usbd.irx.udpfs": ("1bd5186685b75b4a077560fdc5b3a460bc160726", 61949),
     "bin/POPSLDR/usbhdfsd.irx.udpfs": ("e7a9baa6fd2fd35ac92b4f6d6545b033e195f51f", 34508),
-    "iop/embed/udpfs_net_smap.irx": ("a8ad1bf35a0ab57c4119dce82ee5ca39402cd3aa", 8081),
-    "iop/embed/udpfs_ministack.irx": ("7696096abf3df9fe56ec7ef0f28d27b3d533985e", 5025),
-    "iop/embed/udpfs_ioman.irx": ("638f0ab4527ee5b806ee5fe3f965922a27959015", 11633),
+    "iop/embed/udpfs_net_smap.irx": ("ab4b89f7bbb4a4991a645f1342cfee24d0cda2da", 7441),
+    "iop/embed/udpfs_ministack.irx": ("49c0987c7cfbc986aa5b868520bf1a634d27a730", 7537),
+    "iop/embed/udpfs_ioman.irx": ("5c484f7f381069a51a1ed49cf7b571abaf94f43d", 12849),
 }
 for path, (sha, length) in BLOBS.items():
     binary = (ROOT / path).read_bytes()
