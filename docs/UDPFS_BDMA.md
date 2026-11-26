@@ -121,7 +121,8 @@ Opening UDPFS waits for the network link, then looks for the server, and keeps
 looking in the background. If the server has not answered, the page opens empty
 with "UDPFS server unavailable"; start or check the server and press **R1**.
 "No .VCD games found" means the server answered but the scan listed no games:
-check the server's `POPS` folder and any hidden games. On Windows, PS2 Servers' **Allow through
+the `POPS` folder may be empty, all its games hidden, or the folder unreadable
+on the server. Check that folder and its permissions, and any hidden games. On Windows, PS2 Servers' **Allow through
 firewall** button adds the rules the broadcast needs; its log prints
 `DISCOVERY received -- console found this server` when the console reaches it.
 Upstream does not support `rename` or files of 4 GiB or larger.
