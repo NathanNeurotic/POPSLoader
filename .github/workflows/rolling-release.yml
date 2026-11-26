@@ -529,7 +529,7 @@ jobs:
           flip_error = None
           try:
               request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", {"draft": True})
-          except RuntimeError as exc:
+          except Exception as exc:  # any failure (HTTP, transport, truncated reply): still republish
               # The draft step may or may not have applied; republish regardless and
               # judge the job by the republish, so cleanup and the archive still run.
               flip_error = exc
@@ -538,7 +538,7 @@ jobs:
               try:
                   restored = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
                   break
-              except RuntimeError as exc:
+              except Exception as exc:
                   print(f"::warning::republish attempt {attempt + 1} failed: {exc}")
           # Judge visibility only by a republish that succeeded: `release` is the
           # response from before the flip and still says draft=false.
