@@ -5139,6 +5139,14 @@ local POPSTARTER_PACK_ROOT = PLDR.POPSTARTER_DIR
 -- working; the writer always writes this current name.
 local BDMA_MODE_MARKER_PATH = POPSTARTER_PACK_ROOT.."/bdma_mode.txt"
 local BDMA_STAGING_MARKER = "STAGING"
+-- Which embedded driver set was staged. bdma_mode.txt stays the bare mode key
+-- (mSAS reads it), so the stamp has its own tiny file. A card whose stamp differs
+-- (or has none) holds drivers from an older POPSLoader and is re-staged once.
+-- Value = first 12 hex of sha256 over bin/POPSLDR/usbd.irx.* and usbhdfsd.irx.*;
+-- tools/docs_verify.py fails CI until this is updated when any driver changes.
+-- (PLDR fields, not locals: the main chunk is at Lua's 200-local limit.)
+PLDR.BDMA_DRIVER_STAMP = "f5f89dfb5616"
+PLDR.BDMA_STAMP_PATH = POPSTARTER_PACK_ROOT.."/bdma_stamp.txt"
 local BDMA_COPY_FILES = {
   "usbd.irx",
   "usbhdfsd.irx"
@@ -7928,6 +7936,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
         return false
       end
     end
+    if not WriteAtomic(PLDR.BDMA_STAMP_PATH, PLDR.BDMA_DRIVER_STAMP) then
+      return false
+    end
     if not WriteBdmaModeMarker(selected, launch_fast) then
       return false
     end
@@ -7984,6 +7995,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
       end
     end
   end
+  if not WriteAtomic(PLDR.BDMA_STAMP_PATH, PLDR.BDMA_DRIVER_STAMP) then
+    return false
+  end
   WriteBdmaModeMarker(selected)
   return true
 end
@@ -8039,7 +8053,9 @@ end
 -- "Equipped proper" = the on-card reality matches the target, checked BEFORE
 -- any write: for FAT32 both modules must be absent; for the others both files
 -- must exist AND the bdma_mode.txt marker (written only after a fully
--- successful stage) must name the same variant.
+-- successful stage) must name the same variant. Non-UDPFS modes also need
+-- bdma_stamp.txt to name this build's driver set (one small read); UDPFS
+-- byte-compares its pair instead.
 function PLDR.IsBdmaModeEquipped(mode_key)
   local target = NormalizeBdmaModeKey(mode_key)
   if target == nil then
@@ -8059,6 +8075,9 @@ function PLDR.IsBdmaModeEquipped(mode_key)
     return have_none
   end
   if not have_all then
+    return false
+  end
+  if target ~= "UDPFS" and ReadBdmaModeMarkerCompat(PLDR.BDMA_STAMP_PATH) ~= PLDR.BDMA_DRIVER_STAMP then
     return false
   end
   if target == "UDPFS" then
