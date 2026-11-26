@@ -79,6 +79,11 @@ entry, the same recipe RiptOPL uses, and relies on Ember never resetting the IOP
 It is <strong>hardware-untested and cannot be run in PCSX2</strong>. The same page also lists<br />
 POPSTARTER titles, launched through the experimental BDMA Mode "i.Link" (RiptOPL's<br />
 i.LINK driver pair), which is unproven. Do not claim full device parity.</p>
+<p>The launch helper reads <code>ember.elf</code> with <code>rom0:LOADFILE</code> first. LOADFILE cannot<br />
+open <code>udpfs:</code> or <code>mmce0:</code>/<code>mmce1:</code> (only iomanX knows them) and fails when the<br />
+IOP has no free 64 KiB block, so the helper then reads the ELF through fileXio,<br />
+as RiptOPL's loader does. Before this, Ember on those devices stopped at a black<br />
+screen.</p>
 <pre><code class="language-text">&lt;mounted-device-root&gt;/
   POPS/
     Game.VCD

@@ -166,7 +166,20 @@ historical reference bundle's UDPFS files and notices with this same pair.<br />
 and <a href="https://github.com/NathanNeurotic/POPSLoader/blob/dev/third_party/okeanos_udpfs/README_CONFIG.txt">configuration details</a> accompany it.</p>
 <h2 id="limits-and-validation">Limits and validation</h2>
 <p>SMBv1 and the UDPFS menu stack cannot share the network adapter. Restart<br />
-POPSLoader before switching protocols after connection. Press <strong>R1</strong> to rescan.<br />
+POPSLoader before switching protocols after connection. Press <strong>R1</strong> to rescan.</p>
+<p>UDPFS has no port, share, user or password to set. The menu and the game driver<br />
+both use UDP port 62966, fixed on both sides, and find the server by broadcast on<br />
+the PS2's subnet. Only the PS2 IP, netmask and gateway in <strong>Settings &gt; SMB /<br />
+Network</strong> apply to UDPFS; Server IP, Port, Share, User, Password and <strong>SMB<br />
+Modules</strong> are for SMB only.</p>
+<p>Opening UDPFS waits for the network link, then looks for the server, and keeps<br />
+looking in the background. If the server has not answered, the page opens empty<br />
+with "UDPFS server unavailable"; start or check the server and press <strong>R1</strong>.<br />
+"No .VCD games found" means the server answered but the scan listed no games:<br />
+the <code>POPS</code> folder may be empty, all its games hidden, or the folder unreadable<br />
+on the server. Check that folder and its permissions, and any hidden games. On Windows, PS2 Servers' <strong>Allow through<br />
+firewall</strong> button adds the rules the broadcast needs; its log prints<br />
+<code>DISCOVERY received -- console found this server</code> when the console reaches it.<br />
 Upstream does not support <code>rename</code> or files of 4 GiB or larger.</p>
 <p>Keep VMC backups. The upstream driver retries interrupted writes for roughly<br />
 10 seconds; a longer interruption can leave a file incomplete. Network writes<br />
