@@ -4226,7 +4226,9 @@ UI = {
               report("Refreshing UDPFS directory...", 0.16)
               local udpfs_root, udpfs_err = PLDR.InitUDPFSPopsRoot(report)
               PLDR.CleanupGameList()
-              if type(udpfs_root) == "string" and udpfs_root ~= "" then
+              if type(udpfs_root) == "string" and udpfs_root ~= "" and not PLDR.UdpfsServerAnswers() then
+                smb_rescan_err = "UDPFS_NOT_READY"
+              elseif type(udpfs_root) == "string" and udpfs_root ~= "" then
                 report("Scanning UDPFS games...", 0.30)
                 PLDR.GetPS1GameLists(udpfs_root, true, scan)
               else
@@ -7436,11 +7438,20 @@ function UI.RunUdpfsConnectFlow()
     -- The UDPFS server is read-only as far as the menu is concerned. Do not
     -- try to write a .gamecache onto it.
     PLDR.CleanupGameList()
-    report("Reading network POPS folder...", 0.55)
-    PLDR.GetPS1GameLists(root, true, scan)
+    -- Open the page even when the server has not answered yet: the driver keeps
+    -- looking for it, and R1 on this page lists the games once it answers.
+    local answered = PLDR.UdpfsServerAnswers()
+    if answered then
+      report("Reading network POPS folder...", 0.55)
+      PLDR.GetPS1GameLists(root, true, scan)
+    else
+      PLDR.GAMEPATH = root
+    end
     UI.NET_TRANSPORT = "UDPFS"
     UI.SceneChange(UI.SCENES.GSMBNET)
-    if #PLDR.GAMES == 0 then
+    if not answered then
+      UI.Notif_queue.add(UI.SmbErrorMessage("UDPFS_NOT_READY"), "warn")
+    elseif #PLDR.GAMES == 0 then
       UI.Notif_queue.add("No .VCD games found under UDPFS/POPS. Check the server and press R1 to retry.", "warn")
     end
   end, "Could not open UDPFS")

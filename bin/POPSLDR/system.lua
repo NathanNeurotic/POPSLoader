@@ -9299,6 +9299,12 @@ function PLDR.InitUDPFSPopsRoot(report)
   return "udpfs:/POPS/"
 end
 
+-- true when the UDPFS server answers. The module searches for it once the network
+-- link is up, before initUDPFS returns, and again in the background after a miss.
+function PLDR.UdpfsServerAnswers()
+  return System.listDirectory("udpfs:/") ~= nil
+end
+
 -- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
 -- existing files on either card; only create missing files in SYS-CONF.
 -- A verified journal is written BEFORE a new config's final name is touched.

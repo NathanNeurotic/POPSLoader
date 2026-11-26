@@ -1,0 +1,18 @@
+--- a/modules/network/udpfs_smap/src/xfer.c
++++ b/modules/network/udpfs_smap/src/xfer.c
+@@ -254,9 +254,13 @@
+ {
+     int i, r;
+ 
+-    // Wait up to 2 seconds for autonegotiation to complete.
++    // Wait for autonegotiation to complete. InitPHY() waits a fixed 3.0 s, then up to
++    // 4.0 s for the link, then 0.5 s on a DP83846A, before it marks the driver ready.
++    // A 2 s wait could never cover that, so a sender started at module load (the
++    // UDPFS server search) lost its packets before the link was up. 8 s covers one
++    // full autonegotiation round.
+     if (!SmapDriverData.SmapIsInitialized) {
+-        for (i = 0; i < 2000 && !SmapDriverData.SmapIsInitialized; i++)
++        for (i = 0; i < 8000 && !SmapDriverData.SmapIsInitialized; i++)
+             DelayThread(1000);
+         // Timed out: the link never came up. Fail instead of falling through into
+         // HandleTxReqs and potentially reporting success on an uninitialized driver.

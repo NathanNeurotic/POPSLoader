@@ -356,6 +356,18 @@ int main(int argc, char *argv[])
 		SifLoadFileInit();
 		ret = SifLoadElf(load_path, &elfdata);
 		SifLoadFileExit();
+		/* rom0:LOADFILE cannot open a device that only iomanX knows (udpfs:,
+		 * mmceN:), and it fails when the IOP has no free 64 KiB block. Read
+		 * the ELF through fileXio instead, as RiptOPL's elfldr does. */
+		if ((ret != 0 || elfdata.epc == 0) && !is_hdd_partition_context(partition_context)) {
+			fileXioInit();
+			if (load_elf_via_filexio(load_path, &filexio_entry, &filexio_gp) == 0) {
+				loaded_via_filexio = 1;
+				elfdata.epc = filexio_entry;
+				elfdata.gp = filexio_gp;
+				ret = 0;
+			}
+		}
 	}
 	SET_GS_BGCOLOUR(BLUE_BG);
 	if (ret == 0 && elfdata.epc != 0) {
