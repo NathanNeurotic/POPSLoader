@@ -521,17 +521,21 @@ jobs:
           # is retried and checked, and a release left as a draft fails the job.
           was = release.get("published_at")
           visible = {"draft": False, "prerelease": True, "make_latest": "false"}
+          restored = None
           try:
               request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", {"draft": True})
           finally:
               for attempt in range(3):
                   try:
-                      release = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
+                      restored = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
                       break
                   except RuntimeError as exc:
                       print(f"::warning::republish attempt {attempt + 1} failed: {exc}")
-          if release.get("draft"):
-              raise SystemExit("rolling-release is still a draft: it is hidden from users")
+          # Judge visibility only by a republish that succeeded: `release` is the
+          # response from before the flip and still says draft=false.
+          if restored is None or restored.get("draft") is not False:
+              raise SystemExit("rolling-release could not be republished: it may be hidden as a draft")
+          release = restored
           print(f"Release date: {was} -> {release.get('published_at')}")
 
           # Versioned ZIP names change with every build, so the previous build's ZIPs (and the
