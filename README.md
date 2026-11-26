@@ -15,17 +15,16 @@
 
 | Channel | Package | Who should use it |
 | --- | --- | --- |
-| **Official 1.4.7** | [Official 1.4.7 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.7) | Time zone and Summer time rows in Settings, Date and Time (not yet tested on a PS2), on top of 1.4.6's Ember v0.8 core and 1.4.5's Check for Updates (in Settings, About), a Date and Time setting with Set from Internet, and a fix for BDMA drivers not being copied on devices that need them (#605), on top of 1.4.4's disc icon warning and Slovak corrections, 1.4.3's Slovak translation and 1.4.2's Okeanos UDPFS Assault 1.0.1 (not yet confirmed on a real PS2) and experimental i.Link page (hidden by default, hardware-untested). The updater and the clock setting are not yet tested on a PS2. Console acceptance remains pending. |
+| **Official 1.4.8** | [Official 1.4.8 release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.8) | Current release: full kit, PSU and ELF. Changes: [release notes](RELEASE_1.4.8.md). Runtime and hardware status: [STATE.md](STATE.md). |
 | Prior stable 1.2.3 | [Release 1.2.3](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.2.3) | Preserved POPStarter-only baseline without Ember. |
 | **POPSLoader 1.3.0 ([Ember](https://github.com/Gageformer/Ember) Beta-2)** | [Release 1.3.0](https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.3.0) | Versioned Ember-enabled release with [Gageformer](https://github.com/Gageformer)'s **existing Beta-2 core**. Emulator hardware compatibility is still experimental. |
 | **Rolling** | [Latest rolling prerelease](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release) | Latest `dev` build; changes frequently. Includes Ember. |
-| Experimental | [Experimental channel](https://github.com/NathanNeurotic/POPSLoader/releases/tag/experimental) | Independent `experimental` branch; it may differ from both stable and rolling. |
 
 Passing CI proves builds and packages passed automated checks; **it does not prove that a game, device, controller or VMC works on a physical PS2**. Consult the [hardware QA matrix](QA_REGRESSION_MATRIX.md).
 
 ## Install POPSLoader with Ember v0.8
 
-Download the full [POPSLoader 1.4.7 PS1_POPSLOADER-1.4.7.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.7/PS1_POPSLOADER-1.4.7.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
+Download the full [POPSLoader 1.4.8 PS1_POPSLOADER-1.4.8.zip](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.8/PS1_POPSLOADER-1.4.8.zip) or select `PS1_POPSLOADER-<version>.zip` from the [latest rolling release](https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release). The package's device-root layout is:
 
 ~~~text
 APPS/
@@ -52,7 +51,7 @@ EMBER/
 PS1_POPSLOADER.psu          Alternative app-only PS2 memory-card save
 ~~~
 
-1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.7/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
+1. **Application:** Copy `APPS/PS1_POPSLOADER/` to your launcher’s APPS location and run `POPSLOADER.ELF`. Alternatively import **[PS1_POPSLOADER.psu](https://github.com/NathanNeurotic/POPSLoader/releases/download/1.4.8/PS1_POPSLOADER.psu)** using a PS2 PSU-capable save manager. Its PS2 save header is named `PS1_POPSLOADER` and contains **exactly those eight direct files, with no nested folder**.
 2. **POPStarter:** Copy `POPS/` to the storage-device root. Add your own lawfully obtained Sony POPS files (`POPS.ELF`, `POPS.PAK`, `POPS_IOX.PAK` and `IOPRP252.IMG`) as required. Those copyrighted emulator components are **not included**.
 3. **Ember:** Copy `EMBER/` to the same device root. Add **your own 512 KiB PlayStation BIOS** at `EMBER/bios.bin` and your own disc images under `EMBER/games/<GameFolder>/`, with a `.cue` and matching `.bin` tracks. **No BIOS or commercial game images are provided**. The included `ExampleGame.bin` is intentionally empty: delete or replace this non-playable example.
 4. **Artwork:** POPStarter uses `POPS/<GameName>.VCD`; Ember uses `EMBER/games/<GameFolder>/`. For removable storage, covers go in the device-root `ART/` as `<VCD-basename>_COV.png` or `<Ember-folder>_COV.png`; `_ICO.png` is the optional disc icon.

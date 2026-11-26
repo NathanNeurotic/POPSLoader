@@ -232,6 +232,37 @@ def check_cover_layout():
                  "removable layout (removable is device:/ART/)" % rel)
 
 
+# ---------------------------------------------------------------------------
+# 6. The BDMA driver stamp in system.lua must match the shipped driver files.
+#
+# A card re-stages its drivers only when bdma_stamp.txt differs from
+# BDMA_DRIVER_STAMP, so a driver change without a new stamp leaves old drivers
+# on every card that already had that mode.
+# ---------------------------------------------------------------------------
+def check_bdma_driver_stamp():
+    import glob
+    import hashlib
+    sysl = read("bin/POPSLDR/system.lua") or ""
+    m = re.search(r'PLDR\.BDMA_DRIVER_STAMP = "([0-9a-f]+)"', sysl)
+    if not m:
+        fail("bdma-stamp", "BDMA_DRIVER_STAMP not found in bin/POPSLDR/system.lua")
+        return
+    files = sorted(glob.glob(os.path.join(REPO, "bin/POPSLDR/usbd.irx.*"))
+                   + glob.glob(os.path.join(REPO, "bin/POPSLDR/usbhdfsd.irx.*")))
+    if not files:
+        fail("bdma-stamp", "no bin/POPSLDR/usbd.irx.* / usbhdfsd.irx.* files found")
+        return
+    h = hashlib.sha256()
+    for path in files:
+        h.update(os.path.basename(path).encode() + b"\0")
+        with open(path, "rb") as fh:
+            h.update(fh.read())
+    want = h.hexdigest()[:12]
+    if m.group(1) != want:
+        fail("bdma-stamp", "BDMA_DRIVER_STAMP is %s but the driver files hash to %s; "
+             "set it to %s so cards re-stage the new drivers" % (m.group(1), want, want))
+
+
 def check_translation_handoff():
     """Check live keys, runtime dictionaries, TSVs and the Excel handoff together."""
     from translation_handoff import check_catalogs
@@ -240,7 +271,8 @@ def check_translation_handoff():
 
 
 for fn in (check_settings_keys, check_removed_behaviour, check_version_stamps,
-           check_harness_count, check_cover_layout, check_translation_handoff):
+           check_harness_count, check_cover_layout, check_bdma_driver_stamp,
+           check_translation_handoff):
     try:
         fn()
     except Exception as exc:  # a broken check must not mask the others

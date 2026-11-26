@@ -1,5 +1,10 @@
 [Unreleased]
 
+[1.4.8] - November 26th, 2026
+- Fix: UDPFS keeps looking for the server once the network link is up, so games appear without a restart; the page opens even before the server answers and says "UDPFS server unavailable" or "No .VCD games found". Not tested on a PS2.
+- Fix: Ember's ember.elf loads through fileXio when rom0:LOADFILE fails (UDPFS, MMCE, low IOP memory). Not tested on a PS2.
+- Fix: a card staged by an older POPSLoader re-stages the BDMA drivers once; POPSTARTER/bdma_stamp.txt records the driver set, bdma_mode.txt is unchanged. Not tested on a PS2.
+
 [1.4.7] - November 24th, 2026
 - New: Time zone and Summer time rows in Settings > Date and Time. Console, the default, follows the zone and summer time set in the console's own System Configuration and shows which zone that is; 38 other zones can be picked instead. The console clock itself is never changed by the choice. If the time is hours off after Set from Internet, the zone is wrong, not the sync. Not tested on a PS2.
 
