@@ -330,6 +330,7 @@ t10 = E('''function()
   FAKEFS.files[root.."/usbd.irx"] = nil
   FAKEFS.files[root.."/usbhdfsd.irx"] = nil
   FAKEFS.files[root.."/bdma_mode.txt"] = nil
+  FAKEFS.files[root.."/bdma_stamp.txt"] = nil
   PLDR.BDMA_ADAPTIVE = true
   PLDR.POPSTARTER_MC_FOLDER = true
   local n0 = #UI.Notif_queue.msg
