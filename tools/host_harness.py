@@ -304,15 +304,22 @@ t6 = E('''function()
   FAKEFS.files[root.."/usbd.irx"] = "X"
   FAKEFS.files[root.."/usbhdfsd.irx"] = "Y"
   FAKEFS.files[root.."/bdma_mode.txt"] = "MMCE"
+  FAKEFS.files[root.."/bdma_stamp.txt"] = PLDR.BDMA_DRIVER_STAMP
   local c = PLDR.IsBdmaModeEquipped("MMCE") == true
   local d = PLDR.IsBdmaModeEquipped("ATA") == false
   local e = PLDR.IsBdmaModeEquipped("FAT32") == false
+  -- state 2b: drivers from an older POPSLoader (no stamp, or another stamp)
+  FAKEFS.files[root.."/bdma_stamp.txt"] = nil
+  local g = PLDR.IsBdmaModeEquipped("MMCE") == false
+  FAKEFS.files[root.."/bdma_stamp.txt"] = "0123456789ab"
+  local h = PLDR.IsBdmaModeEquipped("MMCE") == false
+  FAKEFS.files[root.."/bdma_stamp.txt"] = PLDR.BDMA_DRIVER_STAMP
   -- state 3: marker says MMCE but a module file is missing
   FAKEFS.files[root.."/usbhdfsd.irx"] = nil
   local f = PLDR.IsBdmaModeEquipped("MMCE") == false
-  return a and b and c and d and e and f
+  return a and b and c and d and e and f and g and h
 end''')()
-check("T6 equipped-check (marker + on-card files, all states)", t6)
+check("T6 equipped-check (marker + stamp + on-card files, all states)", t6)
 
 # T10 full adaptive staging cycle through the REAL ApplyBdmaMode
 t10 = E('''function()
@@ -330,6 +337,7 @@ t10 = E('''function()
   local staged = FAKEFS.files[root.."/usbd.irx"] == "FAKE-USBD-MMCE"
              and FAKEFS.files[root.."/usbhdfsd.irx"] == "FAKE-HDFSD-MMCE"
              and FAKEFS.files[root.."/bdma_mode.txt"] == "MMCE"
+             and FAKEFS.files[root.."/bdma_stamp.txt"] == PLDR.BDMA_DRIVER_STAMP
   local no_toast = (#UI.Notif_queue.msg == n0)          -- success is silent
   local eq = PLDR.IsBdmaModeEquipped("MMCE") == true
   -- second call: equipped -> zero writes (poison the embedded source to prove no re-read)
