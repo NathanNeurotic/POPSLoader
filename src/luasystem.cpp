@@ -2234,7 +2234,7 @@ static int lua_smb_getipconfig(lua_State *L)
  // two modules are staged separately at launch, before the inevitable IOP reset.
  // The embedded udpfs_ioman (iop/embed/UDPFS_MENU_MODULES.md) registers 'udpfs:'
  // even when the server does not answer at load, and keeps looking for it in the
- // background, so a loaded module is never a dead end; Lua waits for the answer.
+ // background. Its SMAP driver holds the first search until the link is up.
  // Do not try to tear down and reload the ministack; its UDP socket is load-once.
  static bool ValidUDPFSStaticIp(const char *s)
  {

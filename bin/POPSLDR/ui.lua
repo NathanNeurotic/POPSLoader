@@ -4226,7 +4226,7 @@ UI = {
               report("Refreshing UDPFS directory...", 0.16)
               local udpfs_root, udpfs_err = PLDR.InitUDPFSPopsRoot(report)
               PLDR.CleanupGameList()
-              if type(udpfs_root) == "string" and udpfs_root ~= "" and not PLDR.WaitUdpfsServer() then
+              if type(udpfs_root) == "string" and udpfs_root ~= "" and not PLDR.UdpfsServerAnswers() then
                 smb_rescan_err = "UDPFS_NOT_READY"
               elseif type(udpfs_root) == "string" and udpfs_root ~= "" then
                 report("Scanning UDPFS games...", 0.30)
@@ -7440,8 +7440,7 @@ function UI.RunUdpfsConnectFlow()
     PLDR.CleanupGameList()
     -- Open the page even when the server has not answered yet: the driver keeps
     -- looking for it, and R1 on this page lists the games once it answers.
-    report("Waiting for the UDPFS server...", 0.40)
-    local answered = PLDR.WaitUdpfsServer()
+    local answered = PLDR.UdpfsServerAnswers()
     if answered then
       report("Reading network POPS folder...", 0.55)
       PLDR.GetPS1GameLists(root, true, scan)
