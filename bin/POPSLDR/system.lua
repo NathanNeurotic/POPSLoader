@@ -9299,6 +9299,18 @@ function PLDR.InitUDPFSPopsRoot(report)
   return "udpfs:/POPS/"
 end
 
+-- udpfs_ioman keeps looking for the server in the background (one search of about
+-- 5 s, then a new one every second or so) and 'udpfs:' starts answering once the
+-- server is found. Each failed try below waits for the search in progress, so three
+-- tries cover two or three searches. true = the server answered.
+function PLDR.WaitUdpfsServer()
+  for attempt = 1, 3 do
+    if System.listDirectory("udpfs:/") ~= nil then return true end
+    if attempt < 3 and type(System.sleep) == "function" then pcall(System.sleep, 1) end
+  end
+  return false
+end
+
 -- Config files independently follow upstream mc0 -> mc1 precedence. Preserve
 -- existing files on either card; only create missing files in SYS-CONF.
 -- A verified journal is written BEFORE a new config's final name is touched.
