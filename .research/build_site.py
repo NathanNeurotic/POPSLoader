@@ -1104,7 +1104,7 @@ def build_downloads():
 {len(dl_files)} files (POPStarter builds, Quickstarter packs, tools, patches &amp; cheat references) —
 all verified to contain <b>no Sony emulator binaries</b>.</p>
 <div class="callout info"><div class="h">Current POPSLoader release packages (GitHub)</div>
-<b>Official:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.7">POPSLoader 1.4.7</a>
+<b>Official:</b> <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.8">POPSLoader 1.4.8</a>
 keeps the installer layout and includes the unmodified upstream Ember v0.8 option.
 <b>Development:</b> the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">Rolling Release</a>
 now publishes
@@ -1556,10 +1556,10 @@ def render_pl_doc(md):
     return out
 
 POPSLOADER_MODERN_CALLOUT = '''<div class="callout info"><div class="h">Current POPSLoader wiki, Ember &amp; release formats</div>
-Official <b>1.4.7</b> includes the experimental <b>Ember v0.8</b> PS1 core path,
+Official <b>1.4.8</b> includes the experimental <b>Ember v0.8</b> PS1 core path,
 RiptOPL-matched <code>APPS/PS1_POPSLOADER/</code>, full <code>POPS/</code> plus
 <code>EMBER/</code> ZIP, and flat eight-file <code>PS1_POPSLOADER.psu</code>
-are available in the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.7">official 1.4.7 release</a>
+are available in the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.8">official 1.4.8 release</a>
 and the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling prerelease</a>. The
 <a href="https://github.com/NathanNeurotic/POPSLoader/wiki">native GitHub Wiki</a>
 is synchronized from the same maintained guide.
@@ -2122,11 +2122,11 @@ Sony POPS emulator is <b>not</b> included anywhere; you supply your own legally-
 <a href="https://www.psx-place.com/threads/popstarter.19139/">PSX-Place POPStarter thread</a>.</div>
 
 <div class="callout info" id="popsloader-current"><div class="h">POPSLoader — current project</div>
-Official POPSLoader <b>1.4.7</b> is available separately from this preserved POPStarter wiki.
+Official POPSLoader <b>1.4.8</b> is available separately from this preserved POPStarter wiki.
 Its <b>Ethernet UDPFS</b> VCD support is opt-in and hardware-unverified.
 A separate <b>Ember PS1</b> core, complete <code>POPS/</code> + <code>EMBER/</code> kit
 and flat <code>PS1_POPSLOADER.psu</code> are now available in
-<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.7">official 1.4.7 release</a>
+<a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/1.4.8">official 1.4.8 release</a>
 (or the <a href="https://github.com/NathanNeurotic/POPSLoader/releases/tag/rolling-release">rolling development builds</a>) after <a href="https://github.com/NathanNeurotic/POPSLoader/pull/600">PR #600</a> merged.
 <a href="popsloader/project-wiki.html">Current POPSLoader wiki</a> ·
 <a href="popsloader/ember-core.html">Ember setup</a> ·
