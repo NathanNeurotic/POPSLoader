@@ -435,6 +435,10 @@ jobs:
               except urllib.error.HTTPError as exc:
                   body = exc.read().decode("utf-8", errors="replace")
                   raise RuntimeError(f"{method} {url} failed: {exc.code}\n{body}") from exc
+              except urllib.error.URLError as exc:
+                  # Transport failure (reset, DNS, timeout): same type as an HTTP error so
+                  # the republish retry below catches it too.
+                  raise RuntimeError(f"{method} {url} failed: {exc.reason}") from exc
 
           def request_maybe(method, url, payload=None):
               try:
@@ -522,20 +526,27 @@ jobs:
           was = release.get("published_at")
           visible = {"draft": False, "prerelease": True, "make_latest": "false"}
           restored = None
+          flip_error = None
           try:
               request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", {"draft": True})
-          finally:
-              for attempt in range(3):
-                  try:
-                      restored = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
-                      break
-                  except RuntimeError as exc:
-                      print(f"::warning::republish attempt {attempt + 1} failed: {exc}")
+          except Exception as exc:  # any failure (HTTP, transport, truncated reply): still republish
+              # The draft step may or may not have applied; republish regardless and
+              # judge the job by the republish, so cleanup and the archive still run.
+              flip_error = exc
+              print(f"::warning::draft step failed, the date may not move: {exc}")
+          for attempt in range(3):
+              try:
+                  restored = request("PATCH", f"{api_root}/repos/{repo}/releases/{release['id']}", visible)
+                  break
+              except Exception as exc:
+                  print(f"::warning::republish attempt {attempt + 1} failed: {exc}")
           # Judge visibility only by a republish that succeeded: `release` is the
           # response from before the flip and still says draft=false.
           if restored is None or restored.get("draft") is not False:
               raise SystemExit("rolling-release could not be republished: it may be hidden as a draft")
           release = restored
+          if flip_error is not None:
+              print("::warning::release is visible, but its date was not refreshed this run")
           print(f"Release date: {was} -> {release.get('published_at')}")
 
           # Versioned ZIP names change with every build, so the previous build's ZIPs (and the
