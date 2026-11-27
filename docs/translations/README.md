@@ -20,8 +20,10 @@ Two maintainer edits were made on import, pending SVKghost's confirmation:
   line count as English.
 
 The full current catalog is [slovak.xlsx](slovak.xlsx?raw=true) (the **Slovak**
-sheet name is what the importer reads). For the November 2026 updater follow-up,
-[slovak-remaining.xlsx](slovak-remaining.xlsx?raw=true) contains only the 33 rows
+sheet name is what the importer reads). SVKghost returned the 33 updater and
+network strings on November 27, 2026, and changed the keyboard DEL key to `MAŽ`.
+[slovak-remaining.xlsx](slovak-remaining.xlsx?raw=true) now contains only the 13
+rows added since then (clock, memory-card space and UDPFS relaunch messages)
 whose Slovak cells are still blank. Existing nonblank entries are treated as
 complete, including technical labels intentionally identical to English. Excel
 can trim a leading space from a cell; the importer restores it for keys that

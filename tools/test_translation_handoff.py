@@ -85,7 +85,9 @@ class TranslationHandoffTests(unittest.TestCase):
     def test_remaining_rows_exclude_completed_and_include_pending(self):
         from translation_handoff import remaining_slovak_rows
         keys = {en for en, _, _ in remaining_slovak_rows()}
-        self.assertIn("Check for Updates", keys)
+        # Returned by SVKghost on 2026-11-27 (#605), so no longer pending.
+        self.assertNotIn("Check for Updates", keys)
+        self.assertIn("Relaunch", keys)
         self.assertNotIn("Settings", keys)
         self.assertNotIn("100M Full", keys)
 
