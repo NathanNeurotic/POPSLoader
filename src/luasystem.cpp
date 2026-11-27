@@ -913,15 +913,21 @@ static int lua_exit(lua_State *L)
 
 static int lua_getmcinfo(lua_State *L){
 	int argc = lua_gettop(L);
-	int type, freespace, format, result;
+	/* Zeroed: when the request fails nothing is written back, and the fields were read uninitialized. */
+	int type = 0, freespace = 0, format = 0, result = -2;
 
 	int mcslot = 0;
 	if(argc == 1) mcslot = luaL_checkinteger(L, 1);
 
-	mcGetInfo(mcslot, 0, &type, &freespace, &format);
-	mcSync(0, NULL, &result);
+	if (mcGetInfo(mcslot, 0, &type, &freespace, &format) >= 0)
+		mcSync(0, NULL, &result);
 
 	lua_newtable(L);
+
+	/* 0, or -1 for a card swapped since the last look: the other fields are good. */
+	lua_pushstring(L, "result");
+	lua_pushinteger(L, result);
+	lua_settable(L, -3);
 
 	lua_pushstring(L, "type");
 	lua_pushinteger(L, type);

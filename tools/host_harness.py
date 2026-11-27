@@ -2974,6 +2974,68 @@ t66 = E('''function()
 end''')()
 check("T66 updater and clock sync: usable network settings, rolling channel, named failures", t66)
 
+# T67 memory-card pack writes go in place: no .tmp/.bak, and a card too full for the
+# growth says so up front and is left untouched (Venao, 1.4.8 "BDMA mode change not
+# applied" / "SMB modules not installed" at the first file on a nearly full card).
+t67 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local saved_info, saved_folder = System.getMCInfo, PLDR.POPSTARTER_MC_FOLDER
+  local saved_embeds = {}
+  for _, key in ipairs({"usbd.irx.udpfs", "usbhdfsd.irx.udpfs"}) do saved_embeds[key] = EMBEDDED[key] end
+  local function wipe()
+    for _, n in ipairs({"usbd.irx", "usbhdfsd.irx", "bdma_mode.txt", "bdma_stamp.txt"}) do
+      FAKEFS.files[root.."/"..n] = nil
+    end
+  end
+  local function restore()
+    System.getMCInfo, PLDR.POPSTARTER_MC_FOLDER = saved_info, saved_folder
+    for key, value in pairs(saved_embeds) do EMBEDDED[key] = value end
+    wipe()
+  end
+  PLDR.POPSTARTER_MC_FOLDER = true
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+  EMBEDDED["usbd.irx.udpfs"] = string.rep("U", 61949)
+  EMBEDDED["usbhdfsd.irx.udpfs"] = string.rep("H", 34508)
+  wipe()
+  FAKEFS.files[root.."/usbd.irx"] = string.rep("u", 48500)
+  FAKEFS.files[root.."/usbhdfsd.irx"] = string.rep("h", 34508)
+  FAKEFS.files[root.."/bdma_mode.txt"] = "USBEXFAT"
+
+  -- 10 KB free: the UDPFS pair is ~14 KB bigger, so the apply must refuse cleanly.
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 10, format = 1 } end
+  UI.Notif_queue.msg = {}
+  local refused = PLDR.ApplyBdmaMode("UDPFS") == false
+  local untouched = FAKEFS.files[root.."/usbd.irx"] == string.rep("u", 48500)
+                and FAKEFS.files[root.."/bdma_mode.txt"] == "USBEXFAT"
+  local said = false
+  -- The queue keeps the newest two toasts, so look at all of them.
+  for i = 1, #UI.Notif_queue.msg do
+    local m = UI.Notif_queue.msg[i]
+    local text = (type(m) == "table") and (tostring(m.head).." "..tostring(m.body)) or tostring(m)
+    if string.find(text, "Not enough free space", 1, true) then said = true end
+  end
+
+  -- 100 KB free: applies, in place, no temp or backup files anywhere in the pack.
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 100, format = 1 } end
+  local applied = PLDR.ApplyBdmaMode("UDPFS") == true
+  local staged = FAKEFS.files[root.."/usbd.irx"] == EMBEDDED["usbd.irx.udpfs"]
+             and FAKEFS.files[root.."/bdma_mode.txt"] == "UDPFS"
+  local stray = false
+  for path in pairs(FAKEFS.files) do
+    if string.find(path, "%.tmp$") or string.find(path, "%.bak$") then stray = path end
+  end
+
+  -- A card that does not answer (result -2) must not block the write.
+  System.getMCInfo = function() return { result = -2, type = 0, freemem = 0, format = 0 } end
+  local unknown_ok = PLDR.McFreeKB(root.."/usbd.irx") == nil
+  restore()
+  return refused and untouched and said and applied and staged and not stray and unknown_ok,
+         "refused="..tostring(refused).." untouched="..tostring(untouched).." said="..tostring(said)..
+         " applied="..tostring(applied).." staged="..tostring(staged).." stray="..tostring(stray)..
+         " unknown_ok="..tostring(unknown_ok)
+end''')()
+check("T67 memory-card pack writes go in place; a too-full card is refused with the shortfall", t67)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
