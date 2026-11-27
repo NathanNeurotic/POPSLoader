@@ -1467,6 +1467,11 @@ UI = {
       PADY  = 8;
       GAP   = 4;    -- vertical gap between stacked toasts
       ALFA  = 0x80; -- legacy field, kept for any external readers
+      -- Frames an error or warning stays at full strength before it starts to
+      -- fade (about 6 s at 60 Hz). Without it a three-line problem toast faded
+      -- out in about 4 s, or about 2.4 s when two were stacked, before it could
+      -- be read (SVKghost, #605). Info and ok toasts keep the old quick fade.
+      HOLD_PROBLEM = 360;
       display = function ()
         local q = UI.Notif_queue
         if #q.msg < 1 then return end
@@ -1502,7 +1507,11 @@ UI = {
                          body_lines[bi], Color.new(180, 200, 230, alfa))
             ty = ty + q.LINE
           end
-          t.alfa = (t.alfa or 0x90) - ((#q.msg > 1) and 1.4 or 0.8)
+          if (t.hold or 0) > 0 then
+            t.hold = t.hold - 1
+          else
+            t.alfa = (t.alfa or 0x90) - ((#q.msg > 1) and 1.4 or 0.8)
+          end
           y = y + box_h + q.GAP
         end
         local n = 1
@@ -1523,7 +1532,9 @@ UI = {
           head = text
           body = ""
         end
-        table.insert(q.msg, { head = head, body = body, sev = sev or "info", alfa = 0xC8 })
+        sev = sev or "info"
+        local hold = (sev == "error" or sev == "warn") and q.HOLD_PROBLEM or 0
+        table.insert(q.msg, { head = head, body = body, sev = sev, alfa = 0xC8, hold = hold })
         while #q.msg > q.MAX do table.remove(q.msg, 1) end
       end;
     };

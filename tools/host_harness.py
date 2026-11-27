@@ -3129,6 +3129,37 @@ t68 = E("""function()
 end""")()
 check("T68 Settings groups open only on RIGHT or CROSS; UP/DOWN pass over closed groups", t68)
 
+# T69 Error and warning toasts stay at full strength before fading (SVKghost, #605:
+# problem messages faded before they could be read). Info toasts keep the quick fade.
+t69 = E("""function()
+  local q = UI.Notif_queue
+  local saved = q.msg
+  q.msg = {}
+  q.add("Something failed\\nline two\\nline three", "error")
+  local hold = q.msg[1].hold
+  for _ = 1, q.HOLD_PROBLEM do q.display() end
+  local still_full = #q.msg == 1 and q.msg[1].alfa == 0xC8
+  q.display()
+  local fading = #q.msg == 1 and q.msg[1].alfa < 0xC8
+  local frames = q.HOLD_PROBLEM + 1
+  while #q.msg > 0 and frames < 5000 do q.display(); frames = frames + 1 end
+  local gone = #q.msg == 0
+  q.msg = {}
+  q.add("Saved")
+  local info_fades = q.msg[1].hold == 0
+  q.display()
+  info_fades = info_fades and q.msg[1].alfa < 0xC8
+  q.msg = {}
+  q.add("Careful", "warn")
+  local warn_holds = q.msg[1].hold == q.HOLD_PROBLEM
+  q.msg = saved
+  return hold == q.HOLD_PROBLEM and still_full and fading and gone and frames >= 600 and info_fades and warn_holds,
+         "hold="..tostring(hold).." still_full="..tostring(still_full).." fading="..tostring(fading)..
+         " gone="..tostring(gone).." frames="..tostring(frames).." info_fades="..tostring(info_fades)..
+         " warn_holds="..tostring(warn_holds)
+end""")()
+check("T69 error/warning toasts hold before fading; info toasts fade as before", t69)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
