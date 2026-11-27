@@ -2974,6 +2974,161 @@ t66 = E('''function()
 end''')()
 check("T66 updater and clock sync: usable network settings, rolling channel, named failures", t66)
 
+# T67 memory-card pack writes go in place: no .tmp/.bak, and a card too full for the
+# growth says so up front and is left untouched (Venao, 1.4.8 "BDMA mode change not
+# applied" / "SMB modules not installed" at the first file on a nearly full card).
+t67 = E('''function()
+  local root = PLDR.POPSTARTER_DIR
+  local saved_info, saved_folder = System.getMCInfo, PLDR.POPSTARTER_MC_FOLDER
+  local saved_embeds = {}
+  for _, key in ipairs({"usbd.irx.udpfs", "usbhdfsd.irx.udpfs"}) do saved_embeds[key] = EMBEDDED[key] end
+  local function wipe()
+    for _, n in ipairs({"usbd.irx", "usbhdfsd.irx", "bdma_mode.txt", "bdma_stamp.txt"}) do
+      FAKEFS.files[root.."/"..n] = nil
+    end
+  end
+  local function restore()
+    System.getMCInfo, PLDR.POPSTARTER_MC_FOLDER = saved_info, saved_folder
+    for key, value in pairs(saved_embeds) do EMBEDDED[key] = value end
+    wipe()
+  end
+  PLDR.POPSTARTER_MC_FOLDER = true
+  EMBEDDED["icon.sys.bdma"] = "I"; EMBEDDED["list.icn.bdma"] = "L"; EMBEDDED["del.icn.bdma"] = "D"
+  EMBEDDED["usbd.irx.udpfs"] = string.rep("U", 61949)
+  EMBEDDED["usbhdfsd.irx.udpfs"] = string.rep("H", 34508)
+  wipe()
+  FAKEFS.files[root.."/usbd.irx"] = string.rep("u", 48500)
+  FAKEFS.files[root.."/usbhdfsd.irx"] = string.rep("h", 34508)
+  FAKEFS.files[root.."/bdma_mode.txt"] = "USBEXFAT"
+
+  -- 10 KB free: the UDPFS pair is ~14 KB bigger, so the apply must refuse cleanly.
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 10, format = 1 } end
+  UI.Notif_queue.msg = {}
+  local refused = PLDR.ApplyBdmaMode("UDPFS") == false
+  local untouched = FAKEFS.files[root.."/usbd.irx"] == string.rep("u", 48500)
+                and FAKEFS.files[root.."/bdma_mode.txt"] == "USBEXFAT"
+  local said = false
+  -- The queue keeps the newest two toasts, so look at all of them.
+  for i = 1, #UI.Notif_queue.msg do
+    local m = UI.Notif_queue.msg[i]
+    local text = (type(m) == "table") and (tostring(m.head).." "..tostring(m.body)) or tostring(m)
+    if string.find(text, "Not enough free space", 1, true) then said = true end
+  end
+
+  -- 100 KB free: applies, in place, no temp or backup files anywhere in the pack.
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 100, format = 1 } end
+  local applied = PLDR.ApplyBdmaMode("UDPFS") == true
+  local staged = FAKEFS.files[root.."/usbd.irx"] == EMBEDDED["usbd.irx.udpfs"]
+             and FAKEFS.files[root.."/bdma_mode.txt"] == "UDPFS"
+  local stray = false
+  for path in pairs(FAKEFS.files) do
+    if string.find(path, "%.tmp$") or string.find(path, "%.bak$") then stray = path end
+  end
+
+  -- A card that does not answer (result -2) must not block the write.
+  System.getMCInfo = function() return { result = -2, type = 0, freemem = 0, format = 0 } end
+  local unknown_ok = PLDR.McFreeKB(root.."/usbd.irx") == nil
+
+  -- A file that shrinks first frees room for the next one (48->42 KB then 15->22 KB peaks at +1 KB).
+  FAKEFS.files[root.."/usbd.irx"] = string.rep("u", 48 * 1024)
+  FAKEFS.files[root.."/usbhdfsd.irx"] = string.rep("h", 15 * 1024)
+  local plan = { { dest = root.."/usbd.irx", size = 42 * 1024 }, { dest = root.."/usbhdfsd.irx", size = 22 * 1024 } }
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 2, format = 1 } end
+  local peak_ok = PLDR.McHasRoomFor(plan) == true
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 0, format = 1 } end
+  peak_ok = peak_ok and PLDR.McHasRoomFor(plan) == false
+
+  -- A failed write never leaves a torn file: a new icon is removed, an old small file
+  -- gets its bytes back, and an icon of the wrong size is rewritten on the next call.
+  local saved_write = System.writeFile
+  local function fail_once()
+    System.writeFile = function(fd, data, len)
+      System.writeFile = saved_write
+      saved_write(fd, string.sub(tostring(data), 1, 1), 1)
+      return 0
+    end
+  end
+  local icon = root.."/icon.sys"
+  FAKEFS.files[icon] = nil
+  fail_once()
+  local torn_ok = PLDR.EnsurePopstarterDir() == false and FAKEFS.files[icon] == nil
+  FAKEFS.files[icon] = "old icon"
+  EMBEDDED["icon.sys.bdma"] = "new icon!"
+  fail_once()
+  torn_ok = torn_ok and PLDR.EnsurePopstarterDir() == false and FAKEFS.files[icon] == "old icon"
+  torn_ok = torn_ok and PLDR.EnsurePopstarterDir() == true and FAKEFS.files[icon] == "new icon!"
+  System.writeFile = saved_write
+  peak_ok = peak_ok and torn_ok
+  restore()
+  return refused and untouched and said and applied and staged and not stray and unknown_ok and peak_ok,
+         "refused="..tostring(refused).." untouched="..tostring(untouched).." said="..tostring(said)..
+         " applied="..tostring(applied).." staged="..tostring(staged).." stray="..tostring(stray)..
+         " unknown_ok="..tostring(unknown_ok).." peak_ok="..tostring(peak_ok)
+end''')()
+check("T67 memory-card pack writes go in place; a too-full card is refused with the shortfall", t67)
+
+# T68 Settings groups open only on RIGHT or CROSS, never because the cursor reached them
+# (Venao, 11-27: scrolling to "Check for updates" walked through every row of every group).
+t68 = E("""function()
+  local E = UI.Pad.Events
+  local saved_listen = UI.Pad.Listen
+  UI.Pad.Listen = function() end   -- the test sets the events itself
+  local function press(name)
+    if type(UI.Transition) == "table" then UI.Transition.active = false end
+    for k in pairs(E) do E[k] = false end
+    if name then E[name] = true end
+    local ok, err = pcall(UI.ProfileQuery.Play)
+    for k in pairs(E) do E[k] = false end
+    if not ok then UI.Pad.Listen = saved_listen; error(err) end
+  end
+  -- Enter Settings the way START does, so the page has its drafts.
+  local saved_scene, saved_modal, saved_launching = UI.CURSCENE, UI.Modal.active, UI.LAUNCHING
+  UI.Modal.active, UI.LAUNCHING = false, false
+  UI.CURSCENE = UI.SCENES.MMAIN
+  for k in pairs(E) do E[k] = false end
+  E.START = true
+  local entered, why = pcall(UI.HandleGlobalInput, false)
+  E.START = false
+  if not entered then UI.Pad.Listen = saved_listen; UI.CURSCENE = saved_scene; error("enter: "..tostring(why)) end
+  UI.SettingsOpenSection = "stale"   -- must not survive entry
+  UI.SettingsFocus = 1
+  UI.SettingsOpenSection = nil
+  press(nil)
+  local first_closed = UI.SettingsOpenSection == nil
+  press("NAV_DOWN"); press("NAV_DOWN")
+  local still_closed = UI.SettingsOpenSection == nil
+  local f = UI.SettingsFocus
+  press("CONFIRM")
+  local opened = UI.SettingsOpenSection ~= nil and UI.SettingsFocus ~= f
+  local opened_name = UI.SettingsOpenSection
+  -- Walk down far enough to leave the open group: the next group must stay closed.
+  for _ = 1, 40 do press("NAV_DOWN") end
+  local only_one = UI.SettingsOpenSection == opened_name
+  -- L1/R1 land on a header without opening it; RIGHT then opens that header's group.
+  press("R1")
+  local r1_closed = UI.SettingsOpenSection == opened_name
+  -- Close the open group with LEFT on its header, then reopen a group with RIGHT.
+  UI.SettingsOpenSection = nil
+  local hdr = UI.SettingsFocus
+  press("NAV_DOWN")
+  local down_stays_closed = UI.SettingsOpenSection == nil
+  hdr = UI.SettingsFocus
+  press("NAV_RIGHT")
+  local right_opens = down_stays_closed and UI.SettingsOpenSection ~= nil and UI.SettingsFocus ~= hdr
+  press("NAV_UP")
+  press("NAV_LEFT")
+  local left_closes = UI.SettingsOpenSection == nil
+  UI.SettingsFocus = 1
+  UI.SettingsOpenSection = nil
+  UI.Pad.Listen = saved_listen
+  UI.CURSCENE, UI.Modal.active, UI.LAUNCHING = saved_scene, saved_modal, saved_launching
+  return first_closed and still_closed and opened and only_one and r1_closed and right_opens and left_closes,
+         "first_closed="..tostring(first_closed).." still_closed="..tostring(still_closed)..
+         " opened="..tostring(opened).." only_one="..tostring(only_one)..
+         " r1_closed="..tostring(r1_closed).." right_opens="..tostring(right_opens).." left_closes="..tostring(left_closes)
+end""")()
+check("T68 Settings groups open only on RIGHT or CROSS; UP/DOWN pass over closed groups", t68)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")

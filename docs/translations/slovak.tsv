@@ -452,3 +452,5 @@ The console clock is not set\nSet the date and time first
 POPSLoader could not be relaunched	
 Relaunch	
 UDPFS is using the network adapter.\nRelaunch POPSLoader now to free it?	
+Could not write %s\nCheck the memory card	
+Not enough free space on the memory card\nFree up %d KB on %s (%d KB free now)	

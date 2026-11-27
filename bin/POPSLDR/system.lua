@@ -5235,38 +5235,6 @@ do
   end
 end
 
--- Promote a fully-written temp file onto dest as safely as System.rename allows.
--- System.rename is copy-then-delete (not an atomic kernel rename), so a failure
--- during its internal copy could otherwise destroy an existing dest. Back dest up
--- first and restore it if the promotion fails, so a failed save never leaves the
--- caller with a lost or half-written dest (e.g. the settings file).
-local function PromoteTmpToDest(tmp, dest)
-  local bak = dest..".bak"
-  local had_dest = doesFileExist(dest)
-  if had_dest then
-    if doesFileExist(bak) then pcall(System.removeFile, bak) end
-    -- System.rename is copy+delete: a failed dest->bak fails its COPY before
-    -- deleting the source, so dest stays intact. REQUIRE the backup exists before
-    -- letting tmp->dest open dest with O_TRUNC -- otherwise a doubly-failed save
-    -- (backup fails, then tmp->dest fails) truncates the live file with no .bak to
-    -- restore, losing the original .pldrs/cache. (Codex F1 2026-06-20)
-    pcall(System.rename, dest, bak)
-    if not doesFileExist(bak) then
-      pcall(System.removeFile, tmp)
-      return false
-    end
-  end
-  local ok = pcall(System.rename, tmp, dest)
-  if not ok then
-    pcall(System.removeFile, dest)
-    if had_dest and doesFileExist(bak) then pcall(System.rename, bak, dest) end
-    pcall(System.removeFile, tmp)
-    return false
-  end
-  if doesFileExist(bak) then pcall(System.removeFile, bak) end
-  return true
-end
-
 -- Write dest in place: opened with O_TRUNC and written straight through, as Launchstation does. No
 -- temporary file, rename or backup, so a memory card needs no room for a second copy (a rename on a
 -- card is copy-then-delete). Returns true only when every byte was written.
@@ -5312,12 +5280,14 @@ local function GetFileSizeSafe(path)
   return size_val
 end
 
-local function CopyExternalAtomicBounded(source, dest, expected_size)
-  local tmp = dest..".tmp"
-  if doesFileExist(tmp) then
-    pcall(System.removeFile, tmp)
-  end
-
+-- Copy source over dest in place (dest opened with O_TRUNC), the way WriteAtomic writes. No .tmp,
+-- no rename and no .bak: on a memory card System.rename is a second full copy, so the old
+-- temp-file dance needed free room for two or three copies of every file and failed on a card
+-- that is nearly full, even when the new file is the same size as the old one (Venao, 1.4.8:
+-- "BDMA mode change not applied" and "SMB modules not installed" at the very first file, while
+-- the launch-time staging, which already wrote in place, worked on the same card). A torn copy
+-- here is self-healing: BDMA staging is guarded by its marker, the SMB modules by their size.
+local function CopyExternalInPlace(source, dest, expected_size)
   local ok_src, src_fd = pcall(System.openFile, source, FREAD)
   if not ok_src or src_fd == nil or (type(src_fd) == "number" and src_fd < 0) then
     return false, "open source failed"
@@ -5333,7 +5303,8 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
     end
   end
 
-  local ok_dst, dst_fd = pcall(System.openFile, tmp, FCREATE)
+  local existed = doesFileExist(dest)
+  local ok_dst, dst_fd = pcall(System.openFile, dest, FCREATE_TRUNC)
   if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
     pcall(System.closeFile, src_fd)
     return false, "open destination failed"
@@ -5357,8 +5328,6 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
     if expected ~= nil and copied_bytes >= expected then
       break
     end
-
-    local before = copied_bytes
     local ok_read, chunk = pcall(System.readFile, src_fd, 32768)
     if not ok_read then
       copied = false
@@ -5367,27 +5336,13 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
     if chunk == nil or chunk == "" then
       break
     end
-
     local chunk_len = string.len(chunk)
     local ok_write, wrote = pcall(System.writeFile, dst_fd, chunk, chunk_len)
-    if not ok_write or type(wrote) ~= "number" then
+    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
       copied = false
       break
     end
-    if wrote <= 0 then
-      copied = false
-      break
-    end
-
     copied_bytes = copied_bytes + wrote
-    if copied_bytes == before then
-      copied = false
-      break
-    end
-    if wrote ~= chunk_len then
-      copied = false
-      break
-    end
     if copied_bytes > max_bytes then
       copied = false
       break
@@ -5400,14 +5355,11 @@ local function CopyExternalAtomicBounded(source, dest, expected_size)
   if expected ~= nil and copied and copied_bytes < expected then
     copied = false
   end
-
   if not copied then
-    pcall(System.removeFile, tmp)
+    if not existed then
+      pcall(System.removeFile, dest) -- a new file cut short must not look installed
+    end
     return false, "copy failed"
-  end
-
-  if not PromoteTmpToDest(tmp, dest) then
-    return false, "rename failed"
   end
   return true
 end
@@ -5416,11 +5368,9 @@ end
 -- Direct single-pass write: delete dest, create, chunked full-count writes.
 -- For SELF-HEALING files only (BDMA driver staging): the variant marker is
 -- written AFTER the files succeed, so a torn write leaves marker ~= target and
--- IsBdmaModeEquipped forces a clean re-stage on the next launch. The atomic
--- tmp/.bak dance below is for files where a torn write LOSES data (.pldrs);
--- on a memory card System.rename is copy+delete, so that dance costs ~3x the
--- payload in writes -- the "Staging drivers... takes forever" launch stall
--- (maintainer, EXP24). Do NOT reroute settings/cache saves through this.
+-- IsBdmaModeEquipped forces a clean re-stage on the next launch. It deletes
+-- dest first, so do NOT reroute settings/cache saves through this: those use
+-- WriteAtomic, which overwrites in place and never leaves the file missing.
 local function WriteBytesDirectBounded(data, dest)
   if type(data) ~= "string" then
     return false, "invalid data"
@@ -5461,52 +5411,26 @@ local function WriteBytesDirectBounded(data, dest)
   return true
 end
 
-local function WriteBytesAtomicBounded(data, dest)
+-- Write data over dest in place (see CopyExternalInPlace for why there is no temp file).
+local function WriteBytesInPlace(data, dest)
   if type(data) ~= "string" then
     return false, "invalid data"
   end
-
-  local tmp = dest..".tmp"
-  if doesFileExist(tmp) then
-    pcall(System.removeFile, tmp)
+  local old_size = GetFileSizeSafe(dest)
+  local old = nil
+  if old_size ~= nil and old_size <= 4096 then
+    old = ReadWholeFile(dest)
   end
-
-  local ok_open, fd = pcall(System.openFile, tmp, FCREATE)
-  if not ok_open or fd == nil or (type(fd) == "number" and fd < 0) then
-    return false, "open destination failed"
-  end
-
-  local expected = string.len(data)
-  local offset = 1
-  local iters = 0
-  local MAX_ITERS = 4096
-  local wrote_all = true
-
-  while offset <= expected and iters < MAX_ITERS do
-    iters = iters + 1
-    local chunk = string.sub(data, offset, math.min(offset + 32768 - 1, expected))
-    local chunk_len = string.len(chunk)
-    local ok_write, wrote = pcall(System.writeFile, fd, chunk, chunk_len)
-    if not ok_write or type(wrote) ~= "number" or wrote ~= chunk_len then
-      wrote_all = false
-      break
+  if not WriteAtomic(dest, data) then
+    -- Never leave a torn file behind: a file that did not exist is removed, so the
+    -- next try starts clean, and a small config (SMBCONFIG.DAT credentials, a
+    -- marker) gets its old bytes back in place. Same size as before, so it fits.
+    if old_size == nil then
+      pcall(System.removeFile, dest)
+    elseif type(old) == "string" then
+      WriteAtomic(dest, old)
     end
-    offset = offset + chunk_len
-  end
-
-  if offset <= expected then
-    wrote_all = false
-  end
-
-  pcall(System.closeFile, fd)
-
-  if not wrote_all then
-    pcall(System.removeFile, tmp)
     return false, "write failed"
-  end
-
-  if not PromoteTmpToDest(tmp, dest) then
-    return false, "rename failed"
   end
   return true
 end
@@ -5543,12 +5467,13 @@ local function EnsurePopstarterPackDir(path)
   for i = 1, #BDMA_UI_FILES do
     local asset = BDMA_UI_FILES[i]
     local dest = pack_root.."/"..asset.dst
-    if not doesFileExist(dest) then
-      local bytes = GetEmbeddedAssetBytes(asset.src)
+    local bytes = GetEmbeddedAssetBytes(asset.src)
+    -- Rewrite a missing icon, and one whose size is wrong (cut short by a power loss).
+    if not doesFileExist(dest) or (bytes ~= nil and GetFileSizeSafe(dest) ~= #bytes) then
       if bytes == nil then
         return false
       end
-      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+      local ok_write, wrote = pcall(WriteBytesInPlace, bytes, dest)
       if not ok_write or not wrote then
         return false
       end
@@ -7828,6 +7753,56 @@ local function DeleteIfExists(path)
   return true
 end
 
+-- Free space (KB) on the memory card a mc0:/ or mc1:/ path lives on, or nil when
+-- the path is not on a card or the card did not answer. Cards use 1 KB clusters.
+function PLDR.McFreeKB(path)
+  local slot = string.match(tostring(path or ""), "^mc([01]):")
+  if slot == nil or type(System) ~= "table" or type(System.getMCInfo) ~= "function" then
+    return nil
+  end
+  local ok, info = pcall(System.getMCInfo, tonumber(slot))
+  if not ok or type(info) ~= "table" then return nil end
+  -- result 0, or -1 for a card swapped since the last look: the free count is good
+  -- (the same rule the updater's free-space check uses).
+  if info.result ~= 0 and info.result ~= -1 then return nil end
+  if type(info.freemem) ~= "number" or info.freemem < 0 then return nil end
+  return info.freemem
+end
+
+-- Before writing files over the card in place: is there room for the growth?
+-- plan = { { dest = path, size = bytes }, ... }. An in-place overwrite needs only
+-- the new size less the old one (plus a cluster for a new file's directory entry).
+-- Shows the shortfall and returns false when the card is too full; true when it
+-- fits or the free space cannot be read (the writes themselves still report).
+function PLDR.McHasRoomFor(plan)
+  local root = plan[1] and plan[1].dest
+  local free = PLDR.McFreeKB(root)
+  if free == nil then return true end
+  local function kb(n) return math.floor(((tonumber(n) or 0) + 1023) / 1024) end
+  -- Files are written in plan order, each truncated before it is rewritten, so a file
+  -- that shrinks frees room for the next one. Need = peak running total, not the sum of growths.
+  local need, run = 0, 0
+  for i = 1, #plan do
+    local old = GetFileSizeSafe(plan[i].dest)
+    run = run + kb(plan[i].size) - kb(old or 0) + ((old == nil) and 1 or 0)
+    if run > need then need = run end
+  end
+  if need <= free then return true end
+  if UI ~= nil and UI.Notif_queue ~= nil then
+    UI.Notif_queue.add(PLDR.LFmt("Not enough free space on the memory card\nFree up %d KB on %s (%d KB free now)",
+      need - free, string.match(tostring(root), "^(mc[01]:)") or "mc0:", free), "error")
+  end
+  return false
+end
+
+-- A memory-card write that failed: name the file, so a failed apply never says only "not applied".
+function PLDR.McWriteFailed(dest)
+  if UI ~= nil and UI.Notif_queue ~= nil then
+    UI.Notif_queue.add(PLDR.LFmt("Could not write %s\nCheck the memory card", tostring(dest)), "error")
+  end
+  return false
+end
+
 function PLDR.NextBdmaApplyToken()
   PLDR._bdma_apply_seq = (tonumber(PLDR._bdma_apply_seq) or 0) + 1
   return "bdma:"..tostring(PLDR._bdma_apply_seq)
@@ -7861,9 +7836,9 @@ end
 -- simple paste of 2 files from the embed"): embeds only (no APP_DIR override
 -- probing, so no EnsureBackendForAppDir device init -- with the ATA drive
 -- resident those mass-slot probes can wait on a disk spin-up), and direct
--- single-pass writes (the atomic tmp/.bak dance costs ~3x the payload on a
--- memory card). The manual Settings apply keeps atomic writes and the
--- backend init, and -- since #616 -- the same embedded-first source order,
+-- single-pass writes. The manual Settings apply writes in place too (no temp
+-- file, so a nearly full card only needs room for the size difference), keeps
+-- the backend init, and -- since #616 -- the same embedded-first source order,
 -- so both paths stage byte-identical pairs for every shipped variant.
 function PLDR.ApplyBdmaMode(mode_key, launch_fast)
   local selected = mode_key or "FAT32"
@@ -7901,10 +7876,25 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     return false
   end
 
+  -- Room check first, so a card too full for the new pair says so and is left
+  -- exactly as it was (the old pair and marker still match each other).
+  -- Same order as the writes: STAGING marker, the pair, then the stamp.
+  local plan = { { dest = BDMA_MODE_MARKER_PATH, size = #BDMA_STAGING_MARKER } }
+  for i = 1, #BDMA_COPY_FILES do
+    local bytes = GetEmbeddedAssetBytes(BDMA_COPY_FILES[i]..suffix)
+    if bytes ~= nil then
+      plan[#plan + 1] = { dest = POPSTARTER_PACK_ROOT.."/"..BDMA_COPY_FILES[i], size = #bytes }
+    end
+  end
+  plan[#plan + 1] = { dest = PLDR.BDMA_STAMP_PATH, size = #tostring(PLDR.BDMA_DRIVER_STAMP or "") }
+  if not PLDR.McHasRoomFor(plan) then
+    return false
+  end
+
   -- Invalidate the equipped state before replacing either driver. If a later
   -- source/read/write fails, mixed old/new files cannot pass the old marker.
   if not WriteBdmaModeMarker(BDMA_STAGING_MARKER, launch_fast) then
-    return false
+    return PLDR.McWriteFailed(BDMA_MODE_MARKER_PATH)
   end
 
   if launch_fast == true or selected == "UDPFS" then
@@ -7930,17 +7920,17 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
         return false
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local writer = launch_fast == true and WriteBytesDirectBounded or WriteBytesAtomicBounded
+      local writer = launch_fast == true and WriteBytesDirectBounded or WriteBytesInPlace
       local ok_write, wrote = pcall(writer, bytes, dest)
       if not ok_write or not wrote then
-        return false
+        return PLDR.McWriteFailed(dest)
       end
     end
     if not WriteAtomic(PLDR.BDMA_STAMP_PATH, PLDR.BDMA_DRIVER_STAMP) then
-      return false
+      return PLDR.McWriteFailed(PLDR.BDMA_STAMP_PATH)
     end
     if not WriteBdmaModeMarker(selected, launch_fast) then
-      return false
+      return PLDR.McWriteFailed(BDMA_MODE_MARKER_PATH)
     end
     return true
   end
@@ -7971,9 +7961,9 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
     end
     if bytes ~= nil then
       local dest = POPSTARTER_PACK_ROOT.."/"..name
-      local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+      local ok_write, wrote = pcall(WriteBytesInPlace, bytes, dest)
       if not ok_write or not wrote then
-        return false
+        return PLDR.McWriteFailed(dest)
       end
     else
       local paths = PLDR.BdmaSourceCandidates(rel)
@@ -7989,14 +7979,14 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
       end
       local dest = POPSTARTER_PACK_ROOT.."/"..name
       local src_size = GetFileSizeSafe(source)
-      local ok, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
+      local ok, copied = pcall(CopyExternalInPlace, source, dest, src_size)
       if not ok or not copied then
-        return false
+        return PLDR.McWriteFailed(dest)
       end
     end
   end
   if not WriteAtomic(PLDR.BDMA_STAMP_PATH, PLDR.BDMA_DRIVER_STAMP) then
-    return false
+    return PLDR.McWriteFailed(PLDR.BDMA_STAMP_PATH)
   end
   WriteBdmaModeMarker(selected)
   return true
@@ -8312,7 +8302,7 @@ end
 
 -- ON: install the SMB pack into mc:/POPSTARTER. Stages the 6 IRX (filesystem
 -- override -> embedded fallback, exactly like ApplyBdmaMode) and generates the
--- 2 .DAT from the current PLDR.SMB. Idempotent (atomic overwrites), so it is safe
+-- 2 .DAT from the current PLDR.SMB. Idempotent (in-place overwrites), so it is safe
 -- to re-run whenever an SMB field changes to regenerate the .DAT.
 function PLDR.ApplySmbModules(progress)
   if not PLDR.EnsurePopstarterDir() then
@@ -8329,16 +8319,16 @@ function PLDR.ApplySmbModules(progress)
   end
   -- Same source SyncSmbDat uses, so install and backfill cannot disagree.
   local cfg = PLDR.SmbCopy(PLDR.SMB)
+  -- Resolve every file first, so the room check below sees the whole install
+  -- and a card too full for it is told so before anything is written.
+  local files = {}
   for i = 1, #PLDR.SMB_IRX_FILES do
     local name = PLDR.SMB_IRX_FILES[i]
-    step(i, name)
-    local dest = POPSTARTER_PACK_ROOT.."/"..name
     local paths = PLDR.BdmaSourceCandidates(name)
     local fd, source = PLDR.TryOpenFirst(paths)
     if fd ~= nil and (type(fd) ~= "number" or fd >= 0) then
       System.closeFile(fd)
     end
-    -- Resolve what SHOULD be there before writing anything.
     local bytes, want_size = nil, nil
     if source == nil then
       bytes = GetEmbeddedAssetBytes(name)
@@ -8350,6 +8340,20 @@ function PLDR.ApplySmbModules(progress)
     else
       want_size = GetFileSizeSafe(source)
     end
+    files[i] = { name = name, dest = POPSTARTER_PACK_ROOT.."/"..name, source = source, bytes = bytes, size = want_size }
+  end
+  local ip_body = PLDR.RenderSmbIpconfig(cfg)
+  local smb_body = PLDR.RenderSmbConfig(cfg)
+  local plan = {}
+  for i = 1, #files do plan[i] = files[i] end
+  if ip_body ~= nil then plan[#plan + 1] = { dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT", size = #ip_body } end
+  if smb_body ~= nil then plan[#plan + 1] = { dest = POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT", size = #smb_body } end
+  if not PLDR.McHasRoomFor(plan) then
+    return false
+  end
+  for i = 1, #files do
+    local f = files[i]
+    step(i, f.name)
     -- Skip files already installed (maintainer: "it shouldn't be pasting the
     -- files unless they aren't there already"). These 6 IRX are static build
     -- artifacts, so a byte-size match means the right file is on the card --
@@ -8357,13 +8361,13 @@ function PLDR.ApplySmbModules(progress)
     -- correct card. Turns a re-save from 8 slow memory-card writes into 2
     -- (only the settings-bearing .DATs below always regenerate). A missing
     -- dest gives GetFileSizeSafe nil, so a fresh install still writes all 6.
-    local have_size = GetFileSizeSafe(dest)
-    if have_size ~= nil and want_size ~= nil and have_size == want_size and have_size > 0 then
+    local have_size = GetFileSizeSafe(f.dest)
+    if have_size ~= nil and f.size ~= nil and have_size == f.size and have_size > 0 then
       -- already present and the right size: leave it alone
-    elseif bytes ~= nil then
-      if not WriteBytesAtomicBounded(bytes, dest) then return false end
+    elseif f.bytes ~= nil then
+      if not WriteBytesInPlace(f.bytes, f.dest) then return PLDR.McWriteFailed(f.dest) end
     else
-      if not CopyExternalAtomicBounded(source, dest, want_size) then return false end
+      if not CopyExternalInPlace(f.source, f.dest, f.size) then return PLDR.McWriteFailed(f.dest) end
     end
   end
   -- IPCONFIG.DAT: write the static line, or leave any existing file alone.
@@ -8374,19 +8378,17 @@ function PLDR.ApplySmbModules(progress)
   -- no address".
   step(#PLDR.SMB_IRX_FILES + 1, "IPCONFIG.DAT")
   local ip_dest = POPSTARTER_PACK_ROOT.."/IPCONFIG.DAT"
-  local ip_body = PLDR.RenderSmbIpconfig(cfg)
   if ip_body ~= nil then
-    if not WriteBytesAtomicBounded(ip_body, ip_dest) then return false end
+    if not WriteBytesInPlace(ip_body, ip_dest) then return PLDR.McWriteFailed(ip_dest) end
   end
   -- SMBCONFIG.DAT: generated from the current settings, but NEVER blanked. Same
   -- rule as IPCONFIG.DAT above -- nil means "nothing worth writing", so leave any
   -- existing file alone rather than replacing a hand-made working config with an
   -- empty one. Installing the modules must not cost the user their credentials.
   step(total, "SMBCONFIG.DAT")
-  local smb_body = PLDR.RenderSmbConfig(cfg)
   if smb_body ~= nil then
-    if not WriteBytesAtomicBounded(smb_body, POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
-      return false
+    if not WriteBytesInPlace(smb_body, POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT") then
+      return PLDR.McWriteFailed(POPSTARTER_PACK_ROOT.."/SMBCONFIG.DAT")
     end
   end
   return true
@@ -8539,7 +8541,7 @@ function PLDR.SyncSmbDat()
     if ReadWholeFile(dest) == body then
       return true                        -- already current; skip the mc write
     end
-    return WriteBytesAtomicBounded(body, dest)
+    return WriteBytesInPlace(body, dest)
   end
   local ok = true
   if not write_if_changed(root.."/IPCONFIG.DAT", PLDR.RenderSmbIpconfig(cfg)) then ok = false end
@@ -8591,13 +8593,13 @@ function PLDR.EnsurePopstarterUiAssets()
           end
           return false
         end
-        local ok_write, wrote = pcall(WriteBytesAtomicBounded, bytes, dest)
+        local ok_write, wrote = pcall(WriteBytesInPlace, bytes, dest)
         if not ok_write or not wrote then
           return false
         end
       else
         local src_size = GetFileSizeSafe(source)
-        local ok_copy, copied = pcall(CopyExternalAtomicBounded, source, dest, src_size)
+        local ok_copy, copied = pcall(CopyExternalInPlace, source, dest, src_size)
         if not ok_copy or not copied then
           return false
         end
@@ -9402,11 +9404,11 @@ function PLDR.PrepareUdpfsConfig()
         local dest = dest_dir.."/"..name
         local marker = dest..".pldr-pending"
         if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
-           or not WriteBytesAtomicBounded(pending_body, marker)
+           or not WriteBytesInPlace(pending_body, marker)
            or GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end
-        if not WriteBytesAtomicBounded(body, dest) or ReadWholeFile(dest) ~= body then
+        if not WriteBytesInPlace(body, dest) or ReadWholeFile(dest) ~= body then
           cleanup(dest) -- journal remains if deletion fails, including across restart
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end

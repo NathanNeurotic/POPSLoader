@@ -3228,6 +3228,7 @@ UI = {
         UI.SettingsEntryKeyboardLayout = tostring(UI.KeyboardLayoutDraft or (type(PLDR) == "table" and PLDR.KEYBOARD_LAYOUT) or "QWERTY")
         UI.SettingsEntryLanguage = tostring(UI.LanguageDraft or (type(PLDR) == "table" and PLDR.LANGUAGE) or "EN")
         UI.SettingsFocus = 1
+        UI.SettingsOpenSection = nil  -- every group starts closed (opened with RIGHT or CROSS)
         UI.SceneChange(UI.SCENES.MPROFILE)
         return true
       end
@@ -4456,6 +4457,7 @@ UI = {
           UI.SettingsEntryHideTextMode = false
           UI.SettingsEntryKeyboardLayout = nil
           UI.SettingsFocus = 1
+          UI.SettingsOpenSection = nil
         end
 
         local function restore_settings_session()
@@ -4957,11 +4959,13 @@ UI = {
         -- (UI.Modal.OpenSettingsMenu -- R3Z3N review).
         local items = {}
         -- ACCORDION model (R3Z3N review): every section's children are always in
-        -- the item list so nav flows through them, but only the section holding the
-        -- FOCUSED row renders expanded -- the others show a single header line.
-        -- Headers are non-selectable, so nav skips them and lands on the next
-        -- section's first item at a boundary, and the section you leave collapses
-        -- on its own. `section` tags each child with its owning section label.
+        -- the item list, but only the OPEN section renders expanded -- the others
+        -- show a single header line. A group opens only when its header is focused
+        -- and RIGHT or CROSS is pressed, never just because the cursor reached it
+        -- (Venao: scrolling to "Check for updates" meant walking through every
+        -- row of every group on the way). Headers are selectable; the rows of a
+        -- closed group are not, so UP/DOWN pass straight over closed groups.
+        -- `section` tags each child with its owning section label.
         local current_section = nil
         local function AddSection(label)
           current_section = label
@@ -5673,16 +5677,23 @@ UI = {
         end)
 
         -- Focus normalization: clamp + skip non-selectable rows.
+        if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
+          UI.SettingsFocus = 1
+        end
+        -- Code that puts focus straight on a row (not by UP/DOWN) opens its group,
+        -- so focus is never on a hidden row.
+        do
+          local ff = items[UI.SettingsFocus]
+          if ff ~= nil and ff.kind ~= "section" and ff.section ~= nil then
+            UI.SettingsOpenSection = ff.section
+          end
+        end
         local function IsSelectable(idx)
           local it = items[idx]
           if it == nil then return false end
-          -- Section headers are non-selectable (accordion): nav skips them so it
-          -- lands on the section's first item, not the header.
-          if it.kind == "section" then return false end
-          return it.kind ~= "spacer" and it.kind ~= "info"
-        end
-        if type(UI.SettingsFocus) ~= "number" or UI.SettingsFocus < 1 or UI.SettingsFocus > #items then
-          UI.SettingsFocus = 1
+          if it.kind == "section" then return true end
+          if it.kind == "spacer" or it.kind == "info" then return false end
+          return it.section == nil or it.section == UI.SettingsOpenSection
         end
         if not IsSelectable(UI.SettingsFocus) then
           for i = 1, #items do
@@ -5705,18 +5716,9 @@ UI = {
           end
         end
 
-        -- Accordion: the OPEN section = the section of the focused row. A row is
-        -- visible only if it's a header/spacer or a child of the open section;
-        -- collapsed sections render as their single header line.
-        do
-          local ff = items[UI.SettingsFocus]
-          if ff ~= nil and ff.section ~= nil then UI.SettingsOpenSection = ff.section end
-          if UI.SettingsOpenSection == nil then
-            for _, it in ipairs(items) do
-              if it.kind == "section" then UI.SettingsOpenSection = it.label; break end
-            end
-          end
-        end
+        -- Accordion: a row is visible only if it's a header/spacer or a child of
+        -- the open section (nil = every group closed); closed sections render as
+        -- their single header line.
         local open_section = UI.SettingsOpenSection
 
         -- Drop-down animation (R3Z3N review: instant accordion opens are
@@ -5920,9 +5922,8 @@ UI = {
               or (row_y >= view_top and (row_y + item_h[i]) <= (footer_top_y + 1))
             if show then
               if it.kind == "section" then
-                -- "+" collapsed / "-" expanded, driven by the open section; headers
-                -- are never focused (non-selectable).
-                DrawSection(it.label, row_y, it.label ~= open_section, false)
+                -- "+" collapsed / "-" expanded, driven by the open section.
+                DrawSection(it.label, row_y, it.label ~= open_section, UI.SettingsFocus == i)
               elseif it.kind == "spacer" then
                 -- nothing to draw
               else
@@ -5966,35 +5967,30 @@ UI = {
 
         local focused_item = items[UI.SettingsFocus]
         -- Section jump (sAGA: "to skip the SMB block, you have to click through
-        -- every item"). Move focus to the previous/next section's first selectable
-        -- row; the accordion follows focus, so the old block collapses and the new
-        -- one opens in one press. L1/R1 work from ANY row; LEFT/RIGHT do the same
-        -- on rows that don't consume them (cycle rows keep left/right = value
-        -- prev/next -- hijacking those would break value editing).
+        -- every item"). Move focus to the previous/next group's HEADER; it does not
+        -- open it. L1/R1 work from ANY row; LEFT/RIGHT do the same on rows that
+        -- don't consume them (cycle rows keep left/right = value prev/next --
+        -- hijacking those would break value editing).
         local function JumpSection(delta)
-          local order, seen = {}, {}
-          for _, it in ipairs(items) do
-            local sec = (it.kind == "section") and it.label or it.section
-            if sec ~= nil and not seen[sec] then
-              seen[sec] = true
-              order[#order + 1] = sec
+          local headers, idx = {}, nil
+          local cur = (focused_item ~= nil) and ((focused_item.kind == "section") and focused_item.label or focused_item.section) or nil
+          for i, it in ipairs(items) do
+            if it.kind == "section" then
+              headers[#headers + 1] = i
+              if it.label == cur then idx = #headers end
             end
           end
-          if #order < 2 then return end
-          local cur = (focused_item ~= nil and focused_item.section) or UI.SettingsOpenSection
-          local idx = 1
-          for i = 1, #order do
-            if order[i] == cur then idx = i; break end
-          end
-          -- Walk past sections with no selectable rows (all-info blocks) instead
-          -- of dead-ending on them.
-          for step = 1, #order - 1 do
-            local target = order[((idx - 1 + delta * step) % #order) + 1]
-            for i = 1, #items do
-              if items[i].section == target and IsSelectable(i) then
-                UI.SettingsFocus = i
-                return
-              end
+          if #headers < 2 then return end
+          if idx == nil then idx = (delta > 0) and 0 or 1 end
+          UI.SettingsFocus = headers[((idx - 1 + delta) % #headers) + 1]
+        end
+        -- Open the focused group and put focus on its first row.
+        local function OpenSection(label)
+          UI.SettingsOpenSection = label
+          for i = 1, #items do
+            if items[i].section == label and IsSelectable(i) then
+              UI.SettingsFocus = i
+              return
             end
           end
         end
@@ -6003,9 +5999,14 @@ UI = {
         -- Re-capture after a shoulder jump so same-frame LEFT/RIGHT/CONFIRM act
         -- on the row focus actually landed on, not the pre-jump one.
         focused_item = items[UI.SettingsFocus]
-        if focused_item ~= nil then
-          -- Focus is never on a section header (non-selectable), so there are no
-          -- section-collapse branches: the accordion follows focus automatically.
+        if focused_item ~= nil and focused_item.kind == "section" then
+          -- On a header: RIGHT or CROSS opens the group, LEFT closes it again.
+          if UI.Pad.Events.NAV_RIGHT or UI.Pad.Events.CONFIRM then
+            OpenSection(focused_item.label)
+          elseif UI.Pad.Events.NAV_LEFT and UI.SettingsOpenSection == focused_item.label then
+            UI.SettingsOpenSection = nil
+          end
+        elseif focused_item ~= nil then
           if UI.Pad.Events.NAV_LEFT then
             if focused_item.kind == "cycle" and focused_item.prev then
               focused_item.prev()
