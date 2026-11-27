@@ -59,7 +59,7 @@ assert "local function IsUdpfsContiguousMask(octets)" in system
 assert 'mask == "0.0.0.0"' in system
 assert 'mask == "255.255.255.255"' in system
 assert "GetRootsByType" not in system[system.index("function PLDR.PrepareUdpfsConfig()"):system.index("function PLDR.InitSMBPopsRoot(report)")]
-assert "WriteBytesAtomicBounded(body, dest)" in system
+assert "WriteBytesInPlace(body, dest)" in system
 
 assert '"initUDPFS",              lua_udpfs_init' in cpp
 assert '"udpfsState",              lua_udpfs_state' in cpp
