@@ -85,7 +85,9 @@ class TranslationHandoffTests(unittest.TestCase):
     def test_remaining_rows_exclude_completed_and_include_pending(self):
         from translation_handoff import remaining_slovak_rows
         keys = {en for en, _, _ in remaining_slovak_rows()}
-        self.assertIn("Check for Updates", keys)
+        # Returned by SVKghost on 2026-11-27 (#605), so no longer pending.
+        self.assertNotIn("Check for Updates", keys)
+        self.assertIn("Relaunch", keys)
         self.assertNotIn("Settings", keys)
         self.assertNotIn("100M Full", keys)
 
@@ -103,7 +105,7 @@ class TranslationHandoffTests(unittest.TestCase):
         _, _, dictionaries = source_data()
         slovak = dict(dictionaries["SK"])
         tsv = dict(read_tsv(Path(__file__).resolve().parent.parent / "docs/translations/slovak.tsv"))
-        for key, expected in {"SPACE": "MEDZERA", "DEL": "MAZAŤ", "CLR": "ČISTI"}.items():
+        for key, expected in {"SPACE": "MEDZERA", "DEL": "MAŽ", "CLR": "ČISTI"}.items():
             with self.subTest(key=key):
                 self.assertEqual(slovak[key], expected)
                 self.assertEqual(tsv[key], expected)

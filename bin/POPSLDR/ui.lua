@@ -1467,6 +1467,11 @@ UI = {
       PADY  = 8;
       GAP   = 4;    -- vertical gap between stacked toasts
       ALFA  = 0x80; -- legacy field, kept for any external readers
+      -- Frames an error or warning stays at full strength before it starts to
+      -- fade (about 6 s at 60 Hz). Without it a three-line problem toast faded
+      -- out in about 4 s, or about 2.4 s when two were stacked, before it could
+      -- be read (SVKghost, #605). Info and ok toasts keep the old quick fade.
+      HOLD_PROBLEM = 360;
       display = function ()
         local q = UI.Notif_queue
         if #q.msg < 1 then return end
@@ -1479,6 +1484,12 @@ UI = {
           if sev == "warn"  then return Color.new(255, 200,  90, a) end
           if sev == "ok"    then return Color.new(120, 230, 170, a) end
           return Color.new(140, 200, 255, a) -- info / default
+        end
+        -- Only toasts that are actually fading count as stacked, so an error or
+        -- warning still in its hold does not speed up a newer info toast.
+        local fading = 0
+        for i = 1, #q.msg do
+          if (q.msg[i].hold or 0) <= 0 then fading = fading + 1 end
         end
         for i = 1, #q.msg do
           local t = q.msg[i]
@@ -1502,7 +1513,11 @@ UI = {
                          body_lines[bi], Color.new(180, 200, 230, alfa))
             ty = ty + q.LINE
           end
-          t.alfa = (t.alfa or 0x90) - ((#q.msg > 1) and 1.4 or 0.8)
+          if (t.hold or 0) > 0 then
+            t.hold = t.hold - 1
+          else
+            t.alfa = (t.alfa or 0x90) - ((fading > 1) and 1.4 or 0.8)
+          end
           y = y + box_h + q.GAP
         end
         local n = 1
@@ -1510,7 +1525,9 @@ UI = {
           if (q.msg[n].alfa or 0) < 1 then table.remove(q.msg, n) else n = n + 1 end
         end
       end;
-      add = function (notif, sev)
+      -- hold (optional) overrides the severity default, e.g. 0 for a warning
+      -- that is only true for a short time.
+      add = function (notif, sev, hold)
         local q = UI.Notif_queue
         -- Localize static toasts (dynamic/unlisted text falls through to English).
         local text = PLDR.L(tostring(notif or ""))
@@ -1523,7 +1540,11 @@ UI = {
           head = text
           body = ""
         end
-        table.insert(q.msg, { head = head, body = body, sev = sev or "info", alfa = 0xC8 })
+        sev = sev or "info"
+        if hold == nil then
+          hold = (sev == "error" or sev == "warn") and q.HOLD_PROBLEM or 0
+        end
+        table.insert(q.msg, { head = head, body = body, sev = sev, alfa = 0xC8, hold = hold })
         while #q.msg > q.MAX do table.remove(q.msg, 1) end
       end;
     };
@@ -2862,7 +2883,8 @@ UI = {
               local msg = UI.ConfirmSwapped()
                 and "Press CROSS again to discard what you typed"
                 or "Press CIRCLE again to discard what you typed"
-              UI.Notif_queue.add(msg, "warn")
+              -- No hold: the second press only discards within 1.5 s.
+              UI.Notif_queue.add(msg, "warn", 0)
             end
           end
           return
