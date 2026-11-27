@@ -7761,11 +7761,13 @@ function PLDR.McHasRoomFor(plan)
   local free = PLDR.McFreeKB(root)
   if free == nil then return true end
   local function kb(n) return math.floor(((tonumber(n) or 0) + 1023) / 1024) end
-  local need = 0
+  -- Files are written in plan order, each truncated before it is rewritten, so a file
+  -- that shrinks frees room for the next one. Need = peak running total, not the sum of growths.
+  local need, run = 0, 0
   for i = 1, #plan do
     local old = GetFileSizeSafe(plan[i].dest)
-    local grow = kb(plan[i].size) - kb(old or 0) + ((old == nil) and 1 or 0)
-    if grow > 0 then need = need + grow end
+    run = run + kb(plan[i].size) - kb(old or 0) + ((old == nil) and 1 or 0)
+    if run > need then need = run end
   end
   if need <= free then return true end
   if UI ~= nil and UI.Notif_queue ~= nil then

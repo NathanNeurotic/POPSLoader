@@ -3028,11 +3028,20 @@ t67 = E('''function()
   -- A card that does not answer (result -2) must not block the write.
   System.getMCInfo = function() return { result = -2, type = 0, freemem = 0, format = 0 } end
   local unknown_ok = PLDR.McFreeKB(root.."/usbd.irx") == nil
+
+  -- A file that shrinks first frees room for the next one (48->42 KB then 15->22 KB peaks at +1 KB).
+  FAKEFS.files[root.."/usbd.irx"] = string.rep("u", 48 * 1024)
+  FAKEFS.files[root.."/usbhdfsd.irx"] = string.rep("h", 15 * 1024)
+  local plan = { { dest = root.."/usbd.irx", size = 42 * 1024 }, { dest = root.."/usbhdfsd.irx", size = 22 * 1024 } }
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 2, format = 1 } end
+  local peak_ok = PLDR.McHasRoomFor(plan) == true
+  System.getMCInfo = function() return { result = 0, type = 2, freemem = 0, format = 1 } end
+  peak_ok = peak_ok and PLDR.McHasRoomFor(plan) == false
   restore()
-  return refused and untouched and said and applied and staged and not stray and unknown_ok,
+  return refused and untouched and said and applied and staged and not stray and unknown_ok and peak_ok,
          "refused="..tostring(refused).." untouched="..tostring(untouched).." said="..tostring(said)..
          " applied="..tostring(applied).." staged="..tostring(staged).." stray="..tostring(stray)..
-         " unknown_ok="..tostring(unknown_ok)
+         " unknown_ok="..tostring(unknown_ok).." peak_ok="..tostring(peak_ok)
 end''')()
 check("T67 memory-card pack writes go in place; a too-full card is refused with the shortfall", t67)
 
