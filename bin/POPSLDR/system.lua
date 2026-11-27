@@ -5457,6 +5457,7 @@ local function EnsurePopstarterPackDir(path)
       end
       local ok_write, wrote = pcall(WriteBytesInPlace, bytes, dest)
       if not ok_write or not wrote then
+        pcall(System.removeFile, dest) -- it did not exist: drop the torn copy so the next call retries
         return false
       end
     end
@@ -9386,6 +9387,7 @@ function PLDR.PrepareUdpfsConfig()
         if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
            or not WriteBytesInPlace(pending_body, marker)
            or GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then
+          pcall(System.removeFile, marker) -- dest not touched yet: a torn journal must not block later launches
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end
         if not WriteBytesInPlace(body, dest) or ReadWholeFile(dest) ~= body then
