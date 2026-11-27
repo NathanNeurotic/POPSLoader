@@ -3152,6 +3152,14 @@ t69 = E("""function()
   q.msg = {}
   q.add("Careful", "warn")
   local warn_holds = q.msg[1].hold == q.HOLD_PROBLEM
+  -- A held warning does not speed up a newer info toast (still the single 0.8 rate).
+  q.add("Saved")
+  q.display()
+  local info_rate_kept = math.abs((0xC8 - q.msg[2].alfa) - 0.8) < 0.001
+  -- An explicit hold of 0 overrides the warning default (short-lived prompts).
+  q.msg = {}
+  q.add("Press again", "warn", 0)
+  warn_holds = warn_holds and info_rate_kept and q.msg[1].hold == 0
   q.msg = saved
   return hold == q.HOLD_PROBLEM and still_full and fading and gone and frames >= 600 and info_fades and warn_holds,
          "hold="..tostring(hold).." still_full="..tostring(still_full).." fading="..tostring(fading)..

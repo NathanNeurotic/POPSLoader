@@ -1485,6 +1485,12 @@ UI = {
           if sev == "ok"    then return Color.new(120, 230, 170, a) end
           return Color.new(140, 200, 255, a) -- info / default
         end
+        -- Only toasts that are actually fading count as stacked, so an error or
+        -- warning still in its hold does not speed up a newer info toast.
+        local fading = 0
+        for i = 1, #q.msg do
+          if (q.msg[i].hold or 0) <= 0 then fading = fading + 1 end
+        end
         for i = 1, #q.msg do
           local t = q.msg[i]
           local alfa = math.floor(t.alfa or 0x90)
@@ -1510,7 +1516,7 @@ UI = {
           if (t.hold or 0) > 0 then
             t.hold = t.hold - 1
           else
-            t.alfa = (t.alfa or 0x90) - ((#q.msg > 1) and 1.4 or 0.8)
+            t.alfa = (t.alfa or 0x90) - ((fading > 1) and 1.4 or 0.8)
           end
           y = y + box_h + q.GAP
         end
@@ -1519,7 +1525,9 @@ UI = {
           if (q.msg[n].alfa or 0) < 1 then table.remove(q.msg, n) else n = n + 1 end
         end
       end;
-      add = function (notif, sev)
+      -- hold (optional) overrides the severity default, e.g. 0 for a warning
+      -- that is only true for a short time.
+      add = function (notif, sev, hold)
         local q = UI.Notif_queue
         -- Localize static toasts (dynamic/unlisted text falls through to English).
         local text = PLDR.L(tostring(notif or ""))
@@ -1533,7 +1541,9 @@ UI = {
           body = ""
         end
         sev = sev or "info"
-        local hold = (sev == "error" or sev == "warn") and q.HOLD_PROBLEM or 0
+        if hold == nil then
+          hold = (sev == "error" or sev == "warn") and q.HOLD_PROBLEM or 0
+        end
         table.insert(q.msg, { head = head, body = body, sev = sev, alfa = 0xC8, hold = hold })
         while #q.msg > q.MAX do table.remove(q.msg, 1) end
       end;
@@ -2873,7 +2883,8 @@ UI = {
               local msg = UI.ConfirmSwapped()
                 and "Press CROSS again to discard what you typed"
                 or "Press CIRCLE again to discard what you typed"
-              UI.Notif_queue.add(msg, "warn")
+              -- No hold: the second press only discards within 1.5 s.
+              UI.Notif_queue.add(msg, "warn", 0)
             end
           end
           return
