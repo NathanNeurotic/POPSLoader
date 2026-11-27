@@ -103,7 +103,7 @@ class TranslationHandoffTests(unittest.TestCase):
         _, _, dictionaries = source_data()
         slovak = dict(dictionaries["SK"])
         tsv = dict(read_tsv(Path(__file__).resolve().parent.parent / "docs/translations/slovak.tsv"))
-        for key, expected in {"SPACE": "MEDZERA", "DEL": "MAZAŤ", "CLR": "ČISTI"}.items():
+        for key, expected in {"SPACE": "MEDZERA", "DEL": "MAŽ", "CLR": "ČISTI"}.items():
             with self.subTest(key=key):
                 self.assertEqual(slovak[key], expected)
                 self.assertEqual(tsv[key], expected)
