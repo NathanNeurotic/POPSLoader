@@ -3037,6 +3037,28 @@ t67 = E('''function()
   local peak_ok = PLDR.McHasRoomFor(plan) == true
   System.getMCInfo = function() return { result = 0, type = 2, freemem = 0, format = 1 } end
   peak_ok = peak_ok and PLDR.McHasRoomFor(plan) == false
+
+  -- A failed write never leaves a torn file: a new icon is removed, an old small file
+  -- gets its bytes back, and an icon of the wrong size is rewritten on the next call.
+  local saved_write = System.writeFile
+  local function fail_once()
+    System.writeFile = function(fd, data, len)
+      System.writeFile = saved_write
+      saved_write(fd, string.sub(tostring(data), 1, 1), 1)
+      return 0
+    end
+  end
+  local icon = root.."/icon.sys"
+  FAKEFS.files[icon] = nil
+  fail_once()
+  local torn_ok = PLDR.EnsurePopstarterDir() == false and FAKEFS.files[icon] == nil
+  FAKEFS.files[icon] = "old icon"
+  EMBEDDED["icon.sys.bdma"] = "new icon!"
+  fail_once()
+  torn_ok = torn_ok and PLDR.EnsurePopstarterDir() == false and FAKEFS.files[icon] == "old icon"
+  torn_ok = torn_ok and PLDR.EnsurePopstarterDir() == true and FAKEFS.files[icon] == "new icon!"
+  System.writeFile = saved_write
+  peak_ok = peak_ok and torn_ok
   restore()
   return refused and untouched and said and applied and staged and not stray and unknown_ok and peak_ok,
          "refused="..tostring(refused).." untouched="..tostring(untouched).." said="..tostring(said)..

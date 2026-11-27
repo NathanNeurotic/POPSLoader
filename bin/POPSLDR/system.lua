@@ -5303,6 +5303,7 @@ local function CopyExternalInPlace(source, dest, expected_size)
     end
   end
 
+  local existed = doesFileExist(dest)
   local ok_dst, dst_fd = pcall(System.openFile, dest, FCREATE_TRUNC)
   if not ok_dst or dst_fd == nil or (type(dst_fd) == "number" and dst_fd < 0) then
     pcall(System.closeFile, src_fd)
@@ -5355,6 +5356,9 @@ local function CopyExternalInPlace(source, dest, expected_size)
     copied = false
   end
   if not copied then
+    if not existed then
+      pcall(System.removeFile, dest) -- a new file cut short must not look installed
+    end
     return false, "copy failed"
   end
   return true
@@ -5412,7 +5416,20 @@ local function WriteBytesInPlace(data, dest)
   if type(data) ~= "string" then
     return false, "invalid data"
   end
+  local old_size = GetFileSizeSafe(dest)
+  local old = nil
+  if old_size ~= nil and old_size <= 4096 then
+    old = ReadWholeFile(dest)
+  end
   if not WriteAtomic(dest, data) then
+    -- Never leave a torn file behind: a file that did not exist is removed, so the
+    -- next try starts clean, and a small config (SMBCONFIG.DAT credentials, a
+    -- marker) gets its old bytes back in place. Same size as before, so it fits.
+    if old_size == nil then
+      pcall(System.removeFile, dest)
+    elseif type(old) == "string" then
+      WriteAtomic(dest, old)
+    end
     return false, "write failed"
   end
   return true
@@ -5450,14 +5467,14 @@ local function EnsurePopstarterPackDir(path)
   for i = 1, #BDMA_UI_FILES do
     local asset = BDMA_UI_FILES[i]
     local dest = pack_root.."/"..asset.dst
-    if not doesFileExist(dest) then
-      local bytes = GetEmbeddedAssetBytes(asset.src)
+    local bytes = GetEmbeddedAssetBytes(asset.src)
+    -- Rewrite a missing icon, and one whose size is wrong (cut short by a power loss).
+    if not doesFileExist(dest) or (bytes ~= nil and GetFileSizeSafe(dest) ~= #bytes) then
       if bytes == nil then
         return false
       end
       local ok_write, wrote = pcall(WriteBytesInPlace, bytes, dest)
       if not ok_write or not wrote then
-        pcall(System.removeFile, dest) -- it did not exist: drop the torn copy so the next call retries
         return false
       end
     end
@@ -7861,13 +7878,15 @@ function PLDR.ApplyBdmaMode(mode_key, launch_fast)
 
   -- Room check first, so a card too full for the new pair says so and is left
   -- exactly as it was (the old pair and marker still match each other).
-  local plan = {}
+  -- Same order as the writes: STAGING marker, the pair, then the stamp.
+  local plan = { { dest = BDMA_MODE_MARKER_PATH, size = #BDMA_STAGING_MARKER } }
   for i = 1, #BDMA_COPY_FILES do
     local bytes = GetEmbeddedAssetBytes(BDMA_COPY_FILES[i]..suffix)
     if bytes ~= nil then
       plan[#plan + 1] = { dest = POPSTARTER_PACK_ROOT.."/"..BDMA_COPY_FILES[i], size = #bytes }
     end
   end
+  plan[#plan + 1] = { dest = PLDR.BDMA_STAMP_PATH, size = #tostring(PLDR.BDMA_DRIVER_STAMP or "") }
   if not PLDR.McHasRoomFor(plan) then
     return false
   end
@@ -9387,7 +9406,6 @@ function PLDR.PrepareUdpfsConfig()
         if not EnsureDirectory(dest_dir) or not doesFolderExist(dest_dir)
            or not WriteBytesInPlace(pending_body, marker)
            or GetFileSizeSafe(marker) ~= #pending_body or ReadWholeFile(marker) ~= pending_body then
-          pcall(System.removeFile, marker) -- dest not touched yet: a torn journal must not block later launches
           return fail(PLDR.LFmt("Could not write UDPFS configuration:\n%s", dest))
         end
         if not WriteBytesInPlace(body, dest) or ReadWholeFile(dest) ~= body then
