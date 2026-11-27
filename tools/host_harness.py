@@ -3036,6 +3036,68 @@ t67 = E('''function()
 end''')()
 check("T67 memory-card pack writes go in place; a too-full card is refused with the shortfall", t67)
 
+# T68 Settings groups open only on RIGHT or CROSS, never because the cursor reached them
+# (Venao, 11-27: scrolling to "Check for updates" walked through every row of every group).
+t68 = E("""function()
+  local E = UI.Pad.Events
+  local saved_listen = UI.Pad.Listen
+  UI.Pad.Listen = function() end   -- the test sets the events itself
+  local function press(name)
+    if type(UI.Transition) == "table" then UI.Transition.active = false end
+    for k in pairs(E) do E[k] = false end
+    if name then E[name] = true end
+    local ok, err = pcall(UI.ProfileQuery.Play)
+    for k in pairs(E) do E[k] = false end
+    if not ok then UI.Pad.Listen = saved_listen; error(err) end
+  end
+  -- Enter Settings the way START does, so the page has its drafts.
+  local saved_scene, saved_modal, saved_launching = UI.CURSCENE, UI.Modal.active, UI.LAUNCHING
+  UI.Modal.active, UI.LAUNCHING = false, false
+  UI.CURSCENE = UI.SCENES.MMAIN
+  for k in pairs(E) do E[k] = false end
+  E.START = true
+  local entered, why = pcall(UI.HandleGlobalInput, false)
+  E.START = false
+  if not entered then UI.Pad.Listen = saved_listen; UI.CURSCENE = saved_scene; error("enter: "..tostring(why)) end
+  UI.SettingsOpenSection = "stale"   -- must not survive entry
+  UI.SettingsFocus = 1
+  UI.SettingsOpenSection = nil
+  press(nil)
+  local first_closed = UI.SettingsOpenSection == nil
+  press("NAV_DOWN"); press("NAV_DOWN")
+  local still_closed = UI.SettingsOpenSection == nil
+  local f = UI.SettingsFocus
+  press("CONFIRM")
+  local opened = UI.SettingsOpenSection ~= nil and UI.SettingsFocus ~= f
+  local opened_name = UI.SettingsOpenSection
+  -- Walk down far enough to leave the open group: the next group must stay closed.
+  for _ = 1, 40 do press("NAV_DOWN") end
+  local only_one = UI.SettingsOpenSection == opened_name
+  -- L1/R1 land on a header without opening it; RIGHT then opens that header's group.
+  press("R1")
+  local r1_closed = UI.SettingsOpenSection == opened_name
+  -- Close the open group with LEFT on its header, then reopen a group with RIGHT.
+  UI.SettingsOpenSection = nil
+  local hdr = UI.SettingsFocus
+  press("NAV_DOWN")
+  local down_stays_closed = UI.SettingsOpenSection == nil
+  hdr = UI.SettingsFocus
+  press("NAV_RIGHT")
+  local right_opens = down_stays_closed and UI.SettingsOpenSection ~= nil and UI.SettingsFocus ~= hdr
+  press("NAV_UP")
+  press("NAV_LEFT")
+  local left_closes = UI.SettingsOpenSection == nil
+  UI.SettingsFocus = 1
+  UI.SettingsOpenSection = nil
+  UI.Pad.Listen = saved_listen
+  UI.CURSCENE, UI.Modal.active, UI.LAUNCHING = saved_scene, saved_modal, saved_launching
+  return first_closed and still_closed and opened and only_one and r1_closed and right_opens and left_closes,
+         "first_closed="..tostring(first_closed).." still_closed="..tostring(still_closed)..
+         " opened="..tostring(opened).." only_one="..tostring(only_one)..
+         " r1_closed="..tostring(r1_closed).." right_opens="..tostring(right_opens).." left_closes="..tostring(left_closes)
+end""")()
+check("T68 Settings groups open only on RIGHT or CROSS; UP/DOWN pass over closed groups", t68)
+
 print()
 fails = [r for r in results if not r[1]]
 print(f"=== {len(results) - len(fails)}/{len(results)} PASS ===")
